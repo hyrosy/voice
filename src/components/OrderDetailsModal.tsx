@@ -1,7 +1,7 @@
 // In src/components/OrderDetailsModal.tsx
 
 import { supabase } from '../supabaseClient';
-import { X, Paperclip } from 'lucide-react';
+import { X, Paperclip, CheckCircle } from 'lucide-react';
 import ChatBox from './ChatBox';
 import React, { useState } from 'react'; // Make sure useState is imported
 import emailjs from '@emailjs/browser';
@@ -22,10 +22,11 @@ interface ModalProps {
   order: Order;
   onClose: () => void;
   onUpdate: () => void; // A function to refresh the order list after an update
-}
+  onActorConfirmPayment?: (orderId: string, clientEmail: string, clientName: string, orderIdString: string) => Promise<void>;}
 
-const OrderDetailsModal: React.FC<ModalProps> = ({ order, onClose, onUpdate }) => {
+const OrderDetailsModal: React.FC<ModalProps> = ({ order, onClose, onUpdate, onActorConfirmPayment }) => {
     const [message, setMessage] = useState('');
+    const [isConfirming, setIsConfirming] = useState(false); // Loading state for button
 
     const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -113,7 +114,24 @@ const OrderDetailsModal: React.FC<ModalProps> = ({ order, onClose, onUpdate }) =
         alert(`An error occurred: ${err.message}`);
         setMessage('');
     }
+
+    
 };
+
+// --- NEW: Wrapper for confirm payment ---
+    const handleConfirmClick = async () => {
+        if (!onActorConfirmPayment) return;
+        
+        setIsConfirming(true);
+        // Pass all necessary info for the email notification
+        await onActorConfirmPayment(order.id, order.client_email, order.client_name, order.order_id_string);
+        
+        // No need to set isConfirming(false) if the modal closes on success,
+        // but we'll add it in case of errors where the modal stays open.
+        setIsConfirming(false);
+    };
+
+
 
     return (
         <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
@@ -130,6 +148,22 @@ const OrderDetailsModal: React.FC<ModalProps> = ({ order, onClose, onUpdate }) =
 
                 {/* Main Content (Scrollable) */}
                 <div className="flex-grow overflow-y-auto pr-4 -mr-4">
+                    {/* --- NEW: Actor Payment Confirmation Section --- */}
+                    {order.status === 'Awaiting Actor Confirmation' && onActorConfirmPayment && (
+                        <div className="mb-6 p-4 bg-green-900/30 border border-green-700 rounded-lg">
+                            <h3 className="text-lg font-bold text-white mb-2">Payment Confirmation Needed</h3>
+                            <p className="text-sm text-slate-300 mb-4">The client has marked this order as paid. Please check your bank account and confirm receipt to begin work.</p>
+                            <button
+                                onClick={handleConfirmClick}
+                                disabled={isConfirming}
+                                className="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-3 rounded-md flex items-center justify-center gap-2 transition-colors disabled:opacity-50"
+                            >
+                                <CheckCircle size={18} /> {isConfirming ? 'Confirming...' : 'Confirm Payment Received'}
+                            </button>
+                        </div>
+                    )}
+                    {/* --- END Section --- */}
+
                     {/* Script Section */}
                     <div className="mb-6">
                         <h3 className="text-xl font-bold text-white mb-2">Script</h3>

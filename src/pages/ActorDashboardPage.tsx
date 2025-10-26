@@ -1,10 +1,13 @@
-// In src/pages/ActorDashboardPage.tsx
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
-import OrderDetailsModal from '../components/OrderDetailsModal'; // Import the modal
-import { ChevronDown, ChevronUp, Music, Trash2, UploadCloud } from 'lucide-react';
+import OrderDetailsModal from '../components/OrderDetailsModal';
+// Import icons needed for tabs if desired (e.g., User, DollarSign)
+import { ChevronDown, ChevronUp, Music, Trash2, UploadCloud, User, DollarSign, Settings, Banknote, CheckCircle } from 'lucide-react';
+import emailjs from '@emailjs/browser';
+
+
 // --- NEW: Define the controlled options for our dropdowns ---
 const genderOptions = ["Male", "Female", "Non-Binary"];
 const languageOptions = ["English (US)", "English (UK)", "Arabic (MSA)", "Arabic (Egyptian)", "French (France)", "Spanish (Spain)"];
@@ -25,16 +28,22 @@ interface Actor {
   ActorName: string;
   bio: string;
   Gender: string;
-  slug: string; // Add this line
+  slug: string;
   Language: string;
   Tags: string;
   BaseRate_per_Word: number;
-  revisions_allowed: number; // Add this line
+  revisions_allowed: number;
   WebMultiplier: number;
   BroadcastMultiplier: number;
   HeadshotURL?: string;
   MainDemoURL?: string;
-  // Add other fields you need
+  // Add Bank Details & Flags
+  bank_name?: string | null;
+  bank_holder_name?: string | null;
+  bank_iban?: string | null;
+  bank_account_number?: string | null;
+  direct_payment_enabled?: boolean;
+  direct_payment_requested?: boolean;
 }
 
 interface Order {
@@ -47,7 +56,10 @@ interface Order {
   script: string;
   final_audio_url?: string;
   // Add other fields from your 'orders' table as needed
+
 }
+
+type ProfileTab = 'info' | 'rates' | 'payout';
 
 const ActorDashboardPage = () => {
     // 2. All state is declared once at the top
@@ -57,25 +69,30 @@ const ActorDashboardPage = () => {
     const [message, setMessage] = useState('');
     const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
     const navigate = useNavigate();
-// NEW: State to manage the collapsible profile section
     const [isProfileOpen, setIsProfileOpen] = useState(false);
-// --- NEW: State to manage the active tab ---
     const [activeTab, setActiveTab] = useState<'active' | 'completed'>('active');
-
+    const [activeProfileTab, setActiveProfileTab] = useState<ProfileTab>('info');
     // --- NEW State for Demos ---
-        const [isDemosOpen, setIsDemosOpen] = useState(true); // Open by default
-        const [demos, setDemos] = useState<Demo[]>([]);
-        const [uploading, setUploading] = useState(false);
-        const [newDemo, setNewDemo] = useState({ title: '', language: '', style_tag: '' });
-        const [demoFile, setDemoFile] = useState<File | null>(null);
-        const [uploadingMainDemo, setUploadingMainDemo] = useState(false);
-        const [demoMessage, setDemoMessage] = useState('');
+    const [isDemosOpen, setIsDemosOpen] = useState(true); // Open by default
+    const [demos, setDemos] = useState<Demo[]>([]);
+    const [uploading, setUploading] = useState(false);
+    const [newDemo, setNewDemo] = useState({ title: '', language: '', style_tag: '' });
+    const [demoFile, setDemoFile] = useState<File | null>(null);
+    const [uploadingMainDemo, setUploadingMainDemo] = useState(false);
+    const [demoMessage, setDemoMessage] = useState('');
+
+    // --- NEW: State for Eligibility Data ---
+    const [completedOrderCount, setCompletedOrderCount] = useState<number>(0);
+    const [averageRating, setAverageRating] = useState<number | null>(null);
+    const [eligibilityLoading, setEligibilityLoading] = useState<boolean>(true); // Separate loading state
+    // --- END Eligibility State ---
 
 
 
     // 3. A single, combined function to fetch all necessary data
     const fetchData = useCallback(async () => {
         setLoading(true);
+        setEligibilityLoading(true); // Start eligibility loading
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) {
             navigate('/actor-auth');
@@ -86,6 +103,7 @@ const ActorDashboardPage = () => {
         if (!actorProfile) {
             setMessage('Could not load your profile.');
             setLoading(false);
+            setEligibilityLoading(false); // Stop eligibility loading on error
             return;
         }
         setActorData(actorProfile);
@@ -99,6 +117,44 @@ const ActorDashboardPage = () => {
         const { data: demosData } = await supabase.from('demos').select('*').eq('actor_id', actorProfile.id).order('created_at', { ascending: false });
         if(demosData) setDemos(demosData);
 
+        // --- NEW: Fetch Eligibility Data ---
+    try {
+        // Fetch completed order count
+        const { count: orderCount, error: orderCountError } = await supabase
+            .from('orders')
+            .select('id', { count: 'exact', head: true })
+            .eq('actor_id', actorProfile.id)
+            .eq('status', 'Completed');
+
+        if (orderCountError) throw orderCountError;
+        setCompletedOrderCount(orderCount ?? 0);
+
+        // Fetch reviews to calculate average rating
+        const { data: reviewsData, error: reviewsError } = await supabase
+            .from('reviews')
+            .select('rating')
+            .eq('actor_id', actorProfile.id);
+
+        if (reviewsError) throw reviewsError;
+
+        if (reviewsData && reviewsData.length > 0) {
+            const totalRating = reviewsData.reduce((sum, review) => sum + review.rating, 0);
+            const avg = totalRating / reviewsData.length;
+            setAverageRating(parseFloat(avg.toFixed(1)));
+        } else {
+            setAverageRating(null); // No reviews yet
+        }
+    } catch (error) {
+        console.error("Error fetching eligibility data:", error);
+        setMessage("Could not load eligibility data."); // Show feedback
+        // Set default/error values
+        setCompletedOrderCount(0);
+        setAverageRating(null);
+    } finally {
+        setEligibilityLoading(false); // Finish eligibility loading
+    }
+    // --- END Eligibility Fetch ---
+
 
         setLoading(false);
     }, [navigate]);
@@ -107,6 +163,36 @@ const ActorDashboardPage = () => {
     useEffect(() => {
         fetchData();
     }, [fetchData]);
+
+    // In src/pages/ActorDashboardPage.tsx
+
+const handleRequestDirectPayment = async () => {
+    setMessage(''); // Clear previous message
+    if (!actorData.id) return;
+
+    // Optional: Add confirmation dialog
+    // if (!window.confirm("Are you sure you want to request direct payment setup?")) return;
+
+    setMessage('Sending request...'); // Provide feedback
+
+    try {
+        const { error } = await supabase
+            .from('actors')
+            .update({ direct_payment_requested: true })
+            .eq('id', actorData.id);
+
+        if (error) throw error;
+
+        // Update local state immediately
+        setActorData(prev => ({ ...prev, direct_payment_requested: true }));
+        setMessage('Request sent successfully! An admin will review it.');
+
+    } catch (error) {
+        const err = error as Error;
+        console.error("Error requesting direct payment:", err);
+        setMessage(`Failed to send request: ${err.message}`);
+    }
+};
 
     // --- NEW: Handlers for Demo Management ---
     const handleDemoInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
@@ -251,23 +337,33 @@ const ActorDashboardPage = () => {
         setMessage('Saving...');
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) return;
-// Clean the slug: lowercase, no spaces
+
         const cleanedSlug = (actorData.slug || '').toLowerCase().replace(/\s+/g, '-');
+
+
+        // Include bank details in the update payload
+        const updatePayload = {
+            ActorName: actorData.ActorName,
+            Gender: actorData.Gender,
+            Language: actorData.Language,
+            slug: cleanedSlug,
+            Tags: actorData.Tags,
+            BaseRate_per_Word: actorData.BaseRate_per_Word,
+            WebMultiplier: actorData.WebMultiplier,
+            BroadcastMultiplier: actorData.BroadcastMultiplier,
+            revisions_allowed: actorData.revisions_allowed,
+            bio: actorData.bio,
+            // Add bank details
+            bank_name: actorData.bank_name,
+            bank_holder_name: actorData.bank_holder_name,
+            bank_iban: actorData.bank_iban,
+            bank_account_number: actorData.bank_account_number,
+            // DO NOT update direct_payment flags here, only bank details
+        };
 
         const { error } = await supabase
             .from('actors')
-            .update({
-                ActorName: actorData.ActorName,
-                Gender: actorData.Gender,
-                Language: actorData.Language,
-                slug: cleanedSlug, // Save the cleaned slug
-                Tags: actorData.Tags,
-                BaseRate_per_Word: actorData.BaseRate_per_Word,
-                WebMultiplier: actorData.WebMultiplier,
-                BroadcastMultiplier: actorData.BroadcastMultiplier,
-                revisions_allowed: actorData.revisions_allowed, // Add this line to save the new value
-                bio: actorData.bio, // Add this line
-            })
+            .update(updatePayload) // Use the payload            
             .eq('user_id', user.id);
 
         if (error) {
@@ -283,8 +379,9 @@ const ActorDashboardPage = () => {
             setMessage('Profile updated successfully!');
     }
 };
-    const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
         const { name, value } = e.target;
+         // Allow clearing bank fields back to null if desired, otherwise treat as string
         setActorData({ ...actorData, [name]: value });
     };
 
@@ -350,6 +447,48 @@ const ActorDashboardPage = () => {
     // duplicate handleMainDemoUpload removed — using the earlier handleMainDemoUpload implementation above
 
 
+    // --- NEW: Handler for Actor to Confirm Payment ---
+    // This function will be passed to the modal
+    const handleActorConfirmPayment = async (orderId: string, clientEmail: string, clientName: string, orderIdString: string) => {
+        setMessage(''); // Clear message
+        try {
+            const { error: updateError } = await supabase
+                .from('orders')
+                .update({ status: 'In Progress' })
+                .eq('id', orderId)
+                .eq('status', 'Awaiting Actor Confirmation'); // Ensure correct status
+
+            if (updateError) throw updateError;
+
+            setMessage('Payment confirmed! The order is now In Progress.');
+            fetchData(); // Refresh all data
+            setSelectedOrder(null); // Close the modal
+
+            // --- Send notification email to Client that work has started ---
+            const emailParams = {
+                clientName: clientName,
+                clientEmail: clientEmail,
+                orderIdString: orderIdString,
+                actorName: actorData.ActorName // Actor confirms, so use actorData
+            };
+            
+            // You need to create this template in EmailJS
+            emailjs.send(
+                'service_r3pvt1s', // Your Service ID
+                'YOUR_CLIENT_WORK_STARTED_TEMPLATE_ID', // Replace!
+                emailParams,
+                'I51tDIHsXYKncMQpO' // Your Public Key
+            ).catch(err => console.error("Failed to send 'work started' email:", err));
+
+        } catch (error) {
+            const err = error as Error;
+            console.error("Error confirming payment:", err);
+            setMessage(`Error confirming payment: ${err.message}`);
+        }
+    };
+    // --- END Handler ---
+
+
 
     if (loading && !selectedOrder) { // Only show full-page loader initially
         return <div className="min-h-screen bg-slate-900 text-white text-center p-8">Loading Dashboard...</div>;
@@ -358,7 +497,8 @@ const ActorDashboardPage = () => {
     // --- NEW: Filter orders based on the active tab ---
     const filteredOrders = orders.filter(order => {
         if (activeTab === 'active') {
-            return order.status !== 'Completed';
+            // Awaiting Actor Confirmation is an "active" status
+            return order.status !== 'Completed' && order.status !== 'Cancelled';
         }
         return order.status === 'Completed';
     });
@@ -366,30 +506,33 @@ const ActorDashboardPage = () => {
     return (
         <div className="min-h-screen bg-slate-900 p-4 md:p-8">
             <div className="max-w-4xl mx-auto">
-                <div className="flex justify-between items-center mb-6">
+                 {/* ... Header (Your Dashboard, Logout Button) ... */}
+                 <div className="flex justify-between items-center mb-6">
                     <h1 className="text-3xl font-bold text-white">Your Dashboard</h1>
                     <button onClick={handleLogout} className="px-4 py-2 bg-red-600 hover:bg-red-700 rounded-md text-white font-semibold">Log Out</button>
                 </div>
 
-                {/* --- THIS IS THE MISSING SECTION --- */}
+
+                {/* --- Profile Management Section --- */}
                 <div className="bg-slate-800 rounded-lg border border-slate-700 mb-8">
-                    {/* 1. This is now a clickable header */}
                     <button
                         onClick={() => setIsProfileOpen(!isProfileOpen)}
                         className="w-full flex justify-between items-center p-6"
                     >
-                        <h2 className="text-2xl font-bold text-white">Manage Your Profile</h2>
-                        {/* 2. An icon to show the state */}
+                        <h2 className="text-2xl font-bold text-white flex items-center gap-3">
+                            <Settings size={20}/> Manage Your Profile
+                        </h2>
                         {isProfileOpen ? <ChevronUp className="text-slate-400" /> : <ChevronDown className="text-slate-400" />}
                     </button>
 
-                    {/* 3. The form is now conditionally rendered */}
+                    {/* --- Conditionally Render Profile Form --- */}
                     {isProfileOpen && (
-                    <div className="p-6 pt-0">
-                        {/* --- NEW: Avatar Upload UI --- */}
-                        <div className="flex flex-col items-center gap-4 mb-6 border-b border-slate-700 pb-6">
+                    <div className="p-6 pt-0 border-t border-slate-700"> {/* Added border */}
+                        {/* --- Avatar Upload UI --- */}
+                        <div className="flex flex-col items-center gap-4 mb-6 pt-6 border-b border-slate-700 pb-6">
+                            {/* ... img, label, input for avatar ... */}
                             <img
-                                src={actorData.HeadshotURL || 'https://via.placeholder.com/150'} // Use a placeholder if no image
+                                src={actorData.HeadshotURL || 'https://via.placeholder.com/150'}
                                 alt="Profile"
                                 className="w-32 h-32 rounded-full object-cover border-4 border-slate-600"
                             />
@@ -405,110 +548,225 @@ const ActorDashboardPage = () => {
                                 disabled={uploading}
                             />
                         </div>
-                    <form onSubmit={handleUpdate} className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        {/* --- NEW: Bio Textarea --- */}
-                        <div className="md:col-span-2">
-                            <label htmlFor="bio" className="block text-sm font-medium text-slate-300">Your Bio</label>
-                            <textarea
-                                name="bio"
-                                id="bio"
-                                rows={4}
-                                value={actorData.bio || ''}
-                                onChange={(e) => setActorData({ ...actorData, bio: e.target.value })}
-                                className="w-full mt-1 p-3 bg-slate-700 border border-slate-600 rounded-md text-white"
-                                placeholder="Tell clients a little about your voice and experience..."
-                            />
-                        </div>
-                        <div className="md:col-span-2">
-                            <label htmlFor="ActorName" className="block text-sm font-medium text-slate-300">Display Name</label>
-                            <input type="text" name="ActorName" id="ActorName" value={actorData.ActorName || ''} onChange={handleInputChange} className="w-full mt-1 p-3 bg-slate-700 border border-slate-600 rounded-md text-white" />
-                        </div>
 
-                        {/* --- NEW: Slug (Username) Input --- */}
-                            <div>
-                                <label htmlFor="slug" className="block text-sm font-medium text-slate-300">Username / URL</label>
-                                <input
-                                    type="text"
-                                    name="slug"
-                                    id="slug"
-                                    value={actorData.slug || ''}
-                                    onChange={handleInputChange}
-                                    className="w-full mt-1 p-3 bg-slate-700 border border-slate-600 rounded-md text-white"
-                                    placeholder="e.g., your-name"
-                                />
+
+
+
+                        {/* --- Profile Form with Tabs --- */}
+                        <form onSubmit={handleUpdate} className="pt-6">
+                            {/* --- Tab Buttons --- */}
+                            <div className="mb-6 flex border-b border-slate-600">
+                                {/* Basic Info Tab Button */}
+                                <button
+                                    type="button"
+                                    onClick={() => setActiveProfileTab('info')}
+                                    className={`flex items-center gap-2 px-4 sm:px-5 py-3 text-sm font-medium transition-colors ${
+                                        activeProfileTab === 'info'
+                                        ? 'border-b-2 border-purple-500 text-white'
+                                        : 'text-slate-400 hover:text-slate-200'
+                                    }`}
+                                >
+                                     <User size={16}/> Basic Info
+                                </button>
+                                 {/* Rates Tab Button */}
+                                <button
+                                    type="button"
+                                    onClick={() => setActiveProfileTab('rates')}
+                                     className={`flex items-center gap-2 px-4 sm:px-5 py-3 text-sm font-medium transition-colors ${
+                                        activeProfileTab === 'rates'
+                                        ? 'border-b-2 border-purple-500 text-white'
+                                        : 'text-slate-400 hover:text-slate-200'
+                                    }`}
+                                >
+                                     <DollarSign size={16}/> Rates & Revisions
+                                </button>
+                                 {/* NEW Payout Settings Tab Button */}
+                                <button
+                                    type="button"
+                                    onClick={() => setActiveProfileTab('payout')}
+                                     className={`flex items-center gap-2 px-4 sm:px-5 py-3 text-sm font-medium transition-colors ${
+                                        activeProfileTab === 'payout'
+                                        ? 'border-b-2 border-purple-500 text-white'
+                                        : 'text-slate-400 hover:text-slate-200'
+                                    }`}
+                                >
+                                     <Banknote size={16}/> Payout Settings
+                                </button>
                             </div>
 
-                        {/* Gender Dropdown */}
-                            <div>
-                                <label htmlFor="Gender" className="block text-sm font-medium text-slate-300">Gender</label>
-                                <select name="Gender" id="Gender" value={actorData.Gender || ''} onChange={handleInputChange} className="w-full mt-1 p-3 bg-slate-700 border border-slate-600 rounded-md text-white">
-                                    <option value="" disabled>Select gender...</option>
-                                    {genderOptions.map(option => <option key={option} value={option}>{option}</option>)}
-                                </select>
-                            </div>
-                            
-                            {/* Language Dropdown */}
-                            <div>
-                                <label htmlFor="Language" className="block text-sm font-medium text-slate-300">Primary Language</label>
-                                <select name="Language" id="Language" value={actorData.Language || ''} onChange={handleInputChange} className="w-full mt-1 p-3 bg-slate-700 border border-slate-600 rounded-md text-white">
-                                    <option value="" disabled>Select language...</option>
-                                    {languageOptions.map(option => <option key={option} value={option}>{option}</option>)}
-                                </select>
-                            </div>
+                            {/* --- Tab Content --- */}
+                            <div className="space-y-6"> {/* Common spacing for fields */}
+                                {/* === Basic Info Tab === */}
+                                {activeProfileTab === 'info' && (
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-in fade-in duration-300">
+                                        <div className="md:col-span-2">
+                                            <label htmlFor="ActorName" className="block text-sm font-medium text-slate-300">Display Name</label>
+                                            <input type="text" name="ActorName" id="ActorName" value={actorData.ActorName || ''} onChange={handleInputChange} className="w-full mt-1 p-3 bg-slate-700 border border-slate-600 rounded-md text-white" />
+                                        </div>
+                                         <div>
+                                            <label htmlFor="slug" className="block text-sm font-medium text-slate-300">Username / URL</label>
+                                            <input type="text" name="slug" id="slug" value={actorData.slug || ''} onChange={handleInputChange} className="w-full mt-1 p-3 bg-slate-700 border border-slate-600 rounded-md text-white" placeholder="e.g., your-name"/>
+                                        </div>
+                                         <div>
+                                            <label htmlFor="Gender" className="block text-sm font-medium text-slate-300">Gender</label>
+                                            <select name="Gender" id="Gender" value={actorData.Gender || ''} onChange={handleInputChange} className="w-full mt-1 p-3 bg-slate-700 border border-slate-600 rounded-md text-white">
+                                                <option value="" disabled>Select gender...</option>
+                                                {genderOptions.map(option => <option key={option} value={option}>{option}</option>)}
+                                            </select>
+                                        </div>
+                                         <div>
+                                            <label htmlFor="Language" className="block text-sm font-medium text-slate-300">Primary Language</label>
+                                            <select name="Language" id="Language" value={actorData.Language || ''} onChange={handleInputChange} className="w-full mt-1 p-3 bg-slate-700 border border-slate-600 rounded-md text-white">
+                                                <option value="" disabled>Select language...</option>
+                                                {languageOptions.map(option => <option key={option} value={option}>{option}</option>)}
+                                            </select>
+                                        </div>
+                                         <div className="md:col-span-2">
+                                            <label className="block text-sm font-medium text-slate-300">Tags (Select all that apply)</label>
+                                            <div className="flex flex-wrap gap-2 mt-2">
+                                                {tagOptions.map(tag => {
+                                                    const isSelected = (actorData.Tags || '').includes(tag);
+                                                    return (
+                                                        <button type="button" key={tag} onClick={() => handleTagToggle(tag)}
+                                                            className={`px-3 py-1 rounded-full text-sm font-semibold transition ${isSelected ? 'bg-purple-600 text-white' : 'bg-slate-600 text-slate-300 hover:bg-slate-500'}`}
+                                                        > {tag} </button>
+                                                    );
+                                                })}
+                                            </div>
+                                        </div>
+                                         <div className="md:col-span-2">
+                                            <label htmlFor="bio" className="block text-sm font-medium text-slate-300">Your Bio</label>
+                                            <textarea name="bio" id="bio" rows={4} value={actorData.bio || ''} onChange={handleInputChange}
+                                                className="w-full mt-1 p-3 bg-slate-700 border border-slate-600 rounded-md text-white"
+                                                placeholder="Tell clients about your voice..."
+                                            />
+                                        </div>
+                                    </div>
+                                )}
 
-                            {/* Tag Selector */}
-                            <div className="md:col-span-2">
-                                <label className="block text-sm font-medium text-slate-300">Tags (Select all that apply)</label>
-                                <div className="flex flex-wrap gap-2 mt-2">
-                                    {tagOptions.map(tag => {
-                                        const isSelected = (actorData.Tags || '').includes(tag);
-                                        return (
-                                            <button
-                                                type="button"
-                                                key={tag}
-                                                onClick={() => handleTagToggle(tag)}
-                                                className={`px-3 py-1 rounded-full text-sm font-semibold transition ${isSelected ? 'bg-purple-600 text-white' : 'bg-slate-600 text-slate-300 hover:bg-slate-500'}`}
-                                            >
-                                                {tag}
-                                            </button>
-                                        );
-                                    })}
-                                </div>
+                                {/* === Rates & Revisions Tab === */}
+                                {activeProfileTab === 'rates' && (
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-in fade-in duration-300">
+                                         <div className="md:col-span-2">
+                                            <h3 className="text-lg font-semibold text-white">Your Rates (MAD)</h3>
+                                        </div>
+                                        <div>
+                                            <label htmlFor="BaseRate_per_Word" className="block text-sm font-medium text-slate-300">Base Rate per Word</label>
+                                            <input type="number" step="0.01" name="BaseRate_per_Word" id="BaseRate_per_Word" value={actorData.BaseRate_per_Word || 0} onChange={handleInputChange} className="w-full mt-1 p-3 bg-slate-700 border border-slate-600 rounded-md text-white" />
+                                        </div>
+                                        <div>
+                                            <label htmlFor="WebMultiplier" className="block text-sm font-medium text-slate-300">Web Usage Multiplier</label>
+                                            <input type="number" step="0.1" name="WebMultiplier" id="WebMultiplier" value={actorData.WebMultiplier || 1} onChange={handleInputChange} className="w-full mt-1 p-3 bg-slate-700 border border-slate-600 rounded-md text-white" />
+                                        </div>
+                                        <div>
+                                            <label htmlFor="BroadcastMultiplier" className="block text-sm font-medium text-slate-300">Broadcast Multiplier</label>
+                                            <input type="number" step="0.1" name="BroadcastMultiplier" id="BroadcastMultiplier" value={actorData.BroadcastMultiplier || 1} onChange={handleInputChange} className="w-full mt-1 p-3 bg-slate-700 border border-slate-600 rounded-md text-white" />
+                                        </div>
+                                        <div>
+                                            <label htmlFor="revisions_allowed" className="block text-sm font-medium text-slate-300">Revisions Offered</label>
+                                            <input type="number" name="revisions_allowed" id="revisions_allowed" value={actorData.revisions_allowed || 2} onChange={handleInputChange} className="w-full mt-1 p-3 bg-slate-700 border border-slate-600 rounded-md text-white"/>
+                                        </div>
+                                    </div>
+                                )}
+
+                            {/* === NEW Payout Settings Tab === */}
+                                {activeProfileTab === 'payout' && (
+                                    <div className="space-y-6 animate-in fade-in duration-300">
+                                        {/* Bank Details Section */}
+                                        <div>
+                                            <h3 className="text-lg font-semibold text-white mb-4 border-b border-slate-700 pb-2">Bank Account Details</h3>
+                                            <p className="text-sm text-slate-400 mb-4">Enter the bank details where you wish to receive direct payments once approved.</p>
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                                 {/* Bank Name */}
+                                                <div>
+                                                    <label htmlFor="bank_name" className="block text-sm font-medium text-slate-300">Bank Name</label>
+                                                    <input type="text" name="bank_name" id="bank_name" value={actorData.bank_name || ''} onChange={handleInputChange} className="w-full mt-1 p-3 bg-slate-700 border border-slate-600 rounded-md text-white" placeholder="e.g., Attijariwafa Bank"/>
+                                                </div>
+                                                 {/* Holder Name */}
+                                                 <div>
+                                                    <label htmlFor="bank_holder_name" className="block text-sm font-medium text-slate-300">Account Holder Name</label>
+                                                    <input type="text" name="bank_holder_name" id="bank_holder_name" value={actorData.bank_holder_name || ''} onChange={handleInputChange} className="w-full mt-1 p-3 bg-slate-700 border border-slate-600 rounded-md text-white" placeholder="Full name on account"/>
+                                                </div>
+                                                 {/* IBAN */}
+                                                 <div className="md:col-span-2">
+                                                    <label htmlFor="bank_iban" className="block text-sm font-medium text-slate-300">IBAN</label>
+                                                    <input type="text" name="bank_iban" id="bank_iban" value={actorData.bank_iban || ''} onChange={handleInputChange} className="w-full mt-1 p-3 bg-slate-700 border border-slate-600 rounded-md text-white" placeholder="MA..."/>
+                                                </div>
+                                                 {/* Account Number */}
+                                                 <div className="md:col-span-2">
+                                                    <label htmlFor="bank_account_number" className="block text-sm font-medium text-slate-300">Account Number (RIB)</label>
+                                                    <input type="text" name="bank_account_number" id="bank_account_number" value={actorData.bank_account_number || ''} onChange={handleInputChange} className="w-full mt-1 p-3 bg-slate-700 border border-slate-600 rounded-md text-white" placeholder="Full account number"/>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                                                             {/* --- Direct Payment Status Section --- */}
+                                    <div className="mt-8 pt-6 border-t border-slate-700">
+                                        <h3 className="text-lg font-semibold text-white mb-4">Direct Payment Eligibility</h3>
+                                        {eligibilityLoading ? (
+                                            <p className="text-sm text-slate-400">Loading eligibility status...</p>
+                                        ) : (
+                                            <div className="space-y-4">
+                                                {/* Progress Display */}
+                                                <div className="flex flex-col sm:flex-row gap-4">
+                                                    <div className="flex-1 bg-slate-700/50 p-3 rounded-lg text-center">
+                                                         <p className="text-xs text-slate-400 uppercase tracking-wider">Completed Orders</p>
+                                                         <p className="text-xl font-bold mt-1">
+                                                              {completedOrderCount} / <span className="text-slate-400">1</span>
+                                                          </p>
+                                                     </div>
+                                                     <div className="flex-1 bg-slate-700/50 p-3 rounded-lg text-center">
+                                                          <p className="text-xs text-slate-400 uppercase tracking-wider">Average Rating</p>
+                                                           <p className="text-xl font-bold mt-1">
+                                                               {averageRating?.toFixed(1) ?? 'N/A'} / <span className="text-slate-400">3.0+</span>
+                                                          </p>
+                                                      </div>
+                                                 </div>
+
+                                                 {/* Status & Action */}
+                                                 <div className="p-4 bg-slate-900/50 rounded-lg text-center">
+                                                     {(() => {
+                                                         const isEligible = completedOrderCount >= 1 && (averageRating ?? 0) > 3.0;
+
+                                                         if (actorData.direct_payment_enabled) {
+                                                             return <p className="text-green-400 font-semibold">✅ Direct Payments Approved & Enabled</p>;
+                                                         } else if (actorData.direct_payment_requested) {
+                                                              return <p className="text-yellow-400 font-semibold">⏳ Request Pending Admin Approval</p>;
+                                                         } else if (isEligible) {
+                                                             // Eligible but not requested/approved yet - Show Button
+                                                              return (
+                                                                  <>
+                                                                      <p className="text-blue-400 font-semibold mb-3">🎉 You are eligible for Direct Payments!</p>
+                                                                      <button
+                                                                          type="button"
+                                                                          onClick={handleRequestDirectPayment}
+                                                                          className="px-5 py-2 bg-purple-600 hover:bg-purple-700 rounded-md text-white font-semibold transition-colors"
+                                                                      >
+                                                                          Request Admin Approval
+                                                                      </button>
+                                                                  </>
+                                                              );
+                                                         } else {
+                                                              // Not eligible yet
+                                                             return <p className="text-slate-400">Meet the requirements above to request direct payments.</p>;
+                                                         }
+                                                     })()}
+                                                  </div>
+                                            </div>
+                                        )}
+                                     </div>
+                                     {/* --- END Status Section --- */}
+                                 </div>
+                             )}
+                         </div>
+
+
+                            {/* --- Save Button (Outside Tabs) --- */}
+                            <div className="mt-8 pt-6 border-t border-slate-700 text-right">
+                               <button type="submit" className="px-6 py-3 bg-blue-600 hover:bg-blue-700 rounded-md text-white font-semibold">Save Changes</button>
                             </div>
-
-
-                        <div className="md:col-span-2 pt-4 border-t border-slate-700">
-                            <h3 className="text-xl font-bold text-white">Your Rates (MAD)</h3>
-                        </div>
-                        <div>
-                            <label htmlFor="BaseRate_per_Word" className="block text-sm font-medium text-slate-300">Base Rate per Word</label>
-                            <input type="number" step="0.01" name="BaseRate_per_Word" id="BaseRate_per_Word" value={actorData.BaseRate_per_Word || 0} onChange={handleInputChange} className="w-full mt-1 p-3 bg-slate-700 border border-slate-600 rounded-md text-white" />
-                        </div>
-                        <div>
-                            <label htmlFor="WebMultiplier" className="block text-sm font-medium text-slate-300">Web Usage Multiplier</label>
-                            <input type="number" step="0.1" name="WebMultiplier" id="WebMultiplier" value={actorData.WebMultiplier || 1} onChange={handleInputChange} className="w-full mt-1 p-3 bg-slate-700 border border-slate-600 rounded-md text-white" />
-                        </div>
-                        <div>
-                            <label htmlFor="BroadcastMultiplier" className="block text-sm font-medium text-slate-300">Broadcast Multiplier</label>
-                            <input type="number" step="0.1" name="BroadcastMultiplier" id="BroadcastMultiplier" value={actorData.BroadcastMultiplier || 1} onChange={handleInputChange} className="w-full mt-1 p-3 bg-slate-700 border border-slate-600 rounded-md text-white" />
-                        </div>
-                        {/* --- NEW: Revisions Offered Input --- */}
-                        <div>
-                            <label htmlFor="revisions_allowed" className="block text-sm font-medium text-slate-300">Revisions Offered</label>
-                            <input
-                                type="number"
-                                name="revisions_allowed"
-                                id="revisions_allowed"
-                                value={actorData.revisions_allowed || 2}
-                                onChange={handleInputChange}
-                                className="w-full mt-1 p-3 bg-slate-700 border border-slate-600 rounded-md text-white"
-                            />
-                        </div>
-                        <div className="md:col-span-2 text-right">
-                           <button type="submit" className="px-6 py-3 bg-blue-600 hover:bg-blue-700 rounded-md text-white font-semibold">Save Changes</button>
-                        </div>
-                    </form>
-                    {message && <p className="mt-4 text-center text-sm text-green-400">{message}</p>}
+                        </form>
+                        {message && <p className="mt-4 text-center text-sm text-green-400">{message}</p>}
                         </div>
                     )}
                 </div>
@@ -601,14 +859,20 @@ const ActorDashboardPage = () => {
                                 <button
                                     key={order.id}
                                     onClick={() => setSelectedOrder(order)}
-                                    className="w-full bg-slate-700 p-4 rounded-lg text-left hover:bg-slate-600 transition"
+                                   className={`w-full bg-slate-700 p-4 rounded-lg text-left hover:bg-slate-600 transition ${
+                                        order.status === 'Awaiting Actor Confirmation' ? 'ring-2 ring-green-500 shadow-lg' : ''
+                                    }`}
                                 >
                                     <div className="flex justify-between items-center">
                                         <div>
                                             <p className="font-bold text-white">Order #{order.order_id_string}</p>
                                             <p className="text-sm text-slate-400">Client: {order.client_name}</p>
                                         </div>
-                                        <span className={`px-3 py-1 text-sm font-semibold rounded-full ${order.status === 'Completed' ? 'bg-green-500/20 text-green-400' : 'bg-yellow-500/20 text-yellow-400'}`}>
+                                        <span className={`px-3 py-1 text-sm font-semibold rounded-full ${
+                                            order.status === 'Completed' ? 'bg-green-500/20 text-green-400' :
+                                            order.status === 'Awaiting Actor Confirmation' ? 'bg-green-500/20 text-green-400 animate-pulse' : // Highlight green
+                                            'bg-yellow-500/20 text-yellow-400' // Default "in-progress"
+                                        }`}>
                                             {order.status}
                                         </span>
                                     </div>
@@ -628,11 +892,11 @@ const ActorDashboardPage = () => {
                     order={selectedOrder}
                     onClose={() => setSelectedOrder(null)}
                     onUpdate={fetchData} 
+                    onActorConfirmPayment={handleActorConfirmPayment} // <-- Pass the new handler
                 />
             )}
-        </div>
-    );
-};
+        </div> 
+    ); 
+}; 
 
 export default ActorDashboardPage;
-

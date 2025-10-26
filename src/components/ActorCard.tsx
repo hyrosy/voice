@@ -1,8 +1,10 @@
+// In src/components/ActorCard.tsx
+
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { Play, Pause, Heart, Users, Repeat, DollarSign } from 'lucide-react';
 
-// A more detailed interface for the data this page now needs
+// Interfaces remain the same...
 export interface Actor {
   id: string;
   slug: string | null;
@@ -32,37 +34,59 @@ const ActorCard: React.FC<ActorCardProps> = ({ actor, onPlayClick, isCurrentlyPl
   };
 
   return (
-    <Link to={`/actor/${actor.slug}`} className="group relative bg-slate-800/50 p-4 rounded-lg hover:bg-slate-700/50 transition-colors duration-300 block">
+    // Card Container: Flex column, full height potential, padding, background, border, etc.
+    <Link
+      to={`/actor/${actor.slug}`}
+      className="group relative bg-slate-800/70 p-4 rounded-lg border border-slate-700/50 hover:border-slate-600 hover:bg-slate-700/50 transition-all duration-300 flex flex-col h-full shadow-lg"
+    >
+      {/* Image and Play Button */}
       <div className="relative mb-4">
-        <img 
-          src={actor.HeadshotURL} 
-          alt={actor.ActorName} 
+        <img
+          src={actor.HeadshotURL}
+          alt={actor.ActorName}
           className="w-full rounded-md aspect-square object-cover"
         />
         <button
           onClick={handlePlayButtonClick}
-          className={`absolute bottom-2 right-2 w-12 h-12 bg-purple-600 text-white rounded-full flex items-center justify-center
-                      shadow-lg opacity-0 group-hover:opacity-100 group-hover:bottom-4 transition-all duration-300
-                      ${isCurrentlyPlaying ? 'opacity-100 bottom-4' : ''}`}
+          // Adjusted size slightly
+          className={`absolute bottom-2 right-2 w-10 h-10 bg-purple-600 text-white rounded-full flex items-center justify-center
+                      shadow-lg opacity-0 group-hover:opacity-100 group-hover:scale-110 transition-all duration-300 transform
+                      ${isCurrentlyPlaying ? 'opacity-100 scale-110' : ''}`} // Simpler transition for visibility
         >
-          {isCurrentlyPlaying ? <Pause size={24} /> : <Play size={24} className="ml-1" />}
+          {isCurrentlyPlaying ? <Pause size={20} /> : <Play size={20} className="ml-0.5" />}
         </button>
       </div>
-      
-      <h3 className="font-bold text-white truncate">{actor.ActorName}</h3>
-      <div className="mt-2 space-y-2 text-xs text-slate-400">
-        <div className="flex items-center justify-between">
-            <div className="flex items-center gap-1.5"><Heart size={12} /><span>{actor.demo_likes[0]?.count || 0} Likes</span></div>
-            <div className="flex items-center gap-1.5"><Users size={12} /><span>{actor.actor_followers[0]?.count || 0} Followers</span></div>
-        </div>
-        <div className="flex items-center justify-between pt-2 border-t border-slate-700">
-            <div className="flex items-center gap-1.5"><DollarSign size={12} /><span>From {actor.BaseRate_per_Word} MAD/word</span></div>
-            <div className="flex items-center gap-1.5"><Repeat size={12} /><span>{actor.revisions_allowed} Revisions</span></div>
-        </div>
+
+      {/* Actor Name - Centered, slightly larger */}
+      <div className="text-center mb-3 flex-grow">
+          <h3 className="font-bold text-lg text-white truncate">{actor.ActorName}</h3>
       </div>
+
+      {/* Stats Row - Icons + Numbers */}
+      <div className="flex justify-around items-center text-xs text-slate-400 mb-3 border-t border-b border-slate-700/80 py-2">
+          <div className="flex items-center gap-1.5" title={`${actor.demo_likes[0]?.count || 0} Likes`}>
+            <Heart size={14} className="text-pink-400"/>
+            <span>{actor.demo_likes[0]?.count || 0}</span>
+          </div>
+          <div className="flex items-center gap-1.5" title={`${actor.actor_followers[0]?.count || 0} Followers`}>
+            <Users size={14} className="text-blue-400"/>
+            <span>{actor.actor_followers[0]?.count || 0}</span>
+          </div>
+          <div className="flex items-center gap-1.5" title={`${actor.revisions_allowed} Revisions Included`}>
+            <Repeat size={14} className="text-green-400"/>
+            <span>{actor.revisions_allowed}</span>
+          </div>
+      </div>
+
+      {/* Price Row - Centered, distinct */}
+       <div className="text-center">
+          <p className="text-xs font-semibold text-purple-300 whitespace-nowrap">
+            From {actor.BaseRate_per_Word} MAD/word
+          </p>
+        </div>
+
     </Link>
   );
 };
 
 export default ActorCard;
-

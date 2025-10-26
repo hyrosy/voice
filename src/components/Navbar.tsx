@@ -4,7 +4,7 @@ import { HashLink } from 'react-router-hash-link';
 import { 
   Menu, X, Facebook, Twitter, Instagram, ChevronRight, Home, Users, 
   Briefcase, Package, Phone, Youtube, GalleryHorizontalEnd, BracesIcon, 
-  AudioLinesIcon, MegaphoneIcon, LogIn, UserCircle, UserCheck, ChevronDown
+  AudioLinesIcon, MegaphoneIcon, LogIn, UserCircle, UserCheck, ChevronDown, Heart
 } from 'lucide-react';
 
 const Navbar: React.FC = () => {
@@ -37,6 +37,7 @@ const Navbar: React.FC = () => {
     { icon: Package, label: 'Packages', to: '/#packages', type: 'hash' },
     { icon: Users, label: 'Team', to: '/members', type: 'link' },
     { icon: Phone, label: 'Contact Us', to: '/contact', type: 'link' },
+    { icon: Heart, label: 'My Shortlist', to: '/my-shortlist', type: 'link' }, // <-- Add Shortlist here
   ];
 
   const serviceDropdownItems = [
@@ -97,6 +98,7 @@ const Navbar: React.FC = () => {
 
               <Link to="/portfolio" className="text-sm font-medium text-slate-300 hover:text-white transition-colors">Gallery</Link>
               <HashLink to="/#packages" className="text-sm font-medium text-slate-300 hover:text-white transition-colors">Packages</HashLink>
+              <Link to="/my-shortlist" className="text-sm font-medium text-slate-300 hover:text-white transition-colors">Shortlist</Link> {/* <-- Add Shortlist link */}
               <Link to="/members" className="text-sm font-medium text-slate-300 hover:text-white transition-colors">Team</Link>
               <Link to="/contact" className="text-sm font-medium text-slate-300 hover:text-white transition-colors">Contact</Link>
             </div>

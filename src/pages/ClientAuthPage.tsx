@@ -29,8 +29,12 @@ const ClientAuthPage = () => {
                 email,
                 password,
                 options: {
-                emailRedirectTo: `https://www.ucpmaroc.com/client-dashboard`, // <-- Change to your domain                
-            },
+                    data: {
+                        full_name: name // Pass the name from the form state here
+                        // Add company if you collect it and want it in the trigger:
+                        // company_name: clientInfo.company
+                    }
+                },
             });
 
             if (signUpError) {
@@ -43,29 +47,12 @@ const ClientAuthPage = () => {
                 setLoading(false);
                 return;
             }
-            
-            // 2. Create the corresponding profile in the 'clients' table
-            const { data: clientProfile, error: clientError } = await supabase
-                .from('clients')
-                .insert({ user_id: user.id, full_name: name })
-                .select()
-                .single();
 
-            if (clientError) {
-                setMessage(`Account created, but failed to create profile: ${clientError.message}`);
-                setLoading(false);
-                return;
-            }
-
-            // 3. Link past anonymous orders to this new account
-            await supabase
-                .from('orders')
-                .update({ client_id: clientProfile.id })
-                .eq('client_email', email)
-                .is('client_id', null);
-
+            // Show success message (trigger handles profile creation)
             setMessage('Account created! Please check your email for a confirmation link.');
-
+            setLoading(false);
+            
+            
         } else {
             // --- LOG IN LOGIC ---
             const { error } = await supabase.auth.signInWithPassword({ email, password });

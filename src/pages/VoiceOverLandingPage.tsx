@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom'; // <-- Add useNavigate here
 import { Mic, Headphones, PlayCircle, Music, ArrowRight, Heart, Users, Repeat, DollarSign, Play, Pause, Search, RotateCcw } from 'lucide-react';
 import { supabase } from '../supabaseClient';
 import GlobalAudioPlayer from '../components/GlobalAudioPlayer';
@@ -24,10 +24,12 @@ interface Demo {
   title: string;
   demo_url: string;
   actors: {
+    id: string; // <-- Add this line
     ActorName: string;
     slug: string;
     HeadshotURL: string;
   };
+  likes?: number; // <-- Add this optional property
 }
 interface CurrentTrack {
   url: string;
@@ -77,21 +79,56 @@ const ActorCard = ({ actor, onPlayClick, isCurrentlyPlaying }: { actor: Actor, o
 };
 
 // --- DemoPlayerRow Component ---
-const DemoPlayerRow = ({ demo, onPlayClick, isCurrentlyPlaying }: { demo: Demo, onPlayClick: (demo: Demo) => void, isCurrentlyPlaying: boolean }) => {
+// Inside VoiceOverLandingPage.tsx
+
+// --- DemoPlayerRow Component ---
+// Add isLiked and onToggleLike to props
+const DemoPlayerRow = ({
+    demo,
+    onPlayClick,
+    isCurrentlyPlaying,
+    isLiked,
+    onToggleLike
+}: {
+    demo: Demo,
+    onPlayClick: (demo: Demo) => void,
+    isCurrentlyPlaying: boolean,
+    isLiked: boolean, // <-- New prop
+    onToggleLike: (demo: Demo) => void // <-- New prop
+}) => {
   return (
-    <div className="bg-slate-800 p-3 rounded-lg border border-slate-700 flex items-center gap-4">
-      <img src={demo.actors.HeadshotURL} alt={demo.actors.ActorName} className="w-16 h-16 rounded-md object-cover" />
-      <div className="flex-grow">
-        <p className="font-bold text-white">{demo.title}</p>
-        <Link to={`/actor/${demo.actors.slug}`} className="text-sm text-slate-400 hover:text-purple-400 transition-colors">
+    <div className="bg-slate-800 p-3 rounded-lg border border-slate-700 flex items-center gap-4 sm:gap-6"> {/* Adjusted gap */}
+      {/* Actor Image */}
+      <img src={demo.actors.HeadshotURL} alt={demo.actors.ActorName} className="w-16 h-16 rounded-md object-cover flex-shrink-0" />
+
+      {/* Demo Title & Actor Name */}
+      <div className="flex-grow min-w-0">
+        <p className="font-bold text-white truncate">{demo.title}</p>
+        <Link to={`/actor/${demo.actors.slug}`} className="text-sm text-slate-400 hover:text-purple-400 transition-colors truncate">
           {demo.actors.ActorName}
         </Link>
       </div>
+
+      {/* Likes Button & Count - UPDATED */}
+      <button
+        onClick={() => onToggleLike(demo)} // Call toggle function on click
+        className="flex items-center gap-1.5 text-slate-400 flex-shrink-0 px-2 rounded-md hover:bg-slate-700 transition-colors" // Make it a button
+        title={isLiked ? "Unlike" : "Like"}
+      >
+        <Heart
+          size={16}
+          // Change style based on isLiked prop
+          className={`transition-colors ${isLiked ? 'text-pink-500 fill-current' : 'text-slate-500 group-hover:text-white'}`}
+        />
+        <span className="text-sm font-semibold">{demo.likes || 0}</span>
+      </button>
+
+      {/* Play Button */}
       <button
         onClick={() => onPlayClick(demo)}
-        className="w-12 h-12 bg-purple-600 text-white rounded-full flex items-center justify-center flex-shrink-0 hover:scale-105 transition-transform"
+        className="w-10 h-10 sm:w-12 sm:h-12 bg-purple-600 text-white rounded-full flex items-center justify-center flex-shrink-0 hover:scale-105 transition-transform" // Adjusted size
       >
-        {isCurrentlyPlaying ? <Pause size={20} /> : <Play size={20} className="ml-1" />}
+        {isCurrentlyPlaying ? <Pause size={18} /> : <Play size={18}  className="ml-1" />} {/* Adjusted size */}
       </button>
     </div>
   );
@@ -115,6 +152,9 @@ const VoiceOverLandingPage = () => {
     const [currentTime, setCurrentTime] = useState(0);
     const [duration, setDuration] = useState(0);
     const audioRef = useRef<HTMLAudioElement>(null);
+    const navigate = useNavigate(); // <-- Call the hook here
+
+    const [userLikes, setUserLikes] = useState<string[]>([]); // <-- Add this state
 
     // --- Hardcoded Filter Options ---
     const languageOptions = ["English (US)", "English (UK)", "Arabic (MSA)", "Arabic (Egyptian)", "French (France)", "Spanish (Spain)"];
@@ -128,16 +168,73 @@ const VoiceOverLandingPage = () => {
             setIsLoading(true);
 
             if (hasFilters) {
-                // --- DEMO SEARCH LOGIC (Playlist View) ---
-                let query = supabase.from('demos').select('*, actors!inner(ActorName, slug, HeadshotURL, Gender)');
-                if (languageFilter !== 'all') query = query.eq('language', languageFilter);
-                if (styleFilter !== 'all') query = query.eq('style_tag', styleFilter);
-                if (genderFilter !== 'all') query = query.eq('actors.Gender', genderFilter);
-                
-                const { data, error } = await query.order('created_at', { ascending: false });
+            // --- DEMO SEARCH LOGIC (Playlist View) ---
+            let query = supabase.from('demos').select('*, actors!inner(ActorName, slug, HeadshotURL, Gender)');
+            if (languageFilter !== 'all') query = query.eq('language', languageFilter);
+            if (styleFilter !== 'all') query = query.eq('style_tag', styleFilter);
+            if (genderFilter !== 'all') query = query.eq('actors.Gender', genderFilter);
 
-                if (error) console.error("Error fetching demos:", error);
-                else setFilteredDemos(data as Demo[] || []);
+            const { data: demosResult, error: demosFetchError } = await query.order('created_at', { ascending: false });
+
+            if (demosFetchError) {
+                console.error("Error fetching filtered demos:", demosFetchError);
+                setIsLoading(false);
+                return; // Stop if demo fetch fails
+            }
+
+            const fetchedDemos = (demosResult as Demo[]) || [];
+            const demoUrlsToCount = fetchedDemos.map(d => d.demo_url).filter(Boolean);
+
+            // --- Fetch Likes for the Filtered Demos ---
+            let likesByURL: { [url: string]: number } = {};
+            if (demoUrlsToCount.length > 0) {
+                const { data: allLikesData, error: likesFetchError } = await supabase
+                    .from('demo_likes')
+                    .select('demo_url') // Select URL to count occurrences
+                    .in('demo_url', demoUrlsToCount);
+
+                if (likesFetchError) {
+                    console.error("Error fetching likes for filtered demos:", likesFetchError);
+                    // Continue without likes if fetch fails, don't block display
+                } else {
+                    // Count occurrences
+                    likesByURL = (allLikesData || []).reduce((acc, like) => {
+                        acc[like.demo_url] = (acc[like.demo_url] || 0) + 1;
+                        return acc;
+                    }, {} as { [url: string]: number });
+                }
+            }
+            // --- End Fetching Likes ---
+
+            // --- Fetch User's Like Status ---
+            let currentUserLikes: string[] = [];
+            const { data: { user } } = await supabase.auth.getUser(); // Get current user
+
+            // Only fetch if user is logged in and there are demos
+            if (user && demoUrlsToCount.length > 0) {
+                const { data: userLikesResult, error: userLikesError } = await supabase
+                    .from('demo_likes')
+                    .select('demo_url')
+                    .eq('user_id', user.id)
+                    .in('demo_url', demoUrlsToCount);
+
+                if (userLikesError) {
+                    console.error("Error fetching user likes for filtered demos:", userLikesError);
+                } else if (userLikesResult) {
+                    currentUserLikes = userLikesResult.map(l => l.demo_url);
+                }
+            }
+            setUserLikes(currentUserLikes); // Set the user likes state
+            // --- End Fetching User Likes ---
+
+            // --- Combine Demos with Like Counts ---
+            const demosWithLikes = fetchedDemos.map(demo => ({
+                ...demo,
+                likes: likesByURL[demo.demo_url] || 0 // Add the like count
+            }));
+            // --- End Combining ---
+
+            setFilteredDemos(demosWithLikes); // Set state with demos including likes
 
             } else {
                 // --- DEFAULT ACTOR FETCH LOGIC (Grid View) ---
@@ -156,6 +253,63 @@ const VoiceOverLandingPage = () => {
         };
         performSearch();
     }, [languageFilter, genderFilter, styleFilter]);
+
+    // Inside VoiceOverLandingPage component
+
+const handleToggleLike = async (demo: Demo) => {
+    const { data: { user } } = await supabase.auth.getUser();
+    // Redirect to login if user is not logged in
+    if (!user) {
+        navigate('/client-auth'); // Or your preferred login route
+        return;
+    }
+
+    const demoUrl = demo.demo_url;
+    const isCurrentlyLiked = userLikes.includes(demoUrl);
+    const actorId = demo.actors?.id; // Assuming actors object has an id
+
+    // Prevent action if essential data is missing
+     if (!actorId) {
+         console.error("Cannot toggle like: Actor ID missing from demo object.");
+         return;
+     }
+
+
+    if (isCurrentlyLiked) {
+        // --- Unlike ---
+        const { error } = await supabase.from('demo_likes')
+            .delete()
+            .match({ user_id: user.id, demo_url: demoUrl });
+
+        if (error) {
+            console.error("Error unliking demo:", error);
+        } else {
+            setUserLikes(prev => prev.filter(url => url !== demoUrl));
+            // Update local count in filteredDemos state
+            setFilteredDemos(prevDemos => prevDemos.map(d =>
+                d.demo_url === demoUrl ? { ...d, likes: (d.likes || 1) - 1 } : d
+            ));
+        }
+    } else {
+        // --- Like ---
+        const { error } = await supabase.from('demo_likes')
+            .insert({
+                user_id: user.id,
+                actor_id: actorId, // Use the fetched actor ID
+                demo_url: demoUrl
+            });
+
+        if (error) {
+            console.error("Error liking demo:", error);
+        } else {
+            setUserLikes(prev => [...prev, demoUrl]);
+            // Update local count in filteredDemos state
+            setFilteredDemos(prevDemos => prevDemos.map(d =>
+                d.demo_url === demoUrl ? { ...d, likes: (d.likes || 0) + 1 } : d
+            ));
+        }
+    }
+};
 
     // --- Audio Player Logic ---
     useEffect(() => {
@@ -332,7 +486,15 @@ const VoiceOverLandingPage = () => {
                         <div className="max-w-3xl mx-auto space-y-4">
                             {filteredDemos.length > 0 ? (
                                 filteredDemos.map(demo => (
-                                    <DemoPlayerRow key={demo.id} demo={demo} onPlayClick={handleSelectTrack} isCurrentlyPlaying={isPlaying && currentTrack?.url === demo.demo_url} />
+                                    <DemoPlayerRow
+                                        key={demo.id}
+                                        demo={demo}
+                                        onPlayClick={handleSelectTrack}
+                                        isCurrentlyPlaying={isPlaying && currentTrack?.url === demo.demo_url}
+                                        // Pass like status and handler
+                                        isLiked={userLikes.includes(demo.demo_url)}
+                                        onToggleLike={handleToggleLike}
+                                    />
                                 ))
                             ) : (
                                 <p className="text-slate-500 text-center py-8">No demos found for your search criteria.</p>

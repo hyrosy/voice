@@ -57,8 +57,10 @@ const GlobalAudioPlayer: React.FC<PlayerProps> = ({
         <p className="text-sm text-slate-400">Main Demo Reel</p>
       </div>
       <div className="flex-grow flex items-center justify-center gap-4">
-        <button onClick={onPlayPause} className="w-10 h-10 flex items-center justify-center bg-white text-black rounded-full">
-          {isPlaying ? <Pause size={20} /> : <Play size={20} className="ml-1" />}
+          <button
+            onClick={onPlayPause}
+            className="w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center bg-white text-black rounded-full flex-shrink-0"
+          >         {isPlaying ? <Pause size={20} /> : <Play size={20} className="ml-1" />}
         </button>
         <div className="flex items-center gap-2 text-xs text-slate-400 w-full max-w-md">
             <span>{formatTime(currentTime)}</span>

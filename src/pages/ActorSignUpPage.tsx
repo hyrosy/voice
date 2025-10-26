@@ -14,13 +14,17 @@ const ActorSignUpPage = () => {
         setLoading(true);
         setMessage('');
 
-        // 1. Create the authentication user
+        // 1. Create the authentication user, PASSING NAME in options.data
         const { data: { user }, error: signUpError } = await supabase.auth.signUp({
             email,
             password,
             options: {
-                // Redirect to the new login page after email confirmation
-                emailRedirectTo: `${window.location.origin}/actor-login`,
+                emailRedirectTo: `${window.location.origin}/actor-login`, // Or your desired redirect
+                data: {
+                    // Pass data for the trigger function
+                    full_name: name // Trigger expects 'full_name' based on its code
+                    // You could add a role indicator if needed, e.g., user_role: 'actor'
+                }
             },
         });
 
@@ -30,25 +34,13 @@ const ActorSignUpPage = () => {
             return;
         }
         if (!user) {
-            setMessage('An unknown error occurred during sign up.');
+            // Add a more specific error message if user object is missing
+            setMessage('Sign up successful, but failed to retrieve user details. Profile may not be created.');
             setLoading(false);
             return;
         }
         
-        // 2. Create the corresponding profile in the 'actors' table
-        const { error: profileError } = await supabase
-            .from('actors')
-            .insert({
-                user_id: user.id,
-                ActorName: name,
-                ActorEmail: email,
-            });
-
-        if (profileError) {
-            setMessage(`Account created, but failed to create profile: ${profileError.message}`);
-        } else {
-            setMessage('Account created! Please check your email for a confirmation link.');
-        }
+        setMessage('Account created! Please check your email for a confirmation link.');
         setLoading(false);
     };
 

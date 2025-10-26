@@ -35,7 +35,7 @@ const MyShortlistPage = () => {
             if (error) {
                 console.error("Error fetching liked demos:", error);
             } else {
-                setLikedDemos(data as LikedDemo[]);
+                setLikedDemos(data as unknown as LikedDemo[]);
             }
             setLoading(false);
         };
