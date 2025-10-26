@@ -7,10 +7,10 @@ import HomePage from './pages/HomePage';
 //import OptInPage from './pages/OptInPage';
 //import ThankYouPage from './pages/ThankYouPage';
 //import PortfolioPage from './pages/PortfolioPage';
-//import PrivacyPolicyPage from './components/PrivacyPolicy.tsx';
-//import ContactUsPage from './pages/ContactUsPage'; // Import the Contact Us page
-//import TermsofService from './components/TermsofService.tsx';
-//import TermsandConditions from './components/TermsandConditions.tsx';
+import PrivacyPolicyPage from './components/PrivacyPolicy.tsx';
+import ContactUsPage from './pages/ContactUsPage'; // Import the Contact Us page
+import TermsofService from './components/TermsofService.tsx';
+import TermsandConditions from './components/TermsandConditions.tsx';
 //import MembersPage from './pages/Members'; // Import MembersPage if needed
 //import CinematoGraphyPage from './pages/CenimatoGraphy.tsx';
 //import CustomizedPackages from './pages/CustomizedPackages.tsx';
@@ -76,7 +76,7 @@ function App() {
 
 {/* start of temporary disabled routes
         <Route path="/members" element={<MembersPage />} /> {/* Add route for Members Page */}
-{/*     <Route path="/privacy-policy" element={<PrivacyPolicyPage/>}/>
+        <Route path="/privacy-policy" element={<PrivacyPolicyPage/>}/>
         <Route path="/terms-of-service" element={<TermsofService/>}/>
         <Route path="/terms-of-conditions" element={<TermsandConditions/>}/>
         <Route path="/contact" element={<ContactUsPage />} /> {/* Add route for Contact Us */}
