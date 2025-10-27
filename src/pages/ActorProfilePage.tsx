@@ -355,19 +355,19 @@ const ActorProfilePage = () => {
                             className="w-28 h-28 md:w-52 md:h-52 rounded-full object-cover flex-shrink-0 shadow-2xl shadow-black/50"
                         />
                         {/* MODIFIED: Added text-center on small screens */}
-                        <div className="text-center md:text-left flex-grow">
+                        <div className="text-left flex-grow">
                              {/* ... Verified Badge ... */}
                             <h1 className="text-4xl sm:text-5xl md:text-8xl font-black tracking-tighter text-white break-words">{actor.ActorName}</h1>
                              {/* MODIFIED: Added Average Rating display */}
-                             <div className="flex flex-col sm:flex-row items-center justify-center md:justify-start gap-x-3 gap-y-1 text-slate-300 text-sm md:text-base mt-1 md:mt-2">
+                            <div className="flex flex-wrap items-center justify-start gap-x-3 gap-y-1 text-slate-300 text-sm md:text-base mt-1 md:mt-2">                                
                                 <span>{actor.Language} | {actor.Gender}</span>
-                                <span className="hidden sm:inline mx-1">&middot;</span>
+                                <span className="mx-1">&middot;</span>
                                  <span>{followerCount} Followers</span>
-                                 <span className="hidden sm:inline mx-1">&middot;</span>
+                                 <span className="mx-1">&middot;</span>
                                  <span>{totalLikes.toLocaleString()} Likes</span>
                                  {averageRating !== null && (
                                      <>
-                                         <span className="hidden sm:inline mx-1">&middot;</span>
+                                         <span className="mx-1">&middot;</span>
                                          <span className="flex items-center gap-1">
                                             {renderStars(averageRating, 14)} ({averageRating})
                                          </span>
