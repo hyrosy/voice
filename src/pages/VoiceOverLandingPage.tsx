@@ -1,24 +1,11 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom'; // <-- Add useNavigate here
-import { Mic, Headphones, PlayCircle, Music, ArrowRight, Heart, Users, Repeat, DollarSign, Play, Pause, Search, RotateCcw, UserPlus } from 'lucide-react';
+import { Mic, Headphones, PlayCircle, Music, ArrowRight, Heart, Users, Repeat, DollarSign, Play, Pause, Search, RotateCcw, UserPlus, List } from 'lucide-react';
 import { supabase } from '../supabaseClient';
 import GlobalAudioPlayer from '../components/GlobalAudioPlayer';
-
+import { Actor } from '../components/ActorCard'; // <-- Import Actor interface from ActorCard
 // --- Interfaces ---
-interface Actor {
-  id: string;
-  slug: string | null;
-  ActorName: string;
-  Gender: string;
-  Language: string;
-  HeadshotURL: string;
-  MainDemoURL: string;
-  actor_followers: { count: number }[];
-  demo_likes: { count: number }[];
-  revisions_allowed: number;
-  BaseRate_per_Word: number;
-  IsActive: boolean;
-}
+
 interface Demo {
   id: string;
   title: string;
@@ -28,6 +15,7 @@ interface Demo {
     ActorName: string;
     slug: string;
     HeadshotURL: string;
+    Gender?: string; // Add Gender here if needed by filters
   };
   likes?: number; // <-- Add this optional property
 }
@@ -153,107 +141,114 @@ const VoiceOverLandingPage = () => {
     const [duration, setDuration] = useState(0);
     const audioRef = useRef<HTMLAudioElement>(null);
     const navigate = useNavigate(); // <-- Call the hook here
-
+    const genderOptions = ["Male", "Female"];
     const [userLikes, setUserLikes] = useState<string[]>([]); // <-- Add this state
+    const [viewMode, setViewMode] = useState<'actors' | 'demos'>('actors'); // Default to actors view
 
     // --- Hardcoded Filter Options ---
-    const languageOptions = ["English (US)", "English (UK)", "Arabic (MSA)", "Arabic (Egyptian)", "French (France)", "Spanish (Spain)"];
-    const styleOptions = ["Warm", "Deep", "Conversational", "Corporate", "Announcer", "Character", "Young Adult", "Senior"];
+    const languageOptions = ["Arabic", "English", "French", "Spanish"];
+    const styleOptions = ["Warm", "Deep", "Conversational", "Corporate"];
 
     // --- Data Fetching Effect (Handles both views) ---
     useEffect(() => {
-        const performSearch = async () => {
+const performSearch = async () => {
             const hasFilters = languageFilter !== 'all' || genderFilter !== 'all' || styleFilter !== 'all';
-            setIsSearching(hasFilters);
             setIsLoading(true);
 
-            if (hasFilters) {
-            // --- DEMO SEARCH LOGIC (Playlist View) ---
-            let query = supabase.from('demos').select('*, actors!inner(id, ActorName, slug, HeadshotURL, Gender)');
-            if (languageFilter !== 'all') query = query.eq('language', languageFilter);
-            if (styleFilter !== 'all') query = query.eq('style_tag', styleFilter);
-            if (genderFilter !== 'all') query = query.eq('actors.Gender', genderFilter);
+            // Clear both results on new search
+            setActors([]);
+            setFilteredDemos([]);
 
-            const { data: demosResult, error: demosFetchError } = await query.order('created_at', { ascending: false });
+            if (viewMode === 'actors') {
+                // --- ACTOR SEARCH LOGIC (Grid View) ---
+                let actorQuery = supabase
+                    .from('actors')
+                    .select(`*, actor_followers(count), demo_likes(count)`)
+                    .eq('IsActive', true);
 
-            if (demosFetchError) {
-                console.error("Error fetching filtered demos:", demosFetchError);
-                setIsLoading(false);
-                return; // Stop if demo fetch fails
-            }
+                if (languageFilter !== 'all') {
+                    actorQuery = actorQuery.eq('Language', languageFilter);
+                }
+                if (genderFilter !== 'all') {
+                    actorQuery = actorQuery.eq('Gender', genderFilter);
+                }
+                if (styleFilter !== 'all') {
+                    actorQuery = actorQuery.like('Tags', `%${styleFilter}%`);
+                }
 
-            const fetchedDemos = (demosResult as Demo[]) || [];
-            const demoUrlsToCount = fetchedDemos.map(d => d.demo_url).filter(Boolean);
+                const { data, error } = await actorQuery.order('created_at', { ascending: false });
 
-            // --- Fetch Likes for the Filtered Demos ---
-            let likesByURL: { [url: string]: number } = {};
-            if (demoUrlsToCount.length > 0) {
-                const { data: allLikesData, error: likesFetchError } = await supabase
-                    .from('demo_likes')
-                    .select('demo_url') // Select URL to count occurrences
-                    .in('demo_url', demoUrlsToCount);
-
-                if (likesFetchError) {
-                    console.error("Error fetching likes for filtered demos:", likesFetchError);
-                    // Continue without likes if fetch fails, don't block display
+                if (error) {
+                    console.error('Error fetching actors:', error);
                 } else {
-                    // Count occurrences
-                    likesByURL = (allLikesData || []).reduce((acc, like) => {
-                        acc[like.demo_url] = (acc[like.demo_url] || 0) + 1;
-                        return acc;
-                    }, {} as { [url: string]: number });
-                }
-            }
-            // --- End Fetching Likes ---
-
-            // --- Fetch User's Like Status ---
-            let currentUserLikes: string[] = [];
-            const { data: { user } } = await supabase.auth.getUser(); // Get current user
-
-            // Only fetch if user is logged in and there are demos
-            if (user && demoUrlsToCount.length > 0) {
-                const { data: userLikesResult, error: userLikesError } = await supabase
-                    .from('demo_likes')
-                    .select('demo_url')
-                    .eq('user_id', user.id)
-                    .in('demo_url', demoUrlsToCount);
-
-                if (userLikesError) {
-                    console.error("Error fetching user likes for filtered demos:", userLikesError);
-                } else if (userLikesResult) {
-                    currentUserLikes = userLikesResult.map(l => l.demo_url);
-                }
-            }
-            setUserLikes(currentUserLikes); // Set the user likes state
-            // --- End Fetching User Likes ---
-
-            // --- Combine Demos with Like Counts ---
-            const demosWithLikes = fetchedDemos.map(demo => ({
-                ...demo,
-                likes: likesByURL[demo.demo_url] || 0 // Add the like count
-            }));
-            // --- End Combining ---
-
-            setFilteredDemos(demosWithLikes); // Set state with demos including likes
-
-            } else {
-                // --- DEFAULT ACTOR FETCH LOGIC (Grid View) ---
-                const { data, error } = await supabase.from('actors').select(`*, actor_followers(count), demo_likes(count)`).eq('IsActive', true);
-                
-                if (error) console.error('Error fetching actors:', error);
-                else {
                     const typedData = data as Actor[] || [];
                     setActors(typedData);
-                    // Dynamically create language list from actors
-                    const uniqueLanguages = [...new Set(typedData.map(actor => actor.Language))].filter(Boolean);
-                    setLanguages(uniqueLanguages);
+                    // Only update languages if no filters are on (in actor mode)
+                    if (!hasFilters) {
+                        const uniqueLanguages = [...new Set(typedData.map(actor => actor.Language))].filter(Boolean);
+                        setLanguages(uniqueLanguages);
+                    }
                 }
+            } else {
+                // --- DEMO SEARCH LOGIC (Playlist View) ---
+                let demoQuery = supabase.from('demos').select('*, actors!inner(id, ActorName, slug, HeadshotURL, Gender)');
+                
+                if (languageFilter !== 'all') demoQuery = demoQuery.eq('language', languageFilter);
+                if (styleFilter !== 'all') demoQuery = demoQuery.eq('style_tag', styleFilter);
+                if (genderFilter !== 'all') demoQuery = demoQuery.eq('actors.Gender', genderFilter);
+
+                const { data: demosResult, error: demosFetchError } = await demoQuery.order('created_at', { ascending: false });
+
+                if (demosFetchError) {
+                    console.error("Error fetching filtered demos:", demosFetchError);
+                    setIsLoading(false);
+                    return;
+                }
+
+                const fetchedDemos = (demosResult as Demo[]) || [];
+                const demoUrlsToCount = fetchedDemos.map(d => d.demo_url).filter(Boolean);
+
+                // Fetch Likes for the Filtered Demos
+                let likesByURL: { [url: string]: number } = {};
+                if (demoUrlsToCount.length > 0) {
+                    const { data: allLikesData, error: likesFetchError } = await supabase
+                        .from('demo_likes')
+                        .select('demo_url')
+                        .in('demo_url', demoUrlsToCount);
+                    if (likesFetchError) console.error("Error fetching demo likes:", likesFetchError);
+                    else {
+                        likesByURL = (allLikesData || []).reduce((acc, like) => {
+                            acc[like.demo_url] = (acc[like.demo_url] || 0) + 1;
+                            return acc;
+                        }, {} as { [url: string]: number });
+                    }
+                }
+
+                // Fetch User's Like Status
+                let currentUserLikes: string[] = [];
+                const { data: { user } } = await supabase.auth.getUser();
+                if (user && demoUrlsToCount.length > 0) {
+                    const { data: userLikesResult, error: userLikesError } = await supabase
+                        .from('demo_likes')
+                        .select('demo_url')
+                        .eq('user_id', user.id)
+                        .in('demo_url', demoUrlsToCount);
+                    if (userLikesError) console.error("Error fetching user likes:", userLikesError);
+                    else if (userLikesResult) currentUserLikes = userLikesResult.map(l => l.demo_url);
+                }
+                setUserLikes(currentUserLikes);
+
+                // Combine Demos with Like Counts
+                const demosWithLikes = fetchedDemos.map(demo => ({
+                    ...demo,
+                    likes: likesByURL[demo.demo_url] || 0
+                }));
+                setFilteredDemos(demosWithLikes);
             }
             setIsLoading(false);
         };
         performSearch();
-    }, [languageFilter, genderFilter, styleFilter]);
-
+    }, [viewMode, languageFilter, genderFilter, styleFilter]); // <-- Added viewMode to dependencies
     // Inside VoiceOverLandingPage component
 
 const handleToggleLike = async (demo: Demo) => {
@@ -486,68 +481,146 @@ const handleToggleLike = async (demo: Demo) => {
             </p>
           </div>
 
-          {/* NEW: Filter controls */}
-          <div className="flex flex-col sm:flex-row gap-4 justify-center mb-12 items-center">
-                        <select 
-                            value={languageFilter} // Added value
-                            onChange={(e) => setLanguageFilter(e.target.value)} 
-                            className="bg-slate-800 border border-slate-700 text-white rounded-lg p-3 w-full sm:w-auto"
-                        >
-                            <option value="all">All Languages</option>
-                            {languageOptions.map(lang => <option key={lang} value={lang}>{lang}</option>)}
-                        </select>
-                        <select 
-                            value={genderFilter} // Added value
-                            onChange={(e) => setGenderFilter(e.target.value)} 
-                            className="bg-slate-800 border border-slate-700 text-white rounded-lg p-3 w-full sm:w-auto"
-                        >
-                            <option value="all">All Genders</option>
-                            <option value="Male">Male</option>
-                            <option value="Female">Female</option>
-                        </select>
-                        <select 
-                            value={styleFilter} // Added value
-                            onChange={(e) => setStyleFilter(e.target.value)} 
-                            className="bg-slate-800 border border-slate-700 text-white rounded-lg p-3 w-full sm:w-auto"
-                        >
-                            <option value="all">All Styles</option>
-                            {styleOptions.map(style => <option key={style} value={style}>{style}</option>)}
-                        </select>
-                        {isSearching && (
-                            <button onClick={handleResetFilters} className="p-3 text-slate-400 hover:text-white hover:bg-slate-700 rounded-lg transition-colors" title="Reset filters">
-                                <RotateCcw size={20} />
-                            </button>
-                        )}
-                    </div>
+          {/* --- NEW: View Mode Tabs --- */}
+          <div className="flex justify-center mb-8 gap-2 p-1 bg-slate-800/50 border border-slate-700 rounded-lg max-w-xs mx-auto">
+            <button
+                onClick={() => setViewMode('actors')}
+                className={`w-full flex items-center justify-center gap-2 px-4 py-2 rounded-md text-sm font-semibold transition ${
+                    viewMode === 'actors' ? 'bg-purple-600 text-white' : 'text-slate-400 hover:bg-slate-700'
+                }`}
+            >
+                <Users size={16} /> Actors
+            </button>
+            <button
+                onClick={() => setViewMode('demos')}
+                className={`w-full flex items-center justify-center gap-2 px-4 py-2 rounded-md text-sm font-semibold transition ${
+                    viewMode === 'demos' ? 'bg-purple-600 text-white' : 'text-slate-400 hover:bg-slate-700'
+                }`}
+            >
+                <List size={16} /> Demos
+            </button>
+          </div>
 
-          {/* --- CONDITIONAL RENDER: Grid or Playlist --- */}
-                    {isLoading ? (
-                        <p className="text-white text-center">Loading...</p>
-                    ) : isSearching ? (
-                        <div className="max-w-3xl mx-auto space-y-4">
-                            {filteredDemos.length > 0 ? (
-                                filteredDemos.map(demo => (
-                                    <DemoPlayerRow
-                                        key={demo.id}
-                                        demo={demo}
-                                        onPlayClick={handleSelectTrack}
-                                        isCurrentlyPlaying={isPlaying && currentTrack?.url === demo.demo_url}
-                                        // Pass like status and handler
-                                        isLiked={userLikes.includes(demo.demo_url)}
-                                        onToggleLike={handleToggleLike}
-                                    />
-                                ))
-                            ) : (
-                                <p className="text-slate-500 text-center py-8">No demos found for your search criteria.</p>
-                            )}
-                        </div>
-                    ) : (
-                        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
-                            {actors.map(actor => (
-                                actor.slug && <ActorCard key={actor.id} actor={actor} onPlayClick={handleSelectTrack} isCurrentlyPlaying={isPlaying && currentTrack?.url === actor.MainDemoURL} />
-                            ))}
-                        </div>
-                    )}
+{/* --- MODIFIED: Filter controls --- */}
+          <div className="flex flex-col gap-6 justify-center mb-12">
+
+                        {/* Gender Filter */}
+            <div className="flex flex-wrap items-center justify-center gap-2">
+                <span className="text-sm font-semibold text-slate-400 mr-2">Gender:</span>
+                <button
+                    onClick={() => setGenderFilter('all')}
+                    className={`px-3 py-1 rounded-full text-sm font-semibold transition ${
+                        genderFilter === 'all' ? 'bg-purple-600 text-white' : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+                    }`}
+                >
+                    All
+                </button>
+                {genderOptions.map(gen => (
+                    <button
+                        key={gen}
+                        onClick={() => setGenderFilter(gen)}
+                        className={`px-3 py-1 rounded-full text-sm font-semibold transition ${
+                            genderFilter === gen ? 'bg-purple-600 text-white' : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+                        }`}
+                    >
+                        {gen}
+                    </button>
+                ))}
+            </div>
+
+            {/* Language Filter */}
+            <div className="flex flex-wrap items-center justify-center gap-2">
+                <span className="text-sm font-semibold text-slate-400 mr-2">Language:</span>
+                <button
+                    onClick={() => setLanguageFilter('all')}
+                    className={`px-3 py-1 rounded-full text-sm font-semibold transition ${
+                        languageFilter === 'all' ? 'bg-purple-600 text-white' : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+                    }`}
+                >
+                    All
+                </button>
+                {languageOptions.map(lang => (
+                    <button
+                        key={lang}
+                        onClick={() => setLanguageFilter(lang)}
+                        className={`px-3 py-1 rounded-full text-sm font-semibold transition ${
+                            languageFilter === lang ? 'bg-purple-600 text-white' : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+                        }`}
+                    >
+                        {lang}
+                    </button>
+                ))}
+            </div>
+
+
+            {/* Style Filter */}
+            <div className="flex flex-wrap items-center justify-center gap-2">
+                <span className="text-sm font-semibold text-slate-400 mr-2">Style:</span>
+                <button
+                    onClick={() => setStyleFilter('all')}
+                    className={`px-3 py-1 rounded-full text-sm font-semibold transition ${
+                        styleFilter === 'all' ? 'bg-purple-600 text-white' : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+                    }`}
+                >
+                    All
+                </button>
+                {styleOptions.map(style => (
+                    <button
+                        key={style}
+                        onClick={() => setStyleFilter(style)}
+                        className={`px-3 py-1 rounded-full text-sm font-semibold transition ${
+                            styleFilter === style ? 'bg-purple-600 text-white' : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+                        }`}
+                    >
+                        {style}
+                    </button>
+                ))}
+            </div>
+
+            {/* Reset Button */}
+            {isSearching && (
+                <button onClick={handleResetFilters} className="text-sm text-slate-400 hover:text-white transition-colors flex items-center gap-2 justify-center" title="Reset filters">
+                    <RotateCcw size={16} />
+                    Reset All Filters
+                </button>
+            )}
+          </div>
+          {/* --- END MODIFIED Filters --- */}
+          
+          {/* --- MODIFIED: Conditional Render Logic --- */}
+                      {isLoading ? (
+                          <p className="text-white text-center">Loading...</p>
+                      ) : viewMode === 'actors' ? (
+                          // --- Actor Grid View ---
+                          actors.length > 0 ? (
+                              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
+                                  {actors.map(actor => (
+                                      actor.slug && <ActorCard key={actor.id} actor={actor} onPlayClick={handleSelectTrack} isCurrentlyPlaying={isPlaying && currentTrack?.url === actor.MainDemoURL} />
+                                  ))}
+                              </div>
+                          ) : (
+                              <p className="text-slate-500 text-center py-8">No actors found for your search criteria.</p>
+                          )
+                      ) : (
+                          // --- Demo List View ---
+                          <div className="max-w-3xl mx-auto space-y-4">
+                              {filteredDemos.length > 0 ? (
+                                  filteredDemos.map(demo => (
+                                      <DemoPlayerRow
+                                          key={demo.id}
+                                          demo={demo}
+                                          onPlayClick={handleSelectTrack}
+                                          isLiked={userLikes.includes(demo.demo_url)}
+                                          onToggleLike={handleToggleLike}
+                                          isCurrentlyPlaying={isPlaying && currentTrack?.url === demo.demo_url}
+                                      />
+                                  ))
+                              ) : (
+                                  <p className="text-slate-500 text-center py-8">No demos found for your search criteria.</p>
+                              )}
+                          </div>
+                      )}
+                    {/* --- END MODIFIED Conditional Render --- */}                    
                 </div>
             </section>
 

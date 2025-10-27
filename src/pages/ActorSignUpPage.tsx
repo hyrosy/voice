@@ -19,15 +19,13 @@ const ActorSignUpPage = () => {
             email,
             password,
             options: {
-                emailRedirectTo: `${window.location.origin}/actor-login`, // Or your desired redirect
+                emailRedirectTo: `${window.location.origin}/actor-login`,
                 data: {
-                    // Pass data for the trigger function
-                    full_name: name // Trigger expects 'full_name' based on its code
-                    // You could add a role indicator if needed, e.g., user_role: 'actor'
+                    full_name: name,
+                    role: 'actor' // <-- Add this role flag
                 }
             },
         });
-
         if (signUpError) {
             setMessage(signUpError.message);
             setLoading(false);

@@ -87,27 +87,51 @@ const ClientOrderPage = () => {
         setOpenSections(prev => ({ ...prev, [section]: !prev[section] }));
     };
 
-    const fetchOrderAndReview = async () => { // Renamed from fetchOrder
+
+    const fetchOrderAndReview = async () => {
         setIsLoading(true);
         setIsLoadingReview(true);
         setError('');
         setExistingReview(null);
 
-        const { data: { user } } = await supabase.auth.getUser();
+         // 1. Check for Order ID first. This is required.
+         if (!orderId) {
+             setError('No order ID provided.');
+             setLoading(false);
+             setIsLoadingReview(false);
+             return;
+         }
 
-        if (!orderId || !user) {
-            setError('No order ID provided or user not found.');
-            setLoading(false);
-            setIsLoadingReview(false);
-            return;
-        }
-        
-        // Check if user is logged in
-        const { data: { session } } = await supabase.auth.getSession();
-        if (session) {
-            setIsLoggedIn(true);
-        }
+         // 2. Fetch the order details. This works for anon users due to RLS.
+         const { data: orderData, error: orderError } = await supabase
+             .from('orders')
+             .select(`*, actors ( id, ActorName, revisions_allowed ), deliveries ( file_url, created_at )`)
+             .eq('id', orderId)
+             .order('created_at', { foreignTable: 'deliveries', ascending: false })
+             .single();
 
+         if (orderError) {
+             setError('Order not found or you do not have permission.');
+             console.error(orderError);
+             setLoading(false);
+             setIsLoadingReview(false);
+             return; // Stop if order fetch fails
+         }
+
+         setOrder(orderData); // Set the order
+         setLoading(false); // Main page loading is done             
+            
+                     // 3. Now, separately check for a user session
+         const { data: { user } } = await supabase.auth.getUser();
+                     // If no user, we can't check for reviews, but the page can still load.
+         if (!user) {
+             console.log("No user session, displaying order details anonymously.");
+             setIsLoadingReview(false); // Stop review loading
+             return; // We're done
+         }
+
+         // 4. If we have a user, proceed with client profile and review check
+         setIsLoggedIn(true); // Set logged-in state
         let clientProfileId: string | null = null;
         try {
              const { data: clientProfile, error: clientError } = await supabase
@@ -115,41 +139,17 @@ const ClientOrderPage = () => {
                 .select('id')
                 .eq('user_id', user.id)
                 .single();
-             if (clientError) throw clientError;
+                           if (clientError) {
+                   console.warn("Could not fetch client profile ID:", clientError.message);
+                   // Don't throw, just means we can't check for reviews
+               }
              clientProfileId = clientProfile?.id ?? null;
         } catch(e) {
              console.error("Could not fetch client profile ID:", e);
         }
-
-
-        // Fetch order details
-        const { data, error: orderError } = await supabase
-            .from('orders')
-            .select(`
-                *,
-                actors (
-                    id, ActorName, ActorEmail, revisions_allowed,
-                    direct_payment_enabled, bank_name, bank_holder_name, bank_iban, bank_account_number
-                ),
-                deliveries ( * )
-            `)
-            .eq('id', orderId)
-            .order('created_at', { foreignTable: 'deliveries', ascending: false })
-            .single();
-
-        if (orderError) {
-            setError('Order not found or you do not have permission.');
-            console.error(orderError);
-            setLoading(false);
-            setIsLoadingReview(false);
-            return;
-        }
-
-        setOrder(data);
-
-        // Check for existing review
-        if (data && data.status === 'Completed' && clientProfileId) {
-             try {
+            // --- Check for existing review for this order ---
+                     if (orderData.status === 'Completed' && clientProfileId) { // Check against orderData      
+            try {
                 const { data: reviewData, error: reviewError } = await supabase
                     .from('reviews')
                     .select('*')
@@ -278,7 +278,7 @@ const ClientOrderPage = () => {
         const newStatus = isDirectToActor ? 'Awaiting Actor Confirmation' : 'Awaiting Admin Confirmation';
         
         // CHOOSE TEMPLATE IDs: Create these in your EmailJS account
-        const templateId = isDirectToActor ? 'template_my3996b' : '';
+        const templateId = isDirectToActor ? 'template_my3996b' : 'template_my3996b';
         
         // SET RECIPIENT EMAIL: Replace with your actual admin email
         const recipientEmail = isDirectToActor ? order.actors.ActorEmail : 'support@ucpmaroc.com'; 

@@ -95,7 +95,7 @@ const ActorDashboardPage = () => {
         setEligibilityLoading(true); // Start eligibility loading
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) {
-            navigate('/actor-auth');
+            navigate('/actor-login');
             return;
         }
 
