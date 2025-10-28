@@ -44,3 +44,24 @@ body {
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
 }
+
+/* 1. Hide the default Google Translate banner */
+body > .skiptranslate {
+  display: none !important;
+}
+
+body {
+  /* This !important is necessary to override Google's inline style */
+  top: 0px !important; 
+}
+
+/* 2. Hide the original <select> dropdown */
+#google_translate_element select {
+  display: none;
+}
+
+/* 3. Style our new custom dropdown button */
+.custom-translate-button {
+  @apply inline-flex items-center gap-2 rounded-md bg-slate-700 px-3 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-slate-600;
+  /* Uses Tailwind classes. You can change bg-slate-700, etc. */
+}
