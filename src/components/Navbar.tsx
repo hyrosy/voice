@@ -76,13 +76,18 @@ const Navbar: React.FC = () => {
                 onMouseLeave={() => setIsServicesOpen(false)}
               >
                 <button
-                  className="flex items-center gap-1 text-sm font-medium text-slate-300 hover:text-white transition-colors"
-                >
-                  Services <ChevronDown size={16} />
+                 className="flex items-center gap-1 text-sm font-medium text-slate-300 hover:text-white transition-colors py-2" // Added py-2 for larger hover area                
+                 >
+                Services <ChevronDown size={16} />
                 </button>
                 {isServicesOpen && (
-                  <div className="absolute left-0 mt-2 w-56 bg-slate-800 rounded-lg shadow-xl border border-slate-700 overflow-hidden animate-in fade-in zoom-in-95">
-                    {serviceDropdownItems.map(item => (
+                  <div
+                   className="absolute left-0 top-full pt-2 w-56" 
+                  >
+                   <div className="bg-slate-800 rounded-lg shadow-xl border border-slate-700 overflow-hidden animate-in fade-in zoom-in-95">                    
+                   
+                   
+                   {serviceDropdownItems.map(item => (
                       <Link
                         key={item.label}
                         to={item.to}
@@ -92,9 +97,10 @@ const Navbar: React.FC = () => {
                         {item.label}
                       </Link>
                     ))}
+                 </div>
                   </div>
                 )}
-              </div>
+                </div>
 
               <Link to="/portfolio" className="text-sm font-medium text-slate-300 hover:text-white transition-colors">Gallery</Link>
               <HashLink to="/#packages" className="text-sm font-medium text-slate-300 hover:text-white transition-colors">Packages</HashLink>
@@ -106,20 +112,22 @@ const Navbar: React.FC = () => {
             <div className="flex items-center gap-4">
               {/* --- CORRECTED: Login Dropdown (Desktop) --- */}
               <div 
-                className="hidden lg:block relative"
-                onMouseEnter={() => setIsLoginOpen(true)}
-                onMouseLeave={() => setIsLoginOpen(false)}
-              >
+               className="hidden lg:block relative"
+               onMouseEnter={() => setIsLoginOpen(true)}
+               onMouseLeave={() => setIsLoginOpen(false)}
+             >
                 <button
-                  className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-purple-600 to-blue-600 text-white font-semibold rounded-full hover:scale-105 transition-transform"
-                >
+                 className="flex items-center gap-2 px-4 py-3 bg-gradient-to-r from-purple-600 to-blue-600 text-white font-semibold rounded-full hover:scale-105 transition-transform" // Added extra padding                >
+                  
+                  >
                   <LogIn size={16} />
                   Login / Sign Up
                 </button>
                 {isLoginOpen && (
                   <div 
-                    className="absolute right-0 mt-2 w-48 bg-slate-800 rounded-lg shadow-xl border border-slate-700 overflow-hidden animate-in fade-in zoom-in-95"
+                   className="absolute right-0 top-full pt-2 w-48" // Use top-full and pt-2
                   >
+                   <div className="bg-slate-800 rounded-lg shadow-xl border border-slate-700 overflow-hidden animate-in fade-in zoom-in-95">                  
                     <Link to="/client-auth" onClick={() => setIsLoginOpen(false)} className="flex items-center gap-3 px-4 py-3 text-sm text-slate-300 hover:bg-slate-700 hover:text-white">
                       <UserCircle size={16} className="text-purple-400" />
                       Client Portal
@@ -128,6 +136,7 @@ const Navbar: React.FC = () => {
                       <UserCheck size={16} className="text-blue-400" />
                       Actor Portal
                     </Link>
+                    </div>
                   </div>
                 )}
               </div>

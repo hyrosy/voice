@@ -99,13 +99,14 @@ const ActorDashboardPage = () => {
             return;
         }
 
-        const { data: actorProfile } = await supabase.from('actors').select('*').eq('user_id', user.id).single();
-        if (!actorProfile) {
-            setMessage('Could not load your profile.');
-            setLoading(false);
-            setEligibilityLoading(false); // Stop eligibility loading on error
-            return;
-        }
+       const { data: actorProfile, error: actorError } = await supabase.from('actors').select('*').eq('user_id', user.id).single();
+        if (actorError || !actorProfile) {
+           // User is logged in but HAS NO actor profile.
+           // Redirect them to the profile creation prompt.
+           console.warn('No actor profile found, redirecting to create one.');
+           navigate('/create-profile', { state: { roleToCreate: 'actor' } });
+           return;
+       }
         setActorData(actorProfile);
 
         const { data: orderData } = await supabase.from('orders').select('*').eq('actor_id', actorProfile.id).order('created_at', { ascending: false });

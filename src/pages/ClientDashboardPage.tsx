@@ -34,11 +34,19 @@ const ClientDashboardPage = () => {
 
             setClientEmail(user.email); // <-- 2. Set email state here
 
-            const { data: clientProfile } = await supabase
+           const { data: clientProfile, error: clientError } = await supabase
                 .from('clients')
                 .select('*') // Keep fetching profile for name
                 .eq('user_id', user.id)
                 .single();
+
+                if (clientError || !clientProfile) {
+               // User is logged in but HAS NO client profile.
+               // Redirect them to the profile creation prompt.
+               console.warn('No client profile found, redirecting to create one.');
+               navigate('/create-profile', { state: { roleToCreate: 'client' } });
+               return;
+           }
 
             // Set name from profile, fallback to email if profile/name is missing
             setClientName(clientProfile?.full_name || ''); // Keep setting name

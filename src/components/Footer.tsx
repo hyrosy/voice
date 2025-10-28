@@ -113,6 +113,13 @@ const Footer = () => {
           </div>
         </div>
 
+        {/* --- NEW: Google Translate Widget --- */}
+       <div className="mb-8 border-t border-slate-800 pt-8">
+         <h3 className="text-lg font-bold text-white mb-4">Translate</h3>
+         <div id="google_translate_element"></div>
+       </div>
+       {/* --- END Google Translate Widget --- */}
+
         {/* Bottom Section */}
         <div className="border-t border-slate-800 pt-8 flex flex-col md:flex-row justify-between items-center space-y-4 md:space-y-0">
           <p className="text-slate-500 text-sm">

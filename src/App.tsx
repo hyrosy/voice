@@ -32,6 +32,7 @@ import { supabase } from './supabaseClient'; // <-- Import supabase client
 import AdminOrderDetailPage from './pages/AdminOrderDetailPage'; // <-- Import the new page
 import AdminActorListPage from './pages/AdminActorListPage';   // <-- Import Actor List
 import AdminClientListPage from './pages/AdminClientListPage';  // <-- Import Client List
+import CreateProfilePromptPage from './pages/CreateProfilePromptPage'; // <-- Import new page
 
 
 function App() {
@@ -104,6 +105,7 @@ function App() {
         <Route path="/admin/order/:orderId" element={<AdminOrderDetailPage />} /> {/* <-- Add this route */}
         <Route path="/admin/actors" element={<AdminActorListPage />} />   {/* <-- Add Actor route */}
         <Route path="/admin/clients" element={<AdminClientListPage />} />  {/* <-- Add Client route */}
+        <Route path="/create-profile" element={<CreateProfilePromptPage />} /> {/* <-- Add new route */}
       </Routes>
       </main>
       <Footer />
