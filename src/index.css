@@ -49,18 +49,18 @@ body {
 body > .skiptranslate {
   display: none !important;
 }
-
-body {
-  top: 0px !important; 
+body.translated-ltr, body.translated-rtl {
+  top: 0px !important; /* Force page to top */
 }
 
 /* 2. Style the main container (the <div> we added in Footer.tsx) */
 #google_translate_element {
-  /* You can add styles here if needed */
+  display: block !important; /* Force the container to be visible */
+  position: relative;
+  z-index: 1;
 }
 
 /* 3. Style the <select> dropdown inside the iframe */
-/* We target the class Google adds to the <select> element */
 .goog-te-combo {
   @apply bg-slate-700 border border-slate-600 rounded-md p-3 text-sm text-white;
   @apply cursor-pointer font-semibold appearance-none;
@@ -75,6 +75,12 @@ body {
 }
 
 .goog-te-gadget {
-  color: transparent !important; /* Hides the "Powered by" text */
-  line-height: 0; /* Helps collapse the space */
+  color: transparent !important;
+  line-height: 0;
+}
+
+/* 5. Hide Google's own "Show original" popups */
+.VIpgJd-ZVi9od-ORhb-OEVmcd,
+.VIpgJd-ZVi9od-l4eHX-hSRGPd {
+  display: none !important;
 }
