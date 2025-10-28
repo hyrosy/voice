@@ -85,11 +85,13 @@ const ClientDashboardPage = () => {
     return (
         <div className="min-h-screen bg-slate-900 p-4 md:p-8">
             <div className="max-w-4xl mx-auto">
-                {/* --- 3. Update Header JSX --- */}
-                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-10 border-b border-slate-700 pb-6">
+{/* --- HEADER SECTION --- */}
+                {/* Added gap-4 for better mobile spacing */}
+                <div className="flex flex-col sm:flex-row justify-between sm:items-center mb-10 border-b border-slate-700 pb-6 gap-4">
+                    
+                    {/* Welcome Text */}
                     <div>
                         <h1 className="text-4xl font-bold text-white mb-1">My Orders</h1>
-                        {/* Display Name and Email */}
                         <p className="text-lg text-slate-400">
                             Welcome back, <strong className="text-slate-200">{clientName || 'Client'}</strong>
                         </p>
@@ -97,14 +99,30 @@ const ClientDashboardPage = () => {
                             Logged in as: {clientEmail}
                         </p>
                     </div>
-                    <button
-                        onClick={handleLogout}
-                        className="w-full sm:w-auto px-5 py-2.5 bg-red-600 hover:bg-red-700 rounded-lg text-white font-semibold text-sm transition-colors shadow hover:shadow-lg hover:shadow-red-900/30"
-                         >
-                        Log Out
-                    </button>
+                    
+                    {/* --- NEW BUTTON CONTAINER --- */}
+                    {/* This stacks buttons vertically on mobile, and puts them in a row on desktop */}
+                    <div className="flex flex-col sm:flex-row sm:items-center gap-3 w-full sm:w-auto">
+                        
+                        {/* "My Shortlist" Button (MOVED HERE) */}
+                        <Link
+                            to="/my-shortlist"
+                            // `order-first` makes it appear above Log Out on mobile, `sm:order-none` resets for desktop
+                            className="order-first sm:order-none w-full sm:w-auto px-5 py-2.5 bg-purple-600 hover:bg-purple-700 rounded-lg text-white font-semibold text-sm transition-colors shadow hover:shadow-lg hover:shadow-purple-900/30 flex items-center justify-center gap-2"
+                        >
+                            <Heart size={16} /> My Shortlist
+                        </Link>
+
+                        {/* "Log Out" Button (MOVED HERE) */}
+                        <button
+                            onClick={handleLogout}
+                            className="w-full sm:w-auto px-5 py-2.5 bg-red-600 hover:bg-red-700 rounded-lg text-white font-semibold text-sm transition-colors shadow hover:shadow-lg hover:shadow-red-900/30"
+                        >
+                            Log Out
+                        </button>
+                    </div>
                 </div>
-                {/* --- End of Header Update --- */}
+                {/* --- END OF HEADER --- */}
 
                 {/* --- Summary Cards remain the same --- */}
                 
@@ -127,14 +145,6 @@ const ClientDashboardPage = () => {
                         <p className="text-sm text-slate-400 mb-1">Approx. Total Spent</p>
                         <p className="text-3xl font-bold text-white">{totalSpent.toFixed(2)} MAD</p>
                     </div>
-                    {/* Added Shortlist Button */}
-                    <Link
-                    to="/my-shortlist"
-                    className="order-first sm:order-none w-full sm:w-auto px-5 py-2.5 bg-purple-600 hover:bg-purple-700 rounded-lg text-white font-semibold text-sm transition-colors shadow hover:shadow-lg hover:shadow-purple-900/30 flex items-center justify-center gap-2"
-                    >
-                    <Heart size={16} /> My Shortlist
-                    </Link>
-
                 </div>
 
                 {/* --- Order List remains the same --- */}

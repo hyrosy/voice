@@ -9,9 +9,9 @@ import emailjs from '@emailjs/browser';
 
 
 // --- NEW: Define the controlled options for our dropdowns ---
-const genderOptions = ["Male", "Female", "Non-Binary"];
-const languageOptions = ["English (US)", "English (UK)", "Arabic (MSA)", "Arabic (Egyptian)", "French (France)", "Spanish (Spain)"];
-const tagOptions = ["Warm", "Deep", "Conversational", "Corporate", "Announcer", "Character", "Young Adult", "Senior"];
+const genderOptions = ["Male", "Female"];
+const languageOptions = ["Arabic", "English", "French", "Spanish"];
+const tagOptions = ["Warm", "Deep", "Conversational", "Corporate"];
 
 // --- Interfaces ---
 interface Demo {
