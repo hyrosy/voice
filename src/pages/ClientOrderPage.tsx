@@ -268,7 +268,7 @@ const ClientOrderPage = () => {
         }
     };
 
-    // --- NEW: Mark as Paid Handler ---
+    // --- MODIFIED: Mark as Paid Handler (Admin notification disabled) ---
     const handleMarkAsPaid = async () => {
         if (!order) return;
         setNotifyingAdmin(true);
@@ -277,13 +277,7 @@ const ClientOrderPage = () => {
         const isDirectToActor = order.actors?.direct_payment_enabled === true;
         const newStatus = isDirectToActor ? 'Awaiting Actor Confirmation' : 'Awaiting Admin Confirmation';
         
-        // CHOOSE TEMPLATE IDs: Create these in your EmailJS account
-        const templateId = isDirectToActor ? 'template_my3996b' : 'template_my3996b';
-        
-        // SET RECIPIENT EMAIL: Replace with your actual admin email
-        const recipientEmail = isDirectToActor ? order.actors.ActorEmail : 'support@ucpmaroc.com'; 
-
-        // 1. Update the order status in Supabase
+        // 1. Update the order status in Supabase (This still works for both)
         const { error: updateError } = await supabase
             .from('orders')
             .update({ status: newStatus })
@@ -296,34 +290,46 @@ const ClientOrderPage = () => {
             return;
         }
 
-        // 2. Send the notification email
-        const emailParams = {
-            clientName: order.client_name,
-            clientEmail: order.client_email, // Include client email
-            orderIdString: order.order_id_string,
-            orderUUID: order.id,
-            recipientEmail: recipientEmail, // For the template
-            actorName: isDirectToActor ? order.actors.ActorName : null, // Pass actor name only if relevant
-        };
-
-        try {
-            await emailjs.send(
-                'service_r3pvt1s', // Your Service ID
-                templateId, // The correct new template
-                emailParams,
-                'I51tDIHsXYKncMQpO' // Your Public Key
-            );
+        // 2. Send notification email ONLY if it's a direct-to-actor payment
+        if (isDirectToActor) {
+            const templateId = 'template_my3996b'; // Actor template
+            const recipientEmail = order.actors.ActorEmail; // Actor email
             
-            // 3. Update UI
-            setNotificationMessage(isDirectToActor ? 'Actor notified successfully!' : 'Admin notified successfully!');
-            fetchOrderAndReview(); // Re-fetch order to get new status and hide payment UI
+            const emailParams = {
+                clientName: order.client_name,
+                clientEmail: order.client_email,
+                orderIdString: order.order_id_string,
+                orderUUID: order.id,
+                recipientEmail: recipientEmail,
+                actorName: order.actors.ActorName,
+            };
 
-        } catch (err) {
-            console.error("Failed to send notification:", err);
-            setNotificationMessage('Status updated, but failed to send notification.');
-        } finally {
-            setNotifyingAdmin(false);
+            try {
+                await emailjs.send(
+                    'service_r3pvt1s', // Your Service ID
+                    templateId,
+                    emailParams,
+                    'I51tDIHsXYKncMQpO' // Your Public Key
+                );
+                
+                // 3. Update UI (Success for Actor)
+                setNotificationMessage('Actor notified successfully!');
+                fetchOrderAndReview(); // Re-fetch order to get new status
+
+            } catch (err) {
+                console.error("Failed to send actor notification:", err);
+                setNotificationMessage('Status updated, but failed to notify actor.');
+            }
+        } else {
+            // --- This is the change ---
+            // It's an admin payment. We skip the email.
+            console.log("Admin notification temporarily disabled. Status set to 'Awaiting Admin Confirmation'.");
+            // 3. Update UI (Success for Admin, without email)
+            setNotificationMessage('Payment marked, awaiting admin confirmation.');
+            fetchOrderAndReview(); // Re-fetch order to get new status
         }
+        
+        setNotifyingAdmin(false); // Reset button state
     };
     // --- END Mark as Paid Handler ---
 
