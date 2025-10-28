@@ -37,6 +37,8 @@ const QuoteCalculatorModal: React.FC<ModalProps> = ({ actor, onClose }) => {
   const [clientSecret, setClientSecret] = useState<string | null>(null);
   const [newOrderId, setNewOrderId] = useState<string | null>(null);
   const [isSettingUpStripe, setIsSettingUpStripe] = useState(false); // New state
+      const [minimumFeeMessage, setMinimumFeeMessage] = useState(''); // <-- Add this
+
 
   const [clientInfo, setClientInfo] = useState({
     name: '',
@@ -61,8 +63,19 @@ const QuoteCalculatorModal: React.FC<ModalProps> = ({ actor, onClose }) => {
     const basePrice = wordCount * baseRate;
     const usagePrice = basePrice * (usage === 'web' ? webMultiplier : broadcastMultiplier);
     const finalPrice = usagePrice + (videoSync ? videoSyncFee : 0);
-    setTotalPrice(finalPrice);
-  }, [wordCount, usage, videoSync, actor]);
+// --- ADD THIS MINIMUM FEE LOGIC ---
+    const minimumFee = 10.00; // Your 10 MAD minimum
+
+    if (finalPrice > 0 && finalPrice < minimumFee) {
+        setTotalPrice(minimumFee);
+        setMinimumFeeMessage(`(Minimum order fee of ${minimumFee.toFixed(2)} MAD applied)`);
+    } else {
+        setTotalPrice(finalPrice);
+        setMinimumFeeMessage(''); // Clear message if no fee is applied
+    }
+    // --- END OF LOGIC ---  }, [wordCount, usage, videoSync, actor]);
+}, [wordCount, usage, videoSync, actor]); // Add any new add-on states to this array
+
 
   const handleClientInfoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setClientInfo({ ...clientInfo, [e.target.name]: e.target.value });
@@ -526,10 +539,14 @@ const handlePaymentMethodChange = async (method: 'stripe' | 'bank') => {
       <button onClick={onClose} className="absolute top-4 right-4 text-slate-400 hover:text-white z-10"> {/* Ensure button is above content */}
         <X size={24} />
         </button>
-        <div className="flex-shrink-0 mb-6 border-b border-slate-700 pb-4"> {/* Added flex-shrink-0 */}          <p className="text-center text-slate-400">Booking for: <span className="font-bold text-blue-400">{actor.ActorName}</span></p>
+        <div className="flex-shrink-0 mb-6 border-b border-slate-700 pb-4"> {/* Added flex-shrink-0 */}          
+          <p className="text-center text-slate-400">Booking for: <span className="font-bold text-blue-400">{actor.ActorName}</span></p>
           <p className="text-center text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-400 mt-2">
             Total: {totalPrice.toFixed(2)} MAD
           </p>
+          {minimumFeeMessage && (
+            <p className="text-center text-xs text-yellow-400 mt-1">{minimumFeeMessage}</p>
+            )}
         </div>
         <div className="flex-grow overflow-y-auto pr-2 -mr-2 sm:pr-4 sm:-mr-4 custom-scrollbar">
             {renderStep()}
