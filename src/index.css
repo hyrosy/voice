@@ -45,23 +45,36 @@ body {
   text-rendering: optimizeLegibility;
 }
 
-/* 1. Hide the default Google Translate banner */
+/* 1. Hide the Google banner */
 body > .skiptranslate {
   display: none !important;
 }
 
 body {
-  /* This !important is necessary to override Google's inline style */
   top: 0px !important; 
 }
 
-/* 2. Hide the original <select> dropdown */
-#google_translate_element select {
-  display: none;
+/* 2. Style the main container (the <div> we added in Footer.tsx) */
+#google_translate_element {
+  /* You can add styles here if needed */
 }
 
-/* 3. Style our new custom dropdown button */
-.custom-translate-button {
-  @apply inline-flex items-center gap-2 rounded-md bg-slate-700 px-3 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-slate-600;
-  /* Uses Tailwind classes. You can change bg-slate-700, etc. */
+/* 3. Style the <select> dropdown inside the iframe */
+/* We target the class Google adds to the <select> element */
+.goog-te-combo {
+  @apply bg-slate-700 border border-slate-600 rounded-md p-3 text-sm text-white;
+  @apply cursor-pointer font-semibold appearance-none;
+  width: 100%;
+  max-width: 200px; /* Or whatever width you prefer */
+}
+
+/* 4. Hide the "Powered by Google" text */
+.goog-logo-link,
+.goog-te-gadget-icon {
+  display: none !important;
+}
+
+.goog-te-gadget {
+  color: transparent !important; /* Hides the "Powered by" text */
+  line-height: 0; /* Helps collapse the space */
 }

@@ -113,41 +113,12 @@ const Footer = () => {
           </div>
         </div>
 
-{/* --- MODIFIED: Google Translate Widget --- */}
-        <div className="mb-8 border-t border-slate-800 pt-8">
-          <h3 className="text-lg font-bold text-white mb-4">Translate</h3>
-          
-          {/* This is the original, now-hidden widget */}
-          <div id="google_translate_element" style={{ display: 'none' }}></div>
-
-          {/* This is our NEW custom-styled button */}
-          {/* We'll assume for now you want FR/AR. Add more as needed. */}
-          <div className="flex flex-wrap gap-2">
-            <button 
-              className="custom-translate-button"
-              onClick={() => (window as any).google.translate.translate('en', 'en', 'Translate')}
-            >
-              <span className="fi fi-gb"></span> {/* Use flag icons if you add them */}
-              English
-            </button>
-            <button 
-              className="custom-translate-button"
-              onClick={() => (window as any).google.translate.translate('en', 'fr', 'Traduire')}
-            >
-              <span className="fi fi-fr"></span>
-              Français
-            </button>
-            <button 
-              className="custom-translate-button"
-              onClick={() => (window as any).google.translate.translate('en', 'ar', 'ترجمة')}
-            >
-              <span className="fi fi-ma"></span>
-              العربية
-            </button>
-          </div>
-        </div>
-        {/* --- END Google Translate Widget --- */}
-        
+       {/* --- REVERTED: Google Translate Widget --- */}
+       <div className="mb-8 border-t border-slate-800 pt-8">
+         <h3 className="text-lg font-bold text-white mb-4">Translate</h3>
+         <div id="google_translate_element"></div>
+       </div>
+       {/* --- END Google Translate Widget --- */}
         {/* Bottom Section */}
         <div className="border-t border-slate-800 pt-8 flex flex-col md:flex-row justify-between items-center space-y-4 md:space-y-0">
           <p className="text-slate-500 text-sm">
