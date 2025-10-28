@@ -1,5 +1,5 @@
 import React from 'react';
-import { Mail, Phone, MapPin, Facebook, Instagram, Twitter, Linkedin, ChevronUp, ExternalLink } from 'lucide-react';
+import { Mail, Phone, MapPin, Facebook, Instagram, Twitter, Linkedin, ChevronUp, ExternalLink, Globe, RefreshCw } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 // --- Data (Moved outside component for clarity) ---
@@ -53,6 +53,15 @@ const Footer = () => {
   }, []);
 
   const scrollToTop = () => window.scrollTo({ top: 0, behavior: 'smooth' });
+
+  // --- NEW: Function to clear the Google Translate cookie ---
+  const handleResetTranslation = () => {
+    // This sets the cookie's expiration date to the past, deleting it
+    document.cookie = 'googtrans=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=.' + window.location.hostname;
+    // Reload the page to see the change
+    window.location.reload();
+  };
+  // --- END NEW Function ---
 
   return (
     <footer className="relative bg-slate-900 text-white border-t border-slate-800">
@@ -113,12 +122,25 @@ const Footer = () => {
           </div>
         </div>
 
-       {/* --- REVERTED: Google Translate Widget --- */}
-       <div className="mb-8 border-t border-slate-800 pt-8">
-         <h3 className="text-lg font-bold text-white mb-4">Translate</h3>
-         <div id="google_translate_element"></div>
-       </div>
-       {/* --- END Google Translate Widget --- */}
+{/* --- MODIFIED: Google Translate Widget --- */}
+        <div className="mb-8 border-t border-slate-800 pt-8">
+          <div className="flex justify-between items-center mb-4">
+             <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                <Globe size={20} /> Translate
+             </h3>
+             {/* NEW: Reset Button */}
+             <button 
+                onClick={handleResetTranslation} 
+                className="text-xs text-slate-400 hover:text-white inline-flex items-center gap-1 transition-colors"
+             >
+                <RefreshCw size={14} /> Reset to English
+             </button>
+          </div>
+          {/* This is the original, hidden widget */}
+          <div id="google_translate_element"></div>
+        </div>
+        {/* --- END Google Translate Widget --- */}
+        
         {/* Bottom Section */}
         <div className="border-t border-slate-800 pt-8 flex flex-col md:flex-row justify-between items-center space-y-4 md:space-y-0">
           <p className="text-slate-500 text-sm">
