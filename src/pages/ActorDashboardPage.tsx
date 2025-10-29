@@ -197,6 +197,48 @@ const ActorDashboardPage = () => {
 
     // In src/pages/ActorDashboardPage.tsx
 
+    // ... (after your existing useEffect) ...
+
+    // --- NEW: Realtime listener for recording updates ---
+    useEffect(() => {
+        if (!actorData.id) return; // Don't subscribe until actor is loaded
+        
+        const channel = supabase.channel(`actor-recordings-${actorData.id}`)
+            .on('postgres_changes', 
+                { 
+                    event: 'UPDATE', 
+                    schema: 'public', 
+                    table: 'actor_recordings',
+                    filter: `actor_id=eq.${actorData.id}` 
+                },
+                (payload) => {
+                    console.log('Realtime update received:', payload.new);
+                    const updatedRecording = payload.new as ActorRecording;
+                    
+                    // Update the local state with the new data from the webhook
+                    setRecordings(prev => 
+                        prev.map(r => r.id === updatedRecording.id ? updatedRecording : r)
+                    );
+                    
+                    // Clear the loading spinner for this item
+                    if (updatedRecording.status === 'cleaned' || updatedRecording.status === 'error') {
+                        setCleaningId(null);
+                        
+                        if(updatedRecording.status === 'cleaned') {
+                            setMessage(`Recording "${updatedRecording.name}" is clean!`);
+                        }
+                    }
+                }
+            )
+            .subscribe();
+
+        // Cleanup
+        return () => {
+            supabase.removeChannel(channel);
+        };
+    }, [actorData.id]); // Re-subscribe if the actor ID changes (it shouldn't)
+
+// --- NEW: Handler for Direct Payment Request ---
 const handleRequestDirectPayment = async () => {
     setMessage(''); // Clear previous message
     if (!actorData.id) return;
@@ -597,33 +639,31 @@ const handleRequestDirectPayment = async () => {
                 r.id === recordingId ? { ...r, status: 'cleaning' } : r
             ));
 
-            const { data: cleanedRecording, error: functionError } = await supabase.functions.invoke(
+            const { data: responseData, error: functionError } = await supabase.functions.invoke(
                 'clean-audio',
                 { body: { recordingId } }
             );
 
-            if (functionError) throw functionError;
-            if (cleanedRecording.error) throw new Error(cleanedRecording.error);
+            if (functionError) throw functionError; // e.g., 500
+            if (responseData.error) throw new Error(responseData.error); // e.g., 401
 
-            // On success, update the list with the final 'cleaned' data
-            setRecordings(prev => prev.map(r => 
-                r.id === recordingId ? cleanedRecording : r
-            ));
-            setMessage('Audio cleaning complete!');
+            // The function only returns 202 Accepted, so we just set the message
+            setMessage('Cleaning job started! This may take a few minutes...');
 
         } catch (error) {
             const err = error as Error;
-            console.error("Error cleaning audio:", err);
+            console.error("Error starting clean audio job:", err);
             setMessage(`Error: ${err.message}`);
             // Revert UI on error
             setRecordings(prev => prev.map(r => 
-                r.id === recordingId ? { ...r, status: 'error' } : r // Show an error status
+                r.id === recordingId ? { ...r, status: 'error' } : r
             ));
         } finally {
-            setCleaningId(null); // Clear loading state
+            // We leave cleaningId set, as the job is now running
+            // setCleaningId(null); // Do NOT clear this here
         }
     };
-    // ---
+
 
     return (
         <div className="min-h-screen bg-slate-900 p-4 md:p-8">
