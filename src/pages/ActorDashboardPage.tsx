@@ -4,14 +4,26 @@ import { useNavigate } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
 import OrderDetailsModal from '../components/OrderDetailsModal';
 // Import icons needed for tabs if desired (e.g., User, DollarSign)
-import { ChevronDown, ChevronUp, Music, Trash2, UploadCloud, User, DollarSign, Settings, Banknote, CheckCircle } from 'lucide-react';
+import { ChevronDown, ChevronUp, Music, Trash2, UploadCloud, User, DollarSign, Settings, Banknote, CheckCircle, AudioLines, Plus, Play, Brain } from 'lucide-react';
 import emailjs from '@emailjs/browser';
+import RecordingModal from '../components/RecordingModal'; // <-- Import new component
 
 
 // --- NEW: Define the controlled options for our dropdowns ---
 const genderOptions = ["Male", "Female"];
 const languageOptions = ["Arabic", "English", "French", "Spanish"];
 const tagOptions = ["Warm", "Deep", "Conversational", "Corporate"];
+
+// --- NEW: Interface for Recording Library ---
+interface ActorRecording {
+  id: string;
+  actor_id: string;
+  name: string;
+  raw_audio_url: string;
+  cleaned_audio_url: string | null;
+  status: 'raw' | 'cleaning' | 'cleaned' | 'error';
+  created_at: string;
+}
 
 // --- Interfaces ---
 interface Demo {
@@ -87,6 +99,13 @@ const ActorDashboardPage = () => {
     const [eligibilityLoading, setEligibilityLoading] = useState<boolean>(true); // Separate loading state
     // --- END Eligibility State ---
 
+    // --- NEW: State for Recording Library ---
+    const [isRecordingModalOpen, setIsRecordingModalOpen] = useState(false);
+    const [recordings, setRecordings] = useState<ActorRecording[]>([]);
+    const [isSavingRecording, setIsSavingRecording] = useState(false);
+    // ---
+    // --- NEW: State to track which recording is cleaning ---
+    const [cleaningId, setCleaningId] = useState<string | null>(null);
 
 
     // 3. A single, combined function to fetch all necessary data
@@ -155,6 +174,17 @@ const ActorDashboardPage = () => {
         setEligibilityLoading(false); // Finish eligibility loading
     }
     // --- END Eligibility Fetch ---
+
+    // --- NEW: Fetch actor_recordings ---
+        const { data: recordingsData, error: recordingsError } = await supabase
+            .from('actor_recordings')
+            .select('*')
+            .eq('actor_id', actorProfile.id)
+            .order('created_at', { ascending: false });
+            
+        if (recordingsError) console.error("Error fetching recordings:", recordingsError);
+        else setRecordings(recordingsData as ActorRecording[]);
+        // ---
 
 
         setLoading(false);
@@ -504,6 +534,97 @@ const handleRequestDirectPayment = async () => {
         return order.status === 'Completed';
     });
 
+    // --- NEW: Handler for saving a new recording ---
+    const handleSaveRecording = async (audioFile: File, recordingName: string) => {
+        if (!actorData.id) return;
+        
+        setIsSavingRecording(true);
+        setMessage('');
+
+        try {
+            // 1. Upload the raw audio file to a 'recordings' bucket
+            const fileExt = audioFile.name.split('.').pop() || 'webm';
+            const filePath = `${actorData.id}/${recordingName.replace(/[^a-zA-Z0-9]/g, '-')}-${Date.now()}.${fileExt}`;
+
+            // Create 'recordings' bucket in Supabase Storage (public or private)
+            // For now, let's assume private and actors can read their own
+            const { error: uploadError } = await supabase.storage
+                .from('recordings') // *** You must create this bucket! ***
+                .upload(filePath, audioFile);
+            if (uploadError) throw uploadError;
+
+            // 2. Get the *non-public* URL (or public if you made it public)
+            // Since this is a library, let's assume it's private.
+            // For simplicity, let's make the 'recordings' bucket PUBLIC for now.
+            const { data: urlData } = supabase.storage.from('recordings').getPublicUrl(filePath);
+
+            // 3. Insert into the actor_recordings table
+            const { data: newRecording, error: insertError } = await supabase
+                .from('actor_recordings')
+                .insert({
+                    actor_id: actorData.id,
+                    name: recordingName,
+                    raw_audio_url: urlData.publicUrl, // Store the public URL
+                    status: 'raw'
+                })
+                .select()
+                .single();
+            
+            if (insertError) throw insertError;
+
+            setRecordings(prev => [newRecording as ActorRecording, ...prev]); // Add to top of list
+            setMessage('Recording saved to library!');
+            setIsRecordingModalOpen(false);
+
+        } catch (error) {
+            const err = error as Error;
+            console.error("Error saving recording:", err);
+            setMessage(`Error: ${err.message}`);
+        } finally {
+            setIsSavingRecording(false);
+        }
+    };
+    // ---
+
+    // --- NEW: Handler for cleaning audio ---
+    const handleCleanAudio = async (recordingId: string) => {
+        setCleaningId(recordingId); // Set loading state for this specific recording
+        setMessage('');
+
+        try {
+            // Optimistically update UI
+            setRecordings(prev => prev.map(r => 
+                r.id === recordingId ? { ...r, status: 'cleaning' } : r
+            ));
+
+            const { data: cleanedRecording, error: functionError } = await supabase.functions.invoke(
+                'clean-audio',
+                { body: { recordingId } }
+            );
+
+            if (functionError) throw functionError;
+            if (cleanedRecording.error) throw new Error(cleanedRecording.error);
+
+            // On success, update the list with the final 'cleaned' data
+            setRecordings(prev => prev.map(r => 
+                r.id === recordingId ? cleanedRecording : r
+            ));
+            setMessage('Audio cleaning complete!');
+
+        } catch (error) {
+            const err = error as Error;
+            console.error("Error cleaning audio:", err);
+            setMessage(`Error: ${err.message}`);
+            // Revert UI on error
+            setRecordings(prev => prev.map(r => 
+                r.id === recordingId ? { ...r, status: 'error' } : r // Show an error status
+            ));
+        } finally {
+            setCleaningId(null); // Clear loading state
+        }
+    };
+    // ---
+
     return (
         <div className="min-h-screen bg-slate-900 p-4 md:p-8">
             <div className="max-w-4xl mx-auto">
@@ -832,6 +953,65 @@ const handleRequestDirectPayment = async () => {
                     )}
                 </div>
 
+                {/* --- NEW: Recording Library Section --- */}
+                <div className="bg-slate-800 rounded-lg border border-slate-700 mb-8">
+                    <div className="flex justify-between items-center p-6">
+                        <h2 className="text-2xl font-bold text-white flex items-center gap-3">
+                            <AudioLines size={20}/> My Recordings Library
+                        </h2>
+                        <button
+                            onClick={() => setIsRecordingModalOpen(true)}
+                            className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white font-semibold rounded-md text-sm inline-flex items-center gap-2"
+                        >
+                            <Plus size={16} /> Record New
+                        </button>
+                    </div>
+                    <div className="p-6 pt-0 border-t border-slate-700">
+                        <div className="space-y-3 mt-6">
+                            {recordings.length === 0 && (
+                                <p className="text-slate-500 text-sm text-center py-4">Your recording library is empty.</p>
+                            )}
+                            {recordings.map(rec => (
+                                <div key={rec.id} className="bg-slate-700/50 p-3 rounded-md">
+                                    <p className="font-semibold text-white">{rec.name}</p>
+                                    <p className="text-xs text-slate-400 mb-2">
+                                        Recorded: {new Date(rec.created_at).toLocaleDateString()}
+                                    </p>
+                                    
+                                    {/* Raw Audio */}
+                                    <div className="space-y-1">
+                                        <label className="text-xs font-semibold text-slate-400">Raw Audio:</label>
+                                        <audio controls src={rec.raw_audio_url} className="w-full h-9" />
+                                    </div>
+
+{/* Cleaned Audio (or button) */}
+                                    <div className="mt-3 pt-3 border-t border-slate-600 space-y-1">
+                                        {rec.status === 'cleaned' && rec.cleaned_audio_url ? (
+                                            <>
+                                                <label className="text-xs font-semibold text-green-400">Cleaned Audio (AI):</label>
+                                                <audio controls src={rec.cleaned_audio_url} className="w-full h-9" />
+                                            </>
+                                        ) : rec.status === 'cleaning' ? (
+                                            <button className="w-full text-sm p-2 bg-slate-600 text-yellow-400 rounded-md animate-pulse" disabled>
+                                                <Brain size={16} className="inline-block mr-2 animate-spin" />
+                                                Cleaning in progress...
+                                            </button>
+                                        ) : (
+                                            <button 
+                                                onClick={() => handleCleanAudio(rec.id)}
+                                                disabled={cleaningId === rec.id} // Disable button if it's the one cleaning
+                                                className="w-full text-sm p-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-md flex items-center justify-center gap-2 disabled:opacity-50"
+                                            >
+                                                <Brain size={16} /> 
+                                                {rec.status === 'error' ? 'Cleaning Failed, Try Again' : 'Clean Audio (AI)'}
+                                            </button>
+                                        )}
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </div>
 
                 {/* --- THIS IS THE MODIFIED ORDERS SECTION --- */}
                 <div className="bg-slate-800 p-8 rounded-lg border border-slate-700">
@@ -888,6 +1068,15 @@ const handleRequestDirectPayment = async () => {
                 </div>
             </div>
 
+            {/* --- NEW: Recording Modal --- */}
+            {isRecordingModalOpen && (
+                <RecordingModal 
+                    onClose={() => setIsRecordingModalOpen(false)}
+                    onSave={handleSaveRecording}
+                    isSaving={isSavingRecording}
+                />
+            )}
+
             {selectedOrder && (
                 <OrderDetailsModal
                     order={selectedOrder}
@@ -896,7 +1085,9 @@ const handleRequestDirectPayment = async () => {
                     onActorConfirmPayment={handleActorConfirmPayment} // <-- Pass the new handler
                 />
             )}
-        </div> 
+
+        </div>
+
     ); 
 }; 
 

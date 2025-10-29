@@ -6,6 +6,7 @@ import {
   Briefcase, Package, Phone, Youtube, GalleryHorizontalEnd, BracesIcon, 
   AudioLinesIcon, MegaphoneIcon, LogIn, UserCircle, UserCheck, ChevronDown, Heart
 } from 'lucide-react';
+import LanguageSwitcher from './LanguageSwitcher'; // <-- Import new component
 
 const Navbar: React.FC = () => {
   const [isOpen, setIsOpen] = useState(false);
@@ -110,7 +111,13 @@ const Navbar: React.FC = () => {
             </div>
 
             <div className="flex items-center gap-4">
+
+              {/* --- NEW: Language Switcher (Desktop) --- */}
+             <div className="hidden lg:block">
+               <LanguageSwitcher />
+             </div>
               {/* --- CORRECTED: Login Dropdown (Desktop) --- */}
+
               <div 
                className="hidden lg:block relative"
                onMouseEnter={() => setIsLoginOpen(true)}
@@ -140,7 +147,10 @@ const Navbar: React.FC = () => {
                   </div>
                 )}
               </div>
-
+              {/* --- NEW: Language Switcher (Mobile) --- */}
+             <div className="lg:hidden">
+               <LanguageSwitcher />
+             </div>
               {/* Hamburger Menu Button (Mobile) */}
               <button
                 onClick={() => setIsOpen(!isOpen)}
