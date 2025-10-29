@@ -1,10 +1,10 @@
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
 import OrderDetailsModal from '../components/OrderDetailsModal';
 // Import icons needed for tabs if desired (e.g., User, DollarSign)
-import { ChevronDown, ChevronUp, Music, Trash2, UploadCloud, User, DollarSign, Settings, Banknote, CheckCircle, AudioLines, Plus, Play, Brain } from 'lucide-react';
+import { ChevronDown, ChevronUp, Music, Trash2, UploadCloud, User, DollarSign, Settings, Banknote, CheckCircle, AudioLines, Plus, Play, Brain, RefreshCw } from 'lucide-react';
 import emailjs from '@emailjs/browser';
 import RecordingModal from '../components/RecordingModal'; // <-- Import new component
 
@@ -92,6 +92,7 @@ const ActorDashboardPage = () => {
     const [demoFile, setDemoFile] = useState<File | null>(null);
     const [uploadingMainDemo, setUploadingMainDemo] = useState(false);
     const [demoMessage, setDemoMessage] = useState('');
+    
 
     // --- NEW: State for Eligibility Data ---
     const [completedOrderCount, setCompletedOrderCount] = useState<number>(0);
@@ -106,6 +107,17 @@ const ActorDashboardPage = () => {
     // ---
     // --- NEW: State to track which recording is cleaning ---
     const [cleaningId, setCleaningId] = useState<string | null>(null);
+    const pollingIntervalRef = useRef<Map<string, number>>(new Map()); // <-- ADD THIS
+
+    // ... other state variables
+    const [isLibraryOpen, setIsLibraryOpen] = useState(true); // Library open by default
+    const [activeLibraryTab, setActiveLibraryTab] = useState<'recordings' | 'upload'>('recordings');
+    const [isDeletingRecording, setIsDeletingRecording] = useState<string | null>(null); // Track which recording is being deleted
+    const [uploadingRecordingFile, setUploadingRecordingFile] = useState<File | null>(null);
+    const [uploadingRecordingName, setUploadingRecordingName] = useState('');
+    const [isUploading, setIsUploading] = useState(false); // General upload loading state
+    // ... rest of state
+    
 
 
     // 3. A single, combined function to fetch all necessary data
@@ -195,48 +207,101 @@ const ActorDashboardPage = () => {
         fetchData();
     }, [fetchData]);
 
-    // In src/pages/ActorDashboardPage.tsx
-
-    // ... (after your existing useEffect) ...
-
     // --- NEW: Realtime listener for recording updates ---
-    useEffect(() => {
-        if (!actorData.id) return; // Don't subscribe until actor is loaded
-        
-        const channel = supabase.channel(`actor-recordings-${actorData.id}`)
-            .on('postgres_changes', 
-                { 
-                    event: 'UPDATE', 
-                    schema: 'public', 
-                    table: 'actor_recordings',
-                    filter: `actor_id=eq.${actorData.id}` 
-                },
-                (payload) => {
-                    console.log('Realtime update received:', payload.new);
-                    const updatedRecording = payload.new as ActorRecording;
-                    
-                    // Update the local state with the new data from the webhook
-                    setRecordings(prev => 
-                        prev.map(r => r.id === updatedRecording.id ? updatedRecording : r)
-                    );
-                    
-                    // Clear the loading spinner for this item
-                    if (updatedRecording.status === 'cleaned' || updatedRecording.status === 'error') {
-                        setCleaningId(null);
-                        
-                        if(updatedRecording.status === 'cleaned') {
-                            setMessage(`Recording "${updatedRecording.name}" is clean!`);
-                        }
+useEffect(() => {
+    if (!actorData.id) return; // Don't subscribe until actor is loaded
+
+    const channel = supabase.channel(`actor-recordings-${actorData.id}`)
+        .on('postgres_changes', 
+            { 
+                event: 'UPDATE', 
+                schema: 'public', 
+                table: 'actor_recordings',
+                filter: `actor_id=eq.${actorData.id}` 
+            },
+            (payload) => {
+                console.log('Realtime update received:', payload.new);
+                const updatedRecording = payload.new as ActorRecording;
+
+                // Update the local state with the new data from the webhook
+                setRecordings(prev => 
+                    prev.map(r => r.id === updatedRecording.id ? updatedRecording : r)
+                );
+
+                // If the job finished (cleaned or error), clear the loading spinner
+                if (updatedRecording.id === cleaningId && (updatedRecording.status === 'cleaned' || updatedRecording.status === 'error')) {
+                    setCleaningId(null); 
+
+                    if(updatedRecording.status === 'cleaned') {
+                        setMessage(`Recording "${updatedRecording.name}" is clean!`);
                     }
                 }
-            )
-            .subscribe();
+            }
+        )
+        .subscribe();
 
-        // Cleanup
-        return () => {
-            supabase.removeChannel(channel);
-        };
-    }, [actorData.id]); // Re-subscribe if the actor ID changes (it shouldn't)
+    // Cleanup
+    return () => {
+        supabase.removeChannel(channel);
+    };
+}, [actorData.id, cleaningId]); // Add cleaningId as dependency
+
+// ... after your existing useEffect hooks ...
+
+// --- NEW: useEffect to start and stop polling ---
+useEffect(() => {
+  // Clear any existing intervals when the component unmounts
+  const intervalMap = pollingIntervalRef.current;
+  return () => {
+    intervalMap.forEach(intervalId => clearInterval(intervalId));
+  };
+}, []);
+
+// This effect runs when the `cleaningId` state is set
+useEffect(() => {
+  if (cleaningId) {
+    // Function to poll the status
+    const poll = async () => {
+      console.log(`Polling status for recording: ${cleaningId}`);
+      try {
+        const { data, error } = await supabase.functions.invoke(
+          'poll-audo-status',
+          { body: { recordingId: cleaningId } }
+        );
+
+        if (error) throw error;
+
+        const audoStatus = data.status;
+        console.log(`Audo status: ${audoStatus}`);
+
+        // If job is done, stop polling
+        if (audoStatus === 'succeeded' || audoStatus === 'failed') {
+          const intervalId = pollingIntervalRef.current.get(cleaningId);
+          if (intervalId) {
+            clearInterval(intervalId);
+            pollingIntervalRef.current.delete(cleaningId);
+          }
+          // The real-time listener will handle the UI update
+        }
+      } catch (err) {
+        console.error("Polling error:", err);
+        // Stop polling on error
+        const intervalId = pollingIntervalRef.current.get(cleaningId);
+        if (intervalId) {
+          clearInterval(intervalId);
+          pollingIntervalRef.current.delete(cleaningId);
+        }
+      }
+    };
+
+    // Start polling immediately, then set an interval
+    poll();
+    const intervalId = setInterval(poll, 10000); // Poll every 10 seconds
+    pollingIntervalRef.current.set(cleaningId, intervalId as unknown as number);
+  }
+
+// We only want this to run when cleaningId changes
+}, [cleaningId]);
 
 // --- NEW: Handler for Direct Payment Request ---
 const handleRequestDirectPayment = async () => {
@@ -628,42 +693,200 @@ const handleRequestDirectPayment = async () => {
     };
     // ---
 
-    // --- NEW: Handler for cleaning audio ---
-    const handleCleanAudio = async (recordingId: string) => {
-        setCleaningId(recordingId); // Set loading state for this specific recording
-        setMessage('');
+    // --- UPDATED: Handler for cleaning audio ---
+const handleCleanAudio = async (recordingId: string) => {
+  setMessage('');
+  let jobIdFromFunction: string | null = null; // Variable to store the jobId
 
-        try {
-            // Optimistically update UI
-            setRecordings(prev => prev.map(r => 
-                r.id === recordingId ? { ...r, status: 'cleaning' } : r
-            ));
+  try {
+    // Optimistically update UI
+    setRecordings(prev => prev.map(r => 
+        r.id === recordingId ? { ...r, status: 'cleaning' } : r
+    ));
 
-            const { data: responseData, error: functionError } = await supabase.functions.invoke(
-                'clean-audio',
-                { body: { recordingId } }
-            );
+    // *** 1. Await the function result ***
+    const { data: responseData, error: functionError } = await supabase.functions.invoke(
+        'clean-audio',
+        { body: { recordingId } }
+    );
 
-            if (functionError) throw functionError; // e.g., 500
-            if (responseData.error) throw new Error(responseData.error); // e.g., 401
+    if (functionError) throw functionError; 
+    if (responseData.error) throw new Error(responseData.error); 
 
-            // The function only returns 202 Accepted, so we just set the message
-            setMessage('Cleaning job started! This may take a few minutes...');
+    // *** 2. Get the jobId from the response ***
+    jobIdFromFunction = responseData.jobId; 
+    if (!jobIdFromFunction) throw new Error("Function did not return a jobId.");
 
-        } catch (error) {
-            const err = error as Error;
-            console.error("Error starting clean audio job:", err);
-            setMessage(`Error: ${err.message}`);
-            // Revert UI on error
-            setRecordings(prev => prev.map(r => 
-                r.id === recordingId ? { ...r, status: 'error' } : r
-            ));
-        } finally {
-            // We leave cleaningId set, as the job is now running
-            // setCleaningId(null); // Do NOT clear this here
+    setMessage('Cleaning job started! This may take a few seconds...');
+
+    // *** 3. Set cleaningId AFTER getting jobId ***
+    // This will trigger the polling useEffect
+    setCleaningId(recordingId); 
+
+  } catch (error) {
+    const err = error as Error;
+    console.error("Error starting clean audio job:", err);
+    setMessage(`Error: ${err.message}`);
+    // Revert UI on error
+    setRecordings(prev => prev.map(r => 
+        r.id === recordingId ? { ...r, status: 'error' } : r // Or keep original status
+    ));
+
+    // Ensure cleaningId is null if the start fails
+    setCleaningId(null); 
+  }
+};
+
+const handleDeleteRecording = async (recording: ActorRecording) => {
+    if (!actorData.id) return;
+    if (!window.confirm(`Are you sure you want to delete "${recording.name}"? This cannot be undone.`)) return;
+
+    setIsDeletingRecording(recording.id); // Set loading state for this item
+    setMessage('');
+
+    try {
+        const filesToDelete: string[] = [];
+
+        // Extract file path from raw_audio_url
+        if (recording.raw_audio_url) {
+            try {
+                const rawPath = new URL(recording.raw_audio_url).pathname.split('/recordings/')[1];
+                if (rawPath) filesToDelete.push(rawPath);
+            } catch (e) { console.error("Could not parse raw_audio_url:", e); }
         }
-    };
+        const { data: { publicUrl: storageBaseUrl } } = supabase.storage.from('recordings').getPublicUrl('');
+        // Remove the trailing slash if present
+        const baseUrl = storageBaseUrl.endsWith('/') ? storageBaseUrl.slice(0, -1) : storageBaseUrl;
+        // Extract file path from cleaned_audio_url
+        if (recording.cleaned_audio_url) {
+                 try {
+                    // Cleaned URLs might be from Audo.ai or your storage - adjust if needed
+                    // Check if the URL starts with your Supabase storage base URL
+                    if (recording.cleaned_audio_url.startsWith(baseUrl)) { // <-- CORRECTED CHECK
+                       // Construct the path relative to the bucket
+                       const urlObject = new URL(recording.cleaned_audio_url);
+                       const pathParts = urlObject.pathname.split('/'); 
+                       // Find the index of your bucket name and take everything after it
+                       const bucketIndex = pathParts.findIndex(part => part === 'recordings'); 
+                       if (bucketIndex !== -1 && bucketIndex < pathParts.length - 1) {
+                           const cleanedPath = pathParts.slice(bucketIndex + 1).join('/');
+                           filesToDelete.push(cleanedPath);
+                       } else {
+                           console.warn("Could not extract path from cleaned_audio_url:", recording.cleaned_audio_url);
+                       }
+                    } else {
+                       console.log("Skipping deletion of external cleaned URL:", recording.cleaned_audio_url);
+                    }
+                 } catch (e) { console.error("Could not parse cleaned_audio_url:", e); }
+            }
 
+        // 1. Delete files from storage (if any paths were found)
+        if (filesToDelete.length > 0) {
+            console.log("Attempting to delete storage files:", filesToDelete);
+            const { error: storageError } = await supabase.storage
+                .from('recordings') // Make sure this matches your bucket name
+                .remove(filesToDelete);
+            if (storageError) {
+                // Log error but continue to delete DB record
+                console.error("Error deleting storage files (continuing deletion):", storageError);
+                setMessage(`Warning: Could not delete associated files, but removing record.`);
+            }
+        } else {
+             console.log("No storage files to delete or URLs were unparsable/external.");
+        }
+
+
+        // 2. Delete the record from the database
+        const { error: dbError } = await supabase
+            .from('actor_recordings')
+            .delete()
+            .eq('id', recording.id)
+            .eq('actor_id', actorData.id); // Security check
+
+        if (dbError) throw dbError;
+
+        // 3. Update local state
+        setRecordings(prev => prev.filter(r => r.id !== recording.id));
+        setMessage(`Recording "${recording.name}" deleted successfully.`);
+
+    } catch (error) {
+        const err = error as Error;
+        console.error("Error deleting recording:", err);
+        setMessage(`Error deleting recording: ${err.message}`);
+    } finally {
+        setIsDeletingRecording(null); // Clear loading state
+    }
+};
+
+const handleRecordingFileUpload = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!uploadingRecordingFile || !uploadingRecordingName.trim() || !actorData.id) {
+        setMessage("Please select an audio file and provide a name.");
+        return;
+    }
+
+    setIsUploading(true);
+    setMessage('');
+
+    try {
+        // Logic similar to handleSaveRecording, but using the uploaded file
+        const fileExt = uploadingRecordingFile.name.split('.').pop() || 'tmp';
+        const filePath = `${actorData.id}/${uploadingRecordingName.replace(/[^a-zA-Z0-9]/g, '-')}-${Date.now()}.${fileExt}`;
+
+        const { error: uploadError } = await supabase.storage
+            .from('recordings')
+            .upload(filePath, uploadingRecordingFile);
+        if (uploadError) throw uploadError;
+
+        const { data: urlData } = supabase.storage.from('recordings').getPublicUrl(filePath);
+        if (!urlData) throw new Error("Could not get public URL for uploaded recording.");
+
+
+        const { data: newRecording, error: insertError } = await supabase
+            .from('actor_recordings')
+            .insert({
+                actor_id: actorData.id,
+                name: uploadingRecordingName.trim(),
+                raw_audio_url: urlData.publicUrl,
+                status: 'raw'
+            })
+            .select()
+            .single();
+
+        if (insertError) throw insertError;
+
+        setRecordings(prev => [newRecording as ActorRecording, ...prev]);
+        setMessage(`Recording "${uploadingRecordingName.trim()}" uploaded successfully!`);
+
+        // Reset form and switch tab
+        setUploadingRecordingFile(null);
+        setUploadingRecordingName('');
+        setActiveLibraryTab('recordings');
+        // Reset the file input visually
+        const fileInput = document.getElementById('recording-file-upload') as HTMLInputElement;
+        if (fileInput) fileInput.value = "";
+
+
+    } catch (error) {
+        const err = error as Error;
+        console.error("Error uploading recording:", err);
+        setMessage(`Error uploading recording: ${err.message}`);
+    } finally {
+        setIsUploading(false);
+    }
+};
+
+const handleUploadFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files.length > 0) {
+        setUploadingRecordingFile(e.target.files[0]);
+         // Optionally prefill name based on file name (without extension)
+        if (!uploadingRecordingName) {
+           setUploadingRecordingName(e.target.files[0].name.replace(/\.[^/.]+$/, ""));
+        }
+    } else {
+        setUploadingRecordingFile(null);
+    }
+};
 
     return (
         <div className="min-h-screen bg-slate-900 p-4 md:p-8">
@@ -993,65 +1216,163 @@ const handleRequestDirectPayment = async () => {
                     )}
                 </div>
 
-                {/* --- NEW: Recording Library Section --- */}
+                {/* --- UPDATED: Recording Library Section (Accordion + Tabs) --- */}
                 <div className="bg-slate-800 rounded-lg border border-slate-700 mb-8">
-                    <div className="flex justify-between items-center p-6">
+                    {/* Accordion Toggle Button */}
+                    <button
+                        onClick={() => setIsLibraryOpen(!isLibraryOpen)}
+                        className="w-full flex justify-between items-center p-6"
+                    >
                         <h2 className="text-2xl font-bold text-white flex items-center gap-3">
                             <AudioLines size={20}/> My Recordings Library
                         </h2>
-                        <button
-                            onClick={() => setIsRecordingModalOpen(true)}
-                            className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white font-semibold rounded-md text-sm inline-flex items-center gap-2"
-                        >
-                            <Plus size={16} /> Record New
-                        </button>
-                    </div>
-                    <div className="p-6 pt-0 border-t border-slate-700">
-                        <div className="space-y-3 mt-6">
-                            {recordings.length === 0 && (
-                                <p className="text-slate-500 text-sm text-center py-4">Your recording library is empty.</p>
-                            )}
-                            {recordings.map(rec => (
-                                <div key={rec.id} className="bg-slate-700/50 p-3 rounded-md">
-                                    <p className="font-semibold text-white">{rec.name}</p>
-                                    <p className="text-xs text-slate-400 mb-2">
-                                        Recorded: {new Date(rec.created_at).toLocaleDateString()}
-                                    </p>
-                                    
-                                    {/* Raw Audio */}
-                                    <div className="space-y-1">
-                                        <label className="text-xs font-semibold text-slate-400">Raw Audio:</label>
-                                        <audio controls src={rec.raw_audio_url} className="w-full h-9" />
-                                    </div>
+                        {isLibraryOpen ? <ChevronUp className="text-slate-400" /> : <ChevronDown className="text-slate-400" />}
+                    </button>
 
-{/* Cleaned Audio (or button) */}
-                                    <div className="mt-3 pt-3 border-t border-slate-600 space-y-1">
-                                        {rec.status === 'cleaned' && rec.cleaned_audio_url ? (
-                                            <>
-                                                <label className="text-xs font-semibold text-green-400">Cleaned Audio (AI):</label>
-                                                <audio controls src={rec.cleaned_audio_url} className="w-full h-9" />
-                                            </>
-                                        ) : rec.status === 'cleaning' ? (
-                                            <button className="w-full text-sm p-2 bg-slate-600 text-yellow-400 rounded-md animate-pulse" disabled>
-                                                <Brain size={16} className="inline-block mr-2 animate-spin" />
-                                                Cleaning in progress...
-                                            </button>
-                                        ) : (
-                                            <button 
-                                                onClick={() => handleCleanAudio(rec.id)}
-                                                disabled={cleaningId === rec.id} // Disable button if it's the one cleaning
-                                                className="w-full text-sm p-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-md flex items-center justify-center gap-2 disabled:opacity-50"
-                                            >
-                                                <Brain size={16} /> 
-                                                {rec.status === 'error' ? 'Cleaning Failed, Try Again' : 'Clean Audio (AI)'}
-                                            </button>
+                    {/* Accordion Content (Tabs) */}
+                    {isLibraryOpen && (
+                        <div className="p-6 pt-0 border-t border-slate-700">
+                            {/* Tab Buttons */}
+                            <div className="flex border-b border-slate-600 mb-6">
+                                <button
+                                    onClick={() => setActiveLibraryTab('recordings')}
+                                    className={`flex items-center gap-2 px-4 py-3 text-sm font-medium transition-colors ${
+                                        activeLibraryTab === 'recordings'
+                                        ? 'border-b-2 border-purple-500 text-white'
+                                        : 'text-slate-400 hover:text-slate-200'
+                                    }`}
+                                >
+                                    My Recordings ({recordings.length})
+                                </button>
+                                <button
+                                    onClick={() => setActiveLibraryTab('upload')}
+                                    className={`flex items-center gap-2 px-4 py-3 text-sm font-medium transition-colors ${
+                                        activeLibraryTab === 'upload'
+                                        ? 'border-b-2 border-purple-500 text-white'
+                                        : 'text-slate-400 hover:text-slate-200'
+                                    }`}
+                                >
+                                    Upload Audio
+                                </button>
+                                {/* "Record New" Button Moved Here */}
+                                <button
+                                    onClick={() => setIsRecordingModalOpen(true)}
+                                    className="ml-auto px-4 py-2 my-auto bg-purple-600 hover:bg-purple-700 text-white font-semibold rounded-md text-sm inline-flex items-center gap-2 h-fit" // Adjust styling
+                                >
+                                    <Plus size={16} /> Record New
+                                </button>
+                            </div>
+
+                            {/* Tab Content: My Recordings */}
+                            {activeLibraryTab === 'recordings' && (
+                                <div className="animate-in fade-in duration-300">
+                                    {/* Scrollable Container */}
+                                    <div className="space-y-4 max-h-[500px] overflow-y-auto pr-2 custom-scrollbar">
+                                        {recordings.length === 0 && (
+                                            <p className="text-slate-500 text-sm text-center py-4">Your recording library is empty. Record or upload audio.</p>
                                         )}
+                                        {recordings.map(rec => (
+                                            <div key={rec.id} className="bg-slate-700/50 p-4 rounded-lg border border-slate-600/50 relative group">
+                                                {/* Delete Button */}
+                                                <button
+                                                    onClick={() => handleDeleteRecording(rec)}
+                                                    disabled={isDeletingRecording === rec.id}
+                                                    className="absolute top-2 right-2 p-1.5 text-slate-500 hover:text-red-500 bg-slate-800 rounded-full opacity-0 group-hover:opacity-100 transition disabled:opacity-50"
+                                                    title="Delete Recording"
+                                                >
+                                                    {isDeletingRecording === rec.id ? <RefreshCw size={16} className="animate-spin" /> : <Trash2 size={16} />}
+                                                </button>
+
+                                                <p className="font-semibold text-white text-lg">{rec.name}</p>
+                                                <p className="text-xs text-slate-400 mb-3">
+                                                    Recorded: {new Date(rec.created_at).toLocaleDateString()}
+                                                </p>
+
+                                                {/* Layout for Players (Example: Grid) */}
+                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                    {/* Raw Audio */}
+                                                    <div className="space-y-1">
+                                                        <label className="text-sm font-semibold text-slate-300 block">Raw Audio:</label>
+                                                        <audio controls src={rec.raw_audio_url} className="w-full h-10" />
+                                                    </div>
+
+                                                    {/* Cleaned Audio (or button) */}
+                                                    <div className="space-y-1">
+                                                        {rec.status === 'cleaned' && rec.cleaned_audio_url ? (
+                                                            <>
+                                                                <label className="text-sm font-semibold text-green-400 block">Cleaned Audio (AI):</label>
+                                                                <audio controls src={rec.cleaned_audio_url} className="w-full h-10" />
+                                                            </>
+                                                        ) : rec.status === 'cleaning' || cleaningId === rec.id ? (
+                                                            <div className="h-full flex items-end">
+                                                                <button className="w-full text-sm p-2 bg-slate-600 text-yellow-400 rounded-md animate-pulse h-10 flex items-center justify-center gap-2" disabled>
+                                                                    <Brain size={16} className="animate-spin" />
+                                                                    Cleaning...
+                                                                </button>
+                                                            </div>
+                                                        ) : (
+                                                            <div className="h-full flex items-end">
+                                                                <button
+                                                                    onClick={() => handleCleanAudio(rec.id)}
+                                                                    className="w-full text-sm p-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-md flex items-center justify-center gap-2 h-10"
+                                                                >
+                                                                    <Brain size={16} />
+                                                                    {rec.status === 'error' ? 'Cleaning Failed, Try Again' : 'Clean Audio (AI)'}
+                                                                </button>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        ))}
                                     </div>
                                 </div>
-                            ))}
+                            )}
+
+                            {/* Tab Content: Upload Audio */}
+                            {activeLibraryTab === 'upload' && (
+                                <div className="animate-in fade-in duration-300">
+                                    <form onSubmit={handleRecordingFileUpload} className="space-y-4 max-w-lg mx-auto">
+                                        <h3 className="text-lg font-semibold text-white text-center">Upload Existing Audio File</h3>
+                                        <div>
+                                            <label htmlFor="recording-file-upload" className="block text-sm font-medium text-slate-300 mb-1">Audio File (MP3, WAV, etc.)</label>
+                                            <input
+                                                type="file"
+                                                id="recording-file-upload"
+                                                accept="audio/*"
+                                                onChange={handleUploadFileChange}
+                                                required
+                                                className="w-full text-sm text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:font-semibold file:bg-slate-700 file:text-slate-300 hover:file:bg-slate-600 cursor-pointer"
+                                            />
+                                        </div>
+                                        <div>
+                                            <label htmlFor="uploading-recording-name" className="block text-sm font-medium text-slate-300 mb-1">Recording Name</label>
+                                            <input
+                                                type="text"
+                                                id="uploading-recording-name"
+                                                value={uploadingRecordingName}
+                                                onChange={(e) => setUploadingRecordingName(e.target.value)}
+                                                placeholder="Enter a name for this recording"
+                                                required
+                                                className="w-full bg-slate-700 border border-slate-600 rounded-md p-3 text-white"
+                                            />
+                                        </div>
+                                        <button
+                                            type="submit"
+                                            disabled={isUploading || !uploadingRecordingFile || !uploadingRecordingName.trim()}
+                                            className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-md flex items-center justify-center gap-2 disabled:opacity-50"
+                                        >
+                                            <UploadCloud size={18} />
+                                            {isUploading ? 'Uploading...' : 'Upload & Save to Library'}
+                                        </button>
+                                    </form>
+                                </div>
+                            )}
                         </div>
-                    </div>
+                    )}
                 </div>
+                {/* --- END Recording Library Section --- */}
+
 
                 {/* --- THIS IS THE MODIFIED ORDERS SECTION --- */}
                 <div className="bg-slate-800 p-8 rounded-lg border border-slate-700">

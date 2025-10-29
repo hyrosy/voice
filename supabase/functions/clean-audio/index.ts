@@ -2,7 +2,7 @@
 
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
-import { corsHeaders } from '../_shared/cors.ts' // Make sure this file is correct
+import { corsHeaders } from '../_shared/cors.ts'
 
 serve(async (req) => {
   const requestOrigin = req.headers.get('Origin')
@@ -22,8 +22,8 @@ serve(async (req) => {
     const SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
     if (!SUPABASE_URL || !SERVICE_KEY) throw new Error('Missing Supabase secrets')
 
-    // This is the URL of your *other* function
-    const WEBHOOK_URL = `${SUPABASE_URL}/functions/v1/audo-webhook`
+    // We no longer need the WEBHOOK_URL variable for this function
+    // const WEBHOOK_URL = `${SUPABASE_URL}/functions/v1/audo-webhook`
 
     const body = await req.json()
     recordingId = body.recordingId
@@ -50,18 +50,18 @@ serve(async (req) => {
     if (recError || !recording) throw new Error('Recording not found or permission denied')
     if (recording.status === 'cleaning') throw new Error('Audio is already being cleaned')
 
-    // --- 4. Audo.ai ASYNC API Call (with JSON) ---
+    // --- 4. Audo.ai ASYNC API Call ---
     console.log(`Starting Audo.ai job for ${recording.raw_audio_url}...`)
-    
-    const jobResponse = await fetch('https://api.audo.ai/v1/noise-reduction/job', {
+
+    const jobResponse = await fetch('https://api.audo.ai/v1/remove-noise', { 
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'x-api-key': AI_API_KEY
       },
       body: JSON.stringify({
-        inputUrl: recording.raw_audio_url,
-        webhookUrl: WEBHOOK_URL
+        input: recording.raw_audio_url // <-- Send ONLY the input key
+        // We have removed the 'webhook' key as the API does not permit it
       }),
     })
 
@@ -81,17 +81,17 @@ serve(async (req) => {
       .from('actor_recordings')
       .update({ 
         status: 'cleaning',
-        audo_job_id: jobId // <-- Save the job ID here!
+        audo_job_id: jobId
       })
       .eq('id', recordingId)
 
     if (updateError) throw updateError;
     
     // 6. Return success (202 Accepted)
-    // This tells the client "We've started the job, but it's not done yet."
+    // *** MODIFICATION: Return the jobId to the client ***
     return new Response(JSON.stringify({ message: "Cleaning job started", jobId: jobId }), {
       headers: { ...corsHeaders(requestOrigin), 'Content-Type': 'application/json' },
-      status: 202, // 202 Accepted
+      status: 202,
     })
 
   } catch (error) {
@@ -100,7 +100,7 @@ serve(async (req) => {
       try {
         const supabaseAdmin = createClient(Deno.env.get('SUPABASE_URL') ?? '', Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '');
         await supabaseAdmin.from('actor_recordings').update({ status: 'error' }).eq('id', recordingId);
-      } catch (e) { /* ignore */ }
+      } catch (e) { /* ignore cleanup error */ }
     }
 
     console.error("Error in clean-audio function:", error.message)
