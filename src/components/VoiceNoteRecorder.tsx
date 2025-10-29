@@ -26,10 +26,8 @@ const VoiceNoteRecorder: React.FC<VoiceNoteRecorderProps> = ({ onSend, onCancel 
       };
 
       mediaRecorderRef.current.onstop = () => {
-        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
-        const audioFile = new File([audioBlob], `voice-note-${Date.now()}.webm`, {
-            type: 'audio/webm'
-        });
+        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/ogg;codecs=opus' });
+        const audioFile = new File([audioBlob], `recording-${Date.now()}.ogg`, { type: 'audio/ogg' });
         const url = URL.createObjectURL(audioBlob);
         setAudioURL(url);
         setAudioFile(audioFile);
@@ -38,9 +36,14 @@ const VoiceNoteRecorder: React.FC<VoiceNoteRecorderProps> = ({ onSend, onCancel 
       mediaRecorderRef.current.start();
       setIsRecording(true);
     } catch (err) {
-      console.error("Error accessing microphone:", err);
-      alert("Microphone access denied. Please allow microphone permissions in your browser settings.");
+    console.error("Error accessing microphone:", err);
+    // More specific error for the user
+    if (err instanceof Error && (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError')) {
+      alert("Microphone access denied. Please allow microphone permissions in your browser settings for this site.");
+    } else {
+      alert(`Could not start recording. Error: ${err instanceof Error ? err.message : 'Unknown error'}`);
     }
+  }
   };
 
   const stopRecording = () => {

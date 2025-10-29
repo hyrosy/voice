@@ -60,9 +60,11 @@ serve(async (req) => {
         'x-api-key': AI_API_KEY
       },
       body: JSON.stringify({
-        input: recording.raw_audio_url // <-- Send ONLY the input key
-        // We have removed the 'webhook' key as the API does not permit it
-      }),
+        input: recording.raw_audio_url, // <-- Send ONLY the input key
+        outputExtension: 'mp3' // <--- ADD THIS
+        // webhookUrl: WEBHOOK_URL // We are not using webhooks for now
+      })
+    
     })
 
     if (!jobResponse.ok) {
