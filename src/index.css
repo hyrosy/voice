@@ -121,30 +121,56 @@ body.translated-ltr, body.translated-rtl {
     --ring: 262 52% 57%; /* purple-600 */
 
     /* Radius */
-    --radius: 0.5rem;
+    --radius: 0.75rem; /* This sets rounded-xl as the default */
   }
 
   /* This forces the dark theme variables to be used */
   .dark {
-    --background: 224 71% 4%;
+    /* Main page background (Your bg-slate-900) */
+    --background: 222 47% 11%;
+    /* Default text (White) */
     --foreground: 210 40% 98%;
-    --card: 222 47% 11%;
+
+    /* Modal/Card background (Your bg-slate-800) */
+    --card: 222 39% 18%; 
     --card-foreground: 210 40% 98%;
-    --popover: 224 71% 4%;
+
+    /* Popover/Dropdown background */
+    --popover: 222 39% 18%; /* slate-800 */
     --popover-foreground: 210 40% 98%;
-    --primary: 262 52% 57%;
+
+    /* Primary buttons (Your Purple) */
+    --primary: 262 52% 57%; /* purple-600 */
     --primary-foreground: 210 40% 98%;
-    --secondary: 217 33% 27%;
+
+    /* Secondary buttons (Your slate) */
+    --secondary: 217 33% 27%; /* slate-700 */
     --secondary-foreground: 210 40% 98%;
-    --muted: 217 33% 22%;
-    --muted-foreground: 215 20% 65%;
-    --accent: 217 33% 27%;
+
+    /* Muted (Receiver chat bubble) */
+    --muted: 217 33% 27%; /* slate-700 */
+    --muted-foreground: 215 20% 65%; /* slate-400 */
+
+    /* Hover states */
+    --accent: 217 33% 22%; /* slate-800 */
     --accent-foreground: 210 40% 98%;
+
+    /* Destructive (red) */
     --destructive: 0 63% 31%;
     --destructive-foreground: 210 40% 98%;
-    --border: 217 33% 27%;
-    --input: 217 33% 22%;
+
+    /* --- THE BORDER FIX --- */
+    /* Make borders blend in (like your example) */
+    --border: 217 33% 27%; /* slate-700 */
+
+    /* Input field backgrounds */
+    --input: 217 33% 24%; /* slate-700 */
+
+    /* Focus rings (Your Purple) */
     --ring: 262 52% 57%;
+    
+    /* Radius */
+    --radius: 0.75rem; /* 12px / rounded-xl */
   }
 }
 
