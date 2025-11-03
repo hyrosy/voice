@@ -1,32 +1,45 @@
 // In src/pages/ClientOrderPage.tsx
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
-// Added Bell icon
-import { Download, Check, RotateCcw, Banknote, FileText, Package, MessageSquare, Copy, CreditCard, CheckCircle, ChevronDown, ChevronUp, Star, Bell } from 'lucide-react';
-import AccordionItem from '../components/AccordionItem'; // Import our new component
+import { 
+  Download, Check, RotateCcw, Banknote, FileText, Package, MessageSquare, 
+  Copy, CreditCard, CheckCircle, ChevronDown, ChevronUp, Star, Bell, Info, Send, Wallet, History
+} from 'lucide-react';
+import AccordionItem from '../components/AccordionItem';
 import ChatBox from '../components/ChatBox';
 import emailjs from '@emailjs/browser';
 
-// Define the shape of our data for this page
+// --- shadcn/ui Imports ---
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Label } from "@/components/ui/label";
+import { Elements } from '@stripe/react-stripe-js';
+import { loadStripe } from '@stripe/stripe-js';
+import StripeCheckoutForm from '../components/StripeCheckoutForm';
+// ---
+
+const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY);
+
+// --- 1. UPDATED Order Interface ---
 interface Order {
   client_email: any;
   id: string;
   order_id_string: string;
   client_name: string;
   status: string;
-  total_price: number;
+  total_price: number | null; // Can be null
   payment_method: 'stripe' | 'bank' | null;
   script: string;
   revisions_used: number;
-  actor_id: string; // Added actor_id
+  actor_id: string;
   actors: {
-      id: string; // Added actor id
+      id: string;
       ActorEmail: any;
       ActorName: string;
       revisions_allowed: number;
-      // Add fields needed for conditional display
       direct_payment_enabled?: boolean;
       bank_name?: string | null;
       bank_holder_name?: string | null;
@@ -34,9 +47,27 @@ interface Order {
       bank_account_number?: string | null;
   };
   deliveries: { file_url: string, created_at: string }[];
+  // New Quote Fields
+  service_type: 'voice_over' | 'scriptwriting' | 'video_editing';
+  offer_price: number | null;
+  word_count?: number;
+  usage?: string | null;
+  quote_est_duration?: string | null;
+  quote_video_type?: string | null;
+  quote_footage_choice?: string | null;
+  // NEW: Add offers array and latest_offer object
+  offers: Offer[];
+  latest_offer: Offer | null;
 }
 
-// --- NEW: Interface for Review Data ---
+interface Offer {
+  id: string;
+  created_at: string;
+  offer_title: string;
+  offer_agreement: string | null;
+  offer_price: number;
+}
+
 interface Review {
     id: string;
     rating: number;
@@ -44,30 +75,30 @@ interface Review {
     created_at: string;
 }
 
-
-// --- ADD BANK DETAILS ARRAY ---
+// Bank details for "Awaiting Payment"
 const bankOptions = [
     { name: 'Attijariwafa Bank', holder: 'UCPMAROC', iban: 'MA64 0077 8000 0219 5000 0005 47', accountNumber: '0077 8000 0219 5000 0005 47' },
     { name: 'CIH Bank', holder: 'HYROSY LLC', iban: 'MA64 2307 8059 1321 2210 5711 02', accountNumber: '2307 8059 1321 2210 5711 02' },
 ];
-// --- END BANK DETAILS ---
 
 const ClientOrderPage = () => {
-    const { orderId } = useParams<{ orderId: string }>(); // Get the ID from the URL
+    const { orderId } = useParams<{ orderId: string }>();
     const [order, setOrder] = useState<Order | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
     const [isLoggedIn, setIsLoggedIn] = useState(false);
-    const [copySuccess, setCopySuccess] = useState(''); // State for copy feedback
-    const [expandedBank, setExpandedBank] = useState<string | null>(bankOptions[0]?.name || null); // Default to first bank open
+    const [copySuccess, setCopySuccess] = useState('');
+    const [expandedBank, setExpandedBank] = useState<string | null>(null);
     const [openSections, setOpenSections] = useState({
         payment: true,
-        script: false,
+        script: true,
         deliveries: true,
-        communication: true
-    });
+        communication: true,
+        quote_details: true,
+        offer_history: false, // Start history closed
+});
     
-    // --- State for Reviews ---
+    // Review State
     const [rating, setRating] = useState<number>(0);
     const [hoverRating, setHoverRating] = useState<number>(0);
     const [comment, setComment] = useState<string>('');
@@ -76,36 +107,36 @@ const ClientOrderPage = () => {
     const [existingReview, setExistingReview] = useState<Review | null>(null);
     const [isLoadingReview, setIsLoadingReview] = useState<boolean>(true);
     const [isChatVisible, setIsChatVisible] = useState(true);
-    const [isLoading, setIsLoading] = useState(false);
-
-    // --- NEW: State for Mark as Paid ---
-    const [notifyingAdmin, setNotifyingAdmin] = useState(false); // State for button feedback
-    const [notificationMessage, setNotificationMessage] = useState(''); // State for feedback message
-
-
+    
+    // --- 2. NEW Payment State ---
+    const [paymentMethod, setPaymentMethod] = useState<'stripe' | 'bank' | null>(null);
+    const [clientSecret, setClientSecret] = useState<string | null>(null);
+    const [isSettingUpStripe, setIsSettingUpStripe] = useState(false);
+    const [statusMessage, setStatusMessage] = useState('');
+    const [notifyingAdmin, setNotifyingAdmin] = useState(false);
+    const [notificationMessage, setNotificationMessage] = useState('');
+    const [isLoading, setIsLoading] = useState(true);
     const toggleSection = (section: keyof typeof openSections) => {
         setOpenSections(prev => ({ ...prev, [section]: !prev[section] }));
     };
 
 
-    const fetchOrderAndReview = async () => {
-        setIsLoading(true);
-        setIsLoadingReview(true);
-        setError('');
-        setExistingReview(null);
-
-         // 1. Check for Order ID first. This is required.
+    // --- 3. UPDATED fetchOrderAndReview ---
+    const fetchOrderAndReview = useCallback(async () => {
          if (!orderId) {
              setError('No order ID provided.');
              setLoading(false);
-             setIsLoadingReview(false);
              return;
          }
 
-         // 2. Fetch the order details. This works for anon users due to RLS.
          const { data: orderData, error: orderError } = await supabase
              .from('orders')
-             .select(`*, actors ( id, ActorName, revisions_allowed ), deliveries ( file_url, created_at )`)
+             .select(`
+                *,
+                actors ( id, ActorName, ActorEmail, revisions_allowed, direct_payment_enabled, bank_name, bank_holder_name, bank_iban, bank_account_number ),
+                deliveries ( file_url, created_at ),
+                offers ( * )
+             `)
              .eq('id', orderId)
              .order('created_at', { foreignTable: 'deliveries', ascending: false })
              .single();
@@ -114,66 +145,62 @@ const ClientOrderPage = () => {
              setError('Order not found or you do not have permission.');
              console.error(orderError);
              setLoading(false);
-             setIsLoadingReview(false);
-             return; // Stop if order fetch fails
+             return;
          }
 
-         setOrder(orderData); // Set the order
-         setLoading(false); // Main page loading is done             
+         // --- NEW: Process the offers ---
+         if (orderData.offers && orderData.offers.length > 0) {
+           // Sort offers to find the newest one
+           orderData.offers.sort((a: Offer, b: Offer) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+           orderData.latest_offer = orderData.offers[0]; // Attach the latest one
+         } else {
+           orderData.latest_offer = null;
+         }
+         // ---
+
+         setOrder(orderData as Order);
+         setLoading(false);
+         
+         // Reset payment state on fetch
+         setPaymentMethod(null);
+         setClientSecret(null);
+         setStatusMessage('');
             
-                     // 3. Now, separately check for a user session
          const { data: { user } } = await supabase.auth.getUser();
-                     // If no user, we can't check for reviews, but the page can still load.
          if (!user) {
-             console.log("No user session, displaying order details anonymously.");
-             setIsLoadingReview(false); // Stop review loading
-             return; // We're done
+             setIsLoadingReview(false);
+             return;
          }
+         setIsLoggedIn(true);
 
-         // 4. If we have a user, proceed with client profile and review check
-         setIsLoggedIn(true); // Set logged-in state
-        let clientProfileId: string | null = null;
-        try {
-             const { data: clientProfile, error: clientError } = await supabase
-                .from('clients')
-                .select('id')
-                .eq('user_id', user.id)
-                .single();
-                           if (clientError) {
-                   console.warn("Could not fetch client profile ID:", clientError.message);
-                   // Don't throw, just means we can't check for reviews
-               }
+         let clientProfileId: string | null = null;
+         try {
+             const { data: clientProfile } = await supabase.from('clients').select('id').eq('user_id', user.id).single();
              clientProfileId = clientProfile?.id ?? null;
-        } catch(e) {
-             console.error("Could not fetch client profile ID:", e);
-        }
-            // --- Check for existing review for this order ---
-                     if (orderData.status === 'Completed' && clientProfileId) { // Check against orderData      
-            try {
-                const { data: reviewData, error: reviewError } = await supabase
+         } catch(e) { /* ignore */ }
+            
+         if (orderData.status === 'Completed' && clientProfileId) {
+             setIsLoadingReview(true);
+             try {
+                const { data: reviewData } = await supabase
                     .from('reviews')
                     .select('*')
                     .eq('order_id', orderId)
                     .eq('client_id', clientProfileId)
                     .maybeSingle();
-
-                if (reviewError) {
-                    console.error("Error checking for existing review:", reviewError);
-                } else if (reviewData) {
-                    setExistingReview(reviewData as Review);
-                }
-             } catch (e) {
-                 console.error("Exception checking review:", e);
-             }
-        }
-
-        setLoading(false);
-        setIsLoadingReview(false);
-    };
+                if (reviewData) setExistingReview(reviewData as Review);
+             } catch (e) { console.error("Exception checking review:", e); }
+             setIsLoadingReview(false);
+         } else {
+            setIsLoadingReview(false);
+         }
+    }, [orderId]); // Use useCallback
 
      useEffect(() => {
         fetchOrderAndReview();
-    }, [orderId]);
+    }, [fetchOrderAndReview]); // Use the memoized function
+
+
 
     const handleApproval = async () => {
         if (!order) return;
@@ -333,6 +360,99 @@ const ClientOrderPage = () => {
     };
     // --- END Mark as Paid Handler ---
 
+    // --- 4. NEW Payment Handlers (from QuoteCalculatorModal) ---
+    const handlePaymentMethodChange = async (method: 'stripe' | 'bank') => {
+      if (!order) return;
+
+      // Prefer the latest offer price, fall back to the legacy offer_price field if present.
+      const amount = order.latest_offer?.offer_price ?? order.offer_price ?? null;
+      if (amount === null || amount === undefined) {
+        setStatusMessage('No offer price available. Please contact support.');
+        return;
+      }
+      
+      setPaymentMethod(method);
+      setStatusMessage('');
+
+      if (method === 'stripe') {
+        setIsSettingUpStripe(true);
+        setStatusMessage('Initializing secure payment...');
+        try {
+          const { data, error: invokeError } = await supabase.functions.invoke('create-payment-intent', {
+            body: { amount }, // safe non-null amount variable
+          });
+          if (invokeError) throw invokeError;
+          if (data.error) throw new Error(data.error);
+          if (!data.client_secret) throw new Error("Payment client secret is missing.");
+          
+          setClientSecret(data.client_secret);
+          setStatusMessage('');
+        } catch (error) {
+          setStatusMessage(`Error: ${(error as Error).message}. Please try again.`);
+          setClientSecret(null);
+          setPaymentMethod(null);
+        } finally {
+          setIsSettingUpStripe(false);
+        }
+      }
+    };
+
+    const onSuccessfulStripePayment = async (intentId: string) => {
+      if (!order || !order.latest_offer) return;
+      setStatusMessage('Processing Payment...');
+      try {
+        const { error } = await supabase
+          .from('orders')
+          .update({
+            status: 'In Progress',
+            payment_method: 'stripe',
+            stripe_payment_intent_id: intentId,
+            total_price: order.latest_offer.offer_price // <-- SET FINAL PRICE
+          })
+          .eq('id', order.id);
+        
+        if (error) throw error;
+
+        // Send notification email to Actor
+        const emailParams = {
+            actorName: order.actors.ActorName,
+            actorEmail: order.actors.ActorEmail,
+            orderIdString: order.order_id_string,
+            clientName: order.client_name,
+        };
+        emailjs.send('service_r3pvt1s', 'template_zmx5e0u', emailParams, 'I51tDIHsXYKncMQpO')
+          .catch(err => console.error('Failed to send actor notification email:', err));
+        
+        setStatusMessage('Payment Successful! The order is now In Progress.');
+        fetchOrderAndReview(); // Refresh the page
+      } catch (err) {
+        setStatusMessage(`Error: ${(err as Error).message}. Please contact support.`);
+      }
+    };
+
+    const handleBankTransferConfirmation = async () => {
+      if (!order || !order.latest_offer) return;
+      setStatusMessage('Updating order...');
+      try {
+        const { error } = await supabase
+          .from('orders')
+          .update({
+            status: 'Awaiting Payment',
+            payment_method: 'bank',
+            total_price: order.latest_offer.offer_price // <-- SET FINAL PRICE
+          })
+          .eq('id', order.id);
+        
+        if (error) throw error;
+        fetchOrderAndReview();
+      } catch (err) {
+        setStatusMessage(`Error: ${(err as Error).message}.`);
+      }
+    };
+    // --- END Payment Handlers ---
+
+
+
     if (loading) {
         return <div className="min-h-screen bg-slate-900 flex items-center justify-center text-white">Loading Your Order...</div>;
     }
@@ -368,7 +488,7 @@ const ClientOrderPage = () => {
                             </div>
                             <div>
                                 <p className="text-sm text-slate-400">Total Price</p>
-                                <p className="font-bold text-white text-lg">{order.total_price.toFixed(2)} MAD</p>
+                                <p className="font-bold text-white text-lg">{(order.total_price ?? 0).toFixed(2)} MAD</p>
                             </div>
                         </div>
                         <div className="mt-6 border-t border-slate-700 pt-4 text-center">
@@ -383,7 +503,103 @@ const ClientOrderPage = () => {
                             )}
                         </div>
                     </div>
-                    
+
+                    {/* --- 5. UPDATED "Accept Offer" Section --- */}
+                    {order.status === 'offer_made' && order.latest_offer && (
+                      <Card className="animate-in fade-in duration-300 border-primary shadow-lg shadow-primary/10">
+                        <CardHeader>
+                          <CardTitle className="text-2xl flex items-center gap-3">
+                            <Banknote className="text-primary" />
+                            Your Quote is Ready
+                          </CardTitle>
+                          <CardDescription>
+                            {order.actors.ActorName} has sent you an offer for your "{order.service_type.replace('_', ' ')}" request.
+                          </CardDescription>
+                        </CardHeader>
+                        <CardContent className="space-y-6">
+                          
+                          {/* --- NEW: Offer Details --- */}
+                          <Card className="bg-background">
+                            <CardHeader className="pb-4">
+                              <CardTitle className="text-lg">
+                                {order.latest_offer.offer_title}
+                              </CardTitle>
+                              <CardDescription>
+                                {new Date(order.latest_offer.created_at).toLocaleString()}
+                              </CardDescription>
+                            </CardHeader>
+                            <CardContent className="space-y-4">
+                              {order.latest_offer.offer_agreement && (
+                                <p className="text-sm text-foreground whitespace-pre-wrap">
+                                  {order.latest_offer.offer_agreement}
+                                </p>
+                              )}
+                              <div className="text-right bg-muted p-4 rounded-lg">
+                                <Label className="text-sm text-muted-foreground">Total Price</Label>
+                                <p className="text-4xl font-bold text-primary">{order.latest_offer.offer_price.toFixed(2)} MAD</p>
+                              </div>
+                            </CardContent>
+                          </Card>
+                          {/* --- END: Offer Details --- */}
+
+                            <div className="pt-6 border-t">
+                            <Label className="block mb-3 font-medium">Choose Payment Method *</Label>
+                            <RadioGroup value={paymentMethod || ''} onValueChange={(val) => handlePaymentMethodChange(val as 'stripe' | 'bank')}>
+                              <div className="space-y-4">
+                                <Label htmlFor="r-stripe" className={`p-4 border-2 rounded-lg flex items-center gap-4 cursor-pointer ${paymentMethod === 'stripe' ? 'border-primary' : 'border-border'}`}>
+                                  <RadioGroupItem value="stripe" id="r-stripe" disabled={isSettingUpStripe} />
+                                  <CreditCard className="w-5 h-5" />
+                                  <div>
+                                    <p className="font-semibold">Pay by Card (Stripe)</p>
+                                    <p className="text-sm text-muted-foreground">Securely pay with your credit/debit card.</p>
+                                  </div>
+                                </Label>
+                                <Label htmlFor="r-bank" className={`p-4 border-2 rounded-lg flex items-center gap-4 cursor-pointer ${paymentMethod === 'bank' ? 'border-primary' : 'border-border'}`}>
+                                  <RadioGroupItem value="bank" id="r-bank" disabled={isSettingUpStripe} />
+                                  <Wallet className="w-5 h-5" />
+                                  <div>
+                                    <p className="font-semibold">Bank Transfer</p>
+                                    <p className="text-sm text-muted-foreground">Receive payment details and pay manually.</p>
+                                  </div>
+                                </Label>
+                              </div>
+                            </RadioGroup>
+
+                            {statusMessage && (
+                              <p className={`text-center text-sm mt-4 ${statusMessage.includes('Error') ? 'text-destructive' : 'text-muted-foreground'}`}>
+                                {statusMessage}
+                              </p>
+                            )}
+
+                            {paymentMethod === 'stripe' && clientSecret && !isSettingUpStripe && (
+                              <div className="mt-4 pt-4 border-t">
+                                <Elements stripe={stripePromise} options={{ clientSecret, appearance: { theme: 'night', labels: 'floating' } }}>
+                                  <StripeCheckoutForm onSuccessfulPayment={onSuccessfulStripePayment} />
+                                </Elements>
+                              </div>
+                            )}
+                            {paymentMethod === 'bank' && (
+                              <Button onClick={handleBankTransferConfirmation} className="w-full mt-4" size="lg">
+                                Accept & Get Bank Details
+                              </Button>
+                            )}
+                          </div>
+                        </CardContent>
+                      </Card>
+                    )}
+                    {/* --- END: Accept Offer Section --- */}                    
+
+
+
+
+
+
+
+
+
+
+
+
 
                     {/* --- 2. Accordion Sections for All Other Details --- */}
                     <div className="space-y-4">
@@ -511,15 +727,77 @@ const ClientOrderPage = () => {
                             )}
                         </AccordionItem>
 
-                        {/* Script Accordion */}
-                        <AccordionItem title="Script" icon={<FileText size={20}/>} isOpen={openSections.script} onToggle={() => toggleSection('script')}>
-                            <div className="bg-slate-900 p-4 rounded-lg max-h-60 overflow-y-auto">
-                               <p className="text-slate-300 whitespace-pre-wrap">{order.script}</p>
+                        {/* --- NEW: Offer History Accordion --- */}
+                        {order.offers && order.offers.length > 0 && (
+                          <AccordionItem
+                            title="Offer History"
+                            icon={<History size={18} />}
+                            isOpen={openSections.offer_history}
+                            onToggle={() => toggleSection('offer_history')}
+                          >
+                            <div className="bg-slate-900 p-4 rounded-lg space-y-3 max-h-40 overflow-y-auto custom-scrollbar">
+                              {order.offers.map(offer => (
+                                <div key={offer.id} className="pb-3 border-b border-slate-700 last:border-b-0">
+                                  <div className="flex justify-between items-center mb-1">
+                                    <span className="font-semibold text-white">{offer.offer_title}</span>
+                                    <span className="font-bold text-lg text-primary">{offer.offer_price.toFixed(2)} MAD</span>
+                                  </div>
+                                  <p className="text-xs text-slate-400 mb-2">{new Date(offer.created_at).toLocaleString()}</p>
+                                  <p className="text-sm text-slate-300 whitespace-pre-wrap">{offer.offer_agreement || "No agreement details provided."}</p>
+                                </div>
+                              ))}
                             </div>
+                          </AccordionItem>
+                        )}
+
+
+                        {/* --- NEW: Quote Details Section --- */}
+                        {order.service_type !== 'voice_over' && (
+                          <AccordionItem
+                            title="Quote Details"
+                            icon={<Info size={18} />}
+                            isOpen={openSections.quote_details}
+                            onToggle={() => toggleSection('quote_details')}
+                          >
+                            <div className="bg-slate-900 p-4 rounded-lg space-y-2 text-sm">
+                              {order.service_type === 'scriptwriting' && (
+                                <>
+                                  <div className="flex justify-between"><span className="text-slate-400">Est. Video Duration:</span><span className="font-semibold text-white">{order.quote_est_duration || 'N/A'} min</span></div>
+                                  <div className="flex justify-between"><span className="text-slate-400">Est. Word Count:</span><span className="font-semibold text-white">{order.word_count || 'N/A'}</span></div>
+                                </>
+                              )}
+                              {order.service_type === 'video_editing' && (
+                                <>
+                                  <div className="flex justify-between"><span className="text-slate-400">Video Type:</span><span className="font-semibold text-white capitalize">{order.quote_video_type || 'N/A'}</span></div>
+                                  <div className="flex justify-between"><span className="text-slate-400">Footage:</span><span className="font-semibold text-white">{order.quote_footage_choice === 'has_footage' ? 'Client has footage' : 'Needs stock footage'}</span></div>
+                                </>
+                              )}
+                            </div>
+          
+                          </AccordionItem>
+                        )}
+
+
+
+                        {/* Script Accordion */}
+                        <AccordionItem
+                          title={order.service_type === 'voice_over' ? "Script" : "Project Description"}
+                          icon={<FileText size={20}/>}
+                          isOpen={openSections.script}
+                          onToggle={() => toggleSection('script')}
+                        >
+                          <div className="bg-slate-900 p-4 rounded-lg max-h-60 overflow-y-auto">
+                             <p className="text-slate-300 whitespace-pre-wrap">{order.script}</p>
+                          </div>
                         </AccordionItem>
 
                         {/* Deliveries Accordion */}
-                        <AccordionItem title="Deliveries" icon={<Package size={20}/>} isOpen={openSections.deliveries} onToggle={() => toggleSection('deliveries')}>
+                            <AccordionItem 
+                            title="Deliveries" 
+                            icon={<Package size={20}/>} 
+                            isOpen={openSections.deliveries} 
+                            onToggle={() => toggleSection('deliveries')}
+                            >                            
                             {order.deliveries && order.deliveries.length > 0 ? (
                                 <div className="space-y-6">
                                     {order.deliveries.map((delivery, index) => (

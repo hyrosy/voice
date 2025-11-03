@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../supabaseClient';
 import { Link, useNavigate } from 'react-router-dom';
-import { Heart } from 'lucide-react'; // <-- Import Heart icon
-// --- Interface remains the same ---
+import { Heart, Star } from 'lucide-react'; // <-- 1. Import Star icon
+
 interface Order {
   id: string;
   order_id_string: string;
@@ -103,7 +103,14 @@ const ClientDashboardPage = () => {
                     {/* --- NEW BUTTON CONTAINER --- */}
                     {/* This stacks buttons vertically on mobile, and puts them in a row on desktop */}
                     <div className="flex flex-col sm:flex-row sm:items-center gap-3 w-full sm:w-auto">
-                        
+                        {/* --- 2. ADD THIS NEW LINK --- */}
+                        <Link
+                            to="/my-favorites"
+                            className="order-first sm:order-none w-full sm:w-auto px-5 py-2.5 bg-yellow-600 hover:bg-yellow-700 rounded-lg text-white font-semibold text-sm transition-colors shadow flex items-center justify-center gap-2"
+                        >
+                            <Star size={16} /> My Favorites
+                        </Link>
+                        {/* --- END OF NEW LINK --- */}
                         {/* "My Shortlist" Button (MOVED HERE) */}
                         <Link
                             to="/my-shortlist"

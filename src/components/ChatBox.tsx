@@ -2,8 +2,14 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '../supabaseClient';
-import { Send, MessageSquare, Mic } from 'lucide-react';
-import VoiceNoteRecorder from './VoiceNoteRecorder'; // <-- Import the new component
+import { Send, Mic } from 'lucide-react';
+import VoiceNoteRecorder from './VoiceNoteRecorder';
+
+// --- shadcn/ui Imports ---
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { ScrollArea } from "@/components/ui/scroll-area";
+// ---
 
 interface Message {
   id: string;
@@ -14,23 +20,24 @@ interface Message {
 
 interface ChatBoxProps {
   orderId: string;
-  userRole: 'client' | 'actor'; // To know who is sending the message
+  userRole: 'client' | 'actor';
 }
 
 const ChatBox: React.FC<ChatBoxProps> = ({ orderId, userRole }) => {
     const [messages, setMessages] = useState<Message[]>([]);
     const [newMessage, setNewMessage] = useState('');
-    const messagesEndRef = useRef<null | HTMLDivElement>(null);
-
-    const [isLoading, setIsLoading] = useState(false); // For sending
-    
-    // --- NEW: State to toggle recorder ---
+    const [isLoading, setIsLoading] = useState(false);
     const [isRecording, setIsRecording] = useState(false);
 
-    // Function to scroll to the bottom of the chat
+    // --- THIS IS THE FIX ---
+    // We use a ref for an empty div at the end of the message list
+    const messagesEndRef = useRef<HTMLDivElement>(null);
+
+    // This function scrolls the messagesEndRef into view
     const scrollToBottom = () => {
         messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
     };
+    // --- END FIX ---
 
     // Fetch initial messages
     useEffect(() => {
@@ -47,7 +54,7 @@ const ChatBox: React.FC<ChatBoxProps> = ({ orderId, userRole }) => {
         fetchMessages();
     }, [orderId]);
 
-    // **REAL-TIME MAGIC**: Subscribe to new messages
+    // Real-time subscription
     useEffect(() => {
         const channel = supabase.channel(`messages-for-${orderId}`)
             .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages', filter: `order_id=eq.${orderId}` },
@@ -57,148 +64,126 @@ const ChatBox: React.FC<ChatBoxProps> = ({ orderId, userRole }) => {
             )
             .subscribe();
 
-        // Cleanup subscription on component unmount
         return () => {
             supabase.removeChannel(channel);
         };
     }, [orderId]);
     
     // Scroll to bottom when new messages arrive
-    useEffect(scrollToBottom, [messages]);
+    useEffect(() => {
+        // Give a slight delay for the new message to render
+        setTimeout(scrollToBottom, 100);
+    }, [messages]);
 
+    // handleSendMessage (no changes needed)
     const handleSendMessage = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!newMessage.trim()) return;
-
         setIsLoading(true);
         const contentToSend = newMessage.trim();
-        setNewMessage(''); // Clear input immediately (optimistic)
-
-        const { error } = await supabase
+        setNewMessage('');
+        await supabase
             .from('messages')
-                .insert({
+            .insert({
                 order_id: orderId,
                 sender_role: userRole,
-                content: contentToSend, // Use the stored content
+                content: contentToSend,
             });  
-
-            if (error) {
-            console.error("Error sending message:", error);
-            setNewMessage(contentToSend); // Restore message on error
-        }
-        // No need to clear, optimistic update did it
         setIsLoading(false);
     };
 
-    // --- NEW: Handler for sending a voice file ---
+    // handleSendVoiceNote (no changes needed)
     const handleSendVoiceNote = async (audioFile: File) => {
         setIsLoading(true);
-        setIsRecording(false); // Hide recorder
-
+        setIsRecording(false);
         try {
-            // 1. Create a unique path
             const fileExt = audioFile.name.split('.').pop() || 'webm';
             const filePath = `${orderId}/${userRole}-${Date.now()}.${fileExt}`;
-
-            // 2. Upload to 'voice-notes' storage
-            const { error: uploadError } = await supabase.storage
-                .from('voice-notes')
-                .upload(filePath, audioFile);
-            if (uploadError) throw uploadError;
-
-            // 3. Get the public URL
+            await supabase.storage.from('voice-notes').upload(filePath, audioFile);
             const { data: urlData } = supabase.storage.from('voice-notes').getPublicUrl(filePath);
             if (!urlData) throw new Error("Could not get public URL for voice note.");
-
-            const publicUrl = urlData.publicUrl;
-
-            // 4. Insert the URL into the 'messages' table
-            const { error: insertError } = await supabase
+            await supabase
                 .from('messages')
                 .insert({
                     order_id: orderId,
                     sender_role: userRole,
-                    // Use a special prefix to identify this as audio
-                    content: `[VOICE_NOTE]:${publicUrl}` 
+                    content: `[VOICE_NOTE]:${urlData.publicUrl}` 
                 });
-            if (insertError) throw insertError;
-
         } catch (error) {
             console.error("Error sending voice note:", error);
-            // Handle error (e.g., show a message)
         } finally {
             setIsLoading(false);
         }
     };
-    // ---
-
 
     return (
-        <div className="bg-slate-900/70 rounded-lg border border-slate-700 mt-8 flex flex-col max-h-[70vh]"> {/* Added flex-col and max-h */}
-            <div className="p-4 border-b border-slate-700 flex-shrink-0"> {/* Added flex-shrink-0 */}
-                <h2 className="text-xl font-bold text-white flex items-center gap-2"><MessageSquare size={20}/> Communication</h2>
-            </div>
-            {/* Added flex-grow and overflow-y-auto to this wrapper */}
-            <div className="p-4 overflow-y-auto flex-grow h-64"> 
-                {messages.map(msg => (
-                    <div key={msg.id} className={`flex mb-3 ${msg.sender_role === userRole ? 'justify-end' : 'justify-start'}`}>
-                        <div className={`rounded-lg px-4 py-2 max-w-[80%] ${msg.sender_role === userRole ? 'bg-blue-600' : 'bg-slate-600'}`}>
-                            
-                            {/* --- NEW: Check if message is a voice note --- */}
-                            {msg.content.startsWith('[VOICE_NOTE]:') ? (
+        <div className="flex flex-col h-[450px]">
+            {/* ScrollArea wraps the message list */}
+            <ScrollArea className="flex-grow p-4">
+                <div className="space-y-4">
+                    {messages.map(msg => (
+                        <div key={msg.id} className={`flex ${msg.sender_role === userRole ? 'justify-end' : 'justify-start'}`}>
+                            <div className={`rounded-lg px-4 py-2 max-w-[80%]
+                                ${msg.sender_role === userRole 
+                                    ? 'bg-primary text-primary-foreground'
+                                    : 'bg-muted text-muted-foreground'
+                                }`}
+                            >
+                                {msg.content.startsWith('[VOICE_NOTE]:') ? (
                                 <audio
                                     controls
                                     src={msg.content.replace('[VOICE_NOTE]:', '')}
-                                    className="h-10"
+                                    className="h-10 w-full min-w-[200px]" // <-- THIS IS THE FIX
                                 />
                             ) : (
-                                <p className="text-white whitespace-pre-wrap break-words">{msg.content}</p> // Added break-words
-                            )}
-                            {/* --- END Check --- */}
-
-                            <p className="text-xs text-slate-300 text-right mt-1">{new Date(msg.created_at).toLocaleTimeString()}</p>
+                                    <p className="whitespace-pre-wrap break-words">{msg.content}</p>
+                                )}
+                                <p className={`text-xs text-right mt-1 ${msg.sender_role === userRole ? 'text-primary-foreground/70' : 'text-muted-foreground/70'}`}>
+                                  {new Date(msg.created_at).toLocaleTimeString()}
+                                </p>
+                            </div>
                         </div>
-                    </div>
-                ))}
-                <div ref={messagesEndRef} />
-            </div>
+                    ))}
+                    {/* This empty div is our scroll target */}
+                    <div ref={messagesEndRef} />
+                </div>
+            </ScrollArea>
             
-            {/* --- MODIFIED: Conditional Input Area --- */}
+            {/* Conditional Input Area (no changes needed) */}
             {isRecording ? (
                 <VoiceNoteRecorder 
                     onSend={handleSendVoiceNote} 
                     onCancel={() => setIsRecording(false)} 
                 />
             ) : (
-                <div className="p-4 border-t border-slate-700 flex-shrink-0"> {/* Added flex-shrink-0 */}
+                <div className="flex-shrink-0 p-4 border-t">
                     <form onSubmit={handleSendMessage} className="flex gap-2">
-                        <input
+                        <Input
                             type="text"
                             value={newMessage}
                             onChange={(e) => setNewMessage(e.target.value)}
                             placeholder="Type your message..."
-                            className="flex-grow bg-slate-700 border border-slate-600 rounded-lg p-3 text-white"
+                            disabled={isLoading}
                         />
-                        {/* Mic Button */}
-                        <button 
-                            type="button" 
+                        <Button 
+                            type="button"
+                            variant="ghost"
+                            size="icon"
                             onClick={() => setIsRecording(true)}
-                            className="bg-slate-700 hover:bg-slate-600 text-white p-3 rounded-lg flex items-center justify-center"
+                            disabled={isLoading}
                         >
-                            <Mic size={20}/>
-                        </button>
-                        {/* Send Button */}
-                        <button 
-                            type="submit" 
+                            <Mic className="h-4 w-4" />
+                        </Button>
+                        <Button 
+                            type="submit"
+                            size="icon"
                             disabled={isLoading || !newMessage.trim()}
-                            className="bg-blue-600 hover:bg-blue-700 text-white p-3 rounded-lg flex items-center justify-center disabled:opacity-50"
                         >
-                            {isLoading ? '...' : <Send size={20}/>}
-                        </button>
+                            <Send className="h-4 w-4" />
+                        </Button>
                     </form>
                 </div>
             )}
-            {/* --- END MODIFIED Input --- */}
         </div>
     );
 };

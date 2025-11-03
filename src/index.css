@@ -35,16 +35,6 @@ button:hover {
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
 }
 
-body {
-  /* --- ADD THIS LINE --- */
-  @apply bg-slate-900;
-  
-  /* Your existing styles are good */
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  text-rendering: optimizeLegibility;
-}
-
 /* 1. Hide the Google banner */
 body > .skiptranslate {
   display: none !important;
@@ -83,4 +73,99 @@ body.translated-ltr, body.translated-rtl {
 .VIpgJd-ZVi9od-ORhb-OEVmcd,
 .VIpgJd-ZVi9od-l4eHX-hSRGPd {
   display: none !important;
+}
+
+/* --- REPLACED @layer base block --- */
+@layer base {
+  :root {
+    /* Main page background (very dark, near-black) */
+    --background: 224 71% 4%; /* hsl(224, 71%, 4%) - This is slate-950 */
+    /* Default text (light gray) */
+    --foreground: 210 40% 98%; /* hsl(210, 40%, 98%) - This is slate-50 */
+
+    /* Card/Modal/Accordion background (lighter) */
+    --card: 222 47% 11%; /* hsl(222, 47%, 11%) - This is slate-900 */
+    --card-foreground: 210 40% 98%; /* Text on cards */
+
+    /* Popover/Dropdown background */
+    --popover: 224 71% 4%; /* slate-950 */
+    --popover-foreground: 210 40% 98%;
+
+    /* Primary buttons (Your Purple) */
+    --primary: 262 52% 57%; /* hsl(262, 52%, 57%) - purple-600 */
+    --primary-foreground: 210 40% 98%; /* White text on buttons */
+
+    /* Secondary buttons */
+    --secondary: 217 33% 27%; /* slate-700 */
+    --secondary-foreground: 210 40% 98%;
+
+    /* Receiver chat bubble & muted text */
+    --muted: 217 33% 22%; /* slate-800 */
+    --muted-foreground: 215 20% 65%; /* slate-400 */
+
+    /* Hover states */
+    --accent: 217 33% 27%; /* slate-700 */
+    --accent-foreground: 210 40% 98%;
+
+    /* Destructive (red) */
+    --destructive: 0 63% 31%;
+    --destructive-foreground: 210 40% 98%;
+
+    /* Subtle borders for separation */
+    --border: 217 33% 27%; /* slate-700 */
+
+    /* Input field backgrounds */
+    --input: 217 33% 22%; /* slate-800 */
+
+    /* Focus rings */
+    --ring: 262 52% 57%; /* purple-600 */
+
+    /* Radius */
+    --radius: 0.5rem;
+  }
+
+  /* This forces the dark theme variables to be used */
+  .dark {
+    --background: 224 71% 4%;
+    --foreground: 210 40% 98%;
+    --card: 222 47% 11%;
+    --card-foreground: 210 40% 98%;
+    --popover: 224 71% 4%;
+    --popover-foreground: 210 40% 98%;
+    --primary: 262 52% 57%;
+    --primary-foreground: 210 40% 98%;
+    --secondary: 217 33% 27%;
+    --secondary-foreground: 210 40% 98%;
+    --muted: 217 33% 22%;
+    --muted-foreground: 215 20% 65%;
+    --accent: 217 33% 27%;
+    --accent-foreground: 210 40% 98%;
+    --destructive: 0 63% 31%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 217 33% 27%;
+    --input: 217 33% 22%;
+    --ring: 262 52% 57%;
+  }
+}
+
+/* This applies the theme variables to your app */
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+}
+
+/* This rule fixes the white audio player */
+.dark audio {
+  filter: invert(1) hue-rotate(180deg) brightness(0.9);
+}
+/* This makes the audio player visible on the primary-color bubble */
+.dark .bg-primary audio {
+  filter: invert(1) hue-rotate(180deg) brightness(1.2);
 }
