@@ -119,25 +119,27 @@ const DashboardOrders: React.FC = () => {
             ) : filteredOrders.length > 0 ? (
               filteredOrders.map(order => (
                 <Card key={order.id} className="p-0 overflow-hidden">
+                  {/* --- REPLACE THIS BUTTON --- */}
                   <Button
                     variant="ghost"
                     onClick={() => setSelectedOrder(order)}
-                    className={`w-full justify-between h-auto py-4 px-6 text-left ${
+                    className={`w-full flex flex-col sm:flex-row sm:items-center sm:justify-between h-auto py-4 px-6 text-left ${
                       order.status === 'awaiting_offer' ? 'border-l-4 border-yellow-500' :
                       order.status === 'Awaiting Actor Confirmation' ? 'border-l-4 border-green-500' : ''
                     }`}
                   >
-                    <div>
+                    <div className="flex-grow">
                       <p className="font-bold text-base text-foreground">
                         {order.service_type === 'voice_over' ? `Order #${order.order_id_string}` : `Quote #${order.order_id_string}`}
                       </p>
                       <p className="text-sm text-muted-foreground">Client: {order.client_name}</p>
                     </div>
-                    <span className={`px-3 py-1 text-xs font-semibold rounded-full ${
+                    
+                    <span className={`mt-3 sm:mt-0 flex-shrink-0 px-3 py-1 text-xs font-semibold rounded-full ${
                       order.status === 'Completed' ? 'bg-green-500/20 text-green-300' :
                       order.status === 'Awaiting Actor Confirmation' ? 'bg-green-500/20 text-green-300 animate-pulse' :
-                      order.status === 'awaiting_offer' ? 'bg-yellow-500/20 text-yellow-300' : // New status
-                      order.status === 'offer_made' ? 'bg-blue-500/20 text-blue-300' : // New status
+                      order.status === 'awaiting_offer' ? 'bg-yellow-500/20 text-yellow-300' :
+                      order.status === 'offer_made' ? 'bg-blue-500/20 text-blue-300' :
                       'bg-yellow-500/20 text-yellow-400'
                     }`}>
                       {order.status === 'awaiting_offer' ? 'Awaiting Offer' : order.status}
