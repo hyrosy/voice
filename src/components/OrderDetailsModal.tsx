@@ -12,6 +12,14 @@ import { Label } from "@/components/ui/label"; // <-- Import Label
 import ChatBox from './ChatBox';
 import ServiceDeliveryUploader from './ServiceDeliveryUploader';
 import { Textarea } from "@/components/ui/textarea"; // <-- Added Textarea
+import { 
+  Dialog, 
+  DialogContent, 
+  DialogHeader, 
+  DialogTitle, 
+  DialogDescription,
+  DialogFooter
+} from "@/components/ui/dialog";
 
 // Define the shape of the data we expect
 interface Order {
@@ -112,68 +120,7 @@ const OrderDetailsModal: React.FC<ModalProps> = ({ order, onClose, onUpdate, onA
     };
     // ---
 
-    const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-      const file = e.target.files?.[0];
-      if (!file) return;
-
-      setMessage('Uploading...');
-
-      try {
-          const { count, error: countError } = await supabase
-              .from('deliveries')
-              .select('*', { count: 'exact', head: true })
-              .eq('order_id', order.id);
-
-          if (countError) throw countError;
-          const newVersion = (count || 0) + 1;
-
-          const filePath = `${order.actor_id}/${order.id}/version_${newVersion}_${file.name}`;
-          const { error: uploadError } = await supabase.storage.from('final-audio').upload(filePath, file, { upsert: true });
-          if (uploadError) throw uploadError;
-
-          const { data: urlData } = supabase.storage.from('final-audio').getPublicUrl(filePath);
-
-          const { error: deliveryError } = await supabase
-              .from('deliveries')
-              .insert({
-                  order_id: order.id,
-                  actor_id: order.actor_id,
-                  file_url: urlData.publicUrl,
-                  version_number: newVersion
-              });
-          if (deliveryError) throw deliveryError;
-
-          const { error: updateError } = await supabase
-              .from('orders')
-              .update({ status: 'Pending Approval' })
-              .eq('id', order.id);
-          if (updateError) throw updateError;
-          
-          const emailParams = {
-              orderId: order.order_id_string,
-              order_uuid: order.id,
-              clientName: order.client_name,
-              clientEmail: order.client_email,
-              actorName: order.actors.ActorName,
-          };
-          
-          emailjs.send(
-              'service_r3pvt1s',
-              'template_2iuj3dr',
-              emailParams,
-              'I51tDIHsXYKncMQpO'
-          ).catch(err => console.error("Failed to send delivery email:", err));
-
-          alert('Delivery successful! The client has been notified to review.');
-          onUpdate();
-          onClose();
-
-      } catch (error) {
-          const err = error as Error;
-          alert(`An error occurred: ${err.message}`);
-          setMessage('');
-      }
-  };
+  
 
     const handleConfirmClick = async () => {
         if (!onActorConfirmPayment) return;
@@ -290,25 +237,22 @@ const OrderDetailsModal: React.FC<ModalProps> = ({ order, onClose, onUpdate, onA
 
 
     return (
-        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
-            {/* --- 3. Add flex-col and max-h for mobile scrolling --- */}
-            <div className="bg-slate-800 rounded-2xl p-6 sm:p-8 border border-slate-700/50 w-full max-w-2xl relative max-h-[90vh] flex flex-col">
-                <button onClick={onClose} className="absolute top-4 right-4 text-slate-400 hover:text-white z-10">
-                    <X size={24} />
-                </button>
-                
-{/* Header */}
-                <div className="flex-shrink-0 border-b border-slate-700 pb-4 mb-6">
-                    <h2 className="text-3xl font-bold text-white">
-                      {order.service_type === 'voice_over' ? `Order #${order.order_id_string}` : `Quote #${order.order_id_string}`}
-                    </h2>
-                    <p className="text-slate-400">Client: {order.client_name}</p>
-                    {/* --- ADDED SERVICE LABEL --- */}
-                    <span className="mt-2 inline-block px-3 py-1 text-xs font-semibold rounded-full bg-blue-500/20 text-blue-300 capitalize">
-                      {order.service_type.replace('_', ' ')}
-                    </span>
-                </div>
-
+      <>
+            <Dialog open={true} onOpenChange={onClose}>
+              <DialogContent className="w-screen h-screen max-w-none max-h-none rounded-none border-none p-0 flex flex-col 
+                                        sm:w-full sm:max-w-2xl sm:h-auto sm:max-h-[90vh] sm:rounded-lg sm:border">
+                {/* Header (with updated padding) */}
+                <DialogHeader className="p-4 sm:p-6 pb-4 border-b">
+                  <DialogTitle className="text-2xl sm:text-3xl font-bold">
+                    {order.service_type === 'voice_over' ? `Order #${order.order_id_string}` : `Quote #${order.order_id_string}`}
+                  </DialogTitle>
+                  <DialogDescription className="text-base">
+                    Client: {order.client_name}
+                  </DialogDescription>
+                  <span className="mt-2 inline-block px-3 py-1 text-xs font-semibold rounded-full bg-blue-500/20 text-blue-300 capitalize w-fit">
+                    {order.service_type.replace('_', ' ')}
+                  </span>
+                </DialogHeader>
                 {/* --- 4. Main Content (Scrollable) --- */}
                 <div className="flex-grow overflow-y-auto pr-2 -mr-4 custom-scrollbar">
                     
@@ -528,8 +472,8 @@ const OrderDetailsModal: React.FC<ModalProps> = ({ order, onClose, onUpdate, onA
                         </AccordionItem>
                     </div>
                 </div>
-            </div>
-
+            </DialogContent>
+            </Dialog>
             {/* This modal now appears on top of the OrderDetailsModal */}
             {isLibraryModalOpen && order.service_type === 'voice_over' && (
               <DeliverFromLibraryModal
@@ -538,8 +482,7 @@ const OrderDetailsModal: React.FC<ModalProps> = ({ order, onClose, onUpdate, onA
                 onDeliverySuccess={handleLibraryDeliverySuccess}
               />
             )}
-        </div>
+        </>
     );
 };
-
 export default OrderDetailsModal;
