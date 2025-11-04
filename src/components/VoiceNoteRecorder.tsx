@@ -123,12 +123,12 @@ const VoiceNoteRecorder: React.FC<VoiceNoteRecorderProps> = ({ onSend, onCancel 
 
   // --- JSX remains the same ---
   return (
-    <div className="flex items-center w-full gap-2 p-4 border-t border-slate-700">
+    <div className="flex items-center w-full gap-2 p-4 border-t border">
       {!audioURL ? (
         <>
           <button
             onClick={isRecording ? stopRecording : startRecording}
-            className={`p-3 rounded-full text-white transition-colors ${
+            className={`p-3 rounded-full text-foreground transition-colors ${
               isRecording
                 ? 'bg-red-600 hover:bg-red-700 animate-pulse'
                 : 'bg-blue-600 hover:bg-blue-700'
@@ -136,10 +136,10 @@ const VoiceNoteRecorder: React.FC<VoiceNoteRecorderProps> = ({ onSend, onCancel 
           >
             {isRecording ? <StopCircle size={20} /> : <Mic size={20} />}
           </button>
-          <div className="flex-grow text-sm text-slate-400">
+          <div className="flex-grow text-sm text-muted-foreground">
             {isRecording ? "Recording... Click to stop." : "Click the mic to record a voice note."}
           </div>
-          <button onClick={handleCancel} className="p-3 text-slate-400 hover:text-white">
+          <button onClick={handleCancel} className="p-3 text-muted-foreground hover:text-accent-foreground">
             Cancel
           </button>
         </>
@@ -149,7 +149,7 @@ const VoiceNoteRecorder: React.FC<VoiceNoteRecorderProps> = ({ onSend, onCancel 
           <button onClick={handleCancel} className="p-3 text-red-500 hover:text-red-400 rounded-full bg-slate-700">
             <Trash2 size={20} />
           </button>
-          <button onClick={handleSend} className="p-3 text-white bg-blue-600 hover:bg-blue-700 rounded-full">
+          <button onClick={handleSend} className="p-3 text-foreground bg-blue-600 hover:bg-blue-700 rounded-full">
             <Send size={20} />
           </button>
         </>

@@ -264,7 +264,7 @@ We reserve the right, at our sole discretion, to update, change or replace any p
             <div className="inline-flex items-center justify-center p-4 bg-gradient-to-br from-purple-500/20 to-pink-500/20 rounded-2xl mb-6">
               <Shield className="w-12 h-12 text-purple-300" />
             </div>
-            <h1 className="text-5xl lg:text-6xl font-light text-white leading-tight mb-6">
+            <h1 className="text-5xl lg:text-6xl font-light text-foreground leading-tight mb-6">
               Terms of <span className="font-bold bg-gradient-to-r from-pink-400 to-purple-400 bg-clip-text text-transparent">Service</span>
             </h1>
             <p className="text-xl text-gray-300 leading-relaxed max-w-3xl mx-auto mb-4">
@@ -282,7 +282,7 @@ We reserve the right, at our sole discretion, to update, change or replace any p
                 <AlertCircle className="w-6 h-6 text-yellow-300" />
               </div>
               <div>
-                <h3 className="text-lg font-semibold text-white mb-2">Important Notice</h3>
+                <h3 className="text-lg font-semibold text-foreground mb-2">Important Notice</h3>
                 <p className="text-gray-300 leading-relaxed">
                   By visiting our site and/ or purchasing something from us, you engage in our “Service” and agree to be bound by these Terms of Service. If you do not agree to all the terms and conditions of this agreement, then you may not access the website or use any Services.
                 </p>
@@ -298,7 +298,7 @@ We reserve the right, at our sole discretion, to update, change or replace any p
                   <div className="flex-shrink-0 p-3 bg-gradient-to-br from-purple-500/20 to-pink-500/20 rounded-xl group-hover:from-purple-500/30 group-hover:to-pink-500/30 transition-all duration-300">
                     <section.icon className="w-6 h-6 text-purple-300" />
                   </div>
-                  <h2 className="text-xl font-semibold text-white">{section.title}</h2>
+                  <h2 className="text-xl font-semibold text-foreground">{section.title}</h2>
                 </div>
                 <p className="text-gray-300 leading-relaxed pl-14">{section.content}</p>
               </div>
@@ -314,7 +314,7 @@ We reserve the right, at our sole discretion, to update, change or replace any p
                     <info.icon className="w-5 h-5 text-purple-300" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <h3 className="text-lg font-semibold text-white mb-1">{info.title}</h3>
+                    <h3 className="text-lg font-semibold text-foreground mb-1">{info.title}</h3>
                     <p className="text-gray-300 text-sm leading-relaxed break-words">{info.description}</p>
                   </div>
                 </div>
@@ -324,7 +324,7 @@ We reserve the right, at our sole discretion, to update, change or replace any p
 
           {/* Policy Changes Notice */}
           <div className="backdrop-blur-xl bg-white/10 rounded-3xl p-8 border border-white/20 shadow-2xl mb-12">
-            <h2 className="text-xl font-semibold text-white mb-4">Changes to These Terms of Service</h2>
+            <h2 className="text-xl font-semibold text-foreground mb-4">Changes to These Terms of Service</h2>
             <p className="text-gray-300 leading-relaxed">
               You can review the most current version of the Terms of Service at any time on this page. We reserve the right to update, change or replace any part of these Terms of Service by posting updates and/or changes to our website. It is your responsibility to check this page periodically for changes. Your continued use of or access to the website following the posting of any changes constitutes acceptance of those changes.
             </p>
@@ -333,7 +333,7 @@ We reserve the right, at our sole discretion, to update, change or replace any p
           {/* Company Information */}
           <div className="backdrop-blur-sm bg-white/5 rounded-2xl p-8 border border-white/10">
             <div className="text-center space-y-4">
-              <h3 className="text-xl font-semibold text-white">UCPMAROC</h3>
+              <h3 className="text-xl font-semibold text-foreground">UCPMAROC</h3>
               <p className="text-gray-300">Operated by HYROSY LLC</p>
               <p className="text-sm text-gray-400">Limited liability company registered in the United States</p>
               <div className="pt-4 border-t border-white/10">

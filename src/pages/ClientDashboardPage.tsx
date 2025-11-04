@@ -79,20 +79,20 @@ const ClientDashboardPage = () => {
     };
 
     if (loading) {
-        return <div className="min-h-screen bg-slate-900 flex items-center justify-center text-white">Loading Your Dashboard...</div>;
+        return <div className="min-h-screen bg-background flex items-center justify-center text-foreground">Loading Your Dashboard...</div>;
     }
 
     return (
-        <div className="min-h-screen bg-slate-900 p-4 md:p-8">
+        <div className="min-h-screen bg-background p-4 md:p-8">
             <div className="max-w-4xl mx-auto">
 {/* --- HEADER SECTION --- */}
                 {/* Added gap-4 for better mobile spacing */}
-                <div className="flex flex-col sm:flex-row justify-between sm:items-center mb-10 border-b border-slate-700 pb-6 gap-4">
+                <div className="flex flex-col sm:flex-row justify-between sm:items-center mb-10 border-b border pb-6 gap-4">
                     
                     {/* Welcome Text */}
                     <div>
-                        <h1 className="text-4xl font-bold text-white mb-1">My Orders</h1>
-                        <p className="text-lg text-slate-400">
+                        <h1 className="text-4xl font-bold text-foreground mb-1">My Orders</h1>
+                        <p className="text-lg text-muted-foreground">
                             Welcome back, <strong className="text-slate-200">{clientName || 'Client'}</strong>
                         </p>
                         <p className="text-sm text-slate-500 mt-1">
@@ -106,7 +106,7 @@ const ClientDashboardPage = () => {
                         {/* --- 2. ADD THIS NEW LINK --- */}
                         <Link
                             to="/my-favorites"
-                            className="order-first sm:order-none w-full sm:w-auto px-5 py-2.5 bg-yellow-600 hover:bg-yellow-700 rounded-lg text-white font-semibold text-sm transition-colors shadow flex items-center justify-center gap-2"
+                            className="order-first sm:order-none w-full sm:w-auto px-5 py-2.5 bg-yellow-600 hover:bg-yellow-700 rounded-lg text-foreground font-semibold text-sm transition-colors shadow flex items-center justify-center gap-2"
                         >
                             <Star size={16} /> My Favorites
                         </Link>
@@ -115,7 +115,7 @@ const ClientDashboardPage = () => {
                         <Link
                             to="/my-shortlist"
                             // `order-first` makes it appear above Log Out on mobile, `sm:order-none` resets for desktop
-                            className="order-first sm:order-none w-full sm:w-auto px-5 py-2.5 bg-purple-600 hover:bg-purple-700 rounded-lg text-white font-semibold text-sm transition-colors shadow hover:shadow-lg hover:shadow-purple-900/30 flex items-center justify-center gap-2"
+                            className="order-first sm:order-none w-full sm:w-auto px-5 py-2.5 bg-purple-600 hover:bg-purple-700 rounded-lg text-foreground font-semibold text-sm transition-colors shadow hover:shadow-lg hover:shadow-purple-900/30 flex items-center justify-center gap-2"
                         >
                             <Heart size={16} /> My Shortlist
                         </Link>
@@ -123,7 +123,7 @@ const ClientDashboardPage = () => {
                         {/* "Log Out" Button (MOVED HERE) */}
                         <button
                             onClick={handleLogout}
-                            className="w-full sm:w-auto px-5 py-2.5 bg-red-600 hover:bg-red-700 rounded-lg text-white font-semibold text-sm transition-colors shadow hover:shadow-lg hover:shadow-red-900/30"
+                            className="w-full sm:w-auto px-5 py-2.5 bg-red-600 hover:bg-red-700 rounded-lg text-foreground font-semibold text-sm transition-colors shadow hover:shadow-lg hover:shadow-red-900/30"
                         >
                             Log Out
                         </button>
@@ -135,40 +135,40 @@ const ClientDashboardPage = () => {
                 
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-10"> {/* Adjusted grid for potentially 4 cards */}
                     
-                    <div className="bg-gradient-to-br from-blue-500/20 to-slate-800 p-5 rounded-xl border border-slate-700">
-                        <p className="text-sm text-slate-400 mb-1">Active Orders</p>
-                        <p className="text-3xl font-bold text-white">{activeOrders}</p>
+                    <div className="bg-gradient-to-br from-blue-500/20 to-slate-800 p-5 rounded-xl border border">
+                        <p className="text-sm text-muted-foreground mb-1">Active Orders</p>
+                        <p className="text-3xl font-bold text-foreground">{activeOrders}</p>
                     </div>
-                    <div className="bg-gradient-to-br from-green-500/20 to-slate-800 p-5 rounded-xl border border-slate-700">
-                        <p className="text-sm text-slate-400 mb-1">Completed Orders</p>
-                        <p className="text-3xl font-bold text-white">{completedOrders}</p>
+                    <div className="bg-gradient-to-br from-green-500/20 to-slate-800 p-5 rounded-xl border border">
+                        <p className="text-sm text-muted-foreground mb-1">Completed Orders</p>
+                        <p className="text-3xl font-bold text-foreground">{completedOrders}</p>
                     </div>
-                    <div className="bg-gradient-to-br from-purple-500/20 to-slate-800 p-5 rounded-xl border border-slate-700">
-                        <p className="text-sm text-slate-400 mb-1">Total Orders</p>
-                        <p className="text-3xl font-bold text-white">{orders.length}</p>
+                    <div className="bg-gradient-to-br from-purple-500/20 to-slate-800 p-5 rounded-xl border border">
+                        <p className="text-sm text-muted-foreground mb-1">Total Orders</p>
+                        <p className="text-3xl font-bold text-foreground">{orders.length}</p>
                     </div>
                     {/* Ensure total_price is selected in the query above for this card */}
-                    <div className="bg-gradient-to-br from-yellow-500/20 to-slate-800 p-5 rounded-xl border border-slate-700">
-                        <p className="text-sm text-slate-400 mb-1">Approx. Total Spent</p>
-                        <p className="text-3xl font-bold text-white">{totalSpent.toFixed(2)} MAD</p>
+                    <div className="bg-gradient-to-br from-yellow-500/20 to-slate-800 p-5 rounded-xl border border">
+                        <p className="text-sm text-muted-foreground mb-1">Approx. Total Spent</p>
+                        <p className="text-3xl font-bold text-foreground">{totalSpent.toFixed(2)} MAD</p>
                     </div>
                 </div>
 
                 {/* --- Order List remains the same --- */}
-                <div className="bg-slate-800 rounded-lg border border-slate-700">
+                <div className="bg-card rounded-lg border border">
                     <div className="space-y-4 p-4">
                         {orders.length > 0 ? (
                             orders.map(order => (
                                 <Link
                                     to={`/order/${order.id}`}
                                     key={order.id}
-                                    className="block bg-slate-800/60 p-5 rounded-xl border border-slate-700/50 hover:bg-slate-700/60 hover:border-slate-600 transition-all duration-300 shadow-md hover:shadow-lg"
+                                    className="block bg-card/60 p-5 rounded-xl border border/50 hover:bg-accent/60 hover:border-slate-600 transition-all duration-300 shadow-md hover:shadow-lg"
                                 >
                                     <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4">
                                         <div className="flex-grow">
-                                            <p className="font-bold text-lg text-white mb-1">Order #{order.order_id_string}</p>
-                                            <p className="text-sm text-slate-400">
-                                                Actor: <span className="text-slate-300">{order.actors[0]?.ActorName || 'N/A'}</span>
+                                            <p className="font-bold text-lg text-foreground mb-1">Order #{order.order_id_string}</p>
+                                            <p className="text-sm text-muted-foreground">
+                                                Actor: <span className="text-muted-foreground">{order.actors[0]?.ActorName || 'N/A'}</span>
                                             </p>
                                              <p className="text-xs text-slate-500 mt-2">
                                                  Created: {new Date(order.created_at).toLocaleDateString()}
@@ -188,7 +188,7 @@ const ClientDashboardPage = () => {
                                 </Link>
                             ))
                         ) : (
-                            <p className="text-slate-400 text-center py-8">You have not placed any orders yet.</p>
+                            <p className="text-muted-foreground text-center py-8">You have not placed any orders yet.</p>
                         )}
                     </div>
                 </div>

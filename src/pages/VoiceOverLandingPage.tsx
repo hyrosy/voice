@@ -35,7 +35,7 @@ const ActorCard = ({ actor, onPlayClick, isCurrentlyPlaying }: { actor: Actor, o
     onPlayClick(actor);
   };
   return (
-    <Link to={`/actor/${actor.slug}`} className="group relative bg-slate-800/50 p-4 rounded-lg hover:bg-slate-700/50 transition-colors duration-300 block">
+    <Link to={`/actor/${actor.slug}`} className="group relative bg-card/50 p-4 rounded-lg hover:bg-accent/50 transition-colors duration-300 block">
       <div className="relative mb-4">
         <img 
           src={actor.HeadshotURL} 
@@ -52,12 +52,12 @@ const ActorCard = ({ actor, onPlayClick, isCurrentlyPlaying }: { actor: Actor, o
         </button>
       </div>
       <h3 className="font-bold text-white truncate">{actor.ActorName}</h3>
-      <div className="mt-2 space-y-2 text-xs text-slate-400">
+      <div className="mt-2 space-y-2 text-xs text-foreground">
         <div className="flex items-center justify-between">
             <div className="flex items-center gap-1.5"><Heart size={12} /><span>{actor.demo_likes[0]?.count || 0} Likes</span></div>
             <div className="flex items-center gap-1.5"><Users size={12} /><span>{actor.actor_followers[0]?.count || 0} Followers</span></div>
         </div>
-        <div className="flex items-center justify-between pt-2 border-t border-slate-700">
+        <div className="flex items-center justify-between pt-2">
             <div className="flex items-center gap-1.5"><DollarSign size={12} /><span>From {actor.BaseRate_per_Word} MAD/word</span></div>
             <div className="flex items-center gap-1.5"><Repeat size={12} /><span>{actor.revisions_allowed} Revisions</span></div>
         </div>
@@ -85,14 +85,14 @@ const DemoPlayerRow = ({
     onToggleLike: (demo: Demo) => void // <-- New prop
 }) => {
   return (
-    <div className="bg-slate-800 p-3 rounded-lg border border-slate-700 flex items-center gap-4 sm:gap-6"> {/* Adjusted gap */}
+    <div className="bg-card p-3 rounded-lg border border flex items-center gap-4 sm:gap-6"> {/* Adjusted gap */}
       {/* Actor Image */}
       <img src={demo.actors.HeadshotURL} alt={demo.actors.ActorName} className="w-16 h-16 rounded-md object-cover flex-shrink-0" />
 
       {/* Demo Title & Actor Name */}
       <div className="flex-grow min-w-0">
         <p className="font-bold text-white truncate">{demo.title}</p>
-        <Link to={`/actor/${demo.actors.slug}`} className="text-sm text-slate-400 hover:text-purple-400 transition-colors truncate">
+        <Link to={`/actor/${demo.actors.slug}`} className="text-sm text-muted-foreground hover:text-purple-400 transition-colors truncate">
           {demo.actors.ActorName}
         </Link>
       </div>
@@ -100,13 +100,13 @@ const DemoPlayerRow = ({
       {/* Likes Button & Count - UPDATED */}
       <button
         onClick={() => onToggleLike(demo)} // Call toggle function on click
-        className="flex items-center gap-1.5 text-slate-400 flex-shrink-0 px-2 rounded-md hover:bg-slate-700 transition-colors" // Make it a button
+        className="flex items-center gap-1.5 text-muted-foreground flex-shrink-0 px-2 rounded-md hover:bg-accent transition-colors" // Make it a button
         title={isLiked ? "Unlike" : "Like"}
       >
         <Heart
           size={16}
           // Change style based on isLiked prop
-          className={`transition-colors ${isLiked ? 'text-pink-500 fill-current' : 'text-slate-500 group-hover:text-white'}`}
+          className={`transition-colors ${isLiked ? 'text-pink-500 fill-current' : 'text-slate-500 group-hover:text-accent-foreground'}`}
         />
         <span className="text-sm font-semibold">{demo.likes || 0}</span>
       </button>
@@ -114,7 +114,7 @@ const DemoPlayerRow = ({
       {/* Play Button */}
       <button
         onClick={() => onPlayClick(demo)}
-        className="w-10 h-10 sm:w-12 sm:h-12 bg-purple-600 text-white rounded-full flex items-center justify-center flex-shrink-0 hover:scale-105 transition-transform" // Adjusted size
+        className="w-10 h-10 sm:w-12 sm:h-12 bg-primary text-primary-foreground rounded-full flex items-center justify-center flex-shrink-0 hover:scale-105 transition-transform" // Adjusted size
       >
         {isCurrentlyPlaying ? <Pause size={18} /> : <Play size={18}  className="ml-1" />} {/* Adjusted size */}
       </button>
@@ -409,7 +409,7 @@ const handleToggleLike = async (demo: Demo) => {
             <br />
             <span className="text-5xl md:text-7xl">Find Your Voice.</span>
            </h1>
-          <p className="text-xl md:text-2xl text-slate-300 mb-8 max-w-3xl mx-auto leading-relaxed">
+          <p className="text-xl md:text-2xl text-muted-foreground mb-8 max-w-3xl mx-auto leading-relaxed">
             A platform connecting clients, creators, and professional voice actors.
             No middle-man, just pure talent.            </p>
           </div>
@@ -434,17 +434,17 @@ const handleToggleLike = async (demo: Demo) => {
 
 
     {/* --- NEW: Join Section --- */}
-    <section id="join" className="py-20 bg-slate-800/50">
+    <section id="join" className="py-20 bg-card/50">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
         <h2 className="text-3xl font-bold text-white mb-4">Join Our Platform</h2>
-        <p className="text-slate-400 mb-12 max-w-2xl mx-auto">
+        <p className="text-primary-foreground mb-12 max-w-2xl mx-auto">
           Whether you're a voice actor looking to manage your own career or a client searching for the perfect voice, our platform empowers direct connection.
         </p>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
           {/* For Talents */}
-          <div className="bg-slate-800 p-8 rounded-lg border border-slate-700 text-left transition-all duration-300 hover:border-purple-500 hover:shadow-2xl hover:shadow-purple-500/10">
-            <h3 className="text-2xl font-semibold text-white mb-3">For Talents</h3>
-            <p className="text-slate-400 mb-6">
+          <div className="bg-card p-8 rounded-lg border border text-left transition-all duration-300 hover:border-purple-500 hover:shadow-2xl hover:shadow-purple-500/10">
+            <h3 className="text-2xl font-semibold text-foreground mb-3">For Talents</h3>
+            <p className="text-muted-foreground mb-6">
               Showcase your portfolio, set your own rates, communicate directly with clients, and get paid directly to your bank account.
             </p>
             <Link to="/actor-signup" className="font-semibold text-purple-400 hover:text-purple-300 inline-flex items-center gap-2">
@@ -452,9 +452,9 @@ const handleToggleLike = async (demo: Demo) => {
             </Link>
           </div>
           {/* For Clients */}
-          <div className="bg-slate-800 p-8 rounded-lg border border-slate-700 text-left transition-all duration-300 hover:border-blue-500 hover:shadow-2xl hover:shadow-blue-500/10">
-            <h3 className="text-2xl font-semibold text-white mb-3">For Clients</h3>
-            <p className="text-slate-400 mb-6">
+          <div className="bg-card p-8 rounded-lg border border text-left transition-all duration-300 hover:border-blue-500 hover:shadow-2xl hover:shadow-blue-500/10">
+            <h3 className="text-2xl font-semibold text-foreground mb-3">For Clients</h3>
+            <p className="text-muted-foreground mb-6">
               Browse a diverse roster, filter by your needs, listen to demos, and collaborate directly with the talent you hire.
             </p>
             <Link to="/client-auth" className="font-semibold text-blue-400 hover:text-blue-300 inline-flex items-center gap-2">
@@ -476,17 +476,17 @@ const handleToggleLike = async (demo: Demo) => {
             <h2 className="text-4xl md:text-5xl font-bold text-white mb-6">
               Our <span className="bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">Voice Actors</span>
             </h2>
-            <p className="text-xl text-slate-300 max-w-3xl mx-auto">
+            <p className="text-xl text-primary-foreground max-w-3xl mx-auto">
               Browse our roster of professional talent. Filter by language and gender to find the perfect voice for your project.
             </p>
           </div>
 
           {/* --- NEW: View Mode Tabs --- */}
-          <div className="flex justify-center mb-8 gap-2 p-1 bg-slate-800/50 border border-slate-700 rounded-lg max-w-xs mx-auto">
+          <div className="flex justify-center mb-8 gap-2 p-1 bg-card/50 border border rounded-lg max-w-xs mx-auto">
             <button
                 onClick={() => setViewMode('actors')}
                 className={`w-full flex items-center justify-center gap-2 px-4 py-2 rounded-md text-sm font-semibold transition ${
-                    viewMode === 'actors' ? 'bg-purple-600 text-white' : 'text-slate-400 hover:bg-slate-700'
+                    viewMode === 'actors' ? 'bg-primary text-primary-foreground' : 'text-white hover:bg-accent'
                 }`}
             >
                 <Users size={16} /> Actors
@@ -494,7 +494,7 @@ const handleToggleLike = async (demo: Demo) => {
             <button
                 onClick={() => setViewMode('demos')}
                 className={`w-full flex items-center justify-center gap-2 px-4 py-2 rounded-md text-sm font-semibold transition ${
-                    viewMode === 'demos' ? 'bg-purple-600 text-white' : 'text-slate-400 hover:bg-slate-700'
+                    viewMode === 'demos' ? 'bg-primary text-primary-foreground' : 'text-white hover:bg-accent'
                 }`}
             >
                 <List size={16} /> Demos
@@ -506,11 +506,11 @@ const handleToggleLike = async (demo: Demo) => {
 
                         {/* Gender Filter */}
             <div className="flex flex-wrap items-center justify-center gap-2">
-                <span className="text-sm font-semibold text-slate-400 mr-2">Gender:</span>
+                <span className="text-sm font-semibold text-muted-foreground mr-2">Gender:</span>
                 <button
                     onClick={() => setGenderFilter('all')}
                     className={`px-3 py-1 rounded-full text-sm font-semibold transition ${
-                        genderFilter === 'all' ? 'bg-purple-600 text-white' : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+                        genderFilter === 'all' ? 'bg-primary text-primary-foreground' : 'bg-slate-700 text-muted-foreground hover:bg-slate-600'
                     }`}
                 >
                     All
@@ -520,7 +520,7 @@ const handleToggleLike = async (demo: Demo) => {
                         key={gen}
                         onClick={() => setGenderFilter(gen)}
                         className={`px-3 py-1 rounded-full text-sm font-semibold transition ${
-                            genderFilter === gen ? 'bg-purple-600 text-white' : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+                            genderFilter === gen ? 'bg-purple-600 text-white' : 'bg-slate-700 text-muted-foreground hover:bg-slate-600'
                         }`}
                     >
                         {gen}
@@ -530,11 +530,11 @@ const handleToggleLike = async (demo: Demo) => {
 
             {/* Language Filter */}
             <div className="flex flex-wrap items-center justify-center gap-2">
-                <span className="text-sm font-semibold text-slate-400 mr-2">Language:</span>
+                <span className="text-sm font-semibold text-muted-foreground mr-2">Language:</span>
                 <button
                     onClick={() => setLanguageFilter('all')}
                     className={`px-3 py-1 rounded-full text-sm font-semibold transition ${
-                        languageFilter === 'all' ? 'bg-purple-600 text-white' : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+                        languageFilter === 'all' ? 'bg-purple-600 text-white' : 'bg-slate-700 text-muted-foreground hover:bg-slate-600'
                     }`}
                 >
                     All
@@ -544,7 +544,7 @@ const handleToggleLike = async (demo: Demo) => {
                         key={lang}
                         onClick={() => setLanguageFilter(lang)}
                         className={`px-3 py-1 rounded-full text-sm font-semibold transition ${
-                            languageFilter === lang ? 'bg-purple-600 text-white' : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+                            languageFilter === lang ? 'bg-purple-600 text-white' : 'bg-slate-700 text-muted-foreground hover:bg-slate-600'
                         }`}
                     >
                         {lang}
@@ -555,11 +555,11 @@ const handleToggleLike = async (demo: Demo) => {
 
             {/* Style Filter */}
             <div className="flex flex-wrap items-center justify-center gap-2">
-                <span className="text-sm font-semibold text-slate-400 mr-2">Style:</span>
+                <span className="text-sm font-semibold text-muted-foreground mr-2">Style:</span>
                 <button
                     onClick={() => setStyleFilter('all')}
                     className={`px-3 py-1 rounded-full text-sm font-semibold transition ${
-                        styleFilter === 'all' ? 'bg-purple-600 text-white' : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+                        styleFilter === 'all' ? 'bg-purple-600 text-white' : 'bg-slate-700 text-muted-foreground hover:bg-slate-600'
                     }`}
                 >
                     All
@@ -569,7 +569,7 @@ const handleToggleLike = async (demo: Demo) => {
                         key={style}
                         onClick={() => setStyleFilter(style)}
                         className={`px-3 py-1 rounded-full text-sm font-semibold transition ${
-                            styleFilter === style ? 'bg-purple-600 text-white' : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+                            styleFilter === style ? 'bg-purple-600 text-white' : 'bg-slate-700 text-muted-foreground hover:bg-slate-600'
                         }`}
                     >
                         {style}
@@ -579,7 +579,7 @@ const handleToggleLike = async (demo: Demo) => {
 
             {/* Reset Button */}
             {isSearching && (
-                <button onClick={handleResetFilters} className="text-sm text-slate-400 hover:text-white transition-colors flex items-center gap-2 justify-center" title="Reset filters">
+                <button onClick={handleResetFilters} className="text-sm text-muted-foreground hover:text-accent-foreground transition-colors flex items-center gap-2 justify-center" title="Reset filters">
                     <RotateCcw size={16} />
                     Reset All Filters
                 </button>
@@ -624,10 +624,10 @@ const handleToggleLike = async (demo: Demo) => {
                 </div>
             </section>
 
-            <section className="py-20 bg-slate-900 border-t border-slate-800">
+            <section className="py-20 bg-background border-t border">
                 <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-                    <h2 className="text-3xl font-bold text-white mb-4">Support Our Platform</h2>
-                    <p className="text-slate-400 mb-8">
+                    <h2 className="text-3xl font-bold text-foreground mb-4">Support Our Platform</h2>
+                    <p className="text-muted-foreground mb-8">
                         We're committed to keeping this platform free and commission-free to empower direct relationships between clients and talent.
                         If you find this service valuable, please consider making a donation to help us cover server costs and continued development.
                     </p>

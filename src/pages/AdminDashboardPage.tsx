@@ -250,75 +250,75 @@ const AdminDashboardPage = () => {
     // --- End row click handler ---
 
     if (loading) {
-        return <div className="min-h-screen bg-slate-900 flex items-center justify-center text-white">Loading Admin Panel...</div>;
+        return <div className="min-h-screen bg-background flex items-center justify-center text-foreground">Loading Admin Panel...</div>;
     }
 
     return (
-        <div className="min-h-screen bg-slate-900 p-4 md:p-8 text-white">
+        <div className="min-h-screen bg-background p-4 md:p-8 text-foreground">
             <div className="max-w-7xl mx-auto"> {/* Wider container */}
                 <h1 className="text-3xl font-bold mb-6">Admin Dashboard: All Orders</h1>
 
                 {/* --- ADD SUMMARY CARDS JSX --- */}
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-6 mb-10"> {/* Adjusted to 5 columns */}
                     {/* Total Orders Card */}
-                    <div className="bg-gradient-to-br from-slate-700/50 to-slate-800 p-5 rounded-xl border border-slate-700 flex items-center gap-4">
+                    <div className="bg-gradient-to-br from-slate-700/50 to-slate-800 p-5 rounded-xl border border flex items-center gap-4">
                         <div className="p-3 bg-slate-600/50 rounded-lg">
-                           <ListOrdered size={24} className="text-slate-300" />
+                           <ListOrdered size={24} className="text-muted-foreground" />
                         </div>
                         <div>
-                            <p className="text-sm text-slate-400 mb-1">Total Orders</p>
-                            <p className="text-3xl font-bold text-white">{totalOrders}</p>
+                            <p className="text-sm text-muted-foreground mb-1">Total Orders</p>
+                            <p className="text-3xl font-bold text-foreground">{totalOrders}</p>
                         </div>
                     </div>                     
                     {/* Awaiting Payment Card */}
-                    <div className="bg-gradient-to-br from-orange-500/20 to-slate-800 p-5 rounded-xl border border-slate-700 flex items-center gap-4">
+                    <div className="bg-gradient-to-br from-orange-500/20 to-slate-800 p-5 rounded-xl border border flex items-center gap-4">
                          <div className="p-3 bg-orange-500/20 rounded-lg">
                            <Hourglass size={24} className="text-orange-300" />
                         </div>
                         <div>
-                            <p className="text-sm text-slate-400 mb-1">Awaiting Payment</p>
-                            <p className="text-3xl font-bold text-white">{awaitingPaymentOrders}</p>
+                            <p className="text-sm text-muted-foreground mb-1">Awaiting Payment</p>
+                            <p className="text-3xl font-bold text-foreground">{awaitingPaymentOrders}</p>
                         </div>
                     </div>
                     {/* NEW: Awaiting Admin Confirmation Card */}
-                    <div className="bg-gradient-to-br from-yellow-500/20 to-slate-800 p-5 rounded-xl border border-slate-700 flex items-center gap-4">
+                    <div className="bg-gradient-to-br from-yellow-500/20 to-slate-800 p-5 rounded-xl border border flex items-center gap-4">
                          <div className="p-3 bg-yellow-500/20 rounded-lg">
                            <AlertTriangle size={24} className="text-yellow-300" />
                         </div>
                         <div>
-                            <p className="text-sm text-slate-400 mb-1">Pending Admin</p>
-                            <p className="text-3xl font-bold text-white">{awaitingAdminConfirmation}</p>
+                            <p className="text-sm text-muted-foreground mb-1">Pending Admin</p>
+                            <p className="text-3xl font-bold text-foreground">{awaitingAdminConfirmation}</p>
                         </div>
                     </div>
                      {/* In Progress Card */}
-                    <div className="bg-gradient-to-br from-blue-500/20 to-slate-800 p-5 rounded-xl border border-slate-700 flex items-center gap-4">
+                    <div className="bg-gradient-to-br from-blue-500/20 to-slate-800 p-5 rounded-xl border border flex items-center gap-4">
                          <div className="p-3 bg-blue-500/20 rounded-lg">
                            <Clock size={24} className="text-blue-300" />
                         </div>
                         <div>
-                            <p className="text-sm text-slate-400 mb-1">In Progress</p>
-                            <p className="text-3xl font-bold text-white">{inProgressOrders}</p>
+                            <p className="text-sm text-muted-foreground mb-1">In Progress</p>
+                            <p className="text-3xl font-bold text-foreground">{inProgressOrders}</p>
                         </div>
                     </div>
                      {/* Completed Card */}
-                    <div className="bg-gradient-to-br from-green-500/20 to-slate-800 p-5 rounded-xl border border-slate-700 flex items-center gap-4">
+                    <div className="bg-gradient-to-br from-green-500/20 to-slate-800 p-5 rounded-xl border border flex items-center gap-4">
                          <div className="p-3 bg-green-500/20 rounded-lg">
                            <CheckCircle size={24} className="text-green-300" />
                         </div>
                         <div>
-                            <p className="text-sm text-slate-400 mb-1">Completed</p>
-                            <p className="text-3xl font-bold text-white">{completedOrders}</p>
+                            <p className="text-sm text-muted-foreground mb-1">Completed</p>
+                            <p className="text-3xl font-bold text-foreground">{completedOrders}</p>
                         </div>
                     </div>
                      {/* Optional Revenue Card */}
                      {/*
-                     <div className="bg-gradient-to-br from-yellow-500/20 to-slate-800 p-5 rounded-xl border border-slate-700 flex items-center gap-4">
+                     <div className="bg-gradient-to-br from-yellow-500/20 to-slate-800 p-5 rounded-xl border border flex items-center gap-4">
                          <div className="p-3 bg-yellow-500/20 rounded-lg">
                              <Banknote size={24} className="text-yellow-300" />
                          </div>
                          <div>
-                             <p className="text-sm text-slate-400 mb-1">Total Revenue (Completed)</p>
-                             <p className="text-3xl font-bold text-white">{totalRevenue.toFixed(2)} MAD</p>
+                             <p className="text-sm text-muted-foreground mb-1">Total Revenue (Completed)</p>
+                             <p className="text-3xl font-bold text-foreground">{totalRevenue.toFixed(2)} MAD</p>
                          </div>
                      </div>
                      */}
@@ -326,10 +326,10 @@ const AdminDashboardPage = () => {
                  {/* --- END SUMMARY CARDS JSX --- */}
                 {/* --- User Management Links --- */}
                                 <div className="mb-6 flex flex-col sm:flex-row gap-4">
-                                    <Link to="/admin/actors" className="px-5 py-2.5 bg-slate-700 hover:bg-slate-600 rounded-lg text-white font-semibold text-sm transition-colors shadow flex items-center justify-center gap-2">
+                                    <Link to="/admin/actors" className="px-5 py-2.5 bg-slate-700 hover:bg-slate-600 rounded-lg text-foreground font-semibold text-sm transition-colors shadow flex items-center justify-center gap-2">
                                         <Users size={16} /> Manage Actors
                                     </Link>
-                                    <Link to="/admin/clients" className="px-5 py-2.5 bg-slate-700 hover:bg-slate-600 rounded-lg text-white font-semibold text-sm transition-colors shadow flex items-center justify-center gap-2">
+                                    <Link to="/admin/clients" className="px-5 py-2.5 bg-slate-700 hover:bg-slate-600 rounded-lg text-foreground font-semibold text-sm transition-colors shadow flex items-center justify-center gap-2">
                                          <Users size={16} /> Manage Clients {/* Consider a different icon */}
                                     </Link>
                                 </div>
@@ -338,13 +338,13 @@ const AdminDashboardPage = () => {
                 {message && <p className="mb-4 p-3 bg-slate-700 rounded-md text-sm">{message}</p>}
 
                 {/* --- NEW: Filter Controls --- */}
-                <div className="mb-6 p-4 bg-slate-800 rounded-lg border border-slate-700 flex flex-col sm:flex-row gap-4 items-center">
-                     <span className="text-sm font-semibold text-slate-400 flex items-center gap-2"><Filter size={16}/> Filters:</span>
+                <div className="mb-6 p-4 bg-card rounded-lg border border flex flex-col sm:flex-row gap-4 items-center">
+                     <span className="text-sm font-semibold text-muted-foreground flex items-center gap-2"><Filter size={16}/> Filters:</span>
                      {/* Status Filter */}
                      <select
                         value={filterStatus}
                         onChange={(e) => setFilterStatus(e.target.value)}
-                        className="bg-slate-700 border border-slate-600 rounded-md p-2 text-white text-sm focus:ring-purple-500 focus:border-purple-500 flex-grow sm:flex-grow-0"
+                        className="bg-slate-700 border border-slate-600 rounded-md p-2 text-foreground text-sm focus:ring-purple-500 focus:border-purple-500 flex-grow sm:flex-grow-0"
                     >
                          {uniqueStatuses.map(status => (
                              <option key={status} value={status}>{status === 'all' ? 'All Statuses' : status}</option>
@@ -354,7 +354,7 @@ const AdminDashboardPage = () => {
                      <select
                         value={filterPayment}
                         onChange={(e) => setFilterPayment(e.target.value)}
-                         className="bg-slate-700 border border-slate-600 rounded-md p-2 text-white text-sm focus:ring-purple-500 focus:border-purple-500 flex-grow sm:flex-grow-0"
+                         className="bg-slate-700 border border-slate-600 rounded-md p-2 text-foreground text-sm focus:ring-purple-500 focus:border-purple-500 flex-grow sm:flex-grow-0"
                      >
                          <option value="all">All Payment Methods</option>
                           {uniquePaymentMethods.map(method => (
@@ -368,13 +368,13 @@ const AdminDashboardPage = () => {
                             placeholder="Search Client or Actor..."
                             value={filterSearchTerm}
                             onChange={(e) => setFilterSearchTerm(e.target.value)}
-                             className="bg-slate-700 border border-slate-600 rounded-md p-2 pl-8 text-white text-sm focus:ring-purple-500 focus:border-purple-500 w-full"
+                             className="bg-slate-700 border border-slate-600 rounded-md p-2 pl-8 text-foreground text-sm focus:ring-purple-500 focus:border-purple-500 w-full"
                          />
                           <Search size={16} className="absolute left-2.5 top-1/2 transform -translate-y-1/2 text-slate-500"/>
                          {filterSearchTerm && (
                              <button
                                 onClick={() => setFilterSearchTerm('')}
-                                className="absolute right-2 top-1/2 transform -translate-y-1/2 text-slate-500 hover:text-white"
+                                className="absolute right-2 top-1/2 transform -translate-y-1/2 text-slate-500 hover:text-accent-foreground"
                                 title="Clear search"
                              >
                                  <XIcon size={16}/>
@@ -386,9 +386,9 @@ const AdminDashboardPage = () => {
 
 
                 {/* Enhanced Order Table - Now uses filteredAndSortedOrders */}
-                <div className="bg-slate-800 rounded-lg border border-slate-700 overflow-x-auto">
+                <div className="bg-card rounded-lg border border overflow-x-auto">
                     <table className="w-full text-left min-w-[900px]"> {/* Increased min-width slightly */}
-                        <thead className="bg-slate-700 text-xs uppercase text-slate-400">
+                        <thead className="bg-slate-700 text-xs uppercase text-muted-foreground">
                             <tr>
                                 <th className="p-4">Order ID</th>
                                 {/* --- Clickable Date Header --- */}
@@ -416,25 +416,25 @@ const AdminDashboardPage = () => {
                             {/* --- Map over filteredAndSortedOrders --- */}
                             {filteredAndSortedOrders.map(order => (
                                 // --- MODIFY: Highlight row for new status ---
-                                <tr key={order.id} className={`border-b border-slate-700 text-sm ${
+                                <tr key={order.id} className={`border-b border text-sm ${
                                       order.status === 'Awaiting Admin Confirmation' ? 'bg-yellow-900/30 hover:bg-yellow-900/50' : // Highlight this status
                                       order.status === 'Awaiting Actor Confirmation' ? 'bg-blue-900/30 hover:bg-blue-900/50' : // Different highlight for actor
-                                      'hover:bg-slate-700/50'
+                                      'hover:bg-accent/50'
                                     }`}
                                     onClick={() => handleRowClick(order.id)}
                                 >
                                     {/* --- Table data cells --- */}
                                     {/* IMPORTANT: Wrap content, not the buttons/select, if needed for finer click control */}
                                      {/* Example: Clickable Order ID */}
-                                    <td className="p-4 font-mono text-xs text-slate-300">
+                                    <td className="p-4 font-mono text-xs text-muted-foreground">
                                         {/* You could make just this part navigate, or rely on the whole row */}
                                         {order.order_id_string}
                                     </td>
-                                     <td className="p-4 text-slate-400 whitespace-nowrap">{new Date(order.created_at).toLocaleDateString()}</td>
-                                     <td className="p-4 text-slate-300">{order.client_name}</td>
-                                     <td className="p-4 text-slate-300">{order.actors?.ActorName || 'N/A'}</td>
-                                     <td className="p-4 text-slate-300 text-right">{order.total_price?.toFixed(2) || 'N/A'}</td>
-                                     <td className="p-4 text-slate-400 capitalize">{order.payment_method || 'N/A'}</td>
+                                     <td className="p-4 text-muted-foreground whitespace-nowrap">{new Date(order.created_at).toLocaleDateString()}</td>
+                                     <td className="p-4 text-muted-foreground">{order.client_name}</td>
+                                     <td className="p-4 text-muted-foreground">{order.actors?.ActorName || 'N/A'}</td>
+                                     <td className="p-4 text-muted-foreground text-right">{order.total_price?.toFixed(2) || 'N/A'}</td>
+                                     <td className="p-4 text-muted-foreground capitalize">{order.payment_method || 'N/A'}</td>
                                      {/* Status Dropdown - Prevent row click */}
                                     {/* Status Dropdown */}
                                     <td className="p-4" onClick={(e) => e.stopPropagation()}>
@@ -444,7 +444,7 @@ const AdminDashboardPage = () => {
                                                 e.stopPropagation();
                                                 handleStatusChange(order.id, e.target.value);
                                             }}
-                                            className="bg-slate-600 border border-slate-500 rounded-md p-2 text-white text-xs w-full"
+                                            className="bg-slate-600 border border-slate-500 rounded-md p-2 text-foreground text-xs w-full"
                                         >
                                            {/* Status Options - Ensure all possible statuses are here */}
                                             <option value="Awaiting Payment">Awaiting Payment</option>
@@ -459,7 +459,7 @@ const AdminDashboardPage = () => {
                                         {/* MODIFIED: Check for new status */}
                                         {order.status === 'Awaiting Admin Confirmation' && order.payment_method === 'bank' && (
                                             <button onClick={(e) => { e.stopPropagation(); handlePaymentApproval(order.id); }}
-                                                    className="bg-green-600 hover:bg-green-700 text-white text-xs font-semibold px-3 py-1.5 rounded-md flex items-center gap-1">
+                                                    className="bg-green-600 hover:bg-green-700 text-foreground text-xs font-semibold px-3 py-1.5 rounded-md flex items-center gap-1">
                                                 <CheckCircle size={14} /> Confirm Payment
                                             </button>
                                         )}

@@ -24,7 +24,7 @@ const LanguageSwitcher: React.FC = () => {
     <div className="relative" onMouseLeave={() => setIsOpen(false)}>
       <button
         onMouseEnter={() => setIsOpen(true)}
-        className="flex items-center gap-1.5 px-3 py-2 bg-slate-700/50 border border-slate-700 rounded-full text-sm text-slate-300 hover:bg-slate-700 hover:text-white transition-colors"
+        className="flex items-center gap-1.5 px-3 py-2 bg-slate-700/50 border border rounded-full text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors"
       >
         <Globe size={16} />
         <span>{currentLanguage.name}</span>
@@ -33,12 +33,12 @@ const LanguageSwitcher: React.FC = () => {
       
       {isOpen && (
         <div className="absolute right-0 top-full pt-2 w-40">
-          <div className="bg-slate-800 rounded-lg shadow-xl border border-slate-700 overflow-hidden animate-in fade-in zoom-in-95">
+          <div className="bg-card rounded-lg shadow-xl border border overflow-hidden animate-in fade-in zoom-in-95">
             {languages.map(lang => (
               <button
                 key={lang.code}
                 onClick={() => changeLanguage(lang.code)}
-                className="w-full text-left block px-4 py-3 text-sm text-slate-300 hover:bg-slate-700 hover:text-white"
+                className="w-full text-left block px-4 py-3 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground"
               >
                 {lang.name}
               </button>

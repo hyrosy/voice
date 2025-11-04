@@ -43,33 +43,33 @@ const MyShortlistPage = () => {
     }, [navigate]);
 
     if (loading) {
-        return <div className="min-h-screen bg-slate-900 flex items-center justify-center text-white">Loading Your Shortlist...</div>;
+        return <div className="min-h-screen bg-background flex items-center justify-center text-foreground">Loading Your Shortlist...</div>;
     }
 
     return (
-        <div className="min-h-screen bg-slate-900 text-white">
+        <div className="min-h-screen bg-background text-foreground">
             <div className="max-w-4xl mx-auto py-20 px-4">
                 <div className="text-center mb-12">
-                    <div className="inline-block bg-slate-800/50 rounded-full p-5 border border-slate-700 mb-6">
+                    <div className="inline-block bg-card/50 rounded-full p-5 border border mb-6">
                         <Heart size={40} className="text-pink-400" />
                     </div>
-                    <h1 className="text-4xl lg:text-5xl font-black tracking-tighter text-white mb-4">
+                    <h1 className="text-4xl lg:text-5xl font-black tracking-tighter text-foreground mb-4">
                         My Shortlist
                     </h1>
-                    <p className="text-lg text-slate-400">All the voice demos you've liked, saved in one place.</p>
+                    <p className="text-lg text-muted-foreground">All the voice demos you've liked, saved in one place.</p>
                 </div>
                 
                 <div className="space-y-4">
                     {likedDemos.length > 0 ? (
                         likedDemos.map(like => (
-                            <div key={like.id} className="bg-slate-800 p-4 rounded-lg border border-slate-700">
+                            <div key={like.id} className="bg-card p-4 rounded-lg border border">
                                 <div className="flex items-center gap-4">
                                     <img src={like.actors.HeadshotURL} alt={like.actors.ActorName} className="w-16 h-16 rounded-md object-cover" />
                                     <div className="flex-grow">
-                                        <Link to={`/actor/${like.actors.slug}`} className="font-bold text-white hover:text-purple-400 transition-colors">
+                                        <Link to={`/actor/${like.actors.slug}`} className="font-bold text-foreground hover:text-purple-400 transition-colors">
                                             {like.actors.ActorName}
                                         </Link>
-                                        <p className="text-sm text-slate-400">Main Demo Reel</p>
+                                        <p className="text-sm text-muted-foreground">Main Demo Reel</p>
                                     </div>
                                     <audio controls src={like.demo_url} className="h-10"></audio>
                                 </div>

@@ -351,24 +351,24 @@ const { actorName: actorSlug } = useParams<{ actorName: string }>();
     const AudioDemoList = () => (
       <div className="flex flex-col">
         {demos.length > 0 ? demos.map((demo, index) => (
-            <div key={demo.id} className="group grid grid-cols-[40px_1fr_auto_auto] items-center gap-4 p-2 rounded-lg hover:bg-slate-800/50">
-                <div onClick={() => handlePlayPause(demo)} className="flex items-center justify-center text-slate-400 cursor-pointer">
+            <div key={demo.id} className="group grid grid-cols-[40px_1fr_auto_auto] items-center gap-4 p-2 rounded-lg hover:bg-card/50">
+                <div onClick={() => handlePlayPause(demo)} className="flex items-center justify-center text-muted-foreground cursor-pointer">
                     {currentTrack?.url === demo.demo_url && isPlaying ? (
                         <Pause size={16} className="text-primary" />
                     ) : (
                         <>
                             <span className="group-hover:hidden">{index + 1}</span>
-                            <Play size={16} className="text-white hidden group-hover:block" />
+                            <Play size={16} className="text-foreground hidden group-hover:block" />
                         </>
                     )}
                 </div>
                 <div onClick={() => handlePlayPause(demo)} className="cursor-pointer">
-                    <p className={`font-semibold truncate ${currentTrack?.url === demo.demo_url ? 'text-primary' : 'text-white'}`}>{demo.title}</p>
-                    <p className="text-sm text-slate-400">{demo.language} | {demo.style_tag}</p>
+                    <p className={`font-semibold truncate ${currentTrack?.url === demo.demo_url ? 'text-primary' : 'text-foreground'}`}>{demo.title}</p>
+                    <p className="text-sm text-muted-foreground">{demo.language} | {demo.style_tag}</p>
                 </div>
-                <div className="flex items-center gap-2 text-slate-400">
+                <div className="flex items-center gap-2 text-muted-foreground">
                     <button onClick={() => handleToggleLike(demo)}>
-                        <Heart size={16} className={`transition-colors ${userLikes.includes(demo.demo_url) ? 'text-pink-500 fill-current' : 'text-slate-500 group-hover:text-white'}`} />
+                        <Heart size={16} className={`transition-colors ${userLikes.includes(demo.demo_url) ? 'text-pink-500 fill-current' : 'text-slate-500 group-hover:text-accent-foreground'}`} />
                     </button>
                     <span className="text-sm w-8">{demo.likes}</span>
                 </div>
@@ -416,7 +416,7 @@ const { actorName: actorSlug } = useParams<{ actorName: string }>();
     
     if (isLoading) {
         return (
-            <div className="min-h-screen flex items-center justify-center bg-slate-900 text-white">
+            <div className="min-h-screen flex items-center justify-center bg-background text-foreground">
                 <p>Loading...</p>
             </div>
         );
@@ -424,7 +424,7 @@ const { actorName: actorSlug } = useParams<{ actorName: string }>();
 
     if (error || !actor) {
         return (
-            <div className="min-h-screen flex items-center justify-center bg-slate-900 text-white">
+            <div className="min-h-screen flex items-center justify-center bg-background text-foreground">
                 <p>{error || 'Actor not found.'}</p>
             </div>
         );
@@ -460,8 +460,8 @@ const { actorName: actorSlug } = useParams<{ actorName: string }>();
                             className="w-28 h-28 md:w-52 md:h-52 rounded-full object-cover flex-shrink-0 shadow-2xl shadow-black/50"
                         />
                         <div className="text-left flex-grow">
-                            <h1 className="text-4xl sm:text-5xl md:text-8xl font-black tracking-tighter text-white break-words">{actor.ActorName}</h1>
-                            <div className="flex flex-wrap items-center justify-start gap-x-3 gap-y-1 text-slate-300 text-sm md:text-base mt-1 md:mt-2">                                
+                            <h1 className="text-4xl sm:text-5xl md:text-8xl font-black tracking-tighter text-foreground break-words">{actor.ActorName}</h1>
+                            <div className="flex flex-wrap items-center justify-start gap-x-3 gap-y-1 text-muted-foreground text-sm md:text-base mt-1 md:mt-2">                                
                                 <span>{actor.Language} | {actor.Gender}</span>
                                 <span className="mx-1">&middot;</span>
                                 <span>{followerCount} Followers</span>
@@ -502,7 +502,7 @@ const { actorName: actorSlug } = useParams<{ actorName: string }>();
               {actor?.bio && (
                   <div className="mb-12">
                       <h2 className="text-2xl font-bold mb-4">About</h2>
-                      <p className="text-slate-400 leading-relaxed whitespace-pre-wrap max-w-3xl">
+                      <p className="text-muted-foreground leading-relaxed whitespace-pre-wrap max-w-3xl">
                           {actor?.bio}
                       </p>
                   </div>

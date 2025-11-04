@@ -222,7 +222,7 @@ We may verify your identity before fulfilling requests. You may also authorize s
             <div className="inline-flex items-center justify-center p-4 bg-gradient-to-br from-purple-500/20 to-pink-500/20 rounded-2xl mb-6">
               <Shield className="w-12 h-12 text-purple-300" />
             </div>
-            <h1 className="text-5xl lg:text-6xl font-light text-white leading-tight mb-6">
+            <h1 className="text-5xl lg:text-6xl font-light text-foreground leading-tight mb-6">
               Privacy <span className="font-bold bg-gradient-to-r from-pink-400 to-purple-400 bg-clip-text text-transparent">Policy</span>
             </h1>
             <p className="text-xl text-gray-300 leading-relaxed max-w-3xl mx-auto mb-4">
@@ -240,7 +240,7 @@ We may verify your identity before fulfilling requests. You may also authorize s
                 <AlertCircle className="w-6 h-6 text-yellow-300" />
               </div>
               <div>
-                <h3 className="text-lg font-semibold text-white mb-2">Important</h3>
+                <h3 className="text-lg font-semibold text-foreground mb-2">Important</h3>
                 <p className="text-gray-300 leading-relaxed">
                   By using and accessing any of our Services, you agree to the collection, use, and disclosure of your information as described in this Privacy Policy. If you do not agree to this Privacy Policy, please do not use or access any of our Services.
                 </p>
@@ -256,7 +256,7 @@ We may verify your identity before fulfilling requests. You may also authorize s
                   <div className="flex-shrink-0 p-3 bg-gradient-to-br from-purple-500/20 to-pink-500/20 rounded-xl group-hover:from-purple-500/30 group-hover:to-pink-500/30 transition-all duration-300">
                     <section.icon className="w-6 h-6 text-purple-300" />
                   </div>
-                  <h2 className="text-xl font-semibold text-white">{section.title}</h2>
+                  <h2 className="text-xl font-semibold text-foreground">{section.title}</h2>
                 </div>
                 <p className="text-gray-300 leading-relaxed pl-14">{section.content}</p>
               </div>
@@ -265,18 +265,18 @@ We may verify your identity before fulfilling requests. You may also authorize s
 
           {/* Additional Important Information */}
           <div className="backdrop-blur-xl bg-white/10 rounded-3xl p-8 lg:p-12 border border-white/20 shadow-2xl mb-12">
-            <h2 className="text-2xl font-semibold text-white mb-8">Additional Important Information</h2>
+            <h2 className="text-2xl font-semibold text-foreground mb-8">Additional Important Information</h2>
             <div className="grid md:grid-cols-2 gap-8">
               <div className="space-y-6">
                 <div>
-                  <h3 className="text-lg font-medium text-white mb-3 flex items-center">
+                  <h3 className="text-lg font-medium text-foreground mb-3 flex items-center">
                     <Users className="w-5 h-5 mr-2 text-purple-300" />
                     User Generated Content
                   </h3>
                   <p className="text-gray-300 leading-relaxed">Anything you post publicly (like reviews) is visible to others. Use discretion when sharing personal details in public forums.</p>
                 </div>
                 <div>
-                  <h3 className="text-lg font-medium text-white mb-3 flex items-center">
+                  <h3 className="text-lg font-medium text-foreground mb-3 flex items-center">
                     <Users className="w-5 h-5 mr-2 text-purple-300" />
                     Children's Data
                   </h3>
@@ -285,14 +285,14 @@ We may verify your identity before fulfilling requests. You may also authorize s
               </div>
               <div className="space-y-6">
                 <div>
-                  <h3 className="text-lg font-medium text-white mb-3 flex items-center">
+                  <h3 className="text-lg font-medium text-foreground mb-3 flex items-center">
                     <Globe className="w-5 h-5 mr-2 text-purple-300" />
                     International Users
                   </h3>
                   <p className="text-gray-300 leading-relaxed">We may store and process your data outside of your home country, including in the U.S. If data is transferred from the EU or UK, we use Standard Contractual Clauses.</p>
                 </div>
                 <div>
-                  <h3 className="text-lg font-medium text-white mb-3 flex items-center">
+                  <h3 className="text-lg font-medium text-foreground mb-3 flex items-center">
                     <Lock className="w-5 h-5 mr-2 text-purple-300" />
                     Security & Retention
                   </h3>
@@ -304,13 +304,13 @@ We may verify your identity before fulfilling requests. You may also authorize s
 
           {/* Data Categories Table */}
           <div className="backdrop-blur-xl bg-white/10 rounded-3xl p-8 lg:p-12 border border-white/20 shadow-2xl mb-12">
-            <h2 className="text-2xl font-semibold text-white mb-6">Categories Disclosed in the Past 12 Months</h2>
+            <h2 className="text-2xl font-semibold text-foreground mb-6">Categories Disclosed in the Past 12 Months</h2>
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead>
                   <tr className="border-b border-white/20">
-                    <th className="text-left py-3 px-4 text-white font-medium">Category</th>
-                    <th className="text-left py-3 px-4 text-white font-medium">Recipients</th>
+                    <th className="text-left py-3 px-4 text-foreground font-medium">Category</th>
+                    <th className="text-left py-3 px-4 text-foreground font-medium">Recipients</th>
                   </tr>
                 </thead>
                 <tbody className="text-gray-300">
@@ -341,7 +341,7 @@ We may verify your identity before fulfilling requests. You may also authorize s
                     <info.icon className="w-5 h-5 text-purple-300" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <h3 className="text-lg font-semibold text-white mb-1">{info.title}</h3>
+                    <h3 className="text-lg font-semibold text-foreground mb-1">{info.title}</h3>
                     <p className="text-gray-300 text-sm leading-relaxed break-words">{info.description}</p>
                   </div>
                 </div>
@@ -351,7 +351,7 @@ We may verify your identity before fulfilling requests. You may also authorize s
 
           {/* Policy Changes Notice */}
           <div className="backdrop-blur-xl bg-white/10 rounded-3xl p-8 border border-white/20 shadow-2xl mb-12">
-            <h2 className="text-xl font-semibold text-white mb-4">Changes to This Privacy Policy</h2>
+            <h2 className="text-xl font-semibold text-foreground mb-4">Changes to This Privacy Policy</h2>
             <p className="text-gray-300 leading-relaxed">
               We may update this Privacy Policy from time to time, including to reflect changes to our practices or for other operational, legal, or regulatory reasons. We will post the revised Privacy Policy on the Site, update the "Last updated" date and take any other steps required by applicable law.
             </p>
@@ -360,7 +360,7 @@ We may verify your identity before fulfilling requests. You may also authorize s
           {/* Company Information */}
           <div className="backdrop-blur-sm bg-white/5 rounded-2xl p-8 border border-white/10">
             <div className="text-center space-y-4">
-              <h3 className="text-xl font-semibold text-white">UCPMAROC</h3>
+              <h3 className="text-xl font-semibold text-foreground">UCPMAROC</h3>
               <p className="text-gray-300">Operated by HYROSY LLC</p>
               <p className="text-sm text-gray-400">Limited liability company registered in the United States</p>
               <div className="pt-4 border-t border-white/10">

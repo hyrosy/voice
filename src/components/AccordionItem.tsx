@@ -13,19 +13,19 @@ interface AccordionProps {
 
 const AccordionItem: React.FC<AccordionProps> = ({ title, icon, isOpen, onToggle, children }) => {
   return (
-    <div className="bg-slate-800/50 rounded-lg border border-slate-700/50 overflow-hidden">
+    <div className="bg-card/50 rounded-lg border border/50 overflow-hidden">
       <button
         onClick={onToggle}
         className="w-full flex justify-between items-center p-4 text-left"
       >
         <div className="flex items-center gap-3">
           <div className="text-purple-400">{icon}</div>
-          <span className="font-bold text-white text-lg">{title}</span>
+          <span className="font-bold text-foreground text-lg">{title}</span>
         </div>
-        {isOpen ? <ChevronUp className="text-slate-400" /> : <ChevronDown className="text-slate-400" />}
+        {isOpen ? <ChevronUp className="text-muted-foreground" /> : <ChevronDown className="text-muted-foreground" />}
       </button>
       {isOpen && (
-        <div className="p-4 border-t border-slate-700">
+        <div className="p-4 border-t border">
           {children}
         </div>
       )}

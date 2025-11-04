@@ -34,9 +34,9 @@
 
         return (
             <form onSubmit={handleSubmit}>
-                <h2 className="text-2xl font-bold text-center mb-4 text-white">Pay with Card</h2>
+                <h2 className="text-2xl font-bold text-center mb-4 text-foreground">Pay with Card</h2>
                 <PaymentElement />
-                <button disabled={isProcessing || !stripe || !elements} className="w-full mt-6 py-3 bg-gradient-to-r from-purple-600 to-blue-600 rounded-md text-white font-semibold">
+                <button disabled={isProcessing || !stripe || !elements} className="w-full mt-6 py-3 bg-gradient-to-r from-purple-600 to-blue-600 rounded-md text-foreground font-semibold">
                     {isProcessing ? "Processing..." : "Pay Now"}
                 </button>
                 {errorMessage && <div className="text-red-400 text-sm text-center mt-2">{errorMessage}</div>}

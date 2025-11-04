@@ -34,7 +34,7 @@ const ActorCard: React.FC<ActorCardProps> = ({ actor, onPlayClick, isCurrentlyPl
   return (
     <Link
       to={`/actor/${actor.slug}`}
-      className="group relative bg-slate-800/50 p-4 rounded-lg hover:bg-slate-700/50 transition-colors duration-300 block flex flex-col h-full"
+      className="group relative bg-card/50 p-4 rounded-lg hover:bg-accent/50 transition-colors duration-300 block flex flex-col h-full"
     >
       {/* Image & Play Button */}
       <div className="relative mb-4">
@@ -45,7 +45,7 @@ const ActorCard: React.FC<ActorCardProps> = ({ actor, onPlayClick, isCurrentlyPl
         />
         <button
           onClick={handlePlayButtonClick}
-          className={`absolute bottom-2 right-2 w-12 h-12 bg-purple-600 text-white rounded-full flex items-center justify-center
+          className={`absolute bottom-2 right-2 w-12 h-12 bg-primary text-primary-foreground rounded-full flex items-center justify-center
                       shadow-lg opacity-0 group-hover:opacity-100 group-hover:bottom-4 transition-all duration-300
                       ${isCurrentlyPlaying ? 'opacity-100 bottom-4' : ''}`}
         >
@@ -55,11 +55,12 @@ const ActorCard: React.FC<ActorCardProps> = ({ actor, onPlayClick, isCurrentlyPl
       
       {/* Name - This div will grow, pushing stats to the bottom */}
       <div className="flex-grow">
-        <h3 className="font-bold text-white truncate text-lg">{actor.ActorName}</h3>
+        {/* THIS IS THE FIX: text-white -> text-foreground */}
+        <h3 className="font-bold text-foreground truncate text-lg">{actor.ActorName}</h3>
       </div>
 
-      {/* Stats Section - NEW */}
-      <div className="mt-2 pt-3 border-t border-slate-700 space-y-2 text-xs text-slate-400">
+      {/* Stats Section - This part was already correct */}
+      <div className="mt-2 pt-3 border-t border space-y-2 text-xs text-muted-foreground">
         <div className="flex items-center justify-between">
             <div className="flex items-center gap-1.5" title={`${actor.demo_likes[0]?.count || 0} Likes`}>
               <Heart size={12} className="text-pink-400"/>

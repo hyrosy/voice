@@ -124,20 +124,20 @@ const FavoriteActorsPage = () => {
     // --- End Audio Player Logic ---
 
     if (loading) {
-        return <div className="min-h-screen bg-slate-900 flex items-center justify-center text-white">Loading Your Favorite Actors...</div>;
+        return <div className="min-h-screen bg-background flex items-center justify-center text-foreground">Loading Your Favorite Actors...</div>;
     }
 
     return (
-        <div className="min-h-screen bg-slate-900 text-white">
+        <div className="min-h-screen bg-background text-foreground">
             <div className="max-w-7xl mx-auto py-20 px-4">
                 <div className="text-center mb-12">
-                    <div className="inline-block bg-slate-800/50 rounded-full p-5 border border-slate-700 mb-6">
+                    <div className="inline-block bg-card/50 rounded-full p-5 border border mb-6">
                         <Star size={40} className="text-yellow-400" />
                     </div>
-                    <h1 className="text-4xl lg:text-5xl font-black tracking-tighter text-white mb-4">
+                    <h1 className="text-4xl lg:text-5xl font-black tracking-tighter text-foreground mb-4">
                         My Favorite Actors
                     </h1>
-                    <p className="text-lg text-slate-400">All the talent you follow, saved in one place.</p>
+                    <p className="text-lg text-muted-foreground">All the talent you follow, saved in one place.</p>
                 </div>
                 
                 {favoriteActors.length > 0 ? (

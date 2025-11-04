@@ -72,14 +72,14 @@ const AdminClientListPage: React.FC = () => {
     // TODO: Add functions to view client's orders, potentially deactivate/delete client
 
     if (loading) {
-        return <div className="min-h-screen bg-slate-900 flex items-center justify-center text-white">Loading Clients...</div>;
+        return <div className="min-h-screen bg-background flex items-center justify-center text-foreground">Loading Clients...</div>;
     }
 
     return (
-        <div className="min-h-screen bg-slate-900 p-4 md:p-8 text-white">
+        <div className="min-h-screen bg-background p-4 md:p-8 text-foreground">
             <div className="max-w-7xl mx-auto">
                 {/* Back Link */}
-                <Link to="/admin" className="inline-flex items-center gap-2 text-slate-400 hover:text-white mb-6 transition-colors">
+                <Link to="/admin" className="inline-flex items-center gap-2 text-muted-foreground hover:text-accent-foreground mb-6 transition-colors">
                     <ArrowLeft size={16} /> Back to Admin Dashboard
                 </Link>
 
@@ -87,9 +87,9 @@ const AdminClientListPage: React.FC = () => {
 
                 {error && <p className="mb-4 p-3 bg-red-900/50 border border-red-700 rounded-md text-sm text-red-300">{error}</p>}
 
-                <div className="bg-slate-800 rounded-lg border border-slate-700 overflow-x-auto">
+                <div className="bg-card rounded-lg border border overflow-x-auto">
                     <table className="w-full text-left min-w-[700px]">
-                        <thead className="bg-slate-700 text-xs uppercase text-slate-400">
+                        <thead className="bg-slate-700 text-xs uppercase text-muted-foreground">
                             <tr>
                                 <th className="p-4">Name</th>
                                 <th className="p-4">Company</th>
@@ -99,10 +99,10 @@ const AdminClientListPage: React.FC = () => {
                         </thead>
                         <tbody>
                             {clients.map(client => (
-                                <tr key={client.id} className="border-b border-slate-700 hover:bg-slate-700/50 text-sm">
+                                <tr key={client.id} className="border-b border hover:bg-accent/50 text-sm">
                                     <td className="p-4 font-semibold">{client.full_name}</td>
-                                    <td className="p-4 text-slate-400">{client.company_name || '-'}</td>
-                                    <td className="p-4 text-slate-400">{client.email}</td> {/* Should display actual email now */}
+                                    <td className="p-4 text-muted-foreground">{client.company_name || '-'}</td>
+                                    <td className="p-4 text-muted-foreground">{client.email}</td> {/* Should display actual email now */}
                                     {/*<td className="p-4 whitespace-nowrap">
                                         <button className="text-xs text-blue-400 hover:underline">View Orders</button>
                                     </td>*/}

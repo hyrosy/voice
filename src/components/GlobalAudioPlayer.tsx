@@ -50,11 +50,11 @@ const GlobalAudioPlayer: React.FC<PlayerProps> = ({
   };
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 bg-slate-800 border-t border-slate-700 p-4 flex items-center gap-4 z-50">
+    <div className="fixed bottom-0 left-0 right-0 bg-card border-t border p-4 flex items-center gap-4 z-50">
       <img src={currentTrack.actor.HeadshotURL} alt={currentTrack.actor.ActorName} className="w-14 h-14 rounded-md object-cover" />
       <div>
-        <p className="font-bold text-white">{currentTrack.actor.ActorName}</p>
-        <p className="text-sm text-slate-400">Main Demo Reel</p>
+        <p className="font-bold text-foreground">{currentTrack.actor.ActorName}</p>
+        <p className="text-sm text-muted-foreground">Main Demo Reel</p>
       </div>
       <div className="flex-grow flex items-center justify-center gap-4">
           <button
@@ -62,7 +62,7 @@ const GlobalAudioPlayer: React.FC<PlayerProps> = ({
             className="w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center bg-white text-black rounded-full flex-shrink-0"
           >         {isPlaying ? <Pause size={20} /> : <Play size={20} className="ml-1" />}
         </button>
-        <div className="flex items-center gap-2 text-xs text-slate-400 w-full max-w-md">
+        <div className="flex items-center gap-2 text-xs text-muted-foreground w-full max-w-md">
             <span>{formatTime(currentTime)}</span>
             <div 
               className="flex-grow h-1 bg-slate-600 rounded-full cursor-pointer"

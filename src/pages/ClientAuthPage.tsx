@@ -68,16 +68,16 @@ const ClientAuthPage = () => {
     };
 
     return (
-        <div className="min-h-screen grid grid-cols-1 md:grid-cols-2 bg-slate-900 text-white">
+        <div className="min-h-screen grid grid-cols-1 md:grid-cols-2 bg-background text-white">
             
             {/* 1. Left Branding Column */}
-            <div className="hidden md:flex flex-col justify-center items-center p-12 bg-gradient-to-br from-purple-900 via-slate-900 to-slate-900 border-r border-slate-800">
+            <div className="hidden md:flex flex-col justify-center items-center p-12 bg-gradient-to-br from-purple-900 via-slate-900 to-slate-900 border-r border">
                 <div className="text-center">
                     <div className="inline-flex items-center justify-center w-20 h-20 bg-white/10 rounded-full mb-6 border border-white/20">
                         <UserCircle size={40} className="text-white" /> 
                     </div>
                     <h1 className="text-5xl font-bold mb-4 tracking-tight">{t('auth.clientPortal')}</h1>
-                    <p className="text-slate-400 max-w-sm">{t('auth.accessOrders')}</p>                    
+                    <p className="text-muted-foreground max-w-sm">{t('auth.accessOrders')}</p>                    
                 </div>
             </div>
 
@@ -86,21 +86,21 @@ const ClientAuthPage = () => {
                 <div className="w-full max-w-md">
                     
                     <h2 className="text-4xl font-bold mb-2 text-center md:text-left">{isSignUp ? t('auth.createClientAccount') : t('auth.logInBtn')}</h2>
-                    <p className="text-center md:text-left text-slate-400 mb-8">{isSignUp ? t('auth.accessOrders') : 'Welcome back!'}</p>
+                    <p className="text-center md:text-left text-muted-foreground mb-8">{isSignUp ? t('auth.accessOrders') : 'Welcome back!'}</p>
                     <form onSubmit={handleAuthAction} className="space-y-6">
                         {isSignUp && (
                             <div>
-                                <label htmlFor="name" className="block text-sm font-medium text-slate-300 mb-1">{t('auth.fullName')}</label>                                
-                                <input id="name" type="text" value={name} onChange={(e) => setName(e.target.value)} required className="w-full p-3 bg-slate-800 border border-slate-700 rounded-md focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition" placeholder="e.g., Jane Doe" />
+                                <label htmlFor="name" className="block text-sm font-medium text-muted-foreground mb-1">{t('auth.fullName')}</label>                                
+                                <input id="name" type="text" value={name} onChange={(e) => setName(e.target.value)} required className="w-full p-3 bg-card border border rounded-md focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition" placeholder="e.g., Jane Doe" />
                             </div>
                         )}
                         <div>
-                            <label htmlFor="email" className="block text-sm font-medium text-slate-300 mb-1">{t('auth.email')}</label>                            
-                            <input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required className="w-full p-3 bg-slate-800 border border-slate-700 rounded-md focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition" placeholder="you@example.com" />
+                            <label htmlFor="email" className="block text-sm font-medium text-muted-foreground mb-1">{t('auth.email')}</label>                            
+                            <input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required className="w-full p-3 bg-card border border rounded-md focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition" placeholder="you@example.com" />
                         </div>
                         <div>
-                            <label htmlFor="password"  className="block text-sm font-medium text-slate-300 mb-1">{t('auth.password')}</label>                            
-                            <input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required className="w-full p-3 bg-slate-800 border border-slate-700 rounded-md focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition" placeholder="••••••••" />
+                            <label htmlFor="password"  className="block text-sm font-medium text-muted-foreground mb-1">{t('auth.password')}</label>                            
+                            <input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required className="w-full p-3 bg-card border border rounded-md focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition" placeholder="••••••••" />
                         </div>
                         <div className="pt-4">
                             <button type="submit" disabled={loading} className="w-full py-3 bg-gradient-to-r from-purple-600 to-blue-600 hover:opacity-90 rounded-md font-semibold text-lg transition-opacity disabled:opacity-50">
@@ -112,10 +112,10 @@ const ClientAuthPage = () => {
                     {/* --- OAuth Providers --- */}
                     <div className="relative my-6">
                         <div className="absolute inset-0 flex items-center">
-                            <div className="w-full border-t border-slate-700" />
+                            <div className="w-full border-t border" />
                         </div>
                         <div className="relative flex justify-center text-sm">
-                            <span className="bg-slate-900 px-2 text-slate-500">{t('auth.orContinueWith')}</span>                        
+                            <span className="bg-background px-2 text-slate-500">{t('auth.orContinueWith')}</span>                        
                             </div>
                     </div>
 
@@ -124,7 +124,7 @@ const ClientAuthPage = () => {
                     </div>
                     {/* --- END OAuth Providers --- */}
 
-                    {message && <p className="mt-4 text-center text-sm text-slate-400">{message}</p>}
+                    {message && <p className="mt-4 text-center text-sm text-muted-foreground">{message}</p>}
                     
                     {/* Toggle Button */}
                     <div className="text-center mt-6">

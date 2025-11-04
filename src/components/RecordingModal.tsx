@@ -131,7 +131,7 @@ const RecordingModal: React.FC<RecordingModalProps> = ({ onClose, onSave, isSavi
           <button onClick={onClose} className="absolute top-4 right-4 text-muted-foreground hover:text-foreground">
             <X size={24} />
           </button>
-          <h2 className="text-2xl font-bold text-white mb-6 text-center">Record New Audio</h2>
+          <h2 className="text-2xl font-bold text-foreground mb-6 text-center">Record New Audio</h2>
           
           <div className="flex flex-col items-center gap-4">
             <Button

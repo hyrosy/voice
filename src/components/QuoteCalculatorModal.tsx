@@ -316,7 +316,7 @@ const QuoteCalculatorModal: React.FC<ModalProps> = ({ actor, onClose }) => {
                           }`}>
                               {adjustedStep > index + 1 ? <CheckCircle size={18} /> : <span className="font-bold">{index + 1}</span>}
                           </div>
-                          <p className={`text-xs mt-2 transition-colors ${adjustedStep >= index + 1 ? 'text-white' : 'text-slate-400'}`}>{name}</p>
+                          <p className={`text-xs mt-2 transition-colors ${adjustedStep >= index + 1 ? 'text-foreground' : 'text-muted-foreground'}`}>{name}</p>
                       </div>
                       {index < steps.length - 1 && <div className={`flex-grow h-0.5 mx-2 ${adjustedStep > index + 1 ? 'bg-purple-600' : 'bg-slate-700'}`}></div>}
                   </React.Fragment>
@@ -333,7 +333,7 @@ const QuoteCalculatorModal: React.FC<ModalProps> = ({ actor, onClose }) => {
         return (
           <div>
             <ProgressBar currentStep={1} />
-            <h2 className="text-2xl font-bold text-center mb-6 text-white">Select a Service</h2>
+            <h2 className="text-2xl font-bold text-center mb-6 text-foreground">Select a Service</h2>
             <div className="space-y-4">
               {availableServices.map(service => (
                 <button
@@ -346,8 +346,8 @@ const QuoteCalculatorModal: React.FC<ModalProps> = ({ actor, onClose }) => {
                 >
                   <service.icon className="w-6 h-6 text-purple-400 flex-shrink-0" />
                   <div>
-                    <h3 className="font-bold text-white">{service.name}</h3>
-                    <p className="text-sm text-slate-400">Get a {service.id === 'voice_over' ? 'price' : 'quote'} for {service.name.toLowerCase()}</p>
+                    <h3 className="font-bold text-foreground">{service.name}</h3>
+                    <p className="text-sm text-muted-foreground">Get a {service.id === 'voice_over' ? 'price' : 'quote'} for {service.name.toLowerCase()}</p>
                   </div>
                 </button>
               ))}
@@ -362,24 +362,24 @@ const QuoteCalculatorModal: React.FC<ModalProps> = ({ actor, onClose }) => {
           return (
             <div>
               <ProgressBar currentStep={1} />
-              <h2 className="text-2xl font-bold text-center mb-6 text-white">Project Scope</h2>
+              <h2 className="text-2xl font-bold text-center mb-6 text-foreground">Project Scope</h2>
               <div className="space-y-6">
                 <div>
-                  <label htmlFor="scriptText" className="block mb-2 text-sm font-medium text-slate-300">Paste Your Script Here</label>
-                  <textarea id="scriptText" rows={5} value={scriptText} onChange={e => setScriptText(e.target.value)} className="w-full bg-slate-700 border border-slate-600 rounded-md p-3 text-white focus:ring-2 focus:ring-purple-500 focus:border-purple-500" placeholder="Your script..."></textarea>
-                  <p className="text-right text-slate-400 text-sm mt-1">Word Count: {wordCount}</p>
+                  <label htmlFor="scriptText" className="block mb-2 text-sm font-medium text-muted-foreground">Paste Your Script Here</label>
+                  <textarea id="scriptText" rows={5} value={scriptText} onChange={e => setScriptText(e.target.value)} className="w-full bg-slate-700 border border-slate-600 rounded-md p-3 text-foreground focus:ring-2 focus:ring-purple-500 focus:border-purple-500" placeholder="Your script..."></textarea>
+                  <p className="text-right text-muted-foreground text-sm mt-1">Word Count: {wordCount}</p>
                 </div>
                 <div>
-                  <label htmlFor="usage" className="block mb-2 text-sm font-medium text-slate-300">Usage Rights</label>
-                  <select id="usage" value={usage} onChange={e => setUsage(e.target.value)} className="w-full bg-slate-700 border border-slate-600 rounded-md p-3 text-white focus:ring-2 focus:ring-purple-500 focus:border-purple-500">
+                  <label htmlFor="usage" className="block mb-2 text-sm font-medium text-muted-foreground">Usage Rights</label>
+                  <select id="usage" value={usage} onChange={e => setUsage(e.target.value)} className="w-full bg-slate-700 border border-slate-600 rounded-md p-3 text-foreground focus:ring-2 focus:ring-purple-500 focus:border-purple-500">
                     <option value="web">Web & Social Media (1 Year)</option>
                     <option value="broadcast">TV, Radio & Cinema (1 Year)</option>
                   </select>
                 </div>
               </div>
               <div className="flex gap-4 mt-8">
-                {availableServices.length > 1 && <button onClick={() => setStep(0)} className="w-full py-3 bg-slate-600 rounded-full font-semibold text-white">Back</button>}
-                <button onClick={() => setStep(2)} className="w-full py-3 bg-gradient-to-r from-purple-600 to-blue-600 rounded-full text-white font-semibold">Next</button>
+                {availableServices.length > 1 && <button onClick={() => setStep(0)} className="w-full py-3 bg-slate-600 rounded-full font-semibold text-foreground">Back</button>}
+                <button onClick={() => setStep(2)} className="w-full py-3 bg-gradient-to-r from-purple-600 to-blue-600 rounded-full text-foreground font-semibold">Next</button>
               </div>
             </div>
           );
@@ -389,32 +389,32 @@ const QuoteCalculatorModal: React.FC<ModalProps> = ({ actor, onClose }) => {
           return (
             <div>
               <ProgressBar currentStep={1} />
-              <h2 className="text-2xl font-bold text-center mb-6 text-white">Script Writing Details</h2>
+              <h2 className="text-2xl font-bold text-center mb-6 text-foreground">Script Writing Details</h2>
               <div className="space-y-6">
                 <div>
-                  <label htmlFor="projectDescription" className="block mb-2 text-sm font-medium text-slate-300">Project Description *</label>
-                  <textarea id="projectDescription" rows={5} value={projectDescription} onChange={e => setProjectDescription(e.target.value)} className="w-full bg-slate-700 border border-slate-600 rounded-md p-3 text-white" placeholder="Tell us about your project, tone, style, and goals..."></textarea>
+                  <label htmlFor="projectDescription" className="block mb-2 text-sm font-medium text-muted-foreground">Project Description *</label>
+                  <textarea id="projectDescription" rows={5} value={projectDescription} onChange={e => setProjectDescription(e.target.value)} className="w-full bg-slate-700 border border-slate-600 rounded-md p-3 text-foreground" placeholder="Tell us about your project, tone, style, and goals..."></textarea>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label htmlFor="estimatedDuration" className="block mb-2 text-sm font-medium text-slate-300">Video Duration (min)</label>
+                    <label htmlFor="estimatedDuration" className="block mb-2 text-sm font-medium text-muted-foreground">Video Duration (min)</label>
                     <input id="estimatedDuration" type="text" value={estimatedDuration} onChange={e => setEstimatedDuration(e.target.value)} className="w-full bg-slate-700 border border-slate-600 rounded-md p-3" placeholder="e.g., '2-3'" />
                   </div>
                   <div>
-                    <label htmlFor="estimatedWordCount" className="block mb-2 text-sm font-medium text-slate-300">Est. Word Count</label>
+                    <label htmlFor="estimatedWordCount" className="block mb-2 text-sm font-medium text-muted-foreground">Est. Word Count</label>
                     <input id="estimatedWordCount" type="number" value={estimatedWordCount} onChange={e => setEstimatedWordCount(Number(e.target.value))} className="w-full bg-slate-700 border border-slate-600 rounded-md p-3" />
                   </div>
                 </div>
                 {actor.service_script_rate && actor.service_script_rate > 0 && (
                   <div className="bg-slate-700/50 p-4 rounded-lg border border-slate-600">
-                    <p className="text-sm text-slate-300">Est. Price: <span className="font-bold text-white">{ (actor.service_script_rate * estimatedWordCount).toFixed(2) } MAD</span> (at {actor.service_script_rate} MAD/word)</p>
-                    <p className="text-xs text-slate-400">Final price will be provided in a quote from the actor.</p>
+                    <p className="text-sm text-muted-foreground">Est. Price: <span className="font-bold text-foreground">{ (actor.service_script_rate * estimatedWordCount).toFixed(2) } MAD</span> (at {actor.service_script_rate} MAD/word)</p>
+                    <p className="text-xs text-muted-foreground">Final price will be provided in a quote from the actor.</p>
                   </div>
                 )}
               </div>
               <div className="flex gap-4 mt-8">
-                <button onClick={() => setStep(0)} className="w-full py-3 bg-slate-600 rounded-full font-semibold text-white">Back</button>
-                <button onClick={() => setStep(3)} className="w-full py-3 bg-gradient-to-r from-purple-600 to-blue-600 rounded-full text-white font-semibold">Next</button>
+                <button onClick={() => setStep(0)} className="w-full py-3 bg-slate-600 rounded-full font-semibold text-foreground">Back</button>
+                <button onClick={() => setStep(3)} className="w-full py-3 bg-gradient-to-r from-purple-600 to-blue-600 rounded-full text-foreground font-semibold">Next</button>
               </div>
             </div>
           );
@@ -424,43 +424,43 @@ const QuoteCalculatorModal: React.FC<ModalProps> = ({ actor, onClose }) => {
           return (
             <div>
               <ProgressBar currentStep={1} />
-              <h2 className="text-2xl font-bold text-center mb-6 text-white">Video Editing Details</h2>
+              <h2 className="text-2xl font-bold text-center mb-6 text-foreground">Video Editing Details</h2>
               <div className="space-y-6">
                 <div>
-                  <label htmlFor="projectDescription_video" className="block mb-2 text-sm font-medium text-slate-300">Project Description *</label>
-                  <textarea id="projectDescription_video" rows={5} value={projectDescription} onChange={e => setProjectDescription(e.target.value)} className="w-full bg-slate-700 border border-slate-600 rounded-md p-3 text-white" placeholder="Describe the video you need, style, length, etc..."></textarea>
+                  <label htmlFor="projectDescription_video" className="block mb-2 text-sm font-medium text-muted-foreground">Project Description *</label>
+                  <textarea id="projectDescription_video" rows={5} value={projectDescription} onChange={e => setProjectDescription(e.target.value)} className="w-full bg-slate-700 border border-slate-600 rounded-md p-3 text-foreground" placeholder="Describe the video you need, style, length, etc..."></textarea>
                 </div>
                 <div>
-                  <label htmlFor="videoType" className="block mb-2 text-sm font-medium text-slate-300">Video Type</label>
-                  <select id="videoType" value={videoType} onChange={e => setVideoType(e.target.value)} className="w-full bg-slate-700 border border-slate-600 rounded-md p-3 text-white">
+                  <label htmlFor="videoType" className="block mb-2 text-sm font-medium text-muted-foreground">Video Type</label>
+                  <select id="videoType" value={videoType} onChange={e => setVideoType(e.target.value)} className="w-full bg-slate-700 border border-slate-600 rounded-md p-3 text-foreground">
                     <option value="creative">Creative / Podcast</option>
                     <option value="commercial">Commercial / Ad</option>
                     <option value="corporate">Corporate / Explainer</option>
                   </select>
                 </div>
                 <div>
-                  <label className="block mb-2 text-sm font-medium text-slate-300">Footage Choice</label>
+                  <label className="block mb-2 text-sm font-medium text-muted-foreground">Footage Choice</label>
                   <div className="bg-slate-700/50 p-4 rounded-lg border border-slate-600 space-y-3">
                     <label htmlFor="has_footage" className="flex items-center cursor-pointer">
                       <input type="radio" id="has_footage" name="footageChoice" value="has_footage" checked={footageChoice === 'has_footage'} onChange={e => setFootageChoice(e.target.value)} className="h-4 w-4 accent-purple-500" />
-                      <span className="ml-3 text-sm text-white">I have my own footage</span>
+                      <span className="ml-3 text-sm text-foreground">I have my own footage</span>
                     </label>
                     <label htmlFor="needs_footage" className="flex items-center cursor-pointer">
                       <input type="radio" id="needs_footage" name="footageChoice" value="needs_footage" checked={footageChoice === 'needs_footage'} onChange={e => setFootageChoice(e.target.value)} className="h-4 w-4 accent-purple-500" />
-                      <span className="ml-3 text-sm text-white">I need royalty-free stock footage</span>
+                      <span className="ml-3 text-sm text-foreground">I need royalty-free stock footage</span>
                     </label>
                   </div>
                 </div>
                 {actor.service_video_rate && actor.service_video_rate > 0 && (
                   <div className="bg-slate-700/50 p-4 rounded-lg border border-slate-600">
-                    <p className="text-sm text-slate-300">Starts from: <span className="font-bold text-white">{actor.service_video_rate} MAD / minute</span></p>
-                    <p className="text-xs text-slate-400">Final price will be provided in a quote from the actor.</p>
+                    <p className="text-sm text-muted-foreground">Starts from: <span className="font-bold text-foreground">{actor.service_video_rate} MAD / minute</span></p>
+                    <p className="text-xs text-muted-foreground">Final price will be provided in a quote from the actor.</p>
                   </div>
                 )}
               </div>
               <div className="flex gap-4 mt-8">
-                <button onClick={() => setStep(0)} className="w-full py-3 bg-slate-600 rounded-full font-semibold text-white">Back</button>
-                <button onClick={() => setStep(3)} className="w-full py-3 bg-gradient-to-r from-purple-600 to-blue-600 rounded-full text-white font-semibold">Next</button>
+                <button onClick={() => setStep(0)} className="w-full py-3 bg-slate-600 rounded-full font-semibold text-foreground">Back</button>
+                <button onClick={() => setStep(3)} className="w-full py-3 bg-gradient-to-r from-purple-600 to-blue-600 rounded-full text-foreground font-semibold">Next</button>
               </div>
             </div>
           );
@@ -472,17 +472,17 @@ const QuoteCalculatorModal: React.FC<ModalProps> = ({ actor, onClose }) => {
         return (
           <div>
             <ProgressBar currentStep={2} />
-            <h2 className="text-2xl font-bold text-center mb-6 text-white">Optional Add-ons</h2>
+            <h2 className="text-2xl font-bold text-center mb-6 text-foreground">Optional Add-ons</h2>
             <div className="bg-slate-700/50 p-4 rounded-lg border border-slate-600">
               <label htmlFor="videoSync" className="flex items-center cursor-pointer">
                 <input type="checkbox" id="videoSync" checked={videoSync} onChange={e => setVideoSync(e.target.checked)} className="h-5 w-5 rounded accent-purple-500" />
-                <span className="ml-3 font-medium text-white">Timed Audio Sync (for video)</span>
-                <span className="ml-auto font-bold text-white">+500 MAD</span>
+                <span className="ml-3 font-medium text-foreground">Timed Audio Sync (for video)</span>
+                <span className="ml-auto font-bold text-foreground">+500 MAD</span>
               </label>
             </div>
             <div className="flex gap-4 mt-8">
-              <button onClick={() => setStep(1)} className="w-full py-3 bg-slate-600 rounded-full font-semibold text-white">Back</button>
-              <button onClick={() => setStep(3)} className="w-full py-3 bg-gradient-to-r from-purple-600 to-blue-600 rounded-full font-semibold text-white">Next</button>
+              <button onClick={() => setStep(1)} className="w-full py-3 bg-slate-600 rounded-full font-semibold text-foreground">Back</button>
+              <button onClick={() => setStep(3)} className="w-full py-3 bg-gradient-to-r from-purple-600 to-blue-600 rounded-full font-semibold text-foreground">Next</button>
             </div>
           </div>
         );
@@ -495,7 +495,7 @@ const QuoteCalculatorModal: React.FC<ModalProps> = ({ actor, onClose }) => {
         return (
           <div>
             <ProgressBar currentStep={3} />
-            <h2 className="text-2xl font-bold text-center mb-6 text-white">
+            <h2 className="text-2xl font-bold text-center mb-6 text-foreground">
               {isQuoteFlow ? "Your Details" : "Your Details & Payment"}
             </h2>
             <div className="space-y-4">
@@ -508,44 +508,44 @@ const QuoteCalculatorModal: React.FC<ModalProps> = ({ actor, onClose }) => {
               {/* --- DYNAMIC CONTENT: Payment or Quote Button --- */}
               {isQuoteFlow ? (
                 // --- QUOTE FLOW: Show Submit Button ---
-                <div className="pt-4 border-t border-slate-700">
-                  <p className="text-sm text-slate-400 text-center mb-4">You will receive an offer from the actor after submitting your request.</p>
+                <div className="pt-4 border-t border">
+                  <p className="text-sm text-muted-foreground text-center mb-4">You will receive an offer from the actor after submitting your request.</p>
                   <button
                     type="button"
                     onClick={handleQuoteSubmit}
                     disabled={!clientInfo.name || !clientInfo.email || !clientInfo.phone || isSettingUpStripe}
-                    className="w-full py-3 bg-gradient-to-r from-purple-600 to-blue-600 rounded-full font-semibold text-white disabled:opacity-50"
+                    className="w-full py-3 bg-gradient-to-r from-purple-600 to-blue-600 rounded-full font-semibold text-foreground disabled:opacity-50"
                   >
                     {isSettingUpStripe ? 'Submitting...' : 'Submit Quote Request'}
                   </button>
                 </div>
               ) : (
                 // --- VOICE OVER FLOW: Show Payment Options ---
-                <div className="pt-4 border-t border-slate-700">
-                  <label className="block mb-2 text-sm font-medium text-slate-300">Choose Payment Method *</label>
+                <div className="pt-4 border-t border">
+                  <label className="block mb-2 text-sm font-medium text-muted-foreground">Choose Payment Method *</label>
                   <div className="space-y-4">
                     <label className={`w-full p-4 border-2 rounded-lg text-left transition flex items-center gap-4 cursor-pointer ${paymentMethod === 'stripe' ? 'border-purple-500 bg-purple-900/50' : 'border-slate-600 hover:border-slate-500'}`}>
                       <input type="radio" name="paymentMethod" value="stripe" checked={paymentMethod === 'stripe'} onChange={() => handlePaymentMethodChange('stripe')} className="h-4 w-4 mr-2 border-slate-500 text-purple-600 focus:ring-purple-500" disabled={isSettingUpStripe} />
                       <CreditCard className="w-6 h-6 text-purple-400 flex-shrink-0" />
                       <div>
-                        <h3 className="font-bold text-white">Pay by Card (Stripe)</h3>
-                        <p className="text-sm text-slate-400">Securely pay with your credit/debit card.</p>
+                        <h3 className="font-bold text-foreground">Pay by Card (Stripe)</h3>
+                        <p className="text-sm text-muted-foreground">Securely pay with your credit/debit card.</p>
                       </div>
                     </label>
                     <label className={`w-full p-4 border-2 rounded-lg text-left transition flex items-center gap-4 cursor-pointer ${paymentMethod === 'bank' ? 'border-purple-500 bg-purple-900/50' : 'border-slate-600 hover:border-slate-500'}`}>
                       <input type="radio" name="paymentMethod" value="bank" checked={paymentMethod === 'bank'} onChange={() => handlePaymentMethodChange('bank')} className="h-4 w-4 mr-2 border-slate-500 text-purple-600 focus:ring-purple-500" disabled={isSettingUpStripe} />
                       <Wallet className="w-6 h-6 text-purple-400 flex-shrink-0" />
                       <div>
-                        <h3 className="font-bold text-white">Bank Transfer</h3>
-                        <p className="text-sm text-slate-400">Receive payment details and pay manually.</p>
+                        <h3 className="font-bold text-foreground">Bank Transfer</h3>
+                        <p className="text-sm text-muted-foreground">Receive payment details and pay manually.</p>
                       </div>
                     </label>
                   </div>
-                  {isSettingUpStripe && <p className="text-center text-sm text-slate-400 mt-4">{status || 'Initializing...'}</p>}
+                  {isSettingUpStripe && <p className="text-center text-sm text-muted-foreground mt-4">{status || 'Initializing...'}</p>}
                   {!isSettingUpStripe && status && !clientSecret && paymentMethod === 'stripe' && <p className="text-center text-sm text-red-400 mt-4">{status}</p>}
 
                   {paymentMethod === 'stripe' && clientSecret && !isSettingUpStripe && (
-                    <div className="mt-4 pt-4 border-t border-slate-700">
+                    <div className="mt-4 pt-4 border-t border">
                       <Elements stripe={stripePromise} options={{ clientSecret, appearance: { theme: 'night', labels: 'floating' } }}>
                         <StripeCheckoutForm onSuccessfulPayment={onSuccessfulStripePayment} />
                       </Elements>
@@ -555,8 +555,8 @@ const QuoteCalculatorModal: React.FC<ModalProps> = ({ actor, onClose }) => {
               )}
               {/* --- END DYNAMIC CONTENT --- */}
 
-              <div className="flex gap-4 pt-6 mt-6 border-t border-slate-700">
-                <button type="button" onClick={() => setStep(serviceType === 'voice_over' ? 2 : 1)} className="w-full py-3 bg-slate-600 rounded-full font-semibold text-white">Back</button>
+              <div className="flex gap-4 pt-6 mt-6 border-t border">
+                <button type="button" onClick={() => setStep(serviceType === 'voice_over' ? 2 : 1)} className="w-full py-3 bg-slate-600 rounded-full font-semibold text-foreground">Back</button>
                 
                 {/* Bank Transfer button (VO flow only) */}
                 {serviceType === 'voice_over' && paymentMethod === 'bank' && (
@@ -564,7 +564,7 @@ const QuoteCalculatorModal: React.FC<ModalProps> = ({ actor, onClose }) => {
                       type="button"
                       onClick={handleConfirmation}
                       disabled={!canConfirmBank || isSettingUpStripe}
-                      className="w-full py-3 bg-gradient-to-r from-purple-600 to-blue-600 rounded-full font-semibold text-white disabled:opacity-50"
+                      className="w-full py-3 bg-gradient-to-r from-purple-600 to-blue-600 rounded-full font-semibold text-foreground disabled:opacity-50"
                    >
                       Confirm Bank Transfer
                   </button>
@@ -585,32 +585,32 @@ const QuoteCalculatorModal: React.FC<ModalProps> = ({ actor, onClose }) => {
 
               {status.includes('Successful') || status.includes('Confirmed') || status.includes('Submitted') ? (
                 <div>
-                  <p className="text-slate-300 mb-6">
+                  <p className="text-muted-foreground mb-6">
                     {isQuote
                       ? "Thank you! The actor has been notified and will send you an offer shortly."
                       : "Thank you! A confirmation email with the next steps is on its way."
                     }
                   </p>
                   {newOrderId && (
-                    <Link to={`/order/${newOrderId}`} className="inline-block w-full mb-6 px-8 py-4 bg-gradient-to-r from-blue-600 to-purple-600 rounded-full text-white font-semibold text-lg shadow-lg hover:scale-105 transition-transform">
+                    <Link to={`/order/${newOrderId}`} className="inline-block w-full mb-6 px-8 py-4 bg-gradient-to-r from-blue-600 to-purple-600 rounded-full text-foreground font-semibold text-lg shadow-lg hover:scale-105 transition-transform">
                       {isQuote ? "View Your Quote Request" : "View Your Order Details"}
                     </Link>
                   )}
                 </div>
               ) : status.includes('Error') ? (
-                <p className="text-slate-300 my-4">There was an issue processing your request. Please check the details and try again, or contact support.</p>
+                <p className="text-muted-foreground my-4">There was an issue processing your request. Please check the details and try again, or contact support.</p>
               ) : null}
 
               {/* Bank Transfer Details (VO flow only) */}
               {status === 'Order Confirmed!' && paymentMethod === 'bank' && !isQuote && (
-                <div className="bg-slate-900 p-6 rounded-lg text-left mt-6">
-                  <p className="mb-2"><span className="font-bold text-slate-400">Order ID:</span> {orderId}</p>
-                  <p className="mb-4"><span className="font-bold text-slate-400">Amount Due:</span> {totalPrice.toFixed(2)} MAD</p>
-                  <h4 className="font-bold text-lg mb-2 border-t border-slate-700 pt-4 text-white">Bank Transfer Details:</h4>
-                  <p className="text-sm text-slate-400">Bank Name: Attijariwafa Bank</p>
-                  <p className="text-sm text-slate-400">Account Holder: UCPMAROC</p>
-                  <p className="text-sm text-slate-400">IBAN: MA64 0077 8000 0219 5000 0005 47</p>
-                  <p className="font-bold text-white mt-4">IMPORTANT: Please use your Order ID ({orderId}) as the payment reference.</p>
+                <div className="bg-background p-6 rounded-lg text-left mt-6">
+                  <p className="mb-2"><span className="font-bold text-muted-foreground">Order ID:</span> {orderId}</p>
+                  <p className="mb-4"><span className="font-bold text-muted-foreground">Amount Due:</span> {totalPrice.toFixed(2)} MAD</p>
+                  <h4 className="font-bold text-lg mb-2 border-t border pt-4 text-foreground">Bank Transfer Details:</h4>
+                  <p className="text-sm text-muted-foreground">Bank Name: Attijariwafa Bank</p>
+                  <p className="text-sm text-muted-foreground">Account Holder: UCPMAROC</p>
+                  <p className="text-sm text-muted-foreground">IBAN: MA64 0077 8000 0219 5000 0005 47</p>
+                  <p className="font-bold text-foreground mt-4">IMPORTANT: Please use your Order ID ({orderId}) as the payment reference.</p>
                 </div>
               )}
             </div>
@@ -623,13 +623,13 @@ const QuoteCalculatorModal: React.FC<ModalProps> = ({ actor, onClose }) => {
 
   return (
     <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
-      <div className="bg-slate-800 rounded-2xl border border-slate-700/50 w-full max-w-lg relative transition-all duration-300
+      <div className="bg-card rounded-2xl border border/50 w-full max-w-lg relative transition-all duration-300
                       p-6 sm:p-8 flex flex-col max-h-screen sm:max-h-[90vh]">
-        <button onClick={onClose} className="absolute top-4 right-4 text-slate-400 hover:text-white z-10">
+        <button onClick={onClose} className="absolute top-4 right-4 text-muted-foreground hover:text-accent-foreground z-10">
           <X size={24} />
         </button>
-        <div className="flex-shrink-0 mb-6 border-b border-slate-700 pb-4">
-          <p className="text-center text-slate-400">Booking for: <span className="font-bold text-blue-400">{actor.ActorName}</span></p>
+        <div className="flex-shrink-0 mb-6 border-b border pb-4">
+          <p className="text-center text-muted-foreground">Booking for: <span className="font-bold text-blue-400">{actor.ActorName}</span></p>
           {/* Only show total price for Voice Over flow */}
           {serviceType === 'voice_over' && (
             <>
@@ -642,7 +642,7 @@ const QuoteCalculatorModal: React.FC<ModalProps> = ({ actor, onClose }) => {
             </>
           )}
           {serviceType !== 'voice_over' && step > 0 && (
-            <p className="text-center text-2xl font-bold text-white mt-2">
+            <p className="text-center text-2xl font-bold text-foreground mt-2">
               Quote Request
             </p>
           )}

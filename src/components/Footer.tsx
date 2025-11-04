@@ -28,7 +28,7 @@ const legalLinks = [
 
 const FooterLink = ({ href, text }: { href: string, text: string }) => (
   <li>
-    <Link to={href} className="text-slate-400 hover:text-purple-400 hover:translate-x-1 transition-all duration-300 block">
+    <Link to={href} className="text-muted-foreground hover:text-purple-400 hover:translate-x-1 transition-all duration-300 block">
       {text}
     </Link>
   </li>
@@ -37,7 +37,7 @@ const FooterLink = ({ href, text }: { href: string, text: string }) => (
 const ContactInfo = ({ icon: Icon, text }: { icon: React.ElementType, text: string }) => (
   <div className="flex items-start gap-3">
     <Icon className="w-5 h-5 text-purple-400 flex-shrink-0 mt-1" />
-    <span className="text-slate-400">{text}</span>
+    <span className="text-muted-foreground">{text}</span>
   </div>
 );
 
@@ -64,7 +64,7 @@ const Footer = () => {
   // --- END NEW Function ---
 
   return (
-    <footer className="relative bg-slate-900 text-white border-t border-slate-800">
+    <footer className="relative bg-background text-white">
       <div className="max-w-7xl mx-auto px-6 py-16">
         {/* Main Footer Content */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12 mb-12">
@@ -76,7 +76,7 @@ const Footer = () => {
               alt="UCPMAROC Logo" 
               className="h-10 w-auto mb-4"
             />
-            <p className="text-slate-400 leading-relaxed text-sm max-w-xs">
+            <p className="text-muted-foreground leading-relaxed text-sm max-w-xs">
               Your partner in digital growth. We leverage AI-powered strategies to deliver exceptional ROI for businesses of all sizes.
             </p>
             <div className="flex space-x-2 pt-2">
@@ -87,7 +87,7 @@ const Footer = () => {
                   target="_blank"
                   rel="noopener noreferrer"
                   aria-label={social.label}
-                  className="p-2 bg-slate-800 rounded-full hover:bg-purple-600/20 text-slate-400 hover:text-purple-400 transition-colors"
+                  className="p-2 bg-card rounded-full hover:bg-purple-600/20 text-muted-foreground hover:text-purple-400 transition-colors"
                 >
                   <social.icon size={18} />
                 </a>
@@ -123,7 +123,7 @@ const Footer = () => {
         </div>
 
 {/* --- MODIFIED: Google Translate Widget --- */}
-        <div className="mb-8 border-t border-slate-800 pt-8">
+        <div className="mb-8">
           <div className="flex justify-between items-center mb-4">
              <h3 className="text-lg font-bold text-white flex items-center gap-2">
                 <Globe size={20} /> Translate
@@ -131,7 +131,7 @@ const Footer = () => {
              {/* NEW: Reset Button */}
              <button 
                 onClick={handleResetTranslation} 
-                className="text-xs text-slate-400 hover:text-white inline-flex items-center gap-1 transition-colors"
+                className="text-xs text-muted-foreground hover:text-accent-foreground inline-flex items-center gap-1 transition-colors"
              >
                 <RefreshCw size={14} /> Reset to English
              </button>
@@ -142,7 +142,7 @@ const Footer = () => {
         {/* --- END Google Translate Widget --- */}
         
         {/* Bottom Section */}
-        <div className="border-t border-slate-800 pt-8 flex flex-col md:flex-row justify-between items-center space-y-4 md:space-y-0">
+        <div className="  pt-8 flex flex-col md:flex-row justify-between items-center space-y-4 md:space-y-0">
           <p className="text-slate-500 text-sm">
             © {new Date().getFullYear()} UCPMAROC (Operated by HYROSY LLC). All rights reserved.
           </p>

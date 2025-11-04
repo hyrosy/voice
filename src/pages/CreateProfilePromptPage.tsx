@@ -76,14 +76,14 @@ const CreateProfilePromptPage: React.FC = () => {
     };
 
     return (
-        <div className="min-h-screen bg-slate-900 flex items-center justify-center p-4">
-            <div className="w-full max-w-md bg-slate-800 p-10 rounded-lg border border-slate-700 text-center">
+        <div className="min-h-screen bg-background flex items-center justify-center p-4">
+            <div className="w-full max-w-md bg-card p-10 rounded-lg border border text-center">
                 <div className="inline-flex items-center justify-center w-16 h-16 bg-purple-600/20 rounded-full mb-6 border border-purple-500/50 text-purple-400">
                     {icon}
                 </div>
                 
-                <h1 className="text-3xl font-bold text-white mb-4">{title}</h1>
-                <p className="text-slate-400 mb-8">{description}</p>
+                <h1 className="text-3xl font-bold text-foreground mb-4">{title}</h1>
+                <p className="text-muted-foreground mb-8">{description}</p>
 
                 {error && (
                     <div className="p-3 bg-red-900/50 border border-red-700 rounded-md text-sm text-red-300 mb-4 flex items-center gap-2">
@@ -100,7 +100,7 @@ const CreateProfilePromptPage: React.FC = () => {
                     {loading ? 'Creating Profile...' : `Create ${roleToCreate} Profile`}
                 </button>
 
-                <button onClick={() => navigate('/')} className="text-sm text-slate-500 hover:text-slate-300 mt-6">
+                <button onClick={() => navigate('/')} className="text-sm text-slate-500 hover:text-muted-foreground mt-6">
                     Back to Home
                 </button>
             </div>

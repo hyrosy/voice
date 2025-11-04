@@ -454,29 +454,29 @@ const ClientOrderPage = () => {
 
 
     if (loading) {
-        return <div className="min-h-screen bg-slate-900 flex items-center justify-center text-white">Loading Your Order...</div>;
+        return <div className="min-h-screen bg-background flex items-center justify-center text-foreground">Loading Your Order...</div>;
     }
 
     if (error || !order) {
-        return <div className="min-h-screen bg-slate-900 flex items-center justify-center text-red-400">{error || 'Could not load order.'}</div>;
+        return <div className="min-h-screen bg-background flex items-center justify-center text-red-400">{error || 'Could not load order.'}</div>;
     }
 
     const latestDelivery = order.deliveries?.[0];
     const canRequestRevision = order.revisions_used < order.actors.revisions_allowed;
 
     return (
-        <div className="min-h-screen bg-slate-900 p-4 md:p-8">
+        <div className="min-h-screen bg-background p-4 md:p-8">
             <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-5 gap-8">
 
                 {/* --- Left Column (Main Content) --- */}
                 <div className="lg:col-span-3 space-y-8">
                     {/* 1. Main Order Summary Card */}
-                    <div className="bg-slate-800/50 backdrop-blur-xl rounded-2xl p-6 border border-slate-700/50">
-                        <h1 className="text-3xl font-bold text-white mb-2">Order #{order.order_id_string}</h1>
-                        <p className="text-slate-400 mb-6">For voice actor: <span className="font-semibold text-white">{order.actors.ActorName}</span></p>
+                    <div className="bg-card/50 backdrop-blur-xl rounded-2xl p-6 border border/50">
+                        <h1 className="text-3xl font-bold text-foreground mb-2">Order #{order.order_id_string}</h1>
+                        <p className="text-muted-foreground mb-6">For voice actor: <span className="font-semibold text-foreground">{order.actors.ActorName}</span></p>
                         <div className="grid grid-cols-2 gap-4">
                             <div>
-                                <p className="text-sm text-slate-400">Status</p>
+                                <p className="text-sm text-muted-foreground">Status</p>
                                 <span className={`px-3 py-1 text-sm font-semibold rounded-full inline-block mt-1 ${
                                      order.status === 'Completed' ? 'bg-green-500/20 text-green-400' :
                                      (order.status === 'Awaiting Admin Confirmation' || order.status === 'Awaiting Actor Confirmation') ? 'bg-yellow-500/20 text-yellow-400' :
@@ -487,17 +487,17 @@ const ClientOrderPage = () => {
                                 </span>
                             </div>
                             <div>
-                                <p className="text-sm text-slate-400">Total Price</p>
-                                <p className="font-bold text-white text-lg">{(order.total_price ?? 0).toFixed(2)} MAD</p>
+                                <p className="text-sm text-muted-foreground">Total Price</p>
+                                <p className="font-bold text-foreground text-lg">{(order.total_price ?? 0).toFixed(2)} MAD</p>
                             </div>
                         </div>
-                        <div className="mt-6 border-t border-slate-700 pt-4 text-center">
+                        <div className="mt-6 border-t border pt-4 text-center">
                             {isLoggedIn ? (
-                                <Link to="/client-dashboard" className="text-purple-400 hover:text-white transition font-semibold">
+                                <Link to="/client-dashboard" className="text-purple-400 hover:text-accent-foreground transition font-semibold">
                                     View All Your Orders
                                 </Link>
                             ) : (
-                                <Link to="/client-auth" state={{ email: order.client_email }} className="text-purple-400 hover:text-white transition font-semibold">
+                                <Link to="/client-auth" state={{ email: order.client_email }} className="text-purple-400 hover:text-accent-foreground transition font-semibold">
                                     Create an account to track all your orders
                                 </Link>
                             )}
@@ -608,22 +608,22 @@ const ClientOrderPage = () => {
                             
                             {/* 1. If Paid via Stripe */}
                             {order.payment_method === 'stripe' && (
-                                <div className="flex items-center gap-3 bg-slate-900 p-4 rounded-lg">
+                                <div className="flex items-center gap-3 bg-background p-4 rounded-lg">
                                      <CreditCard size={20} className="text-blue-400"/>
                                      <div>
-                                         <p className="font-semibold text-white">Paid via Card (Stripe)</p>
-                                         <p className="text-sm text-slate-400">Payment has been processed.</p>
+                                         <p className="font-semibold text-foreground">Paid via Card (Stripe)</p>
+                                         <p className="text-sm text-muted-foreground">Payment has been processed.</p>
                                      </div>
                                  </div>
                             )}
 
                             {/* 2. If Bank Transfer and ALREADY Confirmed (In Progress, Completed, etc.) */}
                             {order.payment_method === 'bank' && !['Awaiting Payment', 'Awaiting Admin Confirmation', 'Awaiting Actor Confirmation'].includes(order.status) && (
-                                 <div className="flex items-center gap-3 bg-slate-900 p-4 rounded-lg">
+                                 <div className="flex items-center gap-3 bg-background p-4 rounded-lg">
                                      <CheckCircle size={20} className="text-green-400"/>
                                      <div>
-                                         <p className="font-semibold text-white">Payment Received</p>
-                                         <p className="text-sm text-slate-400">Bank transfer confirmed.</p>
+                                         <p className="font-semibold text-foreground">Payment Received</p>
+                                         <p className="text-sm text-muted-foreground">Bank transfer confirmed.</p>
                                      </div>
                                  </div>
                             )}
@@ -631,30 +631,30 @@ const ClientOrderPage = () => {
                              {/* 3. If Bank Transfer and AWAITING Payment */}
                             {order.payment_method === 'bank' && order.status === 'Awaiting Payment' && (
                                 <div className="space-y-4">
-                                     <p className="text-slate-300">Please complete the payment using the details below. Use your Order ID (<strong className="text-white">{order.order_id_string}</strong>) as the payment reference.</p>
+                                     <p className="text-muted-foreground">Please complete the payment using the details below. Use your Order ID (<strong className="text-foreground">{order.order_id_string}</strong>) as the payment reference.</p>
                                      <button onClick={() => copyToClipboard(order.order_id_string, 'Order ID')} className="mb-2 text-xs text-blue-400 hover:underline inline-flex items-center gap-1"> <Copy size={12}/> Copy Order ID </button>
 
                                      {/* Check if Actor Direct Payment is Enabled */}
                                      {order.actors?.direct_payment_enabled ? (
                                          // Show ACTOR's Bank Details
-                                         <div className="bg-purple-900/20 border border-purple-700/50 p-4 rounded-lg text-sm space-y-2 relative text-slate-300">
+                                         <div className="bg-purple-900/20 border border-purple-700/50 p-4 rounded-lg text-sm space-y-2 relative text-muted-foreground">
                                              <p className="text-xs text-purple-300 font-semibold mb-2">Please pay the actor directly:</p>
                                              {/* ... (Actor bank details with copy buttons) ... */}
                                              <div className="flex justify-between items-center group">
-                                                 <span><strong className="font-semibold text-slate-400 w-28 inline-block">Bank Name:</strong> {order.actors.bank_name || 'N/A'}</span>
-                                                 {order.actors.bank_name && <button onClick={() => copyToClipboard(order.actors.bank_name!, 'Bank Name')} className="p-1 text-slate-400 hover:text-white transition-colors"> <Copy size={14}/> </button>}
+                                                 <span><strong className="font-semibold text-muted-foreground w-28 inline-block">Bank Name:</strong> {order.actors.bank_name || 'N/A'}</span>
+                                                 {order.actors.bank_name && <button onClick={() => copyToClipboard(order.actors.bank_name!, 'Bank Name')} className="p-1 text-muted-foreground hover:text-accent-foreground transition-colors"> <Copy size={14}/> </button>}
                                              </div>
                                              <div className="flex justify-between items-center group">
-                                                 <span><strong className="font-semibold text-slate-400 w-28 inline-block">Account Holder:</strong> {order.actors.bank_holder_name || 'N/A'}</span>
-                                                  {order.actors.bank_holder_name && <button onClick={() => copyToClipboard(order.actors.bank_holder_name!, 'Account Holder')} className="p-1 text-slate-400 hover:text-white transition-colors"> <Copy size={14}/> </button>}
+                                                 <span><strong className="font-semibold text-muted-foreground w-28 inline-block">Account Holder:</strong> {order.actors.bank_holder_name || 'N/A'}</span>
+                                                  {order.actors.bank_holder_name && <button onClick={() => copyToClipboard(order.actors.bank_holder_name!, 'Account Holder')} className="p-1 text-muted-foreground hover:text-accent-foreground transition-colors"> <Copy size={14}/> </button>}
                                              </div>
                                               <div className="flex justify-between items-center group">
-                                                 <span><strong className="font-semibold text-slate-400 w-28 inline-block">IBAN:</strong> {order.actors.bank_iban || 'N/A'}</span>
-                                                 {order.actors.bank_iban && <button onClick={() => copyToClipboard(order.actors.bank_iban!, 'IBAN')} className="p-1 text-slate-400 hover:text-white transition-colors"> <Copy size={14}/> </button>}
+                                                 <span><strong className="font-semibold text-muted-foreground w-28 inline-block">IBAN:</strong> {order.actors.bank_iban || 'N/A'}</span>
+                                                 {order.actors.bank_iban && <button onClick={() => copyToClipboard(order.actors.bank_iban!, 'IBAN')} className="p-1 text-muted-foreground hover:text-accent-foreground transition-colors"> <Copy size={14}/> </button>}
                                              </div>
                                              <div className="flex justify-between items-center group">
-                                                 <span><strong className="font-semibold text-slate-400 w-28 inline-block">Account No (RIB):</strong> {order.actors.bank_account_number || 'N/A'}</span>
-                                                  {order.actors.bank_account_number && <button onClick={() => copyToClipboard(order.actors.bank_account_number!, 'Account Number')} className="p-1 text-slate-400 hover:text-white transition-colors"> <Copy size={14}/> </button>}
+                                                 <span><strong className="font-semibold text-muted-foreground w-28 inline-block">Account No (RIB):</strong> {order.actors.bank_account_number || 'N/A'}</span>
+                                                  {order.actors.bank_account_number && <button onClick={() => copyToClipboard(order.actors.bank_account_number!, 'Account Number')} className="p-1 text-muted-foreground hover:text-accent-foreground transition-colors"> <Copy size={14}/> </button>}
                                              </div>
                                              {copySuccess && (
                                                  <p className="absolute -bottom-5 right-0 text-xs text-green-400 transition-opacity duration-300">{copySuccess}</p>
@@ -663,28 +663,28 @@ const ClientOrderPage = () => {
                                      ) : (
                                          // Show AGENCY's Bank Details (Nested Accordion)
                                          <div className="space-y-2 relative">
-                                              <p className="text-xs text-slate-400 font-semibold mb-2">Please pay the agency using one of these options:</p>
+                                              <p className="text-xs text-muted-foreground font-semibold mb-2">Please pay the agency using one of these options:</p>
                                              {bankOptions.map((bank) => {
                                                  const isOpen = expandedBank === bank.name;
                                                  return (
-                                                     <div key={bank.name} className="bg-slate-900 rounded-lg border border-slate-700 overflow-hidden">
-                                                         <button onClick={() => setExpandedBank(isOpen ? null : bank.name)} className="w-full flex justify-between items-center p-3 text-left hover:bg-slate-800 transition-colors">
-                                                               <span className="font-semibold text-white">{bank.name}</span>
-                                                               {isOpen ? <ChevronUp size={18} className="text-slate-400"/> : <ChevronDown size={18} className="text-slate-400"/>}
+                                                     <div key={bank.name} className="bg-background rounded-lg border border overflow-hidden">
+                                                         <button onClick={() => setExpandedBank(isOpen ? null : bank.name)} className="w-full flex justify-between items-center p-3 text-left hover:bg-card transition-colors">
+                                                               <span className="font-semibold text-foreground">{bank.name}</span>
+                                                               {isOpen ? <ChevronUp size={18} className="text-muted-foreground"/> : <ChevronDown size={18} className="text-muted-foreground"/>}
                                                          </button>
                                                          {isOpen && (
-                                                             <div className="p-3 border-t border-slate-700 text-sm space-y-2 text-slate-300 animate-in fade-in duration-300">
+                                                             <div className="p-3 border-t border text-sm space-y-2 text-muted-foreground animate-in fade-in duration-300">
                                                                   <div className="flex justify-between items-center group">
-                                                                      <span><strong className="font-semibold text-slate-400 w-28 inline-block">Account Holder:</strong> {bank.holder}</span>
-                                                                      <button onClick={() => copyToClipboard(bank.holder, 'Account Holder')} className="p-1 text-slate-400 hover:text-white transition-colors"> <Copy size={14}/> </button>
+                                                                      <span><strong className="font-semibold text-muted-foreground w-28 inline-block">Account Holder:</strong> {bank.holder}</span>
+                                                                      <button onClick={() => copyToClipboard(bank.holder, 'Account Holder')} className="p-1 text-muted-foreground hover:text-accent-foreground transition-colors"> <Copy size={14}/> </button>
                                                                   </div>
                                                                   <div className="flex justify-between items-center group">
-                                                                      <span><strong className="font-semibold text-slate-400 w-28 inline-block">IBAN:</strong> {bank.iban}</span>
-                                                                      <button onClick={() => copyToClipboard(bank.iban, 'IBAN')} className="p-1 text-slate-400 hover:text-white transition-colors"> <Copy size={14}/> </button>
+                                                                      <span><strong className="font-semibold text-muted-foreground w-28 inline-block">IBAN:</strong> {bank.iban}</span>
+                                                                      <button onClick={() => copyToClipboard(bank.iban, 'IBAN')} className="p-1 text-muted-foreground hover:text-accent-foreground transition-colors"> <Copy size={14}/> </button>
                                                                   </div>
                                                                   <div className="flex justify-between items-center group">
-                                                                      <span><strong className="font-semibold text-slate-400 w-28 inline-block">Account No (RIB):</strong> {bank.accountNumber}</span>
-                                                                      <button onClick={() => copyToClipboard(bank.accountNumber, 'Account Number')} className="p-1 text-slate-400 hover:text-white transition-colors"> <Copy size={14}/> </button>
+                                                                      <span><strong className="font-semibold text-muted-foreground w-28 inline-block">Account No (RIB):</strong> {bank.accountNumber}</span>
+                                                                      <button onClick={() => copyToClipboard(bank.accountNumber, 'Account Number')} className="p-1 text-muted-foreground hover:text-accent-foreground transition-colors"> <Copy size={14}/> </button>
                                                                   </div>
                                                              </div>
                                                          )}
@@ -698,11 +698,11 @@ const ClientOrderPage = () => {
                                      )}
 
                                      {/* Mark as Paid Button */}
-                                     <div className="mt-6 pt-4 border-t border-slate-700 text-center">
+                                     <div className="mt-6 pt-4 border-t border text-center">
                                           <button
                                             onClick={handleMarkAsPaid}
                                             disabled={notifyingAdmin || !!notificationMessage.includes('successfully')} // Disable if sending or already sent
-                                            className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 rounded-lg text-white font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                            className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 rounded-lg text-foreground font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                                         >
                                             <Bell size={18} /> {notifyingAdmin ? 'Notifying...' : (notificationMessage.includes('successfully') ? 'Notification Sent' : 'I Have Paid (Notify)')}
                                           </button>
@@ -715,9 +715,9 @@ const ClientOrderPage = () => {
                             
                             {/* 4. Show "Pending Confirmation" Message */}
                             {(order.status === 'Awaiting Admin Confirmation' || order.status === 'Awaiting Actor Confirmation') && (
-                                <div className="p-4 bg-slate-900 rounded-lg text-center">
+                                <div className="p-4 bg-background rounded-lg text-center">
                                     <p className="font-semibold text-yellow-400">🕒 Awaiting Payment Confirmation</p>
-                                    <p className="text-sm text-slate-400 mt-1">We have notified the {order.status === 'Awaiting Admin Confirmation' ? 'admin' : 'actor'}. The status will update once payment is confirmed.</p>
+                                    <p className="text-sm text-muted-foreground mt-1">We have notified the {order.status === 'Awaiting Admin Confirmation' ? 'admin' : 'actor'}. The status will update once payment is confirmed.</p>
                                 </div>
                             )}
 
@@ -735,15 +735,15 @@ const ClientOrderPage = () => {
                             isOpen={openSections.offer_history}
                             onToggle={() => toggleSection('offer_history')}
                           >
-                            <div className="bg-slate-900 p-4 rounded-lg space-y-3 max-h-40 overflow-y-auto custom-scrollbar">
+                            <div className="bg-background p-4 rounded-lg space-y-3 max-h-40 overflow-y-auto custom-scrollbar">
                               {order.offers.map(offer => (
-                                <div key={offer.id} className="pb-3 border-b border-slate-700 last:border-b-0">
+                                <div key={offer.id} className="pb-3 border-b border last:border-b-0">
                                   <div className="flex justify-between items-center mb-1">
-                                    <span className="font-semibold text-white">{offer.offer_title}</span>
+                                    <span className="font-semibold text-foreground">{offer.offer_title}</span>
                                     <span className="font-bold text-lg text-primary">{offer.offer_price.toFixed(2)} MAD</span>
                                   </div>
-                                  <p className="text-xs text-slate-400 mb-2">{new Date(offer.created_at).toLocaleString()}</p>
-                                  <p className="text-sm text-slate-300 whitespace-pre-wrap">{offer.offer_agreement || "No agreement details provided."}</p>
+                                  <p className="text-xs text-muted-foreground mb-2">{new Date(offer.created_at).toLocaleString()}</p>
+                                  <p className="text-sm text-muted-foreground whitespace-pre-wrap">{offer.offer_agreement || "No agreement details provided."}</p>
                                 </div>
                               ))}
                             </div>
@@ -759,17 +759,17 @@ const ClientOrderPage = () => {
                             isOpen={openSections.quote_details}
                             onToggle={() => toggleSection('quote_details')}
                           >
-                            <div className="bg-slate-900 p-4 rounded-lg space-y-2 text-sm">
+                            <div className="bg-background p-4 rounded-lg space-y-2 text-sm">
                               {order.service_type === 'scriptwriting' && (
                                 <>
-                                  <div className="flex justify-between"><span className="text-slate-400">Est. Video Duration:</span><span className="font-semibold text-white">{order.quote_est_duration || 'N/A'} min</span></div>
-                                  <div className="flex justify-between"><span className="text-slate-400">Est. Word Count:</span><span className="font-semibold text-white">{order.word_count || 'N/A'}</span></div>
+                                  <div className="flex justify-between"><span className="text-muted-foreground">Est. Video Duration:</span><span className="font-semibold text-foreground">{order.quote_est_duration || 'N/A'} min</span></div>
+                                  <div className="flex justify-between"><span className="text-muted-foreground">Est. Word Count:</span><span className="font-semibold text-foreground">{order.word_count || 'N/A'}</span></div>
                                 </>
                               )}
                               {order.service_type === 'video_editing' && (
                                 <>
-                                  <div className="flex justify-between"><span className="text-slate-400">Video Type:</span><span className="font-semibold text-white capitalize">{order.quote_video_type || 'N/A'}</span></div>
-                                  <div className="flex justify-between"><span className="text-slate-400">Footage:</span><span className="font-semibold text-white">{order.quote_footage_choice === 'has_footage' ? 'Client has footage' : 'Needs stock footage'}</span></div>
+                                  <div className="flex justify-between"><span className="text-muted-foreground">Video Type:</span><span className="font-semibold text-foreground capitalize">{order.quote_video_type || 'N/A'}</span></div>
+                                  <div className="flex justify-between"><span className="text-muted-foreground">Footage:</span><span className="font-semibold text-foreground">{order.quote_footage_choice === 'has_footage' ? 'Client has footage' : 'Needs stock footage'}</span></div>
                                 </>
                               )}
                             </div>
@@ -786,8 +786,8 @@ const ClientOrderPage = () => {
                           isOpen={openSections.script}
                           onToggle={() => toggleSection('script')}
                         >
-                          <div className="bg-slate-900 p-4 rounded-lg max-h-60 overflow-y-auto">
-                             <p className="text-slate-300 whitespace-pre-wrap">{order.script}</p>
+                          <div className="bg-background p-4 rounded-lg max-h-60 overflow-y-auto">
+                             <p className="text-muted-foreground whitespace-pre-wrap">{order.script}</p>
                           </div>
                         </AccordionItem>
 
@@ -801,8 +801,8 @@ const ClientOrderPage = () => {
                             {order.deliveries && order.deliveries.length > 0 ? (
                                 <div className="space-y-6">
                                     {order.deliveries.map((delivery, index) => (
-                                      <div key={index} className="bg-slate-900 p-4 rounded-lg">
-                                        <p className="font-semibold text-lg mb-2 text-white">
+                                      <div key={index} className="bg-background p-4 rounded-lg">
+                                        <p className="font-semibold text-lg mb-2 text-foreground">
                                             Version {order.deliveries.length - index}
                                             {index === 0 && <span className="text-xs text-blue-400 ml-2">(Latest)</span>}
                                         </p>
@@ -814,19 +814,19 @@ const ClientOrderPage = () => {
                                     ))}
 
                                     {order.status === 'Pending Approval' && (
-                                        <div className="mt-6 pt-6 border-t border-slate-700 space-y-4">
-                                            <h3 className="text-lg font-semibold text-white">Review & Confirm Latest Delivery</h3>
+                                        <div className="mt-6 pt-6 border-t border space-y-4">
+                                            <h3 className="text-lg font-semibold text-foreground">Review & Confirm Latest Delivery</h3>
                                             <div className="flex gap-4">
-                                                <button onClick={handleApproval} className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-green-600 hover:bg-green-700 rounded-lg text-white font-semibold">
+                                                <button onClick={handleApproval} className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-green-600 hover:bg-green-700 rounded-lg text-foreground font-semibold">
                                                     <Check size={20} /> Accept Delivery
                                                 </button>
                                                 {canRequestRevision ? (
-                                                    <button onClick={handleRevisionRequest} className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-yellow-600 hover:bg-yellow-700 rounded-lg text-white font-semibold">
+                                                    <button onClick={handleRevisionRequest} className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-yellow-600 hover:bg-yellow-700 rounded-lg text-foreground font-semibold">
                                                         <RotateCcw size={20} /> Request Revision ({order.actors.revisions_allowed - order.revisions_used} left)
                                                     </button>
                                                 ) : (
                                                     <div className="w-full text-center p-3 bg-slate-700 rounded-lg">
-                                                        <p className="text-slate-400 text-sm">No revisions remaining.</p>
+                                                        <p className="text-muted-foreground text-sm">No revisions remaining.</p>
                                                     </div>
                                                 )}
                                             </div>
@@ -841,12 +841,12 @@ const ClientOrderPage = () => {
 
                     {/* --- Review Section (Only if order is Completed) --- */}
                     {order.status === 'Completed' && (
-                        <div className="p-5 bg-slate-800/50 rounded-lg border border-slate-700/50">
-                            <h2 className="text-lg font-semibold mb-4 text-white flex items-center gap-2">
+                        <div className="p-5 bg-card/50 rounded-lg border border/50">
+                            <h2 className="text-lg font-semibold mb-4 text-foreground flex items-center gap-2">
                                 <Star size={18}/> {existingReview ? 'Your Review' : 'Leave a Review'}
                             </h2>
                             {isLoadingReview ? (
-                                <p className="text-slate-400 text-sm">Loading review status...</p>
+                                <p className="text-muted-foreground text-sm">Loading review status...</p>
                             ) : existingReview ? (
                                 // Display Existing Review
                                 <div className="space-y-3">
@@ -860,10 +860,10 @@ const ClientOrderPage = () => {
                                                 }`}
                                             />
                                         ))}
-                                        <span className="ml-2 text-sm text-slate-400">({existingReview.rating}/5 stars)</span>
+                                        <span className="ml-2 text-sm text-muted-foreground">({existingReview.rating}/5 stars)</span>
                                     </div>
                                     {existingReview.comment && (
-                                         <p className="text-slate-300 bg-slate-700/50 p-3 rounded text-sm italic">"{existingReview.comment}"</p>
+                                         <p className="text-muted-foreground bg-slate-700/50 p-3 rounded text-sm italic">"{existingReview.comment}"</p>
                                     )}
                                      <p className="text-xs text-slate-500">Reviewed on: {new Date(existingReview.created_at).toLocaleDateString()}</p>
                                 </div>
@@ -871,7 +871,7 @@ const ClientOrderPage = () => {
                                 // Show Review Form
                                 <form onSubmit={handleReviewSubmit} className="space-y-4">
                                     <div>
-                                        <label className="block text-sm font-medium text-slate-300 mb-2">Your Rating *</label>
+                                        <label className="block text-sm font-medium text-muted-foreground mb-2">Your Rating *</label>
                                         <div className="flex items-center">
                                             {[1, 2, 3, 4, 5].map((star) => (
                                                 <button
@@ -893,14 +893,14 @@ const ClientOrderPage = () => {
                                         </div>
                                     </div>
                                     <div>
-                                         <label htmlFor="reviewComment" className="block text-sm font-medium text-slate-300 mb-1">Your Comment (Optional)</label>
+                                         <label htmlFor="reviewComment" className="block text-sm font-medium text-muted-foreground mb-1">Your Comment (Optional)</label>
                                          <textarea
                                             id="reviewComment"
                                             rows={4}
                                             value={comment}
                                             onChange={(e) => setComment(e.target.value)}
                                             placeholder="Tell us about your experience..."
-                                            className="w-full bg-slate-700 border border-slate-600 rounded-md p-3 text-white text-sm focus:ring-purple-500 focus:border-purple-500"
+                                            className="w-full bg-slate-700 border border-slate-600 rounded-md p-3 text-foreground text-sm focus:ring-purple-500 focus:border-purple-500"
                                         />
                                     </div>
                                     <div className="text-right">
@@ -910,7 +910,7 @@ const ClientOrderPage = () => {
                                          <button
                                             type="submit"
                                             disabled={isSubmittingReview || rating === 0}
-                                            className="px-6 py-2.5 bg-purple-600 hover:bg-purple-700 rounded-lg text-white font-semibold transition-colors disabled:opacity-50"
+                                            className="px-6 py-2.5 bg-purple-600 hover:bg-purple-700 rounded-lg text-foreground font-semibold transition-colors disabled:opacity-50"
                                         >
                                             {isSubmittingReview ? 'Submitting...' : 'Submit Review'}
                                          </button>
@@ -924,14 +924,14 @@ const ClientOrderPage = () => {
 
                 {/* --- Right Column (Chat) --- */}
                 <div className="lg:col-span-2">
-                     <div className="sticky top-24 bg-slate-800/50 backdrop-blur-md rounded-lg border border-slate-700/50 overflow-hidden">
+                     <div className="sticky top-24 bg-card/50 backdrop-blur-md rounded-lg border border/50 overflow-hidden">
                          {/* Chat Header/Toggle Button */}
                          <button
                             onClick={() => setIsChatVisible(!isChatVisible)}
-                            className="w-full flex justify-between items-center p-4 text-left bg-slate-800 hover:bg-slate-700/50 transition-colors"
+                            className="w-full flex justify-between items-center p-4 text-left bg-card hover:bg-accent/50 transition-colors"
                         >
-                            <h2 className="text-lg font-semibold text-white flex items-center gap-2"><MessageSquare size={18}/> Communication</h2>
-                            {isChatVisible ? <ChevronUp size={20} className="text-slate-400"/> : <ChevronDown size={20} className="text-slate-400"/>}
+                            <h2 className="text-lg font-semibold text-foreground flex items-center gap-2"><MessageSquare size={18}/> Communication</h2>
+                            {isChatVisible ? <ChevronUp size={20} className="text-muted-foreground"/> : <ChevronDown size={20} className="text-muted-foreground"/>}
                         </button>
 
                         {/* Conditionally Render ChatBox */}

@@ -263,12 +263,12 @@ const OrderDetailsModal: React.FC<ModalProps> = ({ order, onClose, onUpdate, onA
                   {/* --- Payment Confirmation Section --- */}
                   {order.status === 'Awaiting Actor Confirmation' && onActorConfirmPayment && (
                       <div className="mb-6 p-4 bg-green-900/30 border border-green-700 rounded-lg animate-in fade-in duration-300">
-                          <h3 className="text-lg font-bold text-white mb-2 flex items-center gap-2"><Banknote size={18} /> Action Required</h3>
-                          <p className="text-sm text-slate-300 mb-4">The client has marked this order as paid. Please check your bank account and confirm receipt to begin work.</p>
+                          <h3 className="text-lg font-bold text-foreground mb-2 flex items-center gap-2"><Banknote size={18} /> Action Required</h3>
+                          <p className="text-sm text-muted-foreground mb-4">The client has marked this order as paid. Please check your bank account and confirm receipt to begin work.</p>
                           <Button
                               onClick={handleConfirmClick}
                               disabled={isConfirming}
-                              className="w-full bg-green-600 hover:bg-green-700 text-white"
+                              className="w-full bg-green-600 hover:bg-green-700 text-foreground"
                           >
                               {isConfirming ? <RefreshCw size={18} className="animate-spin" /> : <CheckCircle size={18} />}
                               {isConfirming ? 'Confirming...' : 'Confirm Payment Received'}
@@ -280,13 +280,13 @@ const OrderDetailsModal: React.FC<ModalProps> = ({ order, onClose, onUpdate, onA
                   {/* --- "Make/Update Offer" Section --- */}
                   {(order.status === 'awaiting_offer' || order.status === 'offer_made') && (
                       <div className="mb-6 p-4 bg-blue-900/30 border border-blue-700 rounded-lg animate-in fade-in duration-300">
-                        <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
+                        <h3 className="text-lg font-bold text-foreground mb-4 flex items-center gap-2">
                           <Banknote size={18} /> 
                           {order.status === 'offer_made' ? 'Update Your Offer' : 'Make an Offer'}
                         </h3>
                         <div className="space-y-4">
                           <div className="space-y-2">
-                            <Label htmlFor="offerTitle" className="text-slate-300">Offer Title *</Label>
+                            <Label htmlFor="offerTitle" className="text-muted-foreground">Offer Title *</Label>
                             <Input
                               id="offerTitle"
                               type="text"
@@ -297,7 +297,7 @@ const OrderDetailsModal: React.FC<ModalProps> = ({ order, onClose, onUpdate, onA
                             />
                           </div>
                           <div className="space-y-2">
-                            <Label htmlFor="offerAgreement" className="text-slate-300">Offer Agreement (Optional)</Label>
+                            <Label htmlFor="offerAgreement" className="text-muted-foreground">Offer Agreement (Optional)</Label>
                             <Textarea
                               id="offerAgreement"
                               rows={3}
@@ -308,7 +308,7 @@ const OrderDetailsModal: React.FC<ModalProps> = ({ order, onClose, onUpdate, onA
                             />
                           </div>
                           <div className="space-y-2">
-                            <Label htmlFor="offerPrice" className="text-slate-300">Your Price (MAD) *</Label>
+                            <Label htmlFor="offerPrice" className="text-muted-foreground">Your Price (MAD) *</Label>
                             <Input
                               id="offerPrice"
                               type="number"
@@ -342,20 +342,20 @@ const OrderDetailsModal: React.FC<ModalProps> = ({ order, onClose, onUpdate, onA
                         isOpen={openSections.offer_history}
                         onToggle={() => toggleSection('offer_history')}
                       >
-                        <div className="bg-slate-900 p-4 rounded-lg space-y-3 max-h-40 overflow-y-auto custom-scrollbar">
+                        <div className="bg-background p-4 rounded-lg space-y-3 max-h-40 overflow-y-auto custom-scrollbar">
                           {loadingHistory ? (
-                            <p className="text-sm text-slate-400">Loading history...</p>
+                            <p className="text-sm text-muted-foreground">Loading history...</p>
                           ) : offerHistory.length === 0 ? (
-                            <p className="text-sm text-slate-400">No offers have been made yet.</p>
+                            <p className="text-sm text-muted-foreground">No offers have been made yet.</p>
                           ) : (
                             offerHistory.map(offer => (
-                              <div key={offer.id} className="pb-3 border-b border-slate-700 last:border-b-0">
+                              <div key={offer.id} className="pb-3 border-b border last:border-b-0">
                                 <div className="flex justify-between items-center mb-1">
-                                  <span className="font-semibold text-white">{offer.offer_title}</span>
+                                  <span className="font-semibold text-foreground">{offer.offer_title}</span>
                                   <span className="font-bold text-lg text-primary">{offer.offer_price.toFixed(2)} MAD</span>
                                 </div>
-                                <p className="text-xs text-slate-400 mb-2">{new Date(offer.created_at).toLocaleString()}</p>
-                                <p className="text-sm text-slate-300 whitespace-pre-wrap">{offer.offer_agreement || "No agreement details provided."}</p>
+                                <p className="text-xs text-muted-foreground mb-2">{new Date(offer.created_at).toLocaleString()}</p>
+                                <p className="text-sm text-muted-foreground whitespace-pre-wrap">{offer.offer_agreement || "No agreement details provided."}</p>
                               </div>
                             ))
                           )}
@@ -371,28 +371,28 @@ const OrderDetailsModal: React.FC<ModalProps> = ({ order, onClose, onUpdate, onA
                         isOpen={openSections.quote_details}
                         onToggle={() => toggleSection('quote_details')}
                       >
-                        <div className="bg-slate-900 p-4 rounded-lg space-y-2 text-sm">
+                        <div className="bg-background p-4 rounded-lg space-y-2 text-sm">
                           {order.service_type === 'scriptwriting' && (
                             <>
                               <div className="flex justify-between">
-                                <span className="text-slate-400">Est. Video Duration:</span>
-                                <span className="font-semibold text-white">{order.quote_est_duration || 'N/A'} min</span>
+                                <span className="text-muted-foreground">Est. Video Duration:</span>
+                                <span className="font-semibold text-foreground">{order.quote_est_duration || 'N/A'} min</span>
                               </div>
                               <div className="flex justify-between">
-                                <span className="text-slate-400">Est. Word Count:</span>
-                                <span className="font-semibold text-white">{order.word_count || 'N/A'}</span>
+                                <span className="text-muted-foreground">Est. Word Count:</span>
+                                <span className="font-semibold text-foreground">{order.word_count || 'N/A'}</span>
                               </div>
                             </>
                           )}
                           {order.service_type === 'video_editing' && (
                             <>
                               <div className="flex justify-between">
-                                <span className="text-slate-400">Video Type:</span>
-                                <span className="font-semibold text-white capitalize">{order.quote_video_type || 'N/A'}</span>
+                                <span className="text-muted-foreground">Video Type:</span>
+                                <span className="font-semibold text-foreground capitalize">{order.quote_video_type || 'N/A'}</span>
                               </div>
                               <div className="flex justify-between">
-                                <span className="text-slate-400">Footage:</span>
-                                <span className="font-semibold text-white">
+                                <span className="text-muted-foreground">Footage:</span>
+                                <span className="font-semibold text-foreground">
                                   {order.quote_footage_choice === 'has_footage' ? 'Client has footage' : 'Needs stock footage'}
                                 </span>
                               </div>
@@ -409,8 +409,8 @@ const OrderDetailsModal: React.FC<ModalProps> = ({ order, onClose, onUpdate, onA
                       isOpen={openSections.script}
                       onToggle={() => toggleSection('script')}
                     >
-                      <div className="bg-slate-900 p-4 rounded-lg max-h-40 overflow-y-auto">
-                        <p className="text-slate-300 whitespace-pre-wrap">{order.script}</p>
+                      <div className="bg-background p-4 rounded-lg max-h-40 overflow-y-auto">
+                        <p className="text-muted-foreground whitespace-pre-wrap">{order.script}</p>
                       </div>
                     </AccordionItem>
 
@@ -428,12 +428,12 @@ const OrderDetailsModal: React.FC<ModalProps> = ({ order, onClose, onUpdate, onA
                             <h4 className="text-sm font-semibold text-muted-foreground mb-3">Delivery History</h4>
                             <div className="space-y-3 max-h-40 overflow-y-auto custom-scrollbar pr-2">
                               {order.deliveries.map((delivery) => (
-                                <div key={delivery.id} className="bg-slate-900 p-3 rounded-lg flex items-center justify-between">
+                                <div key={delivery.id} className="bg-background p-3 rounded-lg flex items-center justify-between">
                                   <div>
-                                    <p className="text-sm font-semibold text-white">
+                                    <p className="text-sm font-semibold text-foreground">
                                       Version {delivery.version_number}
                                     </p>
-                                    <p className="text-xs text-slate-400">
+                                    <p className="text-xs text-muted-foreground">
                                       {new Date(delivery.created_at).toLocaleString()}
                                     </p>
                                   </div>
@@ -449,8 +449,8 @@ const OrderDetailsModal: React.FC<ModalProps> = ({ order, onClose, onUpdate, onA
                           </div>
                         )}
                         {/* Uploader */}
-                        <div className="bg-slate-900 p-4 rounded-lg">
-                          <h4 className="text-sm font-semibold text-white mb-3">
+                        <div className="bg-background p-4 rounded-lg">
+                          <h4 className="text-sm font-semibold text-foreground mb-3">
                             {order.deliveries.length > 0 ? 'Upload a New Version' : 'Upload Your Delivery'}
                           </h4>
                           <ServiceDeliveryUploader

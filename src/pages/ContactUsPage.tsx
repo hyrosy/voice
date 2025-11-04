@@ -67,7 +67,7 @@ const ContactUsPage = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-slate-900 text-white flex items-center justify-center">
+    <div className="min-h-screen bg-background text-white flex items-center justify-center">
       <div className="container mx-auto px-4 py-16 md:py-24">
         
         {/* Main Grid Layout */}
@@ -80,7 +80,7 @@ const ContactUsPage = () => {
               <h1 className="text-4xl md:text-5xl font-black tracking-tighter">
                 Get in <span className="bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">Touch</span>
               </h1>
-              <p className="text-md text-slate-400 max-w-lg">
+              <p className="text-md text-muted-foreground max-w-lg">
                 Ready to start your journey? We'd love to hear from you. Send us a message and we'll respond as soon as possible.
               </p>
             </div>
@@ -88,13 +88,13 @@ const ContactUsPage = () => {
             {/* Company Info Cards */}
             <div className="space-y-3">
               {companyInfo.map((info, index) => (
-                <div key={index} className="bg-slate-800/50 rounded-xl p-4 border border-slate-700 flex items-center space-x-4">
+                <div key={index} className="bg-card/50 rounded-xl p-4 border border flex items-center space-x-4">
                   <div className="flex-shrink-0 p-3 bg-slate-700 rounded-lg">
                     <info.icon className="w-5 h-5 text-purple-400" />
                   </div>
                   <div>
                     <h3 className="font-semibold text-white">{info.title}</h3>
-                    <p className="text-slate-400 text-sm">{info.description}</p>
+                    <p className="text-muted-foreground text-sm">{info.description}</p>
                   </div>
                 </div>
               ))}
@@ -102,25 +102,25 @@ const ContactUsPage = () => {
           </div>
 
           {/* Right Column - Form */}
-          <div className="bg-slate-800 p-8 rounded-2xl border border-slate-700">
+          <div className="bg-card p-8 rounded-2xl border border">
              <h2 className="text-2xl font-bold mb-6 text-white">Send a Message</h2>
              <form onSubmit={handleFormSubmit} className="space-y-5">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                     <div>
-                        <label htmlFor="firstName" className="block text-sm font-medium text-slate-300 mb-2">First Name</label>
+                        <label htmlFor="firstName" className="block text-sm font-medium text-muted-foreground mb-2">First Name</label>
                         <input type="text" name="firstName" id="firstName" value={formState.firstName} onChange={handleInputChange} required className="w-full p-3 bg-slate-700 border border-slate-600 rounded-md focus:ring-purple-500 focus:border-purple-500"/>
                     </div>
                     <div>
-                        <label htmlFor="lastName" className="block text-sm font-medium text-slate-300 mb-2">Last Name</label>
+                        <label htmlFor="lastName" className="block text-sm font-medium text-muted-foreground mb-2">Last Name</label>
                         <input type="text" name="lastName" id="lastName" value={formState.lastName} onChange={handleInputChange} required className="w-full p-3 bg-slate-700 border border-slate-600 rounded-md focus:ring-purple-500 focus:border-purple-500"/>
                     </div>
                 </div>
                 <div>
-                    <label htmlFor="email" className="block text-sm font-medium text-slate-300 mb-2">Email</label>
+                    <label htmlFor="email" className="block text-sm font-medium text-muted-foreground mb-2">Email</label>
                     <input type="email" name="email" id="email" value={formState.email} onChange={handleInputChange} required className="w-full p-3 bg-slate-700 border border-slate-600 rounded-md focus:ring-purple-500 focus:border-purple-500"/>
                 </div>
                 <div>
-                    <label htmlFor="message" className="block text-sm font-medium text-slate-300 mb-2">Message</label>
+                    <label htmlFor="message" className="block text-sm font-medium text-muted-foreground mb-2">Message</label>
                     <textarea name="message" id="message" rows={4} value={formState.message} onChange={handleInputChange} required className="w-full p-3 bg-slate-700 border border-slate-600 rounded-md focus:ring-purple-500 focus:border-purple-500"></textarea>
                 </div>
                 <div>
