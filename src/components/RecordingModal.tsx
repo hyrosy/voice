@@ -1,7 +1,9 @@
 // In src/components/RecordingModal.tsx
 import React, { useState, useRef } from 'react';
 import { Mic, StopCircle, Play, Save, X } from 'lucide-react'; // Ensure Play is imported if needed elsewhere, not used here directly
-
+import { Button } from './ui/button';
+import { Input } from './ui/input';
+import { Label } from './ui/label';
 interface RecordingModalProps {
   onClose: () => void;
   onSave: (audioFile: File, recordingName: string) => void;
@@ -118,50 +120,58 @@ const RecordingModal: React.FC<RecordingModalProps> = ({ onClose, onSave, isSavi
 
   // --- JSX remains the same ---
    return (
-    <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
-      <div className="bg-slate-800 rounded-2xl p-8 border border-slate-700/50 w-full max-w-lg relative">
-        <button onClick={onClose} className="absolute top-4 right-4 text-slate-400 hover:text-white">
-          <X size={24} />
-        </button>
-        <h2 className="text-2xl font-bold text-white mb-6 text-center">Record New Audio</h2>
-
-        <div className="flex flex-col items-center gap-4">
-          <button
-            onClick={isRecording ? stopRecording : startRecording}
-            className={`w-20 h-20 rounded-full text-white flex items-center justify-center transition-colors ${
-              isRecording
-                ? 'bg-red-600 hover:bg-red-700 animate-pulse'
-                : 'bg-purple-600 hover:bg-purple-700'
-            }`}
-          >
-            {isRecording ? <StopCircle size={32} /> : <Mic size={32} />}
+    <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50">
+      {/* --- THIS IS THE FIX ---
+        This div is now full-screen on mobile and a modal on 'sm' screens.
+      */}
+      <div className="bg-card w-full h-full flex flex-col justify-center
+                      sm:rounded-2xl sm:border sm:w-full sm:max-w-lg sm:h-auto">
+        
+        <div className="p-6 sm:p-8 relative">
+          <button onClick={onClose} className="absolute top-4 right-4 text-muted-foreground hover:text-foreground">
+            <X size={24} />
           </button>
-
-          <p className="text-slate-400 text-sm h-5">
-            {isRecording ? 'Recording...' : (audioURL ? 'Preview recording' : 'Click to start recording')}
-          </p>
-
-          {audioURL && (
-            <audio src={audioURL} controls className="w-full h-10 my-2" />
-          )}
-
-          <div className="w-full space-y-4 pt-4 border-t border-slate-700">
-            <input
-              type="text"
-              value={recordingName}
-              onChange={(e) => setRecordingName(e.target.value)}
-              placeholder="Recording Name (e.g., 'Audition Take 1')"
-              className="w-full bg-slate-700 border border-slate-600 rounded-md p-3 text-white"
-              disabled={!audioFile} // Disable if no recording exists
-            />
-            <button
-              onClick={handleSaveClick}
-              disabled={!audioFile || !recordingName.trim() || isSaving}
-              className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-md flex items-center justify-center gap-2 disabled:opacity-50"
+          <h2 className="text-2xl font-bold text-white mb-6 text-center">Record New Audio</h2>
+          
+          <div className="flex flex-col items-center gap-4">
+            <Button
+              onClick={isRecording ? stopRecording : startRecording}
+              variant={isRecording ? "destructive" : "default"}
+              className={`w-20 h-20 rounded-full ${isRecording ? 'animate-pulse' : ''}`}
             >
-              <Save size={18} />
-              {isSaving ? 'Saving...' : 'Save to Library'}
-            </button>
+              {isRecording ? <StopCircle size={32} /> : <Mic size={32} />}
+            </Button>
+            
+            <p className="text-muted-foreground text-sm h-5">
+              {isRecording ? 'Recording...' : (audioURL ? 'Preview recording' : 'Click to start recording')}
+            </p>
+            
+            {audioURL && (
+              <audio src={audioURL} controls className="w-full h-10 my-2" />
+            )}
+
+            <div className="w-full space-y-4 pt-4 border-t">
+              <div className="space-y-2">
+                <Label htmlFor="recordingName">Recording Name</Label>
+                <Input
+                  id="recordingName"
+                  type="text"
+                  value={recordingName}
+                  onChange={(e) => setRecordingName(e.target.value)}
+                  placeholder="e.g., 'Audition Take 1'"
+                  disabled={!audioFile}
+                />
+              </div>
+              <Button
+                onClick={handleSaveClick}
+                disabled={!audioFile || !recordingName.trim() || isSaving}
+                className="w-full"
+                size="lg"
+              >
+                <Save size={18} className="mr-2" />
+                {isSaving ? 'Saving...' : 'Save to Library'}
+              </Button>
+            </div>
           </div>
         </div>
       </div>

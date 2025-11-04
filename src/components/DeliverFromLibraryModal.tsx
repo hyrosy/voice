@@ -4,6 +4,16 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from '../supabaseClient';
 import { X, Send, RefreshCw } from 'lucide-react';
 import emailjs from '@emailjs/browser';
+import { 
+  Dialog, 
+  DialogContent, 
+  DialogHeader, 
+  DialogTitle, 
+  DialogDescription,
+  DialogFooter
+} from "@/components/ui/dialog";
+import { Button } from './ui/button';
+
 
 // Copied from ActorDashboardPage.tsx
 interface ActorRecording {
@@ -139,57 +149,62 @@ const DeliverFromLibraryModal: React.FC<ModalProps> = ({ order, onClose, onDeliv
   };
 
   return (
-    <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-[60] p-4">
-      <div className="bg-slate-800 rounded-2xl p-6 border border-slate-700 w-full max-w-lg relative max-h-[80vh] flex flex-col">
-        <button onClick={onClose} className="absolute top-4 right-4 text-slate-400 hover:text-white" disabled={isDelivering}>
-          <X size={24} />
-        </button>
-        <h2 className="text-2xl font-bold text-white mb-4">Deliver from Library</h2>
+    <Dialog open={true} onOpenChange={onClose}>
+      {/* --- THIS IS THE FIX --- */}
+      <DialogContent className="w-screen h-screen max-w-none max-h-none rounded-none border-none p-0 flex flex-col 
+                                sm:w-full sm:max-w-lg sm:h-auto sm:max-h-[80vh] sm:rounded-lg sm:border">
+        
+        {/* Header */}
+        <DialogHeader className="p-4 sm:p-6 pb-4 border-b">
+          <DialogTitle className="text-2xl sm:text-3xl font-bold">Deliver from Library</DialogTitle>
+        </DialogHeader>
 
-        {/* Scrollable list of recordings */}
-        <div className="flex-grow overflow-y-auto pr-2 custom-scrollbar space-y-3 mb-4">
-          {isLoading && <p className="text-slate-400 text-center">Loading recordings...</p>}
+        {/* Scrollable list */}
+        <div className="flex-grow overflow-y-auto p-4 sm:p-6 space-y-3 mb-4 custom-scrollbar">
+          {isLoading && <p className="text-muted-foreground text-center">Loading recordings...</p>}
           {!isLoading && recordings.length === 0 && (
-            <p className="text-slate-400 text-center py-4">Your library is empty. Upload or record audio first.</p>
+            <p className="text-muted-foreground text-center py-4">Your library is empty.</p>
           )}
           
           {recordings.map(rec => {
             const isSelected = selectedRecordingId === rec.id;
             return (
-              <button
+              <Button
                 key={rec.id}
+                variant="outline"
                 onClick={() => setSelectedRecordingId(rec.id)}
-                className={`w-full text-left p-4 rounded-lg border-2 transition-colors
-                            ${isSelected ? 'bg-purple-800/50 border-purple-500' : 'bg-slate-700/50 border-slate-700 hover:bg-slate-700'}
+                className={`w-full text-left h-auto py-4 justify-start
+                            ${isSelected ? 'border-primary ring-2 ring-primary' : ''}
                             ${!rec.cleaned_audio_url && rec.status !== 'cleaned' ? 'opacity-60' : ''}`}
-                // Disable selecting raw/processing files if you want
-                // disabled={!rec.cleaned_audio_url && rec.status !== 'cleaned'} 
               >
-                <p className="font-semibold text-white">{rec.name}</p>
-                {rec.status === 'cleaned' && rec.cleaned_audio_url ? (
-                  <span className="text-xs text-green-400">Status: AI Cleaned</span>
-                ) : (
-                  <span className="text-xs text-yellow-400">Status: Raw Audio Only</span>
-                )}
-              </button>
+                <div>
+                  <p className="font-semibold text-base">{rec.name}</p>
+                  {rec.status === 'cleaned' && rec.cleaned_audio_url ? (
+                    <span className="text-xs text-green-500">Status: AI Cleaned</span>
+                  ) : (
+                    <span className="text-xs text-yellow-500">Status: Raw Audio Only</span>
+                  )}
+                </div>
+              </Button>
             );
           })}
         </div>
         
-        {/* Footer / Action Area */}
-        <div className="flex-shrink-0 pt-4 border-t border-slate-700">
-          {message && <p className="text-center text-sm text-yellow-400 mb-3">{message}</p>}
-          <button
+        {/* Footer */}
+        <DialogFooter className="p-4 sm:p-6 pt-4 border-t">
+          {message && <p className="text-center text-sm text-yellow-400 mb-3 w-full">{message}</p>}
+          <Button
             onClick={handleDeliver}
             disabled={!selectedRecordingId || isDelivering || isLoading}
-            className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-md flex items-center justify-center gap-2 transition-colors disabled:opacity-50"
+            className="w-full"
+            size="lg"
           >
             {isDelivering ? <RefreshCw size={18} className="animate-spin" /> : <Send size={18} />}
             {isDelivering ? 'Delivering...' : 'Deliver Selected Audio'}
-          </button>
-        </div>
-      </div>
-    </div>
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 };
 
