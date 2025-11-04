@@ -6,15 +6,17 @@ import { useOutletContext } from 'react-router-dom';
 import { ActorDashboardContextType } from '@/layouts/ActorDashboardLayout';
 
 // --- shadcn/ui Imports ---
+// --- shadcn/ui Imports ---
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-// ---
+import { Textarea } from "@/components/ui/textarea"; // For script content
+// ---// ---
 
-import { Music, Trash2 } from 'lucide-react';
+import { Music, Trash2, PencilLine, Video, UploadCloud, RefreshCw, Save } from 'lucide-react';
 
 // --- Interfaces ---
 interface Demo {
@@ -23,6 +25,20 @@ interface Demo {
   language: string;
   style_tag: string;
   demo_url: string;
+}
+
+interface ScriptDemo {
+  id: string;
+  title: string;
+  content: string;
+  created_at: string;
+}
+
+interface VideoDemo {
+  id: string;
+  title: string;
+  video_url: string;
+  created_at: string;
 }
 
 interface Actor {
@@ -39,28 +55,56 @@ const DashboardDemos: React.FC = () => {
   
   const [mainDemoUrl, setMainDemoUrl] = useState<string | undefined>(undefined);
   const [demos, setDemos] = useState<Demo[]>([]);
+  const [scriptDemos, setScriptDemos] = useState<ScriptDemo[]>([]); // New
+  const [videoDemos, setVideoDemos] = useState<VideoDemo[]>([]); // New
+
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState('');
   
+// Audio state
   const [uploadingMainDemo, setUploadingMainDemo] = useState(false);
-  const [uploadingDemo, setUploadingDemo] = useState(false);
+  const [uploadingAudio, setUploadingAudio] = useState(false);
   const [newDemo, setNewDemo] = useState({ title: '', language: '', style_tag: '' });
   const [demoFile, setDemoFile] = useState<File | null>(null);
+
+  // Script state
+  const [isUploadingScript, setIsUploadingScript] = useState(false);
+  const [newScriptDemo, setNewScriptDemo] = useState({ title: '', content: '' });
+
+  // Video state
+  const [isUploadingVideo, setIsUploadingVideo] = useState(false);
+  const [newVideoDemo, setNewVideoDemo] = useState({ title: '' });
+  const [videoDemoFile, setVideoDemoFile] = useState<File | null>(null);
 
   // Fetch data for this page
   const fetchDemoData = useCallback(async () => {
     if (!layoutActorData.id) return;
     setLoading(true);
+    setMessage('');
+    
+    try {
+      // 1. Fetch MainDemoURL
+      const { data: actor } = await supabase.from('actors').select('MainDemoURL').eq('id', layoutActorData.id).single();
+      if (actor) setMainDemoUrl(actor.MainDemoURL);
 
-    // 1. Fetch MainDemoURL
-    const { data: actor } = await supabase.from('actors').select('MainDemoURL').eq('id', layoutActorData.id).single();
-    if (actor) setMainDemoUrl(actor.MainDemoURL);
+      // 2. Fetch all other demos
+      const { data: demosData, error: demosError } = await supabase.from('demos').select('*').eq('actor_id', layoutActorData.id).order('created_at', { ascending: false });
+      if (demosError) throw demosError;
+      setDemos(demosData);
 
-    // 2. Fetch all other demos
-    const { data: demosData, error } = await supabase.from('demos').select('*').eq('actor_id', layoutActorData.id).order('created_at', { ascending: false });
-    if (error) setMessage(`Error: ${error.message}`);
-    else setDemos(demosData);
+      // 3. Fetch script demos
+      const { data: scriptsData, error: scriptsError } = await supabase.from('script_demos').select('*').eq('actor_id', layoutActorData.id).order('created_at', { ascending: false });
+      if (scriptsError) throw scriptsError;
+      setScriptDemos(scriptsData);
 
+      // 4. Fetch video demos
+      const { data: videosData, error: videosError } = await supabase.from('video_demos').select('*').eq('actor_id', layoutActorData.id).order('created_at', { ascending: false });
+      if (videosError) throw videosError;
+      setVideoDemos(videosData);
+
+    } catch (error) {
+      setMessage(`Error fetching demos: ${(error as Error).message}`);
+    }
     setLoading(false);
   }, [layoutActorData.id]);
 
@@ -95,39 +139,38 @@ const DashboardDemos: React.FC = () => {
     }
   };
 
+  // --- ADD THIS FUNCTION ---
+  const handleDemoInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setNewDemo(prev => ({ ...prev, [e.target.name]: e.target.value }));
+  };
   const handleDemoUpload = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!demoFile || !newDemo.title || !newDemo.language || !newDemo.style_tag || !layoutActorData.id) {
       setMessage("Please fill all demo fields and select a file.");
       return;
     }
-    setUploadingDemo(true);
+    setUploadingAudio(true);
     setMessage('');
     try {
       const fileExt = demoFile.name.split('.').pop();
       const filePath = `${layoutActorData.id}/${Date.now()}.${fileExt}`;
-      const { error: uploadError } = await supabase.storage.from('demos').upload(filePath, demoFile);
-      if (uploadError) throw uploadError;
-
+      await supabase.storage.from('demos').upload(filePath, demoFile);
       const { data: urlData } = supabase.storage.from('demos').getPublicUrl(filePath);
       const { data: newDemoData, error: insertError } = await supabase.from('demos').insert({
         actor_id: layoutActorData.id, demo_url: urlData.publicUrl, ...newDemo
       }).select().single();
-
       if (insertError) throw insertError;
-      
       setDemos(prev => [newDemoData as Demo, ...prev]);
       setNewDemo({ title: '', language: '', style_tag: '' });
       setDemoFile(null);
       (document.getElementById('demo-file-input') as HTMLInputElement).value = "";
-      setMessage("Demo uploaded successfully!");
+      setMessage("Audio demo uploaded!");
     } catch (error) {
       setMessage(`Error: ${(error as Error).message}`);
     } finally {
-      setUploadingDemo(false);
+      setUploadingAudio(false);
     }
   };
-  
   const handleDemoDelete = async (demoId: string, demoUrl: string) => {
     if (!window.confirm("Are you sure?")) return;
     setMessage('');
@@ -136,31 +179,130 @@ const DashboardDemos: React.FC = () => {
       await supabase.storage.from('demos').remove([filePath]);
       await supabase.from('demos').delete().eq('id', demoId);
       setDemos(prev => prev.filter(d => d.id !== demoId));
-      setMessage("Demo deleted.");
+      setMessage("Audio demo deleted.");
     } catch (error) {
       setMessage(`Error: ${(error as Error).message}`);
     }
   };
 
-  // --- ADD THIS FUNCTION ---
-  const handleDemoInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    setNewDemo(prev => ({ ...prev, [name]: value }));
+  // --- NEW Handlers for Scripts ---
+  const handleScriptChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    setNewScriptDemo(prev => ({ ...prev, [e.target.name]: e.target.value }));
   };
-  // --- END OF FUNCTION TO ADD ---
 
+  const handleScriptSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newScriptDemo.title || !newScriptDemo.content || !layoutActorData.id) {
+      setMessage("Please provide a title and content for your script demo.");
+      return;
+    }
+    setIsUploadingScript(true);
+    setMessage('');
+    try {
+      const { data: newScript, error } = await supabase
+        .from('script_demos')
+        .insert({
+          actor_id: layoutActorData.id,
+          title: newScriptDemo.title,
+          content: newScriptDemo.content
+        })
+        .select()
+        .single();
+      
+      if (error) throw error;
+      
+      setScriptDemos(prev => [newScript as ScriptDemo, ...prev]);
+      setNewScriptDemo({ title: '', content: '' }); // Clear form
+      setMessage("Script demo added!");
+    } catch (error) {
+      setMessage(`Error: ${(error as Error).message}`);
+    } finally {
+      setIsUploadingScript(false);
+    }
+  };
+
+  const handleScriptDelete = async (demoId: string) => {
+    if (!window.confirm("Are you sure?")) return;
+    setMessage('');
+    try {
+      await supabase.from('script_demos').delete().eq('id', demoId);
+      setScriptDemos(prev => prev.filter(d => d.id !== demoId));
+      setMessage("Script demo deleted.");
+    } catch (error) {
+      setMessage(`Error: ${(error as Error).message}`);
+    }
+  };
+
+  // --- NEW Handlers for Videos ---
+  const handleVideoUpload = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!videoDemoFile || !newVideoDemo.title || !layoutActorData.id) {
+      setMessage("Please provide a title and a video file.");
+      return;
+    }
+    setIsUploadingVideo(true);
+    setMessage('');
+    try {
+      const fileExt = videoDemoFile.name.split('.').pop();
+      const filePath = `${layoutActorData.id}/${Date.now()}.${fileExt}`;
+      
+      // Upload to the new 'video-demos' bucket
+      await supabase.storage.from('video-demos').upload(filePath, videoDemoFile);
+      const { data: urlData } = supabase.storage.from('video-demos').getPublicUrl(filePath);
+
+      const { data: newVideo, error: insertError } = await supabase
+        .from('video_demos')
+        .insert({
+          actor_id: layoutActorData.id,
+          title: newVideoDemo.title,
+          video_url: urlData.publicUrl
+        })
+        .select()
+        .single();
+
+      if (insertError) throw insertError;
+      
+      setVideoDemos(prev => [newVideo as VideoDemo, ...prev]);
+      setNewVideoDemo({ title: '' });
+      setVideoDemoFile(null);
+      (document.getElementById('video-file-input') as HTMLInputElement).value = "";
+      setMessage("Video demo added!");
+    } catch (error) {
+      setMessage(`Error: ${(error as Error).message}`);
+    } finally {
+      setIsUploadingVideo(false);
+    }
+  };
+
+  const handleVideoDelete = async (demoId: string, videoUrl: string) => {
+    if (!window.confirm("Are you sure?")) return;
+    setMessage('');
+    try {
+      const filePath = new URL(videoUrl).pathname.split('/video-demos/')[1];
+      await supabase.storage.from('video-demos').remove([filePath]);
+      await supabase.from('video_demos').delete().eq('id', demoId);
+      setVideoDemos(prev => prev.filter(d => d.id !== demoId));
+      setMessage("Video demo deleted.");
+    } catch (error) {
+      setMessage(`Error: ${(error as Error).message}`);
+    }
+  };
+  
+  // --- Main JSX (Refactored with Tabs) ---
   return (
     <div className="max-w-4xl mx-auto">
-      <h1 className="text-3xl font-bold mb-6">Manage Your Demos</h1>
+      <h1 className="text-3xl font-bold mb-6">Manage Your Portfolio</h1>
       {message && <div className="mb-4 p-3 bg-card border rounded-lg text-center text-sm">{message}</div>}
 
-      <Tabs defaultValue="upload">
-        <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="upload">Upload New</TabsTrigger>
-          <TabsTrigger value="manage">Manage ({demos.length})</TabsTrigger>
+      <Tabs defaultValue="audio">
+        <TabsList className="grid w-full grid-cols-3">
+          <TabsTrigger value="audio"><Music className="mr-2 h-4 w-4"/> Audio Demos</TabsTrigger>
+          <TabsTrigger value="scripts"><PencilLine className="mr-2 h-4 w-4"/> Script Demos</TabsTrigger>
+          <TabsTrigger value="videos"><Video className="mr-2 h-4 w-4"/> Video Demos</TabsTrigger>
         </TabsList>
         
-        <TabsContent value="upload" className="pt-6">
+        {/* --- 1. Audio Demos Tab --- */}
+        <TabsContent value="audio" className="pt-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <Card>
               <CardHeader>
@@ -181,7 +323,7 @@ const DashboardDemos: React.FC = () => {
             </Card>
             <Card>
               <CardHeader>
-                <CardTitle>Add New Portfolio Demo</CardTitle>
+                <CardTitle>Add New Audio Demo</CardTitle>
                 <CardDescription>Add a new demo to your portfolio.</CardDescription>
               </CardHeader>
               <CardContent>
@@ -200,31 +342,105 @@ const DashboardDemos: React.FC = () => {
                     </SelectContent>
                   </Select>
                   <Input id="demo-file-input" type="file" accept="audio/*" onChange={(e) => setDemoFile(e.target.files?.[0] || null)} required />
-                  <Button type="submit" disabled={uploadingDemo} className="w-full">
-                    {uploadingDemo ? 'Uploading...' : 'Upload Demo'}
+                  <Button type="submit" disabled={uploadingAudio} className="w-full">
+                    {uploadingAudio ? <RefreshCw className="mr-2 h-4 w-4 animate-spin"/> : <UploadCloud className="mr-2 h-4 w-4"/>}
+                    {uploadingAudio ? 'Uploading...' : 'Upload Audio Demo'}
                   </Button>
                 </form>
               </CardContent>
             </Card>
           </div>
+          <Card className="mt-6">
+            <CardHeader><CardTitle>Manage Audio Demos ({demos.length})</CardTitle></CardHeader>
+            <CardContent className="space-y-3">
+              {demos.length > 0 ? demos.map(demo => (
+                <Card key={demo.id} className="flex items-center justify-between p-3">
+                  <div className="flex items-center gap-3">
+                    <Music size={16} className="text-muted-foreground" />
+                    <div>
+                      <p className="font-semibold">{demo.title}</p>
+                      <p className="text-xs text-muted-foreground">{demo.language} | {demo.style_tag}</p>
+                    </div>
+                  </div>
+                  <Button variant="ghost" size="icon" onClick={() => handleDemoDelete(demo.id, demo.demo_url)} className="text-destructive hover:text-destructive">
+                    <Trash2 size={16} />
+                  </Button>
+                </Card>
+              )) : <p className="text-muted-foreground text-sm text-center py-4">No portfolio demos uploaded yet.</p>}
+            </CardContent>
+          </Card>
         </TabsContent>
         
-        <TabsContent value="manage" className="pt-6">
-          <div className="space-y-3">
-            {demos.length > 0 ? demos.map(demo => (
-              <Card key={demo.id} className="flex items-center justify-between p-3">
-                <div className="flex items-center gap-3">
-                  <Music size={16} className="text-muted-foreground" />
-                  <div>
-                    <p className="font-semibold">{demo.title}</p>
-                    <p className="text-xs text-muted-foreground">{demo.language} | {demo.style_tag}</p>
-                  </div>
-                </div>
-                <Button variant="ghost" size="icon" onClick={() => handleDemoDelete(demo.id, demo.demo_url)} className="text-destructive hover:text-destructive">
-                  <Trash2 size={16} />
-                </Button>
-              </Card>
-            )) : <p className="text-muted-foreground text-sm text-center py-4">No portfolio demos uploaded yet.</p>}
+        {/* --- 2. Script Demos Tab --- */}
+        <TabsContent value="scripts" className="pt-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Add New Script Demo</CardTitle>
+                <CardDescription>Add a scriptwriting sample as text. This will be displayed like a quote.</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <form onSubmit={handleScriptSubmit} className="space-y-4">
+                  <Input name="title" placeholder="Script Title (e.g., 'Tech Explainer')" value={newScriptDemo.title} onChange={handleScriptChange} required />
+                  <Textarea name="content" rows={10} placeholder="Paste your script content here..." value={newScriptDemo.content} onChange={handleScriptChange} required />
+                  <Button type="submit" disabled={isUploadingScript} className="w-full">
+                    {isUploadingScript ? <RefreshCw className="mr-2 h-4 w-4 animate-spin"/> : <Save className="mr-2 h-4 w-4"/>}
+                    {isUploadingScript ? 'Saving...' : 'Save Script Demo'}
+                  </Button>
+                </form>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader><CardTitle>Manage Script Demos ({scriptDemos.length})</CardTitle></CardHeader>
+              <CardContent className="space-y-3 max-h-[500px] overflow-y-auto custom-scrollbar">
+                {scriptDemos.length > 0 ? scriptDemos.map(demo => (
+                  <Card key={demo.id} className="relative group p-4">
+                    <Button variant="ghost" size="icon" onClick={() => handleScriptDelete(demo.id)} className="absolute top-2 right-2 text-destructive hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity">
+                      <Trash2 size={16} />
+                    </Button>
+                    <p className="font-semibold mb-2">{demo.title}</p>
+                    <p className="text-sm text-muted-foreground line-clamp-3 italic">"{demo.content}"</p>
+                  </Card>
+                )) : <p className="text-muted-foreground text-sm text-center py-4">No script demos uploaded yet.</p>}
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
+        
+        {/* --- 3. Video Demos Tab --- */}
+        <TabsContent value="videos" className="pt-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Add New Video Demo</CardTitle>
+                <CardDescription>Upload a short video (MP4, MOV) to showcase your editing skills. Max 3 videos.</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <form onSubmit={handleVideoUpload} className="space-y-4">
+                  <Input name="title" placeholder="Video Title (e.g., 'Commercial Edit')" value={newVideoDemo.title} onChange={(e) => setNewVideoDemo({ title: e.target.value })} required />
+                  <Input id="video-file-input" type="file" accept="video/mp4,video/quicktime" onChange={(e) => setVideoDemoFile(e.target.files?.[0] || null)} required />
+                  <Button type="submit" disabled={isUploadingVideo || videoDemos.length >= 3} className="w-full">
+                    {isUploadingVideo ? <RefreshCw className="mr-2 h-4 w-4 animate-spin"/> : <UploadCloud className="mr-2 h-4 w-4"/>}
+                    {isUploadingVideo ? 'Uploading...' : 'Upload Video Demo'}
+                  </Button>
+                  {videoDemos.length >= 3 && <p className="text-xs text-destructive text-center">You have reached the 3 video limit.</p>}
+                </form>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader><CardTitle>Manage Video Demos ({videoDemos.length}/3)</CardTitle></CardHeader>
+              <CardContent className="space-y-3 max-h-[500px] overflow-y-auto custom-scrollbar">
+                {videoDemos.length > 0 ? videoDemos.map(demo => (
+                  <Card key={demo.id} className="relative group p-4">
+                    <Button variant="ghost" size="icon" onClick={() => handleVideoDelete(demo.id, demo.video_url)} className="absolute top-2 right-2 text-destructive hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity z-10">
+                      <Trash2 size={16} />
+                    </Button>
+                    <p className="font-semibold mb-2">{demo.title}</p>
+                    <video controls src={demo.video_url} className="w-full rounded-md" />
+                  </Card>
+                )) : <p className="text-muted-foreground text-sm text-center py-4">No video demos uploaded yet.</p>}
+              </CardContent>
+            </Card>
           </div>
         </TabsContent>
       </Tabs>
