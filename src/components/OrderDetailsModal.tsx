@@ -241,8 +241,9 @@ const OrderDetailsModal: React.FC<ModalProps> = ({ order, onClose, onUpdate, onA
             <Dialog open={true} onOpenChange={onClose}>
               {/* --- THIS IS THE FIX --- */}
               <DialogContent className="
-                w-screen h-full max-w-none rounded-none border-none p-0 flex flex-col pt-12 pb-16
-                sm:w-full sm:max-w-2xl sm:h-auto sm:max-h-[90vh] sm:rounded-lg sm:border sm:p-0 sm:pt-0 sm:pb-0                                        ">
+w-screen h-screen max-w-none max-h-none rounded-none border-none p-0 flex flex-col
+                [padding-top:env(safe-area-inset-top)] [padding-bottom:env(safe-area-inset-bottom)]
+                sm:w-full sm:max-w-2xl sm:h-auto sm:max-h-[90vh] sm:rounded-lg sm:border sm:p-0                ">
                 {/* Header (with mobile padding) */}
                 <DialogHeader className="p-4 sm:p-6 pb-4 border-b">
                   <DialogTitle className="text-2xl sm:text-3xl font-bold">
