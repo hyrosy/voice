@@ -27,7 +27,7 @@ const buttonVariants = cva(
       size: {
         // --- 2. OPTIONAL: Make buttons rounded-full ---
         //    (You can change 'rounded-full' to 'rounded-lg' if you prefer)
-        default: "h-10 px-4 py-2 rounded-full", // was rounded-md
+        default: "h-12 px-6 py-3 text-lg rounded-full", // was rounded-md
         sm: "h-9 rounded-full px-3",            // was rounded-md
         lg: "h-11 rounded-full px-8",            // was rounded-md
         icon: "h-10 w-10 rounded-full",           // was rounded-md

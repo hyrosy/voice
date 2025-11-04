@@ -1,3 +1,5 @@
+// In src/components/ui/tabs.tsx
+
 import * as React from "react"
 import * as TabsPrimitive from "@radix-ui/react-tabs"
 
@@ -5,6 +7,9 @@ import { cn } from "@/lib/utils"
 
 const Tabs = TabsPrimitive.Root
 
+// --- MODIFIED TabsList ---
+// Changed 'bg-muted' to 'bg-background' to match your 'slate-950' page.
+// Changed 'rounded-md' to 'rounded-xl' to match your theme's radius.
 const TabsList = React.forwardRef<
   React.ElementRef<typeof TabsPrimitive.List>,
   React.ComponentPropsWithoutRef<typeof TabsPrimitive.List>
@@ -12,7 +17,7 @@ const TabsList = React.forwardRef<
   <TabsPrimitive.List
     ref={ref}
     className={cn(
-      "inline-flex h-9 items-center justify-center rounded-lg bg-muted p-1 text-muted-foreground",
+      "inline-flex h-auto items-center justify-center rounded-xl bg-background p-2 text-muted-foreground",
       className
     )}
     {...props}
@@ -20,6 +25,8 @@ const TabsList = React.forwardRef<
 ))
 TabsList.displayName = TabsPrimitive.List.displayName
 
+// --- MODIFIED TabsTrigger ---
+// This is where we put your gradient card styles.
 const TabsTrigger = React.forwardRef<
   React.ElementRef<typeof TabsPrimitive.Trigger>,
   React.ComponentPropsWithoutRef<typeof TabsPrimitive.Trigger>
@@ -27,7 +34,18 @@ const TabsTrigger = React.forwardRef<
   <TabsPrimitive.Trigger
     ref={ref}
     className={cn(
-      "inline-flex items-center justify-center whitespace-nowrap rounded-md px-3 py-1 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow",
+      `
+      inline-flex items-center justify-center whitespace-nowrap rounded-lg 
+      px-3 py-2 text-sm font-medium 
+      ring-offset-background transition-all 
+      focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 
+      disabled:pointer-events-none disabled:opacity-50
+      
+      data-[state=inactive]:bg-card data-[state=inactive]:hover:bg-accent
+      data-[state=active]:bg-gradient-to-br data-[state=active]:from-purple-600 data-[state=active]:to-blue-600 
+      data-[state=active]:text-white 
+      data-[state=active]:shadow-lg data-[state=active]:shadow-purple-700/30
+      `,
       className
     )}
     {...props}

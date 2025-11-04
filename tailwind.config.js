@@ -4,6 +4,13 @@ export default {
     content: ['./index.html', './src/**/*.{js,ts,jsx,tsx}'],
   theme: {
   	extend: {
+		backgroundImage: {
+      'gradient-radial': 'radial-gradient(var(--tw-gradient-stops))',
+      'gradient-conic': 'conic-gradient(from 180deg at 50% 50%, var(--tw-gradient-stops))',
+      // --- ADD YOUR NEW GRADIENT ---
+      'futuristic-gradient': 'linear-gradient(90deg, #your-start-color 0%, #your-end-color 100%)',
+      'futuristic-gradient-hover': 'linear-gradient(90deg, #your-hover-start 0%, #your-hover-end 100%)',
+    },
   		colors: {
   			'primary-black': '#000000',
   			'primary-golden': '#FFD700',

@@ -7,6 +7,7 @@ import {
   AudioLinesIcon, MegaphoneIcon, LogIn, UserCircle, UserCheck, ChevronDown, Heart
 } from 'lucide-react';
 import LanguageSwitcher from './LanguageSwitcher'; // <-- Import new component
+import ThemeToggle from './ThemeToggle'; // <-- 1. Import the new component
 
 const Navbar: React.FC = () => {
   const [isOpen, setIsOpen] = useState(false);
@@ -116,6 +117,12 @@ const Navbar: React.FC = () => {
              <div className="hidden lg:block">
                <LanguageSwitcher />
              </div>
+
+             {/* --- 2. ADD THEME TOGGLE (Desktop) --- */}
+             <div className="hidden lg:block">
+               <ThemeToggle />
+             </div>
+             
               {/* --- CORRECTED: Login Dropdown (Desktop) --- */}
 
               <div 
