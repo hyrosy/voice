@@ -239,9 +239,9 @@ const OrderDetailsModal: React.FC<ModalProps> = ({ order, onClose, onUpdate, onA
     return (
       <>
             <Dialog open={true} onOpenChange={onClose}>
-              <DialogContent className="w-screen h-screen max-w-none max-h-none rounded-none border-none p-0 flex flex-col 
+                <DialogContent className="w-screen h-screen max-w-none max-h-none rounded-none border-none p-0 flex flex-col 
                                         sm:w-full sm:max-w-2xl sm:h-auto sm:max-h-[90vh] sm:rounded-lg sm:border">
-                {/* Header (with updated padding) */}
+                {/* Header (with mobile padding) */}
                 <DialogHeader className="p-4 sm:p-6 pb-4 border-b">
                   <DialogTitle className="text-2xl sm:text-3xl font-bold">
                     {order.service_type === 'voice_over' ? `Order #${order.order_id_string}` : `Quote #${order.order_id_string}`}
@@ -253,7 +253,7 @@ const OrderDetailsModal: React.FC<ModalProps> = ({ order, onClose, onUpdate, onA
                     {order.service_type.replace('_', ' ')}
                   </span>
                 </DialogHeader>
-                {/* --- 4. Main Content (Scrollable) --- */}
+                                {/* --- 4. Main Content (Scrollable) --- */}
                 <div className="flex-grow overflow-y-auto pr-2 -mr-4 custom-scrollbar">
                     
                     {/* --- 5. NEW: Actor Payment Confirmation Section --- */}
