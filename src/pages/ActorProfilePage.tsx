@@ -485,11 +485,8 @@ const { actorName: actorSlug } = useParams<{ actorName: string }>();
               {/* --- Action Buttons (Unchanged) --- */}
               <div className="flex items-center gap-4 sm:gap-6 mb-12 flex-wrap">
                   <Button onClick={() => handlePlayPause()} size="lg" className="w-16 h-16 rounded-full">
-                    {isPlaying ? (
-                                <Pause size={32} className="text-white" /> 
-                            ) : (
-                                <Play size={32} className="ml-1 text-white" />
-                            )}                  </Button>
+                      {isPlaying ? <Pause size={32} /> : <Play size={32} className="ml-1" />}
+                  </Button>
                   <Button onClick={() => setIsQuoteModalOpen(true)} size="lg" variant="outline" className="rounded-full">
                       Get a Quote
                   </Button>
@@ -517,24 +514,15 @@ const { actorName: actorSlug } = useParams<{ actorName: string }>();
                 {availableServices.length > 1 ? (
                   <Tabs defaultValue="voice_over" className="w-full">
                     
-                    <div className="w-full overflow-x-auto custom-scrollbar pb-2">
-                    <TabsList className="inline-flex w-auto gap-2 h-auto p-2 bg-slate-950 rounded-xl">
-                        {availableServices.map(service => (
-                        <TabsTrigger 
-                        key={service.id} 
-                        value={service.id} 
-                        // Add flex-shrink-0 to prevent cards from squishing
-                        className="flex flex-col items-center justify-center p-6 h-32 flex-shrink-0"
-                        // Add a min-width to ensure they don't get too small
-                        style={{ minWidth: '180px' }} 
-                        >
-                        <service.icon className="h-8 w-8 mb-2" />
-                        <span className="font-bold text-lg">{service.title}</span>
-                        <span className="font-normal text-xs">{service.rate}</span>
+                    <TabsList className="grid w-full grid-cols-3 mb-6 h-auto">
+                      {availableServices.map(service => (
+                        <TabsTrigger key={service.id} value={service.id} className="h-auto p-4 flex flex-col gap-2">
+                          <service.icon className="h-6 w-6" />
+                          <span className="font-semibold text-base">{service.title}</span>
+                          <span className="font-normal text-xs text-muted-foreground">{service.rate}</span>
                         </TabsTrigger>
-                    ))}
+                      ))}
                     </TabsList>
-                    </div>
                     
                     <TabsContent value="voice_over"><AudioDemoList /></TabsContent>
                     <TabsContent value="scriptwriting"><ScriptDemoList /></TabsContent>
