@@ -237,9 +237,10 @@ const OrderDetailsModal: React.FC<ModalProps> = ({ order, onClose, onUpdate, onA
 
 
     return (
-      <>
+        <>
             <Dialog open={true} onOpenChange={onClose}>
-                <DialogContent className="w-screen h-screen max-w-none max-h-none rounded-none border-none p-0 flex flex-col 
+              {/* --- THIS IS THE FIX --- */}
+              <DialogContent className="w-screen h-screen max-w-none max-h-none rounded-none border-none p-0 flex flex-col 
                                         sm:w-full sm:max-w-2xl sm:h-auto sm:max-h-[90vh] sm:rounded-lg sm:border">
                 {/* Header (with mobile padding) */}
                 <DialogHeader className="p-4 sm:p-6 pb-4 border-b">
@@ -253,30 +254,29 @@ const OrderDetailsModal: React.FC<ModalProps> = ({ order, onClose, onUpdate, onA
                     {order.service_type.replace('_', ' ')}
                   </span>
                 </DialogHeader>
-                                {/* --- 4. Main Content (Scrollable) --- */}
-                <div className="flex-grow overflow-y-auto pr-2 -mr-4 custom-scrollbar">
-                    
-                    {/* --- 5. NEW: Actor Payment Confirmation Section --- */}
-                    {order.status === 'Awaiting Actor Confirmation' && onActorConfirmPayment && (
-                        <div className="mb-6 p-4 bg-green-900/30 border border-green-700 rounded-lg animate-in fade-in duration-300">
-                            <h3 className="text-lg font-bold text-white mb-2 flex items-center gap-2"><Banknote size={18} /> Action Required</h3>
-                            <p className="text-sm font-semibold text-blue-300 mb-2 capitalize">Service Requested: {order.service_type.replace('_', ' ')}</p>
-                            <p className="text-sm text-slate-300 mb-4">The client has marked this order as paid. Please check your bank account and confirm receipt to begin work.</p>
-                            <button
-                                onClick={handleConfirmClick}
-                                disabled={isConfirming}
-                                className="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-3 rounded-md flex items-center justify-center gap-2 transition-colors disabled:opacity-50"
-                            >
-                                {isConfirming ? <RefreshCw size={18} className="animate-spin" /> : <CheckCircle size={18} />}
-                                {isConfirming ? 'Confirming...' : 'Confirm Payment Received'}
-                            </button>
-                            {message.includes('Error') && <p className="text-red-400 text-sm mt-3 text-center">{message}</p>}
-                        </div>
-                    )}
-                    {/* --- END Section --- */}
-                    {/* --- UPDATED: "Make/Update Offer" Section --- */}
-                    {/* Show this if status is awaiting_offer OR offer_made */}
-                    {(order.status === 'awaiting_offer' || order.status === 'offer_made') && (
+                
+                {/* Scrollable Content Area (with mobile padding) */}
+                <div className="flex-grow overflow-y-auto p-4 sm:p-6 space-y-4 custom-scrollbar">
+
+                  {/* --- Payment Confirmation Section --- */}
+                  {order.status === 'Awaiting Actor Confirmation' && onActorConfirmPayment && (
+                      <div className="mb-6 p-4 bg-green-900/30 border border-green-700 rounded-lg animate-in fade-in duration-300">
+                          <h3 className="text-lg font-bold text-white mb-2 flex items-center gap-2"><Banknote size={18} /> Action Required</h3>
+                          <p className="text-sm text-slate-300 mb-4">The client has marked this order as paid. Please check your bank account and confirm receipt to begin work.</p>
+                          <Button
+                              onClick={handleConfirmClick}
+                              disabled={isConfirming}
+                              className="w-full bg-green-600 hover:bg-green-700 text-white"
+                          >
+                              {isConfirming ? <RefreshCw size={18} className="animate-spin" /> : <CheckCircle size={18} />}
+                              {isConfirming ? 'Confirming...' : 'Confirm Payment Received'}
+                          </Button>
+                          {message.includes('Error') && <p className="text-red-400 text-sm mt-3 text-center">{message}</p>}
+                      </div>
+                  )}
+
+                  {/* --- "Make/Update Offer" Section --- */}
+                  {(order.status === 'awaiting_offer' || order.status === 'offer_made') && (
                       <div className="mb-6 p-4 bg-blue-900/30 border border-blue-700 rounded-lg animate-in fade-in duration-300">
                         <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
                           <Banknote size={18} /> 
@@ -326,155 +326,154 @@ const OrderDetailsModal: React.FC<ModalProps> = ({ order, onClose, onUpdate, onA
                           {isSendingOffer ? <RefreshCw size={18} className="animate-spin" /> : <Send size={18} />}
                           {isSendingOffer ? 'Sending...' : (order.status === 'offer_made' ? 'Update Offer' : 'Send Offer to Client')}
                         </Button>
-                        {message && <p className="text-center text-sm mt-3 ${message.includes('Error') ? 'text-red-400' : 'text-green-400'}">{message}</p>}
+                        {message && <p className={`text-center text-sm mt-3 ${message.includes('Error') ? 'text-red-400' : 'text-green-400'}`}>{message}</p>}
                       </div>
+                  )}
+                  
+                  {/* --- Accordion Sections --- */}
+                  <div className="space-y-4">
+                    {/* Offer History */}
+                    {(order.status === 'awaiting_offer' || order.status === 'offer_made') && (
+                      <AccordionItem
+                        title="Offer History"
+                        icon={<History size={18} />}
+                        isOpen={openSections.offer_history}
+                        onToggle={() => toggleSection('offer_history')}
+                      >
+                        <div className="bg-slate-900 p-4 rounded-lg space-y-3 max-h-40 overflow-y-auto custom-scrollbar">
+                          {loadingHistory ? (
+                            <p className="text-sm text-slate-400">Loading history...</p>
+                          ) : offerHistory.length === 0 ? (
+                            <p className="text-sm text-slate-400">No offers have been made yet.</p>
+                          ) : (
+                            offerHistory.map(offer => (
+                              <div key={offer.id} className="pb-3 border-b border-slate-700 last:border-b-0">
+                                <div className="flex justify-between items-center mb-1">
+                                  <span className="font-semibold text-white">{offer.offer_title}</span>
+                                  <span className="font-bold text-lg text-primary">{offer.offer_price.toFixed(2)} MAD</span>
+                                </div>
+                                <p className="text-xs text-slate-400 mb-2">{new Date(offer.created_at).toLocaleString()}</p>
+                                <p className="text-sm text-slate-300 whitespace-pre-wrap">{offer.offer_agreement || "No agreement details provided."}</p>
+                              </div>
+                            ))
+                          )}
+                        </div>
+                      </AccordionItem>
                     )}
-                    {/* --- END Section --- */}
 
-                    {/* --- 6. Accordion Sections --- */}
-                    <div className="space-y-4">
-                      {/* --- NEW: Offer History Section --- */}
-                        {(order.status === 'awaiting_offer' || order.status === 'offer_made') && (
-                          <AccordionItem
-                            title="Offer History"
-                            icon={<History size={18} />}
-                            isOpen={openSections.offer_history}
-                            onToggle={() => toggleSection('offer_history')}
-                          >
-                            <div className="bg-slate-900 p-4 rounded-lg space-y-3 max-h-40 overflow-y-auto custom-scrollbar">
-                              {loadingHistory ? (
-                                <p className="text-sm text-slate-400">Loading history...</p>
-                              ) : offerHistory.length === 0 ? (
-                                <p className="text-sm text-slate-400">No offers have been made yet.</p>
-                              ) : (
-                                offerHistory.map(offer => (
-                                  <div key={offer.id} className="pb-3 border-b border-slate-700 last:border-b-0">
-                                    <div className="flex justify-between items-center mb-1">
-                                      <span className="font-semibold text-white">{offer.offer_title}</span>
-                                      <span className="font-bold text-lg text-primary">{offer.offer_price.toFixed(2)} MAD</span>
-                                    </div>
-                                    <p className="text-xs text-slate-400 mb-2">{new Date(offer.created_at).toLocaleString()}</p>
-                                    <p className="text-sm text-slate-300 whitespace-pre-wrap">{offer.offer_agreement || "No agreement details provided."}</p>
+                    {/* Quote Details */}
+                    {order.service_type !== 'voice_over' && (
+                      <AccordionItem
+                        title="Quote Details"
+                        icon={<Info size={18} />}
+                        isOpen={openSections.quote_details}
+                        onToggle={() => toggleSection('quote_details')}
+                      >
+                        <div className="bg-slate-900 p-4 rounded-lg space-y-2 text-sm">
+                          {order.service_type === 'scriptwriting' && (
+                            <>
+                              <div className="flex justify-between">
+                                <span className="text-slate-400">Est. Video Duration:</span>
+                                <span className="font-semibold text-white">{order.quote_est_duration || 'N/A'} min</span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span className="text-slate-400">Est. Word Count:</span>
+                                <span className="font-semibold text-white">{order.word_count || 'N/A'}</span>
+                              </div>
+                            </>
+                          )}
+                          {order.service_type === 'video_editing' && (
+                            <>
+                              <div className="flex justify-between">
+                                <span className="text-slate-400">Video Type:</span>
+                                <span className="font-semibold text-white capitalize">{order.quote_video_type || 'N/A'}</span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span className="text-slate-400">Footage:</span>
+                                <span className="font-semibold text-white">
+                                  {order.quote_footage_choice === 'has_footage' ? 'Client has footage' : 'Needs stock footage'}
+                                </span>
+                              </div>
+                            </>
+                          )}
+                        </div>
+                      </AccordionItem>
+                    )}
+                    
+                    {/* Project Description */}
+                    <AccordionItem
+                      title={order.service_type === 'voice_over' ? "Script" : "Project Description"}
+                      icon={<FileText size={18} />}
+                      isOpen={openSections.script}
+                      onToggle={() => toggleSection('script')}
+                    >
+                      <div className="bg-slate-900 p-4 rounded-lg max-h-40 overflow-y-auto">
+                        <p className="text-slate-300 whitespace-pre-wrap">{order.script}</p>
+                      </div>
+                    </AccordionItem>
+
+                    {/* Delivery */}
+                    {!['awaiting_offer', 'offer_made', 'Awaiting Payment'].includes(order.status) && (
+                      <AccordionItem
+                        title={`Deliver ${order.service_type.replace('_', ' ')}`}
+                        icon={<Package size={18} />}
+                        isOpen={openSections.delivery}
+                        onToggle={() => toggleSection('delivery')}
+                      >
+                        {/* Delivery History */}
+                        {order.deliveries && order.deliveries.length > 0 && (
+                          <div className="mb-6">
+                            <h4 className="text-sm font-semibold text-muted-foreground mb-3">Delivery History</h4>
+                            <div className="space-y-3 max-h-40 overflow-y-auto custom-scrollbar pr-2">
+                              {order.deliveries.map((delivery) => (
+                                <div key={delivery.id} className="bg-slate-900 p-3 rounded-lg flex items-center justify-between">
+                                  <div>
+                                    <p className="text-sm font-semibold text-white">
+                                      Version {delivery.version_number}
+                                    </p>
+                                    <p className="text-xs text-slate-400">
+                                      {new Date(delivery.created_at).toLocaleString()}
+                                    </p>
                                   </div>
-                                ))
-                              )}
+                                  <Button asChild variant="ghost" size="sm">
+                                    <a href={delivery.file_url} target="_blank" rel="noopener noreferrer">
+                                      <Download size={16} className="mr-2" />
+                                      Download
+                                    </a>
+                                  </Button>
+                                </div>
+                              ))}
                             </div>
-                          </AccordionItem>
+                          </div>
                         )}
-                      {/* --- NEW: Quote Details Section --- */}
-                        {order.service_type !== 'voice_over' && (
-                          <AccordionItem
-                            title="Quote Details"
-                            icon={<Info size={18} />}
-                            isOpen={openSections.quote_details}
-                            onToggle={() => toggleSection('quote_details')}
-                          >
-                            <div className="bg-slate-900 p-4 rounded-lg space-y-2 text-sm">
-                              {order.service_type === 'scriptwriting' && (
-                                <>
-                                  <div className="flex justify-between">
-                                    <span className="text-slate-400">Est. Video Duration:</span>
-                                    <span className="font-semibold text-white">{order.quote_est_duration || 'N/A'} min</span>
-                                  </div>
-                                  <div className="flex justify-between">
-                                    <span className="text-slate-400">Est. Word Count:</span>
-                                    <span className="font-semibold text-white">{order.word_count || 'N/A'}</span>
-                                  </div>
-                                </>
-                              )}
-                              {order.service_type === 'video_editing' && (
-                                <>
-                                  <div className="flex justify-between">
-                                    <span className="text-slate-400">Video Type:</span>
-                                    <span className="font-semibold text-white capitalize">{order.quote_video_type || 'N/A'}</span>
-                                  </div>
-                                  <div className="flex justify-between">
-                                    <span className="text-slate-400">Footage:</span>
-                                    <span className="font-semibold text-white">
-                                      {order.quote_footage_choice === 'has_footage' ? 'Client has footage' : 'Needs stock footage'}
-                                    </span>
-                                  </div>
-                                </>
-                              )}
-                            </div>
-                          </AccordionItem>
-                        )}
-                        {/* --- END: Quote Details Section --- */}
-                        
-                        {/* Script Section */}
-                        <AccordionItem
-                          title={order.service_type === 'voice_over' ? "Script" : "Project Description"}
-                          icon={<FileText size={18} />}
-                          isOpen={openSections.script}
-                          onToggle={() => toggleSection('script')}
-                        >
-                            <div className="bg-slate-900 p-4 rounded-lg max-h-40 overflow-y-auto">
-                                <p className="text-slate-300 whitespace-pre-wrap">{order.script}</p>
-                            </div>
-                        </AccordionItem>
-
-                        {/* Delivery Section (Hide for quotes) */}
-                        {!['awaiting_offer', 'offer_made', 'Awaiting Payment'].includes(order.status) && (
-                          <AccordionItem
-                            title={`Deliver ${order.service_type.replace('_', ' ')}`}
-                            icon={<Package size={18} />}
-                            isOpen={openSections.delivery}
-                            onToggle={() => toggleSection('delivery')}
-                          >
-                          {/* --- ADD DELIVERY HISTORY HERE --- */}
-                                          {order.deliveries && order.deliveries.length > 0 && (
-                                            <div className="mb-6">
-                                              <h4 className="text-sm font-semibold text-muted-foreground mb-3">Delivery History</h4>
-                                              <div className="space-y-3 max-h-40 overflow-y-auto custom-scrollbar pr-2">
-                                                {order.deliveries.map((delivery) => (
-                                                  <div key={delivery.id} className="bg-slate-900 p-3 rounded-lg flex items-center justify-between">
-                                                    <div>
-                                                      <p className="text-sm font-semibold text-white">
-                                                        Version {delivery.version_number}
-                                                      </p>
-                                                      <p className="text-xs text-slate-400">
-                                                        {new Date(delivery.created_at).toLocaleString()}
-                                                      </p>
-                                                    </div>
-                                                    <Button asChild variant="ghost" size="sm">
-                                                      <a href={delivery.file_url} target="_blank" rel="noopener noreferrer">
-                                                        <Download size={16} className="mr-2" />
-                                                        Download
-                                                      </a>
-                                                    </Button>
-                                                  </div>
-                                                ))}
-                                              </div>
-                                            </div>
-                                          )}
-                                          {/* --- END DELIVERY HISTORY --- */}  
-
-                                          {/* This is the uploader you already built */}
-                                          <div className="bg-slate-900 p-4 rounded-lg">
-                                            <h4 className="text-sm font-semibold text-white mb-3">
-                                              {order.deliveries.length > 0 ? 'Upload a New Version' : 'Upload Your Delivery'}
-                                            </h4>
-                                            <ServiceDeliveryUploader
-                                              order={order}
-                                              onDeliverySuccess={handleDeliverySuccess}
-                                            />
-                                          </div>
-                                        </AccordionItem>
-                                      )}                      
-                        {/* Chat Section */}
-                        <AccordionItem
-                          title="Communication"
-                          icon={<MessageSquare size={18} />}
-                          isOpen={openSections.chat}
-                          onToggle={() => toggleSection('chat')}
-                        >
-                            <ChatBox orderId={order.id} userRole="actor" />
-                        </AccordionItem>
-                    </div>
+                        {/* Uploader */}
+                        <div className="bg-slate-900 p-4 rounded-lg">
+                          <h4 className="text-sm font-semibold text-white mb-3">
+                            {order.deliveries.length > 0 ? 'Upload a New Version' : 'Upload Your Delivery'}
+                          </h4>
+                          <ServiceDeliveryUploader
+                            order={order}
+                            onDeliverySuccess={handleDeliverySuccess}
+                          />
+                        </div>
+                      </AccordionItem>
+                    )}
+                    
+                    {/* Communication */}
+                    <AccordionItem
+                      title="Communication"
+                      icon={<MessageSquare size={18} />}
+                      isOpen={openSections.chat}
+                      onToggle={() => toggleSection('chat')}
+                    >
+                        <ChatBox orderId={order.id} userRole="actor" />
+                    </AccordionItem>
+                  </div>
                 </div>
-            </DialogContent>
+              </DialogContent>
             </Dialog>
-            {/* This modal now appears on top of the OrderDetailsModal */}
+
+            {/* Library Modal */}
             {isLibraryModalOpen && order.service_type === 'voice_over' && (
               <DeliverFromLibraryModal
                 order={order}
