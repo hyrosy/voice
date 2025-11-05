@@ -172,7 +172,7 @@ const Navbar: React.FC = () => {
       </nav>
 
       {/* --- Mobile Slide-out Menu --- */}
-      <div className={`fixed top-0 right-0 h-full w-80 max-w-[85vw] bg-background/90 backdrop-blur-xl shadow-2xl transform transition-all duration-300 ease-out z-50 border-l border ${
+      <div className={`fixed top-0 right-0 h-full w-80 max-w-[85vw] bg-background/90 backdrop-blur-xl shadow-2xl transform transition-all duration-300 ease-out z-50 border-l ${
         isOpen ? 'translate-x-0' : 'translate-x-full'
       }`}>
         <div className="flex justify-between items-center p-6 border-b">

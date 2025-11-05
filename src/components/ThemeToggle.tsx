@@ -20,15 +20,10 @@ const ThemeToggle: React.FC = () => {
 
   // This effect applies the class to the <html> tag
   useEffect(() => {
-    const root = window.document.documentElement;
-    if (theme === 'dark') {
-      root.classList.add('dark');
-      localStorage.setItem('theme', 'dark');
-    } else {
-      root.classList.remove('dark');
-      localStorage.setItem('theme', 'light');
-    }
-  }, [theme]);
+  const root = window.document.documentElement; // <-- This is the <html> tag
+  root.classList.remove(theme === 'dark' ? 'light' : 'dark');
+  root.classList.add(theme);
+}, [theme]);
 
   const toggleTheme = () => {
     setTheme(theme === 'light' ? 'dark' : 'light');
