@@ -21,9 +21,18 @@ const ThemeToggle: React.FC = () => {
 
   // This effect applies the class to the <html> tag
   useEffect(() => {
-  const root = window.document.documentElement; // <-- This is the <html> tag
-  root.classList.remove(theme === 'dark' ? 'light' : 'dark');
-  root.classList.add(theme);
+  const root = window.document.documentElement;
+  root.classList.remove(theme === 'dark' ? 'light' : 'dark');
+  root.classList.add(theme);
+
+  // --- ADD THIS LOGIC ---
+  // This updates the inline border color when the theme changes
+  if (theme === 'dark') {
+    document.body.style.borderColor = 'hsl(217 33% 27%)'; // Your dark border color
+  } else {
+    document.body.style.borderColor = 'hsl(214.3 31.8% 91.4%)'; // Your light border color
+  }
+  // --- END OF NEW LOGIC ---
 }, [theme]);
 
   const toggleTheme = () => {
