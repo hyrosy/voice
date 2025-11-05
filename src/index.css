@@ -24,7 +24,7 @@
     --accent-foreground: 222 47% 11%;
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 210 40% 98%;
-    --border: 214.3 31.8% 91.4%; /* slate-200 */
+    --border: 262 52% 57%; /* purple-600 */
     --input: 214.3 31.8% 91.4%; /* slate-200 */
     --ring: 262 52% 57%; /* purple-600 */
     --radius: 0.75rem; /* 12px / rounded-xl */
@@ -48,11 +48,7 @@
     --accent-foreground: 210 40% 98%;
     --destructive: 0 63% 31%;
     --destructive-foreground: 210 40% 98%;
-    --border: 217 33% 27%; /* slate-700 */
-    --border-t: 217 33% 27%; /* slate-700 */
-    --border-b: 217 33% 27%; /* slate-700 */
-    --border-l: 217 33% 27%; /* slate-700 */
-
+    --border: 262 52% 57%; /* purple-600 */
     --input: 217 33% 24%; /* slate-700 */
     --ring: 262 52% 57%;
   }
