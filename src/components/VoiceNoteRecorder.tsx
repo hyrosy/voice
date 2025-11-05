@@ -123,7 +123,7 @@ const VoiceNoteRecorder: React.FC<VoiceNoteRecorderProps> = ({ onSend, onCancel 
 
   // --- JSX remains the same ---
   return (
-    <div className="flex items-center w-full gap-2 p-4 border-t border">
+    <div className="flex items-center w-full gap-2 p-4 border-t">
       {!audioURL ? (
         <>
           <button

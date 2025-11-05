@@ -508,7 +508,7 @@ const QuoteCalculatorModal: React.FC<ModalProps> = ({ actor, onClose }) => {
               {/* --- DYNAMIC CONTENT: Payment or Quote Button --- */}
               {isQuoteFlow ? (
                 // --- QUOTE FLOW: Show Submit Button ---
-                <div className="pt-4 border-t border">
+                <div className="pt-4 border-t">
                   <p className="text-sm text-muted-foreground text-center mb-4">You will receive an offer from the actor after submitting your request.</p>
                   <button
                     type="button"
@@ -521,7 +521,7 @@ const QuoteCalculatorModal: React.FC<ModalProps> = ({ actor, onClose }) => {
                 </div>
               ) : (
                 // --- VOICE OVER FLOW: Show Payment Options ---
-                <div className="pt-4 border-t border">
+                <div className="pt-4 border-t">
                   <label className="block mb-2 text-sm font-medium text-muted-foreground">Choose Payment Method *</label>
                   <div className="space-y-4">
                     <label className={`w-full p-4 border-2 rounded-lg text-left transition flex items-center gap-4 cursor-pointer ${paymentMethod === 'stripe' ? 'border-purple-500 bg-purple-900/50' : 'border-slate-600 hover:border-slate-500'}`}>
@@ -545,7 +545,7 @@ const QuoteCalculatorModal: React.FC<ModalProps> = ({ actor, onClose }) => {
                   {!isSettingUpStripe && status && !clientSecret && paymentMethod === 'stripe' && <p className="text-center text-sm text-red-400 mt-4">{status}</p>}
 
                   {paymentMethod === 'stripe' && clientSecret && !isSettingUpStripe && (
-                    <div className="mt-4 pt-4 border-t border">
+                    <div className="mt-4 pt-4 border-t">
                       <Elements stripe={stripePromise} options={{ clientSecret, appearance: { theme: 'night', labels: 'floating' } }}>
                         <StripeCheckoutForm onSuccessfulPayment={onSuccessfulStripePayment} />
                       </Elements>
@@ -555,7 +555,7 @@ const QuoteCalculatorModal: React.FC<ModalProps> = ({ actor, onClose }) => {
               )}
               {/* --- END DYNAMIC CONTENT --- */}
 
-              <div className="flex gap-4 pt-6 mt-6 border-t border">
+              <div className="flex gap-4 pt-6 mt-6 border-t">
                 <button type="button" onClick={() => setStep(serviceType === 'voice_over' ? 2 : 1)} className="w-full py-3 bg-slate-600 rounded-full font-semibold text-foreground">Back</button>
                 
                 {/* Bank Transfer button (VO flow only) */}
@@ -606,7 +606,7 @@ const QuoteCalculatorModal: React.FC<ModalProps> = ({ actor, onClose }) => {
                 <div className="bg-background p-6 rounded-lg text-left mt-6">
                   <p className="mb-2"><span className="font-bold text-muted-foreground">Order ID:</span> {orderId}</p>
                   <p className="mb-4"><span className="font-bold text-muted-foreground">Amount Due:</span> {totalPrice.toFixed(2)} MAD</p>
-                  <h4 className="font-bold text-lg mb-2 border-t border pt-4 text-foreground">Bank Transfer Details:</h4>
+                  <h4 className="font-bold text-lg mb-2 border-t pt-4 text-foreground">Bank Transfer Details:</h4>
                   <p className="text-sm text-muted-foreground">Bank Name: Attijariwafa Bank</p>
                   <p className="text-sm text-muted-foreground">Account Holder: UCPMAROC</p>
                   <p className="text-sm text-muted-foreground">IBAN: MA64 0077 8000 0219 5000 0005 47</p>

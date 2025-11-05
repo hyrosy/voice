@@ -54,7 +54,7 @@ const Navbar: React.FC = () => {
   return (
     <>
       <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
-        isScrolled ? 'bg-background/80 backdrop-blur-xl shadow-lg border-b border py-3' : 'bg-transparent py-4'
+        isScrolled ? 'bg-background/80 backdrop-blur-xl shadow-lg border-b py-3' : 'bg-transparent py-4'
       }`}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center">
@@ -86,7 +86,7 @@ const Navbar: React.FC = () => {
                   <div
                    className="absolute left-0 top-full pt-2 w-56" 
                   >
-                   <div className="bg-popover rounded-lg shadow-xl border border overflow-hidden animate-in fade-in zoom-in-95">                    
+                   <div className="bg-popover rounded-lg shadow-xl border overflow-hidden animate-in fade-in zoom-in-95">                    
                    
                    
                    {serviceDropdownItems.map(item => (
@@ -141,7 +141,7 @@ const Navbar: React.FC = () => {
                   <div 
                    className="absolute right-0 top-full pt-2 w-48" // Use top-full and pt-2
                   >
-                   <div className="bg-popover rounded-lg shadow-xl border border overflow-hidden animate-in fade-in zoom-in-95">                  
+                   <div className="bg-popover rounded-lg shadow-xl border overflow-hidden animate-in fade-in zoom-in-95">                  
                     <Link to="/client-auth" onClick={() => setIsLoginOpen(false)} className="flex items-center gap-3 px-4 py-3 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground">
                       <UserCircle size={16} className="text-purple-400" />
                       Client Portal
@@ -175,7 +175,7 @@ const Navbar: React.FC = () => {
       <div className={`fixed top-0 right-0 h-full w-80 max-w-[85vw] bg-background/90 backdrop-blur-xl shadow-2xl transform transition-all duration-300 ease-out z-50 border-l border ${
         isOpen ? 'translate-x-0' : 'translate-x-full'
       }`}>
-        <div className="flex justify-between items-center p-6 border-b border">
+        <div className="flex justify-between items-center p-6 border-b">
           <h3 className="font-bold text-foreground">Menu</h3>
           <button onClick={closeMenu} className="p-2 rounded-lg text-foreground hover:bg-white/10">
             <X size={24} />
@@ -215,7 +215,7 @@ const Navbar: React.FC = () => {
           </div>
 
           {/* --- RE-ADDED: Customized Package Button --- */}
-          <div className="mt-8 pt-6 border-t border">
+          <div className="mt-8 pt-6 border-t">
             <Link
               to="/customized-package"
               onClick={closeMenu}

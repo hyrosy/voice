@@ -25,7 +25,7 @@ const AccordionItem: React.FC<AccordionProps> = ({ title, icon, isOpen, onToggle
         {isOpen ? <ChevronUp className="text-muted-foreground" /> : <ChevronDown className="text-muted-foreground" />}
       </button>
       {isOpen && (
-        <div className="p-4 border-t border">
+        <div className="p-4 border-t">
           {children}
         </div>
       )}

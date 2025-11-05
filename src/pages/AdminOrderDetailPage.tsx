@@ -143,7 +143,7 @@ const AdminOrderDetailPage: React.FC = () => {
                          </span>
                     </div>
                      {/* Admin Status Change */}
-                    <div className="mt-4 pt-4 border-t border flex items-center gap-3">
+                    <div className="mt-4 pt-4 border-t flex items-center gap-3">
                          <label htmlFor="adminStatusSelect" className="text-sm font-medium text-muted-foreground">Change Status:</label>
                          <select
                             id="adminStatusSelect"

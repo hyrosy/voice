@@ -60,7 +60,7 @@ const ActorCard: React.FC<ActorCardProps> = ({ actor, onPlayClick, isCurrentlyPl
       </div>
 
       {/* Stats Section - This part was already correct */}
-      <div className="mt-2 pt-3 border-t border space-y-2 text-xs text-muted-foreground">
+      <div className="mt-2 pt-3 border-t space-y-2 text-xs text-muted-foreground">
         <div className="flex items-center justify-between">
             <div className="flex items-center gap-1.5" title={`${actor.demo_likes[0]?.count || 0} Likes`}>
               <Heart size={12} className="text-pink-400"/>

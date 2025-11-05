@@ -65,15 +65,9 @@
     /* Focus rings (Your Purple) */
     --ring: 262 52% 57%;
   }
-
-}
-
-/* --- 2. UPDATED BASE STYLES --- */
-@layer base {
   * {
-    @apply border-border; /* <-- THIS IS THE PROBLEM */
+    @apply border-border; /* This means border-color: hsl(var(--border)) */
   }
-  
   /* THIS FIXES THE "WHITE BORDER" ON MOBILE */
   html {
     @apply bg-background;
@@ -85,7 +79,9 @@
     -moz-osx-font-smoothing: grayscale;
     text-rendering: optimizeLegibility;
   }
+
 }
+
 
 /* --- 3. ALL YOUR CUSTOM STYLES (Unchanged) --- */
 

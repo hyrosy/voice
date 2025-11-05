@@ -491,7 +491,7 @@ const ClientOrderPage = () => {
                                 <p className="font-bold text-foreground text-lg">{(order.total_price ?? 0).toFixed(2)} MAD</p>
                             </div>
                         </div>
-                        <div className="mt-6 border-t border pt-4 text-center">
+                        <div className="mt-6 border-t pt-4 text-center">
                             {isLoggedIn ? (
                                 <Link to="/client-dashboard" className="text-purple-400 hover:text-accent-foreground transition font-semibold">
                                     View All Your Orders
@@ -673,7 +673,7 @@ const ClientOrderPage = () => {
                                                                {isOpen ? <ChevronUp size={18} className="text-muted-foreground"/> : <ChevronDown size={18} className="text-muted-foreground"/>}
                                                          </button>
                                                          {isOpen && (
-                                                             <div className="p-3 border-t border text-sm space-y-2 text-muted-foreground animate-in fade-in duration-300">
+                                                             <div className="p-3 border-t text-sm space-y-2 text-muted-foreground animate-in fade-in duration-300">
                                                                   <div className="flex justify-between items-center group">
                                                                       <span><strong className="font-semibold text-muted-foreground w-28 inline-block">Account Holder:</strong> {bank.holder}</span>
                                                                       <button onClick={() => copyToClipboard(bank.holder, 'Account Holder')} className="p-1 text-muted-foreground hover:text-accent-foreground transition-colors"> <Copy size={14}/> </button>
@@ -698,7 +698,7 @@ const ClientOrderPage = () => {
                                      )}
 
                                      {/* Mark as Paid Button */}
-                                     <div className="mt-6 pt-4 border-t border text-center">
+                                     <div className="mt-6 pt-4 border-t text-center">
                                           <button
                                             onClick={handleMarkAsPaid}
                                             disabled={notifyingAdmin || !!notificationMessage.includes('successfully')} // Disable if sending or already sent
@@ -814,7 +814,7 @@ const ClientOrderPage = () => {
                                     ))}
 
                                     {order.status === 'Pending Approval' && (
-                                        <div className="mt-6 pt-6 border-t border space-y-4">
+                                        <div className="mt-6 pt-6 border-t space-y-4">
                                             <h3 className="text-lg font-semibold text-foreground">Review & Confirm Latest Delivery</h3>
                                             <div className="flex gap-4">
                                                 <button onClick={handleApproval} className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-green-600 hover:bg-green-700 rounded-lg text-foreground font-semibold">

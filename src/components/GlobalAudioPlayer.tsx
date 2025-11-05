@@ -50,7 +50,7 @@ const GlobalAudioPlayer: React.FC<PlayerProps> = ({
   };
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 bg-card border-t border p-4 flex items-center gap-4 z-50">
+    <div className="fixed bottom-0 left-0 right-0 bg-card border-t p-4 flex items-center gap-4 z-50">
       <img src={currentTrack.actor.HeadshotURL} alt={currentTrack.actor.ActorName} className="w-14 h-14 rounded-md object-cover" />
       <div>
         <p className="font-bold text-foreground">{currentTrack.actor.ActorName}</p>

@@ -441,6 +441,8 @@ const handleToggleLike = async (demo: Demo) => {
           Whether you're a voice actor looking to manage your own career or a client searching for the perfect voice, our platform empowers direct connection.
         </p>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+
+
           {/* For Talents */}
           <div className="bg-card p-8 rounded-lg border border text-left transition-all duration-300 hover:border-purple-500 hover:shadow-2xl hover:shadow-purple-500/10">
             <h3 className="text-2xl font-semibold text-foreground mb-3">For Talents</h3>
@@ -452,7 +454,7 @@ const handleToggleLike = async (demo: Demo) => {
             </Link>
           </div>
           {/* For Clients */}
-          <div className="bg-card p-8 rounded-lg border border text-left transition-all duration-300 hover:border-blue-500 hover:shadow-2xl hover:shadow-blue-500/10">
+          <div className="bg-card p-8 rounded-lg border text-left transition-all duration-300 hover:border-blue-500 hover:shadow-2xl hover:shadow-blue-500/10">
             <h3 className="text-2xl font-semibold text-foreground mb-3">For Clients</h3>
             <p className="text-muted-foreground mb-6">
               Browse a diverse roster, filter by your needs, listen to demos, and collaborate directly with the talent you hire.
@@ -482,7 +484,7 @@ const handleToggleLike = async (demo: Demo) => {
           </div>
 
           {/* --- NEW: View Mode Tabs --- */}
-          <div className="flex justify-center mb-8 gap-2 p-1 bg-card/50 border border rounded-lg max-w-xs mx-auto">
+          <div className="flex justify-center mb-8 gap-2 p-1 bg-card/50 border rounded-lg max-w-xs mx-auto">
             <button
                 onClick={() => setViewMode('actors')}
                 className={`w-full flex items-center justify-center gap-2 px-4 py-2 rounded-md text-sm font-semibold transition ${
@@ -624,7 +626,7 @@ const handleToggleLike = async (demo: Demo) => {
                 </div>
             </section>
 
-            <section className="py-20 bg-background border-t border">
+            <section className="py-20 bg-background border-t">
                 <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
                     <h2 className="text-3xl font-bold text-foreground mb-4">Support Our Platform</h2>
                     <p className="text-muted-foreground mb-8">
