@@ -55,7 +55,7 @@
 
   /* --- ALL GLOBAL RULES MOVED INTO THE SAME BLOCK --- */
   * {
-    @apply border-border;
+    @apply border-foreground/20;
   }
   html {
     @apply bg-background;
