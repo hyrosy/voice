@@ -1,21 +1,39 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { HashLink } from 'react-router-hash-link';
-import { 
-  Menu, X, Facebook, Twitter, Instagram, ChevronRight, Home, Users, 
-  Briefcase, Package, Phone, Youtube, GalleryHorizontalEnd, BracesIcon, 
-  AudioLinesIcon, MegaphoneIcon, LogIn, UserCircle, UserCheck, ChevronDown, Heart
+import {
+  Menu, X, Home, Users, Package, Phone, Youtube, GalleryHorizontalEnd,
+  BracesIcon, AudioLinesIcon, MegaphoneIcon, LogIn, UserCircle, UserCheck, Heart
 } from 'lucide-react';
-import LanguageSwitcher from './LanguageSwitcher'; // <-- Import new component
-import ThemeToggle from './ThemeToggle'; // <-- 1. Import the new component
+import LanguageSwitcher from './LanguageSwitcher';
+import ThemeToggle from './ThemeToggle';
+
+// --- ENHANCEMENT 1: ADD SHADCN/UI COMPONENT IMPORTS ---
+// (Make sure you have these components in your project)
+import {
+  NavigationMenu,
+  NavigationMenuContent,
+  NavigationMenuItem,
+  NavigationMenuLink,
+  NavigationMenuList,
+  NavigationMenuTrigger,
+  navigationMenuTriggerStyle,
+} from "@/components/ui/navigation-menu"; // Adjust path if needed
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"; // Adjust path if needed
 
 const Navbar: React.FC = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
-  const [isLoginOpen, setIsLoginOpen] = useState(false);
-  const [isServicesOpen, setIsServicesOpen] = useState(false);
+  
+  // --- ENHANCEMENT 1: REMOVED UNNECESSARY STATE ---
+  // const [isLoginOpen, setIsLoginOpen] = useState(false); // No longer needed
+  // const [isServicesOpen, setIsServicesOpen] = useState(false); // No longer needed
 
-  // --- (useEffect hooks for scroll and body overflow are correct) ---
   useEffect(() => {
     const handleScroll = () => setIsScrolled(window.scrollY > 20);
     window.addEventListener('scroll', handleScroll);
@@ -28,7 +46,7 @@ const Navbar: React.FC = () => {
     return () => { document.body.style.overflow = 'auto'; };
   }, [isOpen]);
 
-  // --- (Data arrays for menu items are correct) ---
+  // --- (Data for Mobile Menu) ---
   const allMenuItems = [
     { icon: Home, label: 'Home', to: '/', type: 'link' },
     { icon: AudioLinesIcon, label: 'Voice Over', to: '/voiceover', type: 'link' },
@@ -39,14 +57,24 @@ const Navbar: React.FC = () => {
     { icon: Package, label: 'Packages', to: '/#packages', type: 'hash' },
     { icon: Users, label: 'Team', to: '/members', type: 'link' },
     { icon: Phone, label: 'Contact Us', to: '/contact', type: 'link' },
-    { icon: Heart, label: 'My Shortlist', to: '/my-shortlist', type: 'link' }, // <-- Add Shortlist here
+    { icon: Heart, label: 'My Shortlist', to: '/my-shortlist', type: 'link' },
   ];
 
+  // --- (Data for Desktop "Services" Dropdown) ---
   const serviceDropdownItems = [
     { label: 'Voice Over', to: '/voiceover' },
     { label: 'Cinematography', to: '/cinema-portfolio' },
     { label: 'Software Development', to: '/software-development' },
     { label: 'Digital Marketing', to: '/digital-marketing' },
+  ];
+
+  // --- ENHANCEMENT 2: DATA ARRAY FOR DESKTOP LINKS ---
+  const desktopNavLinks = [
+    { label: 'Gallery', to: '/portfolio', type: 'link' as const },
+    { label: 'Packages', to: '/#packages', type: 'hash' as const },
+    { label: 'Shortlist', to: '/my-shortlist', type: 'link' as const },
+    { label: 'Team', to: '/members', type: 'link' as const },
+    { label: 'Contact', to: '/contact', type: 'link' as const },
   ];
 
   const closeMenu = () => setIsOpen(false);
@@ -67,98 +95,99 @@ const Navbar: React.FC = () => {
               />
             </Link>
 
-            {/* --- Desktop Menu --- */}
-            <div className="hidden lg:flex items-center gap-6">
-              <Link to="/" className="text-sm font-medium text-muted-foreground hover:text-accent-foreground transition-colors">Home</Link>
-              
-              {/* --- CORRECTED: Services Dropdown --- */}
-              <div 
-                className="relative" 
-                onMouseEnter={() => setIsServicesOpen(true)}
-                onMouseLeave={() => setIsServicesOpen(false)}
-              >
-                <button
-                 className="flex items-center gap-1 text-sm font-medium text-muted-foreground hover:text-accent-foreground transition-colors py-2" // Added py-2 for larger hover area                
-                 >
-                Services <ChevronDown size={16} />
-                </button>
-                {isServicesOpen && (
-                  <div
-                   className="absolute left-0 top-full pt-2 w-56" 
-                  >
-                   <div className="bg-popover rounded-lg shadow-xl border overflow-hidden animate-in fade-in zoom-in-95">                    
-                   
-                   
-                   {serviceDropdownItems.map(item => (
-                      <Link
-                        key={item.label}
-                        to={item.to}
-                        onClick={() => setIsServicesOpen(false)}
-                        className="block px-4 py-3 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground"
-                      >
-                        {item.label}
-                      </Link>
-                    ))}
-                 </div>
-                  </div>
-                )}
-                </div>
+            {/* --- DESKTOP MENU (ENHANCEMENTS 1 & 2) --- */}
+            <div className="hidden lg:flex items-center gap-1">
+              <NavigationMenu>
+                <NavigationMenuList>
+                  {/* Home Link */}
+                  <NavigationMenuItem>
+                    <Link to="/" className={navigationMenuTriggerStyle()}>
+                      Home
+                    </Link>
+                  </NavigationMenuItem>
 
-              <Link to="/portfolio" className="text-sm font-medium text-muted-foreground hover:text-accent-foreground transition-colors">Gallery</Link>
-              <HashLink to="/#packages" className="text-sm font-medium text-muted-foreground hover:text-accent-foreground transition-colors">Packages</HashLink>
-              <Link to="/my-shortlist" className="text-sm font-medium text-muted-foreground hover:text-accent-foreground transition-colors">Shortlist</Link> {/* <-- Add Shortlist link */}
-              <Link to="/members" className="text-sm font-medium text-muted-foreground hover:text-accent-foreground transition-colors">Team</Link>
-              <Link to="/contact" className="text-sm font-medium text-muted-foreground hover:text-accent-foreground transition-colors">Contact</Link>
+                  {/* Services Dropdown */}
+                  <NavigationMenuItem>
+                    <NavigationMenuTrigger>Services</NavigationMenuTrigger>
+                    <NavigationMenuContent>
+                      <ul className="grid w-56 p-2">
+                        {serviceDropdownItems.map((item) => (
+                          <li key={item.label}>
+                            <NavigationMenuLink asChild>
+                              <Link
+                                to={item.to}
+                                className="block select-none space-y-1 rounded-md p-3 leading-none no-underline outline-none transition-colors hover:bg-accent hover:text-accent-foreground"
+                              >
+                                {item.label}
+                              </Link>
+                            </NavigationMenuLink>
+                          </li>
+                        ))}
+                      </ul>
+                    </NavigationMenuContent>
+                  </NavigationMenuItem>
+
+                  {/* Mapped Desktop Links */}
+                  {desktopNavLinks.map((item) => {
+                    const LinkComponent = item.type === 'hash' ? HashLink : Link;
+                    return (
+                      <NavigationMenuItem key={item.label}>
+                        <LinkComponent
+                          to={item.to}
+                          className={navigationMenuTriggerStyle()}
+                        >
+                          {item.label}
+                        </LinkComponent>
+                      </NavigationMenuItem>
+                    );
+                  })}
+                </NavigationMenuList>
+              </NavigationMenu>
             </div>
 
+            {/* --- RIGHT SIDE ICONS & BUTTONS --- */}
             <div className="flex items-center gap-4">
-
-              {/* --- NEW: Language Switcher (Desktop) --- */}
-             <div className="hidden lg:block text-white">
-               <LanguageSwitcher />
-             </div>
-
-             {/* --- 2. ADD THEME TOGGLE (Desktop) --- */}
-             <div>
-               <ThemeToggle />
-             </div>
-             
-              {/* --- CORRECTED: Login Dropdown (Desktop) --- */}
-
-              <div 
-               className="hidden lg:block relative"
-               onMouseEnter={() => setIsLoginOpen(true)}
-               onMouseLeave={() => setIsLoginOpen(false)}
-             >
-                <button
-                 className="flex items-center gap-2 px-4 py-3 bg-gradient-to-r from-purple-600 to-blue-600 text-primary-foreground font-semibold rounded-full hover:scale-105 transition-transform" // Added extra padding                >
-                  
-                  >
-                  <LogIn size={16} />
-                  Login / Sign Up
-                </button>
-                {isLoginOpen && (
-                  <div 
-                   className="absolute right-0 top-full pt-2 w-48" // Use top-full and pt-2
-                  >
-                   <div className="bg-popover rounded-lg shadow-xl border overflow-hidden animate-in fade-in zoom-in-95">                  
-                    <Link to="/client-auth" onClick={() => setIsLoginOpen(false)} className="flex items-center gap-3 px-4 py-3 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground">
-                      <UserCircle size={16} className="text-purple-400" />
-                      Client Portal
-                    </Link>
-                    <Link to="/actor-login" onClick={() => setIsLoginOpen(false)} className="flex items-center gap-3 px-4 py-3 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground">
-                      <UserCheck size={16} className="text-blue-400" />
-                      Actor Portal
-                    </Link>
-                    </div>
-                  </div>
-                )}
+              <div className="hidden lg:block text-white">
+                <LanguageSwitcher />
               </div>
-              {/* --- NEW: Language Switcher (Mobile) --- */}
-             <div className="lg:hidden">
-               <LanguageSwitcher />
-             </div>
-              {/* Hamburger Menu Button (Mobile) */}
+
+              <div>
+                <ThemeToggle />
+              </div>
+              
+              {/* --- LOGIN DROPDOWN (ENHANCEMENT 1) --- */}
+              <div className="hidden lg:block">
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <button
+                      className="flex items-center gap-2 px-4 py-3 bg-gradient-to-r from-purple-600 to-blue-600 text-primary-foreground font-semibold rounded-full hover:scale-105 transition-transform"
+                    >
+                      <LogIn size={16} />
+                      Login / Sign Up
+                    </button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent className="w-48" align="end">
+                    <DropdownMenuItem asChild>
+                      <Link to="/client-auth" className="flex items-center gap-3 w-full">
+                        <UserCircle size={16} className="text-purple-400" />
+                        Client Portal
+                      </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem asChild>
+                      <Link to="/actor-login" className="flex items-center gap-3 w-full">
+                        <UserCheck size={16} className="text-blue-400" />
+                        Actor Portal
+                      </Link>
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+
+              {/* --- MOBILE CONTROLS --- */}
+              <div className="lg:hidden">
+                <LanguageSwitcher />
+              </div>
+              
               <button
                 onClick={() => setIsOpen(!isOpen)}
                 className="lg:hidden p-2 rounded-lg text-foreground hover:bg-white/10 transition-colors"
@@ -171,10 +200,11 @@ const Navbar: React.FC = () => {
         </div>
       </nav>
 
-      {/* --- Mobile Slide-out Menu --- */}
-      <div className={`fixed top-0 right-0 h-full w-80 max-w-[85vw] bg-background/90 backdrop-blur-xl shadow-2xl transform transition-all duration-300 ease-out z-50 border-l ${
-        isOpen ? 'translate-x-0' : 'translate-x-full'
-      }`}>
+      {/* --- MOBILE SLIDE-OUT MENU (ENHANCEMENT 3) --- */}
+      <div className={`fixed top-0 right-0 w-80 max-w-[85vw] bg-background/90 backdrop-blur-xl shadow-2xl transform transition-all duration-300 ease-out z-50 border-l
+        ${isOpen ? 'translate-x-0' : 'translate-x-full'}
+        h-screen flex flex-col` /* <-- ENHANCEMENT 3: Added h-screen & flex */
+      }>
         <div className="flex justify-between items-center p-6 border-b">
           <h3 className="font-bold text-foreground">Menu</h3>
           <button onClick={closeMenu} className="p-2 rounded-lg text-foreground hover:bg-white/10">
@@ -182,7 +212,8 @@ const Navbar: React.FC = () => {
           </button>
         </div>
 
-        <div className="p-6 overflow-y-auto h-[calc(100vh-80px)]">
+        {/* --- ENHANCEMENT 3: Changed h-calc to flex-1 --- */}
+        <div className="p-6 overflow-y-auto flex-1">
           <ul className="space-y-2 mb-8">
             {allMenuItems.map((item) => {
               const IconComponent = item.icon;
@@ -214,7 +245,6 @@ const Navbar: React.FC = () => {
             </Link>
           </div>
 
-          {/* --- RE-ADDED: Customized Package Button --- */}
           <div className="mt-8 pt-6 border-t">
             <Link
               to="/customized-package"
@@ -224,10 +254,10 @@ const Navbar: React.FC = () => {
               Customized Package
             </Link>
           </div>
-
         </div>
       </div>
 
+      {/* Mobile Overlay */}
       {isOpen && (
         <div className="fixed inset-0 bg-black/50 z-40 lg:hidden" onClick={closeMenu} />
       )}

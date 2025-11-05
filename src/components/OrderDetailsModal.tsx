@@ -1,17 +1,17 @@
 // In src/components/OrderDetailsModal.tsx
 
 import { supabase } from '../supabaseClient';
-import { X, Paperclip, CheckCircle, Archive, FileText, Package, Info, MessageSquare, Banknote, RefreshCw, Send, Download, History } from 'lucide-react'; // <-- Add Sendimport ChatBox from './ChatBox';
-import React, { useState, useEffect } from 'react'; // <-- Added useEffect
+import { X, Paperclip, CheckCircle, Archive, FileText, Package, Info, MessageSquare, Banknote, RefreshCw, Send, Download, History, Mic, PencilLine, Video } from 'lucide-react';
+import ChatBox from './ChatBox';
+import React, { useState, useEffect } from 'react';
 import emailjs from '@emailjs/browser';
 import DeliverFromLibraryModal from './DeliverFromLibraryModal';
-import AccordionItem from './AccordionItem'; // <-- 1. Import Accordion
-import { Button } from "@/components/ui/button"; // <-- Import Button
-import { Input } from "@/components/ui/input"; // <-- Import Input
-import { Label } from "@/components/ui/label"; // <-- Import Label
-import ChatBox from './ChatBox';
+import AccordionItem from './AccordionItem';
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import ServiceDeliveryUploader from './ServiceDeliveryUploader';
-import { Textarea } from "@/components/ui/textarea"; // <-- Added Textarea
+import { Textarea } from "@/components/ui/textarea";
 import { 
   Dialog, 
   DialogContent, 
@@ -20,8 +20,10 @@ import {
   DialogDescription,
   DialogFooter
 } from "@/components/ui/dialog";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
-// Define the shape of the data we expect
+// --- Interfaces ---
 interface Order {
   client_email: any;
   actor_id: any;
@@ -35,25 +37,15 @@ interface Order {
     ActorName: string;
     ActorEmail?: string;
   };
-  // Add new fields
   service_type: 'voice_over' | 'scriptwriting' | 'video_editing';
-  // Add new quote fields
   word_count?: number;
   usage?: string | null;
   quote_est_duration?: string | null;
   quote_video_type?: string | null;
   quote_footage_choice?: string | null;
   deliveries: { id: string; created_at: string; file_url: string; version_number: number }[];
+  offer_price: number | null; // This is correct
 }
-
-interface ModalProps {
-  order: Order;
-  onClose: () => void;
-  onUpdate: () => void; // A function to refresh the order list
-  onActorConfirmPayment?: (orderId: string, clientEmail: string, clientName: string, orderIdString: string) => Promise<void>;
-}
-
-// --- NEW INTERFACE for an Offer ---
 interface Offer {
   id: string;
   created_at: string;
@@ -61,90 +53,102 @@ interface Offer {
   offer_agreement: string | null;
   offer_price: number;
 }
+interface ModalProps {
+  order: Order;
+  onClose: () => void;
+  onUpdate: () => void;
+  onActorConfirmPayment?: (orderId: string, clientEmail: string, clientName: string, orderIdString: string) => Promise<void>;
+}
+// --- End Interfaces ---
+
+const serviceIcons = {
+  voice_over: <Mic className="h-5 w-5" />,
+  scriptwriting: <PencilLine className="h-5 w-5" />,
+  video_editing: <Video className="h-5 w-5" />,
+};
+
+const statusColors = {
+  Completed: 'bg-green-500/20 text-green-300',
+  'Awaiting Actor Confirmation': 'bg-green-500/20 text-green-300 animate-pulse',
+  awaiting_offer: 'bg-yellow-500/20 text-yellow-300',
+  offer_made: 'bg-blue-500/20 text-blue-300',
+  default: 'bg-yellow-500/20 text-yellow-400'
+};
 
 const OrderDetailsModal: React.FC<ModalProps> = ({ order, onClose, onUpdate, onActorConfirmPayment }) => {
     const [message, setMessage] = useState('');
     const [isConfirming, setIsConfirming] = useState(false);
     const [isLibraryModalOpen, setIsLibraryModalOpen] = useState(false);
-    // --- 2. UPDATED OFFER STATE ---
     const [offerTitle, setOfferTitle] = useState('');
     const [offerAgreement, setOfferAgreement] = useState('');
     const [offerPrice, setOfferPrice] = useState<number | string>('');
     const [isSendingOffer, setIsSendingOffer] = useState(false);
-    
-    // --- NEW STATE for offer history ---
     const [offerHistory, setOfferHistory] = useState<Offer[]>([]);
     const [loadingHistory, setLoadingHistory] = useState(false);
 
-    // --- 2. Add state for accordions ---
     const [openSections, setOpenSections] = useState({
-        offer_history: false, // Start history closed
-        quote_details: true, // <-- Start new section open
-        script: false, // Start script closed
+        offer_history: false,
+        quote_details: true,
+        script: false,
         delivery: !['awaiting_offer', 'offer_made'].includes(order.status),
-        chat: true      // Start chat open
     });
 
-    // --- 3. NEW useEffect to fetch offer history ---
+    // Fetches offer history and pre-fills form
     useEffect(() => {
-      if (order.status === 'awaiting_offer' || order.status === 'offer_made') {
-        const fetchOfferHistory = async () => {
-          setLoadingHistory(true);
-          const { data, error } = await supabase
-            .from('offers')
-            .select('*')
-            .eq('order_id', order.id)
-            .order('created_at', { ascending: false }); // Newest first
+        const fetchOfferHistoryAndPrice = async () => {
+            if (order.status === 'awaiting_offer' || order.status === 'offer_made') {
+                setLoadingHistory(true);
+                const { data, error } = await supabase
+                    .from('offers')
+                    .select('*')
+                    .eq('order_id', order.id)
+                    .order('created_at', { ascending: false });
 
-          if (error) {
-            console.error("Error fetching offer history:", error);
-            setMessage(`Error: ${error.message}`);
-          } else {
-            setOfferHistory(data as Offer[]);
-            // Pre-fill form with the *latest* offer if it exists
-            if (data && data.length > 0) {
-              setOfferTitle(data[0].offer_title);
-              setOfferAgreement(data[0].offer_agreement || '');
-              setOfferPrice(data[0].offer_price);
+                if (error) {
+                    console.error("Error fetching offer history:", error);
+                    setMessage(`Error: ${error.message}`);
+                } else {
+                    setOfferHistory(data as Offer[]);
+                    // Pre-fill form with the latest offer OR the order's existing price
+                    const latestOffer = data?.[0];
+                    if (latestOffer) {
+                        setOfferTitle(latestOffer.offer_title);
+                        setOfferAgreement(latestOffer.offer_agreement || '');
+                        setOfferPrice(latestOffer.offer_price);
+                    } else if (order.offer_price) {
+                        // Pre-fill with direct order price if no history exists
+                        setOfferTitle(order.service_type === 'voice_over' ? "Voice Over" : "Service Quote");
+                        setOfferPrice(order.offer_price);
+                    }
+                }
+                setLoadingHistory(false);
             }
-          }
-          setLoadingHistory(false);
         };
-        fetchOfferHistory();
-      }
-    }, [order.id, order.status]);
-    // ---
+        fetchOfferHistoryAndPrice();
+    }, [order.id, order.status, order.offer_price, order.service_type]);
 
     const toggleSection = (section: keyof typeof openSections) => {
         setOpenSections(prev => ({ ...prev, [section]: !prev[section] }));
     };
-    // ---
-
   
-
     const handleConfirmClick = async () => {
         if (!onActorConfirmPayment) return;
-        
         setIsConfirming(true);
-        setMessage(''); // Clear previous errors
+        setMessage('');
         try {
-          // Pass all necessary info for the email notification
           await onActorConfirmPayment(order.id, order.client_email, order.client_name, order.order_id_string);
-          // Success! Parent (ActorDashboardPage) will close modal via onUpdate()
         } catch (error) {
           const err = error as Error;
           console.error("Failed to confirm payment:", err);
           setMessage(`Error: ${err.message}`);
-          setIsConfirming(false); // Only set to false on error
+          setIsConfirming(false);
         }
     };
     
     const handleDeliverySuccess = () => {
-      // If the 'Deliver from Library' button was clicked, open that modal
       if (order.service_type === 'voice_over') {
         setIsLibraryModalOpen(true);
       } else {
-        // Otherwise, (if a file was uploaded/pasted), just refresh and close
         onUpdate();
         onClose();
       }
@@ -156,8 +160,7 @@ const OrderDetailsModal: React.FC<ModalProps> = ({ order, onClose, onUpdate, onA
       onClose();
     }
 
-    // --- 4. handleSendOffer (Now an "Upsert") ---
-    // This function now handles both creating AND updating an offer
+    // handleSendOffer (Corrected)
     const handleSendOffer = async () => {
       const price = parseFloat(String(offerPrice));
       if (!offerTitle.trim()) {
@@ -171,61 +174,40 @@ const OrderDetailsModal: React.FC<ModalProps> = ({ order, onClose, onUpdate, onA
       
       setIsSendingOffer(true);
       setMessage('');
-      const isUpdate = order.status === 'offer_made'; // Check if we are updating
+      const isUpdate = order.status === 'offer_made';
 
       try {
-        // --- THIS IS THE NEW LOGIC ---
-        // 1. Insert the new offer into the 'offers' table
-        const { data: newOffer, error: insertError } = await supabase
+        // 1. Insert into 'offers' history table
+        const { error: insertError } = await supabase
           .from('offers')
           .insert({
-            order_id: order.id,
-            actor_id: order.actor_id,
-            offer_title: offerTitle,
-            offer_agreement: offerAgreement || null,
-            offer_price: price
+            order_id: order.id, actor_id: order.actor_id, offer_title: offerTitle,
+            offer_agreement: offerAgreement || null, offer_price: price
           })
-          .select()
-          .single();
-
+          .select().single();
         if (insertError) throw insertError;
-        // ---
 
-        // 2. Update the main order status to 'offer_made'
+        // 2. Update the main 'orders' table with status AND price
         const { error: updateError } = await supabase
           .from('orders')
-          .update({ status: 'offer_made' })
+          .update({ status: 'offer_made', offer_price: price }) // This persists the price
           .eq('id', order.id);
-
         if (updateError) throw updateError;
 
-        // 3. Send email to client
+        // 3. Send email
         const emailParams = {
-          orderId: order.order_id_string,
-          order_uuid: order.id,
-          clientName: order.client_name,
-          clientEmail: order.client_email,
-          actorName: order.actors.ActorName,
-          offerPrice: price.toFixed(2),
-          offerTitle: offerTitle, // Pass new field
-          offerAgreement: offerAgreement || 'No agreement details provided.', // Pass new field
+          orderId: order.order_id_string, order_uuid: order.id, clientName: order.client_name,
+          clientEmail: order.client_email, actorName: order.actors.ActorName, offerPrice: price.toFixed(2),
+          offerTitle: offerTitle, offerAgreement: offerAgreement || 'No agreement details provided.',
           serviceType: order.service_type,
         };
-
-        // TODO: Create a template for "Offer Updated"
+        // TODO: Replace with your actual template IDs
         const templateId = isUpdate ? 'YOUR_OFFER_UPDATED_TEMPLATE_ID' : 'YOUR_QUOTE_OFFER_TEMPLATE_ID';
-
-        await emailjs.send(
-          'service_r3pvt1s',
-          templateId, // <-- REPLACE with new template IDs
-          emailParams,
-          'I51tDIHsXYKncMQpO'
-        );
+        await emailjs.send('service_r3pvt1s', templateId, emailParams, 'I51tDIHsXYKncMQpO');
 
         setMessage(isUpdate ? 'Offer updated!' : 'Offer sent to client!');
         onUpdate();
-        setTimeout(onClose, 1500); // Close modal after 1.5s
-
+        setTimeout(onClose, 1500);
       } catch (error) {
         const err = error as Error;
         console.error("Error sending offer:", err);
@@ -234,248 +216,216 @@ const OrderDetailsModal: React.FC<ModalProps> = ({ order, onClose, onUpdate, onA
         setIsSendingOffer(false);
       }
     };
+    // --- End State & Logic ---
+    
+    // --- THIS IS THE FINAL PRICE LOGIC ---
+    const latestOfferPrice = offerHistory.length > 0 ? offerHistory[0].offer_price : null;
+    const displayPrice = order.offer_price ?? latestOfferPrice;
+    // ---
 
+    const currentStatus = order.status === 'awaiting_offer' ? 'Awaiting Offer' : order.status;
+    const statusColorClass = statusColors[order.status as keyof typeof statusColors] || statusColors.default;
 
     return (
         <>
             <Dialog open={true} onOpenChange={onClose}>
-              {/* --- THIS IS THE FIX --- */}
-              <DialogContent className="
-                w-screen h-full max-w-none rounded-none border-none p-0 flex flex-col pt-0 pb-0
-                sm:w-full sm:max-w-2xl sm:h-auto sm:max-h-[90vh] sm:rounded-lg sm:border sm:p-0 sm:pt-0 sm:pb-0                                        
+                <DialogContent className="
+                  w-screen h-full max-w-none rounded-none border-none p-0 flex flex-col 
+                  sm:w-full sm:max-w-4xl sm:h-auto sm:max-h-[90vh] sm:rounded-lg sm:border
                 ">
-                {/* Header (with mobile padding) */}
-                <DialogHeader className="p-4 sm:p-6 pb-4 border-b">
-                  <DialogTitle className="text-2xl sm:text-3xl font-bold">
-                    {order.service_type === 'voice_over' ? `Order #${order.order_id_string}` : `Quote #${order.order_id_string}`}
-                  </DialogTitle>
-                  <DialogDescription className="text-base">
-                    Client: {order.client_name}
-                  </DialogDescription>
-                  <span className="mt-2 inline-block px-3 py-1 text-xs font-semibold rounded-full bg-blue-500/20 text-blue-300 capitalize w-fit">
-                    {order.service_type.replace('_', ' ')}
-                  </span>
-                </DialogHeader>
-                
-                {/* Scrollable Content Area (with mobile padding) */}
-                <div className="flex-grow overflow-y-auto p-4 sm:p-6 space-y-4 custom-scrollbar">
-
-                  {/* --- Payment Confirmation Section --- */}
-                  {order.status === 'Awaiting Actor Confirmation' && onActorConfirmPayment && (
-                      <div className="mb-6 p-4 bg-green-900/30 border border-green-700 rounded-lg animate-in fade-in duration-300">
-                          <h3 className="text-lg font-bold text-foreground mb-2 flex items-center gap-2"><Banknote size={18} /> Action Required</h3>
-                          <p className="text-sm text-muted-foreground mb-4">The client has marked this order as paid. Please check your bank account and confirm receipt to begin work.</p>
-                          <Button
-                              onClick={handleConfirmClick}
-                              disabled={isConfirming}
-                              className="w-full bg-green-600 hover:bg-green-700 text-foreground"
-                          >
-                              {isConfirming ? <RefreshCw size={18} className="animate-spin" /> : <CheckCircle size={18} />}
-                              {isConfirming ? 'Confirming...' : 'Confirm Payment Received'}
-                          </Button>
-                          {message.includes('Error') && <p className="text-red-400 text-sm mt-3 text-center">{message}</p>}
-                      </div>
-                  )}
-
-                  {/* --- "Make/Update Offer" Section --- */}
-                  {(order.status === 'awaiting_offer' || order.status === 'offer_made') && (
-                      <div className="mb-6 p-4 bg-blue-900/30 border border-blue-700 rounded-lg animate-in fade-in duration-300">
-                        <h3 className="text-lg font-bold text-foreground mb-4 flex items-center gap-2">
-                          <Banknote size={18} /> 
-                          {order.status === 'offer_made' ? 'Update Your Offer' : 'Make an Offer'}
-                        </h3>
-                        <div className="space-y-4">
-                          <div className="space-y-2">
-                            <Label htmlFor="offerTitle" className="text-muted-foreground">Offer Title *</Label>
-                            <Input
-                              id="offerTitle"
-                              type="text"
-                              placeholder="e.g., Full Video Edit + Color Grading"
-                              value={offerTitle}
-                              onChange={(e) => setOfferTitle(e.target.value)}
-                              className="bg-slate-700 border-slate-600"
-                            />
-                          </div>
-                          <div className="space-y-2">
-                            <Label htmlFor="offerAgreement" className="text-muted-foreground">Offer Agreement (Optional)</Label>
-                            <Textarea
-                              id="offerAgreement"
-                              rows={3}
-                              placeholder="e.g., Includes 2 revisions and royalty-free music."
-                              value={offerAgreement}
-                              onChange={(e) => setOfferAgreement(e.target.value)}
-                              className="bg-slate-700 border-slate-600"
-                            />
-                          </div>
-                          <div className="space-y-2">
-                            <Label htmlFor="offerPrice" className="text-muted-foreground">Your Price (MAD) *</Label>
-                            <Input
-                              id="offerPrice"
-                              type="number"
-                              step="0.01"
-                              placeholder="e.g., 1500"
-                              value={offerPrice}
-                              onChange={(e) => setOfferPrice(e.target.value)}
-                              className="bg-slate-700 border-slate-600"
-                            />
-                          </div>
-                        </div>
-                        <Button
-                          onClick={handleSendOffer}
-                          disabled={isSendingOffer}
-                          className="w-full bg-blue-600 hover:bg-blue-700 mt-4"
-                        >
-                          {isSendingOffer ? <RefreshCw size={18} className="animate-spin" /> : <Send size={18} />}
-                          {isSendingOffer ? 'Sending...' : (order.status === 'offer_made' ? 'Update Offer' : 'Send Offer to Client')}
-                        </Button>
-                        {message && <p className={`text-center text-sm mt-3 ${message.includes('Error') ? 'text-red-400' : 'text-green-400'}`}>{message}</p>}
-                      </div>
-                  )}
-                  
-                  {/* --- Accordion Sections --- */}
-                  <div className="space-y-4">
-                    {/* Offer History */}
-                    {(order.status === 'awaiting_offer' || order.status === 'offer_made') && (
-                      <AccordionItem
-                        title="Offer History"
-                        icon={<History size={18} />}
-                        isOpen={openSections.offer_history}
-                        onToggle={() => toggleSection('offer_history')}
-                      >
-                        <div className="bg-background p-4 rounded-lg space-y-3 max-h-40 overflow-y-auto custom-scrollbar">
-                          {loadingHistory ? (
-                            <p className="text-sm text-muted-foreground">Loading history...</p>
-                          ) : offerHistory.length === 0 ? (
-                            <p className="text-sm text-muted-foreground">No offers have been made yet.</p>
-                          ) : (
-                            offerHistory.map(offer => (
-                              <div key={offer.id} className="pb-3 border-b border last:border-b-0">
-                                <div className="flex justify-between items-center mb-1">
-                                  <span className="font-semibold text-foreground">{offer.offer_title}</span>
-                                  <span className="font-bold text-lg text-primary">{offer.offer_price.toFixed(2)} MAD</span>
-                                </div>
-                                <p className="text-xs text-muted-foreground mb-2">{new Date(offer.created_at).toLocaleString()}</p>
-                                <p className="text-sm text-muted-foreground whitespace-pre-wrap">{offer.offer_agreement || "No agreement details provided."}</p>
-                              </div>
-                            ))
-                          )}
-                        </div>
-                      </AccordionItem>
-                    )}
-
-                    {/* Quote Details */}
-                    {order.service_type !== 'voice_over' && (
-                      <AccordionItem
-                        title="Quote Details"
-                        icon={<Info size={18} />}
-                        isOpen={openSections.quote_details}
-                        onToggle={() => toggleSection('quote_details')}
-                      >
-                        <div className="bg-background p-4 rounded-lg space-y-2 text-sm">
-                          {order.service_type === 'scriptwriting' && (
-                            <>
-                              <div className="flex justify-between">
-                                <span className="text-muted-foreground">Est. Video Duration:</span>
-                                <span className="font-semibold text-foreground">{order.quote_est_duration || 'N/A'} min</span>
-                              </div>
-                              <div className="flex justify-between">
-                                <span className="text-muted-foreground">Est. Word Count:</span>
-                                <span className="font-semibold text-foreground">{order.word_count || 'N/A'}</span>
-                              </div>
-                            </>
-                          )}
-                          {order.service_type === 'video_editing' && (
-                            <>
-                              <div className="flex justify-between">
-                                <span className="text-muted-foreground">Video Type:</span>
-                                <span className="font-semibold text-foreground capitalize">{order.quote_video_type || 'N/A'}</span>
-                              </div>
-                              <div className="flex justify-between">
-                                <span className="text-muted-foreground">Footage:</span>
-                                <span className="font-semibold text-foreground">
-                                  {order.quote_footage_choice === 'has_footage' ? 'Client has footage' : 'Needs stock footage'}
-                                </span>
-                              </div>
-                            </>
-                          )}
-                        </div>
-                      </AccordionItem>
-                    )}
+                    <DialogHeader className="p-4 sm:p-6 pb-4 border-b flex-shrink-0">
+                        <DialogTitle className="text-2xl sm:text-3xl font-bold">
+                            {order.service_type === 'voice_over' ? `Order #${order.order_id_string}` : `Quote #${order.order_id_string}`}
+                        </DialogTitle>
+                        <DialogDescription className="text-base">
+                            Client: {order.client_name}
+                        </DialogDescription>
+                    </DialogHeader>
                     
-                    {/* Project Description */}
-                    <AccordionItem
-                      title={order.service_type === 'voice_over' ? "Script" : "Project Description"}
-                      icon={<FileText size={18} />}
-                      isOpen={openSections.script}
-                      onToggle={() => toggleSection('script')}
-                    >
-                      <div className="bg-background p-4 rounded-lg max-h-40 overflow-y-auto">
-                        <p className="text-muted-foreground whitespace-pre-wrap">{order.script}</p>
-                      </div>
-                    </AccordionItem>
+                    <Tabs defaultValue="details" className="flex-grow flex flex-col overflow-hidden">
+                        <TabsList className="grid w-full grid-cols-2 flex-shrink-0 px-4 sm:px-6 pt-4 sm:pt-6">
+                            <TabsTrigger value="details"><Info className="mr-2 h-4 w-4"/> Order Details</TabsTrigger>
+                            <TabsTrigger value="chat"><MessageSquare className="mr-2 h-4 w-4"/> Communication</TabsTrigger>
+                        </TabsList>
 
-                    {/* Delivery */}
-                    {!['awaiting_offer', 'offer_made', 'Awaiting Payment'].includes(order.status) && (
-                      <AccordionItem
-                        title={`Deliver ${order.service_type.replace('_', ' ')}`}
-                        icon={<Package size={18} />}
-                        isOpen={openSections.delivery}
-                        onToggle={() => toggleSection('delivery')}
-                      >
-                        {/* Delivery History */}
-                        {order.deliveries && order.deliveries.length > 0 && (
-                          <div className="mb-6">
-                            <h4 className="text-sm font-semibold text-muted-foreground mb-3">Delivery History</h4>
-                            <div className="space-y-3 max-h-40 overflow-y-auto custom-scrollbar pr-2">
-                              {order.deliveries.map((delivery) => (
-                                <div key={delivery.id} className="bg-background p-3 rounded-lg flex items-center justify-between">
-                                  <div>
-                                    <p className="text-sm font-semibold text-foreground">
-                                      Version {delivery.version_number}
-                                    </p>
-                                    <p className="text-xs text-muted-foreground">
-                                      {new Date(delivery.created_at).toLocaleString()}
-                                    </p>
-                                  </div>
-                                  <Button asChild variant="ghost" size="sm">
-                                    <a href={delivery.file_url} target="_blank" rel="noopener noreferrer">
-                                      <Download size={16} className="mr-2" />
-                                      Download
-                                    </a>
-                                  </Button>
+                        <TabsContent value="details" className="flex-grow overflow-y-auto custom-scrollbar">
+                            <div className="p-4 sm:p-6 grid grid-cols-1 lg:grid-cols-3 gap-6">
+                              
+                                {/* --- Right Sidebar (Sticky Actions) --- */}
+                                <div className="lg:col-span-1 space-y-4 lg:sticky lg:top-6 h-fit">
+                                    
+                                    <Card>
+                                      <CardHeader className="pb-2">
+                                        <CardTitle className="text-lg">Order Status</CardTitle>
+                                      </CardHeader>
+                                      <CardContent className="space-y-3">
+                                        <div className="flex justify-between items-center">
+                                          <span className="text-muted-foreground">Status</span>
+                                          <span className={`px-3 py-1 text-xs font-semibold rounded-full ${statusColorClass}`}>
+                                            {currentStatus}
+                                          </span>
+                                        </div>
+                                        <div className="flex justify-between items-center">
+                                          <span className="text-muted-foreground">Service</span>
+                                          <span className="font-semibold capitalize text-foreground">{order.service_type.replace('_', ' ')}</span>
+                                        </div>
+                                        <div className="flex justify-between items-center">
+                                          <span className="text-muted-foreground">Price</span>
+                                          <span className="font-bold text-2xl text-primary">
+                                            {displayPrice ? `${displayPrice.toFixed(2)} MAD` : 'Not Quoted'}
+                                          </span>
+                                        </div>
+                                      </CardContent>
+                                    </Card>
+
+                                    {order.status === 'Awaiting Actor Confirmation' && onActorConfirmPayment && (
+                                        <Card className="bg-green-900/30 border-green-700">
+                                          <CardHeader className="pb-4">
+                                            <CardTitle className="flex items-center gap-2"><Banknote size={18} /> Action Required</CardTitle>
+                                          </CardHeader>
+                                          <CardContent>
+                                            <p className="text-sm text-muted-foreground mb-4">Client has paid. Please check your account and confirm receipt to begin work.</p>
+                                            <Button
+                                                onClick={handleConfirmClick}
+                                                disabled={isConfirming}
+                                                className="w-full bg-green-600 hover:bg-green-700 text-foreground"
+                                            >
+                                                {isConfirming ? <RefreshCw size={18} className="animate-spin" /> : <CheckCircle size={18} />}
+                                                {isConfirming ? 'Confirming...' : 'Confirm Payment Received'}
+                                            </Button>
+                                            {message.includes('Error') && <p className="text-red-400 text-sm mt-3 text-center">{message}</p>}
+                                          </CardContent>
+                                        </Card>
+                                    )}
+
+                                    {(order.status === 'awaiting_offer' || order.status === 'offer_made') && (
+                                        <Card className="bg-blue-900/30 border-blue-700">
+                                          <CardHeader className="pb-4">
+                                            <CardTitle className="flex items-center gap-2">
+                                              <Banknote size={18} /> 
+                                              {order.status === 'offer_made' ? 'Update Your Offer' : 'Make an Offer'}
+                                            </CardTitle>
+                                          </CardHeader>
+                                          <CardContent>
+                                            <div className="space-y-4">
+                                                <div className="space-y-2">
+                                                    <Label htmlFor="offerTitle" className="text-muted-foreground">Offer Title *</Label>
+                                                    <Input id="offerTitle" type="text" placeholder="e.g., Full Video Edit" value={offerTitle} onChange={(e) => setOfferTitle(e.target.value)} className="bg-slate-700 border-slate-600" />
+                                                </div>
+                                                <div className="space-y-2">
+                                                    <Label htmlFor="offerAgreement" className="text-muted-foreground">Offer Agreement (Optional)</Label>
+                                                    <Textarea id="offerAgreement" rows={3} placeholder="e.g., Includes 2 revisions..." value={offerAgreement} onChange={(e) => setOfferAgreement(e.target.value)} className="bg-slate-700 border-slate-600" />
+                                                </div>
+                                                <div className="space-y-2">
+                                                    <Label htmlFor="offerPrice" className="text-muted-foreground">Your Price (MAD) *</Label>
+                                                    <Input id="offerPrice" type="number" step="0.01" placeholder="e.g., 1500" value={offerPrice} onChange={(e) => setOfferPrice(e.target.value)} className="bg-slate-700 border-slate-600" />
+                                                </div>
+                                            </div>
+                                            <Button onClick={handleSendOffer} disabled={isSendingOffer} className="w-full bg-blue-600 hover:bg-blue-700 mt-4">
+                                                {isSendingOffer ? <RefreshCw size={18} className="animate-spin" /> : <Send size={18} />}
+                                                {isSendingOffer ? 'Sending...' : (order.status === 'offer_made' ? 'Update Offer' : 'Send Offer')}
+                                            </Button>
+                                            {message && !message.includes('Error') && <p className="text-green-400 text-sm mt-3 text-center">{message}</p>}
+                                          </CardContent>
+                                        </Card>
+                                    )}
                                 </div>
-                              ))}
+
+                                {/* --- Left Column (Scrollable Content) --- */}
+                                <div className="lg:col-span-2 space-y-4">
+                                    
+                                    {order.service_type !== 'voice_over' && (
+                                        <AccordionItem title="Quote Details" icon={<Info size={18} />} isOpen={openSections.quote_details} onToggle={() => toggleSection('quote_details')}>
+                                            <div className="bg-background p-4 rounded-lg space-y-2 text-sm">
+                                                {order.service_type === 'scriptwriting' && (
+                                                    <>
+                                                        <div className="flex justify-between"><span className="text-muted-foreground">Est. Video Duration:</span><span className="font-semibold text-foreground">{order.quote_est_duration || 'N/A'} min</span></div>
+                                                        <div className="flex justify-between"><span className="text-muted-foreground">Est. Word Count:</span><span className="font-semibold text-foreground">{order.word_count || 'N/A'}</span></div>
+                                                    </>
+                                                )}
+                                                {order.service_type === 'video_editing' && (
+                                                    <>
+                                                        <div className="flex justify-between"><span className="text-muted-foreground">Video Type:</span><span className="font-semibold text-foreground capitalize">{order.quote_video_type || 'N/A'}</span></div>
+                                                        <div className="flex justify-between"><span className="text-muted-foreground">Footage:</span><span className="font-semibold text-foreground">{order.quote_footage_choice === 'has_footage' ? 'Client has footage' : 'Needs stock footage'}</span></div>
+                                                    </>
+                                                )}
+                                            </div>
+                                        </AccordionItem>
+                                    )}
+                                    
+                                    <AccordionItem title={order.service_type === 'voice_over' ? "Script" : "Project Description"} icon={<FileText size={18} />} isOpen={openSections.script} onToggle={() => toggleSection('script')}>
+                                        <div className="bg-background p-4 rounded-lg max-h-40 overflow-y-auto custom-scrollbar">
+                                            <p className="text-muted-foreground whitespace-pre-wrap">{order.script}</p>
+                                        </div>
+                                    </AccordionItem>
+
+                                    {!['awaiting_offer', 'offer_made', 'Awaiting Payment'].includes(order.status) && (
+                                        <AccordionItem title={`Deliver ${order.service_type.replace('_', ' ')}`} icon={<Package size={18} />} isOpen={openSections.delivery} onToggle={() => toggleSection('delivery')}>
+                                            {order.deliveries && order.deliveries.length > 0 && (
+                                                <div className="mb-6">
+                                                    <h4 className="text-sm font-semibold text-muted-foreground mb-3">Delivery History</h4>
+                                                    <div className="space-y-3 max-h-40 overflow-y-auto custom-scrollbar pr-2">
+                                                        {order.deliveries.map((delivery) => (
+                                                            <div key={delivery.id} className="bg-background p-3 rounded-lg flex items-center justify-between">
+                                                                <div>
+                                                                    <p className="text-sm font-semibold text-foreground">Version {delivery.version_number}</p>
+                                                                    <p className="text-xs text-muted-foreground">{new Date(delivery.created_at).toLocaleString()}</p>
+                                                                </div>
+                                                                <Button asChild variant="ghost" size="sm">
+                                                                    <a href={delivery.file_url} target="_blank" rel="noopener noreferrer"><Download size={16} className="mr-2" />Download</a>
+                                                                </Button>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            )}
+                                            <div className="bg-background p-4 rounded-lg">
+                                                <h4 className="text-sm font-semibold text-foreground mb-3">{order.deliveries.length > 0 ? 'Upload a New Version' : 'Upload Your Delivery'}</h4>
+                                                <ServiceDeliveryUploader order={order} onDeliverySuccess={handleDeliverySuccess} />
+                                            </div>
+                                        </AccordionItem>
+                                    )}
+                                    
+                                    {(order.status === 'awaiting_offer' || order.status === 'offer_made') && (
+                                        <AccordionItem title="Offer History" icon={<History size={18} />} isOpen={openSections.offer_history} onToggle={() => toggleSection('offer_history')}>
+                                            <div className="bg-background p-4 rounded-lg space-y-3 max-h-40 overflow-y-auto custom-scrollbar">
+                                                {loadingHistory ? (
+                                                    <p className="text-sm text-muted-foreground">Loading history...</p>
+                                                ) : offerHistory.length === 0 ? (
+                                                    <p className="text-sm text-muted-foreground">No offers have been made yet.</p>
+                                                ) : (
+                                                    offerHistory.map(offer => (
+                                                        <div key={offer.id} className="pb-3 border-b border last:border-b-0">
+                                                            <div className="flex justify-between items-center mb-1">
+                                                                <span className="font-semibold text-foreground">{offer.offer_title}</span>
+                                                                <span className="font-bold text-lg text-primary">{offer.offer_price.toFixed(2)} MAD</span>
+                                                            </div>
+                                                            <p className="text-xs text-muted-foreground mb-2">{new Date(offer.created_at).toLocaleString()}</p>
+                                                            <p className="text-sm text-muted-foreground whitespace-pre-wrap">{offer.offer_agreement || "No agreement details provided."}</p>
+                                                        </div>
+                                                    ))
+                                                )}
+                                            </div>
+                                        </AccordionItem>
+                                    )}
+                                </div>
+
+                                
                             </div>
-                          </div>
-                        )}
-                        {/* Uploader */}
-                        <div className="bg-background p-4 rounded-lg">
-                          <h4 className="text-sm font-semibold text-foreground mb-3">
-                            {order.deliveries.length > 0 ? 'Upload a New Version' : 'Upload Your Delivery'}
-                          </h4>
-                          <ServiceDeliveryUploader
-                            order={order}
-                            onDeliverySuccess={handleDeliverySuccess}
-                          />
-                        </div>
-                      </AccordionItem>
-                    )}
+                        </TabsContent>
+
+                        {/* --- Tab 2: Communication --- */}
+                        <TabsContent value="chat" className="flex-grow flex flex-col p-0 overflow-hidden">
+                            <ChatBox orderId={order.id} userRole="actor" />
+                        </TabsContent>
+                    </Tabs>
                     
-                    {/* Communication */}
-                    <AccordionItem
-                      title="Communication"
-                      icon={<MessageSquare size={18} />}
-                      isOpen={openSections.chat}
-                      onToggle={() => toggleSection('chat')}
-                    >
-                        <ChatBox orderId={order.id} userRole="actor" />
-                    </AccordionItem>
-                  </div>
-                </div>
-              </DialogContent>
+                    <DialogFooter className="p-4 sm:p-6 pt-4 border-t flex-shrink-0">
+                      <Button variant="outline" onClick={onClose}>Close</Button>
+                    </DialogFooter>
+                </DialogContent>
             </Dialog>
 
-            {/* Library Modal */}
             {isLibraryModalOpen && order.service_type === 'voice_over' && (
               <DeliverFromLibraryModal
                 order={order}
