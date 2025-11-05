@@ -49,13 +49,17 @@
     --destructive: 0 63% 31%;
     --destructive-foreground: 210 40% 98%;
     --border: 217 33% 27%; /* slate-700 */
+    --border-t: 217 33% 27%; /* slate-700 */
+    --border-b: 217 33% 27%; /* slate-700 */
+    --border-l: 217 33% 27%; /* slate-700 */
+
     --input: 217 33% 24%; /* slate-700 */
     --ring: 262 52% 57%;
   }
 
   /* --- ALL GLOBAL RULES MOVED INTO THE SAME BLOCK --- */
   * {
-    @apply border-foreground/20;
+    @apply border-border;
   }
   html {
     @apply bg-background;
