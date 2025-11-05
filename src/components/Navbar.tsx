@@ -118,11 +118,11 @@ const Navbar: React.FC = () => {
                <LanguageSwitcher />
              </div>
 
-             {/* --- 2. ADD THEME TOGGLE (Desktop) --- */}
+             {/* --- 2. ADD THEME TOGGLE (Desktop) --- *
              <div>
                <ThemeToggle />
              </div>
-             
+             /}
               {/* --- CORRECTED: Login Dropdown (Desktop) --- */}
 
               <div 
