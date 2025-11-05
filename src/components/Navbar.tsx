@@ -114,7 +114,7 @@ const Navbar: React.FC = () => {
             <div className="flex items-center gap-4">
 
               {/* --- NEW: Language Switcher (Desktop) --- */}
-             <div className="text-white">
+             <div className="hidden lg:block text-white">
                <LanguageSwitcher />
              </div>
 
