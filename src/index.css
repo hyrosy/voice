@@ -70,9 +70,7 @@
 
 /* --- 2. UPDATED BASE STYLES --- */
 @layer base {
-  * {
-    @apply border-border; /* Use shadcn's border variable */
-  }
+  
   
   /* THIS FIXES THE "WHITE BORDER" ON MOBILE */
   html {
