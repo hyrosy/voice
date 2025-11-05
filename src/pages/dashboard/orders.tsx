@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/supabaseClient';
-import { useOutletContext, Link } from 'react-router-dom';
+import { useOutletContext } from 'react-router-dom';
 import { ActorDashboardContextType } from '@/layouts/ActorDashboardLayout';
 import OrderDetailsModal from '@/components/OrderDetailsModal';
 import emailjs from '@emailjs/browser';
@@ -12,9 +12,6 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 // ---
-
-// --- ENHANCEMENT: Import new icons ---
-import { Mic, PencilLine, Video, Inbox, Package } from 'lucide-react';
 
 // --- Interface (Unchanged) ---
 interface Order {
@@ -30,17 +27,11 @@ interface Order {
     ActorName: string;
     ActorEmail?: string;
   };
+  // Add new fields for the modal
   service_type: 'voice_over' | 'scriptwriting' | 'video_editing';
   offer_price: number | null;
   deliveries: { id: string; created_at: string; file_url: string; version_number: number }[];
 }
-
-// --- ENHANCEMENT: Helper map for service icons ---
-const serviceIcons = {
-  voice_over: <Mic className="h-5 w-5" />,
-  scriptwriting: <PencilLine className="h-5 w-5" />,
-  video_editing: <Video className="h-5 w-5" />,
-};
 
 const DashboardOrders: React.FC = () => {
   const { actorData } = useOutletContext<ActorDashboardContextType>();
@@ -50,6 +41,7 @@ const DashboardOrders: React.FC = () => {
   const [message, setMessage] = useState('');
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   
+  // --- 1. SET DEFAULT TAB TO "quotes" ---
   const [activeOrderTab, setActiveOrderTab] = useState<'quotes' | 'active' | 'completed'>('quotes');
 
   const fetchOrders = useCallback(async () => {
@@ -58,11 +50,13 @@ const DashboardOrders: React.FC = () => {
 
     const { data: orderData } = await supabase
       .from('orders')
+      // Select all order fields, actor info, AND all deliveries
       .select('*, actors(ActorName, ActorEmail), deliveries(*)')
       .eq('actor_id', actorData.id)
       .order('created_at', { ascending: false });
 
     if (orderData) {
+      // Sort deliveries for each order (newest first)
       const sortedOrderData = orderData.map(order => ({
         ...order,
         deliveries: order.deliveries.sort((a: { created_at: string | number | Date; }, b: { created_at: string | number | Date; }) => 
@@ -78,48 +72,36 @@ const DashboardOrders: React.FC = () => {
     fetchOrders();
   }, [fetchOrders]);
 
+  // --- handleActorConfirmPayment (Unchanged) ---
   const handleActorConfirmPayment = async (orderId: string, clientEmail: string, clientName: string, orderIdString: string) => {
     // ... (existing logic) ...
   };
 
+  // --- 3. UPDATE FILTER LOGIC ---
   const filteredOrders = orders.filter(order => {
     if (activeOrderTab === 'quotes') {
       return order.status === 'awaiting_offer';
     }
     if (activeOrderTab === 'active') {
+      // 'offer_made' is now an active status!
       return !['Completed', 'Cancelled', 'awaiting_offer'].includes(order.status);
     }
     return order.status === 'Completed';
   });
 
-  // --- ENHANCEMENT: Helper component for the "Empty" state ---
-  const EmptyState = () => (
-    <div className="flex flex-col items-center justify-center py-12 text-center text-muted-foreground">
-      <Inbox className="h-16 w-16 mb-4" />
-      <h3 className="text-lg font-semibold text-foreground">No {activeOrderTab} orders</h3>
-      <p className="text-sm">
-        {activeOrderTab === 'quotes' && "When a client requests a quote, it will appear here."}
-        {activeOrderTab === 'active' && "When a client accepts an offer, the order will move here."}
-        {activeOrderTab === 'completed' && "After you deliver and get paid, orders will live here."}
-      </p>
-    </div>
-  );
-
   return (
     <div className="max-w-4xl mx-auto">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6">
-        <h1 className="text-3xl font-bold">Your Orders</h1>
-        
-      </div>
-
+      <h1 className="text-3xl font-bold mb-6">Your Orders</h1>
       {message && <div className="mb-4 p-3 bg-card border rounded-lg text-center text-sm">{message}</div>}
       
       <Card>
-        <CardContent className="p-0 sm:p-6">
+        <CardContent className="p-6">
+          {/* --- 4. UPDATE TABS --- */}
           <Tabs value={activeOrderTab} onValueChange={(value) => setActiveOrderTab(value as 'quotes' | 'active' | 'completed')}>
-            <TabsList className="grid w-full grid-cols-3 rounded-none sm:rounded-lg border-b sm:border-0">
+            <TabsList className="grid w-full grid-cols-3">
               <TabsTrigger value="quotes">
                 Quotes
+                {/* Add a badge for new quotes */}
                 {orders.filter(o => o.status === 'awaiting_offer').length > 0 && (
                   <span className="ml-2 bg-primary text-primary-foreground text-xs font-bold w-5 h-5 rounded-full flex items-center justify-center">
                     {orders.filter(o => o.status === 'awaiting_offer').length}
@@ -131,61 +113,42 @@ const DashboardOrders: React.FC = () => {
             </TabsList>
           </Tabs>
           
-          <div className="space-y-4 mt-6 p-6 sm:p-0">
+          <div className="space-y-4 mt-6">
             {loading ? (
               <p className="text-muted-foreground text-center py-4">Loading orders...</p>
             ) : filteredOrders.length > 0 ? (
               filteredOrders.map(order => (
-                // --- ENHANCEMENT: Replaced Button with a clickable Card ---
-                <Card 
-                  key={order.id}
-                  onClick={() => setSelectedOrder(order)}
-                  className={`p-4 transition-all hover:shadow-md hover:bg-accent cursor-pointer ${
-                    order.status === 'awaiting_offer' ? 'border-l-4 border-primary' :
-                    order.status === 'Awaiting Actor Confirmation' ? 'border-l-4 border-green-500' : 
-                    'border'
-                  }`}
-                >
-                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
-                    {/* --- Left Side: Order Info --- */}
-                    <div className="flex items-center gap-4">
-                      <span className="p-3 bg-muted rounded-full text-muted-foreground hidden sm:flex">
-                        {/* --- ENHANCEMENT: Show service icon --- */}
-                        {serviceIcons[order.service_type] || <Package className="h-5 w-5" />}
-                      </span>
-                      <div className="flex-grow">
-                        <p className="font-bold text-base text-foreground">
-                          {order.service_type === 'voice_over' ? `Order #${order.order_id_string}` : `Quote #${order.order_id_string}`}
-                        </p>
-                        <p className="text-sm text-muted-foreground">Client: {order.client_name}</p>
-                      </div>
+                <Card key={order.id} className="p-0 overflow-hidden">
+                  {/* --- REPLACE THIS BUTTON --- */}
+                  <Button
+                    variant="ghost"
+                    onClick={() => setSelectedOrder(order)}
+                    className={`w-full flex flex-col sm:flex-row sm:items-center sm:justify-between h-auto py-4 px-6 text-left ${
+                      order.status === 'awaiting_offer' ? 'border-l-4 border-yellow-500' :
+                      order.status === 'Awaiting Actor Confirmation' ? 'border-l-4 border-green-500' : ''
+                    }`}
+                  >
+                    <div className="flex-grow">
+                      <p className="font-bold text-base text-foreground">
+                        {order.service_type === 'voice_over' ? `Order #${order.order_id_string}` : `Quote #${order.order_id_string}`}
+                      </p>
+                      <p className="text-sm text-muted-foreground">Client: {order.client_name}</p>
                     </div>
                     
-                    {/* --- Right Side: Status & Price --- */}
-                    <div className="flex flex-row-reverse sm:flex-col items-center sm:items-end justify-between mt-4 sm:mt-0">
-                      <span className={`flex-shrink-0 px-3 py-1 text-xs font-semibold rounded-full ${
-                        order.status === 'Completed' ? 'bg-green-500/20 text-green-300' :
-                        order.status === 'Awaiting Actor Confirmation' ? 'bg-green-500/20 text-green-300 animate-pulse' :
-                        order.status === 'awaiting_offer' ? 'bg-yellow-500/20 text-yellow-300' :
-                        order.status === 'offer_made' ? 'bg-blue-500/20 text-blue-300' :
-                        'bg-yellow-500/20 text-yellow-400'
-                      }`}>
-                        {order.status === 'awaiting_offer' ? 'Awaiting Offer' : order.status}
-                      </span>
-                      {/* --- ENHANCEMENT: Show price --- */}
-                      {order.offer_price && order.status !== 'awaiting_offer' && (
-                        <p className="text-sm font-semibold text-foreground mt-0 sm:mt-1.5">
-                          {order.offer_price} MAD
-                        </p>
-                      )}
-                    </div>
-                  </div>
+                    <span className={`mt-3 sm:mt-0 flex-shrink-0 px-3 py-1 text-xs font-semibold rounded-full ${
+                      order.status === 'Completed' ? 'bg-green-500/20 text-green-300' :
+                      order.status === 'Awaiting Actor Confirmation' ? 'bg-green-500/20 text-green-300 animate-pulse' :
+                      order.status === 'awaiting_offer' ? 'bg-yellow-500/20 text-yellow-300' :
+                      order.status === 'offer_made' ? 'bg-blue-500/20 text-blue-300' :
+                      'bg-yellow-500/20 text-yellow-400'
+                    }`}>
+                      {order.status === 'awaiting_offer' ? 'Awaiting Offer' : order.status}
+                    </span>
+                  </Button>
                 </Card>
-                // --- END ENHANCEMENT ---
               ))
             ) : (
-              // --- ENHANCEMENT: Use new EmptyState component ---
-              <EmptyState />
+              <p className="text-muted-foreground text-center py-4">You have no {activeOrderTab} orders.</p>
             )}
           </div>
         </CardContent>
