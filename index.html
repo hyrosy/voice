@@ -5,6 +5,9 @@
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale-1.0, viewport-fit=cover" />
 
+    
+
+    <title>Vite + React + TS</title>
     <script>
       (function() {
         // If user has explicitly set theme to 'light', do nothing (let default CSS apply).
@@ -15,14 +18,23 @@
       })();
     </script>
 
-    <title>Vite + React + TS</title>
+    <script>
+    (function() {
+      var isDark = localStorage.theme === 'dark' || 
+                   (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches);
+      if (isDark) {
+        document.documentElement.classList.add('dark');
+      }
+    })();
+  </script>
 
-<meta name="description" content="UCPMAROC - AI-Powered Digital Marketing Agency with proven ROI. We offer social media marketing, web development and lead generation services.">
+
+    <meta name="description" content="UCPMAROC - AI-Powered Digital Marketing Agency with proven ROI. We offer social media marketing, web development and lead generation services.">
     <title>UCPMAROC Agency | AI-Powered Digital Marketing Agency</title>
     
     <script src="https://cdn.tailwindcss.com"></script>
 
-<script type="text/javascript">
+    <script type="text/javascript">
       function googleTranslateElementInit() {
 -       new google.translate.TranslateElement({pageLanguage: 'en'}, 'google_translate_element');
        new google.translate.TranslateElement({
@@ -34,6 +46,7 @@
        }, 'google_translate_element');
       }
     </script>
+
     <script type="text/javascript" src="//translate.google.com/translate_a/element.js?cb=googleTranslateElementInit"></script>    
   </head>
   <body>
