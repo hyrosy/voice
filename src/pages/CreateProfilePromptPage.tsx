@@ -77,7 +77,7 @@ const CreateProfilePromptPage: React.FC = () => {
 
     return (
         <div className="min-h-screen bg-background flex items-center justify-center p-4">
-            <div className="w-full max-w-md bg-card p-10 rounded-lg bordertext-center">
+            <div className="w-full max-w-md bg-card p-10 rounded-lg border border text-center">
                 <div className="inline-flex items-center justify-center w-16 h-16 bg-purple-600/20 rounded-full mb-6 border border-purple-500/50 text-purple-400">
                     {icon}
                 </div>

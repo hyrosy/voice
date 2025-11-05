@@ -58,7 +58,7 @@ const Hero: React.FC = () => {
           {/* Video Section */}
           <div className="relative">
             <div className="relative group">
-              <div className="relative rounded-3xl overflow-hidden bg-card/50 borderp-2 shadow-2xl">
+              <div className="relative rounded-3xl overflow-hidden bg-card/50 border border p-2 shadow-2xl">
                 <video
                   src="https://ucpmarocgo.s3.us-east-1.amazonaws.com/Demo.mp4"
                   poster="https://ucpmarocgo.s3.us-east-1.amazonaws.com/ucpmaroc-talents-message-video.png"

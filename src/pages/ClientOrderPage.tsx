@@ -667,7 +667,7 @@ const ClientOrderPage = () => {
                                              {bankOptions.map((bank) => {
                                                  const isOpen = expandedBank === bank.name;
                                                  return (
-                                                     <div key={bank.name} className="bg-background rounded-lg borderoverflow-hidden">
+                                                     <div key={bank.name} className="bg-background rounded-lg border border overflow-hidden">
                                                          <button onClick={() => setExpandedBank(isOpen ? null : bank.name)} className="w-full flex justify-between items-center p-3 text-left hover:bg-card transition-colors">
                                                                <span className="font-semibold text-foreground">{bank.name}</span>
                                                                {isOpen ? <ChevronUp size={18} className="text-muted-foreground"/> : <ChevronDown size={18} className="text-muted-foreground"/>}
@@ -737,7 +737,7 @@ const ClientOrderPage = () => {
                           >
                             <div className="bg-background p-4 rounded-lg space-y-3 max-h-40 overflow-y-auto custom-scrollbar">
                               {order.offers.map(offer => (
-                                <div key={offer.id} className="pb-3 border-blast:border-b-0">
+                                <div key={offer.id} className="pb-3 border-b border last:border-b-0">
                                   <div className="flex justify-between items-center mb-1">
                                     <span className="font-semibold text-foreground">{offer.offer_title}</span>
                                     <span className="font-bold text-lg text-primary">{offer.offer_price.toFixed(2)} MAD</span>

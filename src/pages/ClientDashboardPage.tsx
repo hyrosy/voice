@@ -87,7 +87,7 @@ const ClientDashboardPage = () => {
             <div className="max-w-4xl mx-auto">
 {/* --- HEADER SECTION --- */}
                 {/* Added gap-4 for better mobile spacing */}
-                <div className="flex flex-col sm:flex-row justify-between sm:items-center mb-10 border-bpb-6 gap-4">
+                <div className="flex flex-col sm:flex-row justify-between sm:items-center mb-10 border-b border pb-6 gap-4">
                     
                     {/* Welcome Text */}
                     <div>

@@ -261,7 +261,7 @@ const AdminDashboardPage = () => {
                 {/* --- ADD SUMMARY CARDS JSX --- */}
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-6 mb-10"> {/* Adjusted to 5 columns */}
                     {/* Total Orders Card */}
-                    <div className="bg-gradient-to-br from-slate-700/50 to-slate-800 p-5 rounded-xl borderflex items-center gap-4">
+                    <div className="bg-gradient-to-br from-slate-700/50 to-slate-800 p-5 rounded-xl border border flex items-center gap-4">
                         <div className="p-3 bg-slate-600/50 rounded-lg">
                            <ListOrdered size={24} className="text-muted-foreground" />
                         </div>
@@ -271,7 +271,7 @@ const AdminDashboardPage = () => {
                         </div>
                     </div>                     
                     {/* Awaiting Payment Card */}
-                    <div className="bg-gradient-to-br from-orange-500/20 to-slate-800 p-5 rounded-xl borderflex items-center gap-4">
+                    <div className="bg-gradient-to-br from-orange-500/20 to-slate-800 p-5 rounded-xl border border flex items-center gap-4">
                          <div className="p-3 bg-orange-500/20 rounded-lg">
                            <Hourglass size={24} className="text-orange-300" />
                         </div>
@@ -281,7 +281,7 @@ const AdminDashboardPage = () => {
                         </div>
                     </div>
                     {/* NEW: Awaiting Admin Confirmation Card */}
-                    <div className="bg-gradient-to-br from-yellow-500/20 to-slate-800 p-5 rounded-xl borderflex items-center gap-4">
+                    <div className="bg-gradient-to-br from-yellow-500/20 to-slate-800 p-5 rounded-xl border border flex items-center gap-4">
                          <div className="p-3 bg-yellow-500/20 rounded-lg">
                            <AlertTriangle size={24} className="text-yellow-300" />
                         </div>
@@ -291,7 +291,7 @@ const AdminDashboardPage = () => {
                         </div>
                     </div>
                      {/* In Progress Card */}
-                    <div className="bg-gradient-to-br from-blue-500/20 to-slate-800 p-5 rounded-xl borderflex items-center gap-4">
+                    <div className="bg-gradient-to-br from-blue-500/20 to-slate-800 p-5 rounded-xl border border flex items-center gap-4">
                          <div className="p-3 bg-blue-500/20 rounded-lg">
                            <Clock size={24} className="text-blue-300" />
                         </div>
@@ -301,7 +301,7 @@ const AdminDashboardPage = () => {
                         </div>
                     </div>
                      {/* Completed Card */}
-                    <div className="bg-gradient-to-br from-green-500/20 to-slate-800 p-5 rounded-xl borderflex items-center gap-4">
+                    <div className="bg-gradient-to-br from-green-500/20 to-slate-800 p-5 rounded-xl border border flex items-center gap-4">
                          <div className="p-3 bg-green-500/20 rounded-lg">
                            <CheckCircle size={24} className="text-green-300" />
                         </div>
@@ -312,7 +312,7 @@ const AdminDashboardPage = () => {
                     </div>
                      {/* Optional Revenue Card */}
                      {/*
-                     <div className="bg-gradient-to-br from-yellow-500/20 to-slate-800 p-5 rounded-xl borderflex items-center gap-4">
+                     <div className="bg-gradient-to-br from-yellow-500/20 to-slate-800 p-5 rounded-xl border border flex items-center gap-4">
                          <div className="p-3 bg-yellow-500/20 rounded-lg">
                              <Banknote size={24} className="text-yellow-300" />
                          </div>
@@ -338,7 +338,7 @@ const AdminDashboardPage = () => {
                 {message && <p className="mb-4 p-3 bg-slate-700 rounded-md text-sm">{message}</p>}
 
                 {/* --- NEW: Filter Controls --- */}
-                <div className="mb-6 p-4 bg-card rounded-lg borderflex flex-col sm:flex-row gap-4 items-center">
+                <div className="mb-6 p-4 bg-card rounded-lg border border flex flex-col sm:flex-row gap-4 items-center">
                      <span className="text-sm font-semibold text-muted-foreground flex items-center gap-2"><Filter size={16}/> Filters:</span>
                      {/* Status Filter */}
                      <select
@@ -386,7 +386,7 @@ const AdminDashboardPage = () => {
 
 
                 {/* Enhanced Order Table - Now uses filteredAndSortedOrders */}
-                <div className="bg-card rounded-lg borderoverflow-x-auto">
+                <div className="bg-card rounded-lg border border overflow-x-auto">
                     <table className="w-full text-left min-w-[900px]"> {/* Increased min-width slightly */}
                         <thead className="bg-slate-700 text-xs uppercase text-muted-foreground">
                             <tr>
@@ -416,7 +416,7 @@ const AdminDashboardPage = () => {
                             {/* --- Map over filteredAndSortedOrders --- */}
                             {filteredAndSortedOrders.map(order => (
                                 // --- MODIFY: Highlight row for new status ---
-                                <tr key={order.id} className={`border-btext-sm ${
+                                <tr key={order.id} className={`border-b border text-sm ${
                                       order.status === 'Awaiting Admin Confirmation' ? 'bg-yellow-900/30 hover:bg-yellow-900/50' : // Highlight this status
                                       order.status === 'Awaiting Actor Confirmation' ? 'bg-blue-900/30 hover:bg-blue-900/50' : // Different highlight for actor
                                       'hover:bg-accent/50'

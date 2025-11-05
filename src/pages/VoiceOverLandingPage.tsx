@@ -85,7 +85,7 @@ const DemoPlayerRow = ({
     onToggleLike: (demo: Demo) => void // <-- New prop
 }) => {
   return (
-    <div className="bg-card p-3 rounded-lg borderflex items-center gap-4 sm:gap-6"> {/* Adjusted gap */}
+    <div className="bg-card p-3 rounded-lg border border flex items-center gap-4 sm:gap-6"> {/* Adjusted gap */}
       {/* Actor Image */}
       <img src={demo.actors.HeadshotURL} alt={demo.actors.ActorName} className="w-16 h-16 rounded-md object-cover flex-shrink-0" />
 
@@ -444,7 +444,7 @@ const handleToggleLike = async (demo: Demo) => {
 
 
           {/* For Talents */}
-          <div className="bg-card p-8 rounded-lg bordertext-left transition-all duration-300 hover:border-purple-500 hover:shadow-2xl hover:shadow-purple-500/10">
+          <div className="bg-card p-8 rounded-lg border border text-left transition-all duration-300 hover:border-purple-500 hover:shadow-2xl hover:shadow-purple-500/10">
             <h3 className="text-2xl font-semibold text-foreground mb-3">For Talents</h3>
             <p className="text-muted-foreground mb-6">
               Showcase your portfolio, set your own rates, communicate directly with clients, and get paid directly to your bank account.

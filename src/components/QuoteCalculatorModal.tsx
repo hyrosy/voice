@@ -628,7 +628,7 @@ const QuoteCalculatorModal: React.FC<ModalProps> = ({ actor, onClose }) => {
         <button onClick={onClose} className="absolute top-4 right-4 text-muted-foreground hover:text-accent-foreground z-10">
           <X size={24} />
         </button>
-        <div className="flex-shrink-0 mb-6 border-bpb-4">
+        <div className="flex-shrink-0 mb-6 border-b border pb-4">
           <p className="text-center text-muted-foreground">Booking for: <span className="font-bold text-blue-400">{actor.ActorName}</span></p>
           {/* Only show total price for Voice Over flow */}
           {serviceType === 'voice_over' && (
