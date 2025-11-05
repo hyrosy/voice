@@ -187,7 +187,7 @@ const AdminActorListPage: React.FC = () => {
 
                 {error && <p className="mb-4 p-3 bg-red-900/50 border border-red-700 rounded-md text-sm text-red-300">{error}</p>}
 
-                <div className="bg-card rounded-lg border border overflow-x-auto">
+                <div className="bg-card rounded-lg borderoverflow-x-auto">
                     <table className="w-full text-left min-w-[700px]">
                         <thead className="bg-slate-700 text-xs uppercase text-muted-foreground">
                             <tr>
@@ -202,7 +202,7 @@ const AdminActorListPage: React.FC = () => {
                         </thead>
                         <tbody>
                             {actors.map(actor => (
-                                <tr key={actor.id} className="border-b border hover:bg-accent/50 text-sm">
+                                <tr key={actor.id} className="border-bhover:bg-accent/50 text-sm">
                                     <td className="p-4 font-semibold">{actor.ActorName}</td>
                                     <td className="p-4 text-muted-foreground">{actor.ActorEmail || '-'}</td>
                                     <td className="p-4 capitalize">

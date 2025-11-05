@@ -75,7 +75,7 @@ const ActorLoginPage = () => {
                                 value={email}
                                 onChange={(e) => setEmail(e.target.value)}
                                 required
-                                className="w-full p-3 bg-card border border rounded-md focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition"
+                                className="w-full p-3 bg-card borderrounded-md focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition"
                                 placeholder="you@example.com"
                             />
                         </div>
@@ -87,7 +87,7 @@ const ActorLoginPage = () => {
                                 value={password}
                                 onChange={(e) => setPassword(e.target.value)}
                                 required
-                                className="w-full p-3 bg-card border border rounded-md focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition"
+                                className="w-full p-3 bg-card borderrounded-md focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition"
                                 placeholder="••••••••"
                             />
                         </div>

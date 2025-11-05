@@ -91,16 +91,16 @@ const ClientAuthPage = () => {
                         {isSignUp && (
                             <div>
                                 <label htmlFor="name" className="block text-sm font-medium text-muted-foreground mb-1">{t('auth.fullName')}</label>                                
-                                <input id="name" type="text" value={name} onChange={(e) => setName(e.target.value)} required className="w-full p-3 bg-card border border rounded-md focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition" placeholder="e.g., Jane Doe" />
+                                <input id="name" type="text" value={name} onChange={(e) => setName(e.target.value)} required className="w-full p-3 bg-card borderrounded-md focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition" placeholder="e.g., Jane Doe" />
                             </div>
                         )}
                         <div>
                             <label htmlFor="email" className="block text-sm font-medium text-muted-foreground mb-1">{t('auth.email')}</label>                            
-                            <input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required className="w-full p-3 bg-card border border rounded-md focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition" placeholder="you@example.com" />
+                            <input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required className="w-full p-3 bg-card borderrounded-md focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition" placeholder="you@example.com" />
                         </div>
                         <div>
                             <label htmlFor="password"  className="block text-sm font-medium text-muted-foreground mb-1">{t('auth.password')}</label>                            
-                            <input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required className="w-full p-3 bg-card border border rounded-md focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition" placeholder="••••••••" />
+                            <input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required className="w-full p-3 bg-card borderrounded-md focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition" placeholder="••••••••" />
                         </div>
                         <div className="pt-4">
                             <button type="submit" disabled={loading} className="w-full py-3 bg-gradient-to-r from-purple-600 to-blue-600 hover:opacity-90 rounded-md font-semibold text-lg transition-opacity disabled:opacity-50">

@@ -349,7 +349,7 @@ const OrderDetailsModal: React.FC<ModalProps> = ({ order, onClose, onUpdate, onA
                             <p className="text-sm text-muted-foreground">No offers have been made yet.</p>
                           ) : (
                             offerHistory.map(offer => (
-                              <div key={offer.id} className="pb-3 border-b border last:border-b-0">
+                              <div key={offer.id} className="pb-3 border-blast:border-b-0">
                                 <div className="flex justify-between items-center mb-1">
                                   <span className="font-semibold text-foreground">{offer.offer_title}</span>
                                   <span className="font-bold text-lg text-primary">{offer.offer_price.toFixed(2)} MAD</span>

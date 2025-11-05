@@ -88,7 +88,7 @@ const ContactUsPage = () => {
             {/* Company Info Cards */}
             <div className="space-y-3">
               {companyInfo.map((info, index) => (
-                <div key={index} className="bg-card/50 rounded-xl p-4 border border flex items-center space-x-4">
+                <div key={index} className="bg-card/50 rounded-xl p-4 borderflex items-center space-x-4">
                   <div className="flex-shrink-0 p-3 bg-slate-700 rounded-lg">
                     <info.icon className="w-5 h-5 text-purple-400" />
                   </div>

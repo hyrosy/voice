@@ -131,7 +131,7 @@ const FavoriteActorsPage = () => {
         <div className="min-h-screen bg-background text-foreground">
             <div className="max-w-7xl mx-auto py-20 px-4">
                 <div className="text-center mb-12">
-                    <div className="inline-block bg-card/50 rounded-full p-5 border border mb-6">
+                    <div className="inline-block bg-card/50 rounded-full p-5 bordermb-6">
                         <Star size={40} className="text-yellow-400" />
                     </div>
                     <h1 className="text-4xl lg:text-5xl font-black tracking-tighter text-foreground mb-4">
