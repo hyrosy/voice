@@ -114,12 +114,12 @@ const Navbar: React.FC = () => {
             <div className="flex items-center gap-4">
 
               {/* --- NEW: Language Switcher (Desktop) --- */}
-             <div className="hidden lg:block text-primary-foreground">
+             <div className="text-white">
                <LanguageSwitcher />
              </div>
 
              {/* --- 2. ADD THEME TOGGLE (Desktop) --- */}
-             <div className="hidden lg:block">
+             <div>
                <ThemeToggle />
              </div>
              
