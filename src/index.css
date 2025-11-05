@@ -55,10 +55,8 @@
 
   /* --- ALL GLOBAL RULES MOVED INTO THE SAME BLOCK --- */
   * {
-  /* This tells every element to inherit its border color
-     from its parent, all the way up to the <body> */
-  border-color: inherit;
-}
+    @apply border-border;
+  }
   html {
     @apply bg-background;
   }
