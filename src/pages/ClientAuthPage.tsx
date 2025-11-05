@@ -73,7 +73,7 @@ const ClientAuthPage = () => {
             {/* 1. Left Branding Column */}
             <div className="hidden md:flex flex-col justify-center items-center p-12 bg-gradient-to-br from-purple-900 via-slate-900 to-slate-900 border-r border">
                 <div className="text-center">
-                    <div className="inline-flex items-center justify-center w-20 h-20 bg-white/10 rounded-full mb-6 border border-white/20">
+                    <div className="inline-flex items-center justify-center w-20 h-20 bg-white/10 rounded-full mb-6 border border-foreground/20">
                         <UserCircle size={40} className="text-white" /> 
                     </div>
                     <h1 className="text-5xl font-bold mb-4 tracking-tight">{t('auth.clientPortal')}</h1>

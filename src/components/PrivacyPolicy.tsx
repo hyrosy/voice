@@ -251,7 +251,7 @@ We may verify your identity before fulfilling requests. You may also authorize s
           {/* Privacy Sections */}
           <div className="grid lg:grid-cols-2 gap-8 mb-16">
             {privacySections.map((section, index) => (
-              <div key={index} className="backdrop-blur-xl bg-white/10 rounded-3xl p-8 border border-white/20 shadow-2xl hover:bg-white/15 transition-all duration-300 group">
+              <div key={index} className="backdrop-blur-xl bg-white/10 rounded-3xl p-8 border border-foreground/20 shadow-2xl hover:bg-white/15 transition-all duration-300 group">
                 <div className="flex items-start space-x-4 mb-4">
                   <div className="flex-shrink-0 p-3 bg-gradient-to-br from-purple-500/20 to-pink-500/20 rounded-xl group-hover:from-purple-500/30 group-hover:to-pink-500/30 transition-all duration-300">
                     <section.icon className="w-6 h-6 text-purple-300" />
@@ -264,7 +264,7 @@ We may verify your identity before fulfilling requests. You may also authorize s
           </div>
 
           {/* Additional Important Information */}
-          <div className="backdrop-blur-xl bg-white/10 rounded-3xl p-8 lg:p-12 border border-white/20 shadow-2xl mb-12">
+          <div className="backdrop-blur-xl bg-white/10 rounded-3xl p-8 lg:p-12 border border-foreground/20 shadow-2xl mb-12">
             <h2 className="text-2xl font-semibold text-foreground mb-8">Additional Important Information</h2>
             <div className="grid md:grid-cols-2 gap-8">
               <div className="space-y-6">
@@ -303,22 +303,22 @@ We may verify your identity before fulfilling requests. You may also authorize s
           </div>
 
           {/* Data Categories Table */}
-          <div className="backdrop-blur-xl bg-white/10 rounded-3xl p-8 lg:p-12 border border-white/20 shadow-2xl mb-12">
+          <div className="backdrop-blur-xl bg-white/10 rounded-3xl p-8 lg:p-12 border border-foreground/20 shadow-2xl mb-12">
             <h2 className="text-2xl font-semibold text-foreground mb-6">Categories Disclosed in the Past 12 Months</h2>
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead>
-                  <tr className="border-b border-white/20">
+                  <tr className="border-b border-foreground/20">
                     <th className="text-left py-3 px-4 text-foreground font-medium">Category</th>
                     <th className="text-left py-3 px-4 text-foreground font-medium">Recipients</th>
                   </tr>
                 </thead>
                 <tbody className="text-gray-300">
-                  <tr className="border-b border-white/10">
+                  <tr className="border-b border-foreground/10">
                     <td className="py-3 px-4">Identifiers (e.g., name, email)</td>
                     <td className="py-3 px-4">Vendors, Affiliates, Partners</td>
                   </tr>
-                  <tr className="border-b border-white/10">
+                  <tr className="border-b border-foreground/10">
                     <td className="py-3 px-4">Commercial info (e.g., purchases)</td>
                     <td className="py-3 px-4">Shopify, Fulfillment</td>
                   </tr>
@@ -335,7 +335,7 @@ We may verify your identity before fulfilling requests. You may also authorize s
           {/* Contact Information */}
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
             {contactInfo.map((info, index) => (
-              <div key={index} className="backdrop-blur-sm bg-white/5 rounded-2xl p-6 border border-white/10 hover:bg-white/10 transition-all duration-300 group">
+              <div key={index} className="backdrop-blur-sm bg-white/5 rounded-2xl p-6 border border-foreground/10 hover:bg-white/10 transition-all duration-300 group">
                 <div className="flex items-start space-x-4">
                   <div className="flex-shrink-0 p-3 bg-gradient-to-br from-purple-500/20 to-pink-500/20 rounded-xl group-hover:from-purple-500/30 group-hover:to-pink-500/30 transition-all duration-300">
                     <info.icon className="w-5 h-5 text-purple-300" />
@@ -350,7 +350,7 @@ We may verify your identity before fulfilling requests. You may also authorize s
           </div>
 
           {/* Policy Changes Notice */}
-          <div className="backdrop-blur-xl bg-white/10 rounded-3xl p-8 border border-white/20 shadow-2xl mb-12">
+          <div className="backdrop-blur-xl bg-white/10 rounded-3xl p-8 border border-foreground/20 shadow-2xl mb-12">
             <h2 className="text-xl font-semibold text-foreground mb-4">Changes to This Privacy Policy</h2>
             <p className="text-gray-300 leading-relaxed">
               We may update this Privacy Policy from time to time, including to reflect changes to our practices or for other operational, legal, or regulatory reasons. We will post the revised Privacy Policy on the Site, update the "Last updated" date and take any other steps required by applicable law.
@@ -358,12 +358,12 @@ We may verify your identity before fulfilling requests. You may also authorize s
           </div>
 
           {/* Company Information */}
-          <div className="backdrop-blur-sm bg-white/5 rounded-2xl p-8 border border-white/10">
+          <div className="backdrop-blur-sm bg-white/5 rounded-2xl p-8 border border-foreground/10">
             <div className="text-center space-y-4">
               <h3 className="text-xl font-semibold text-foreground">UCPMAROC</h3>
               <p className="text-gray-300">Operated by HYROSY LLC</p>
               <p className="text-sm text-gray-400">Limited liability company registered in the United States</p>
-              <div className="pt-4 border-t border-white/10">
+              <div className="pt-4 border-t border-foreground/10">
                 <p className="text-sm text-gray-400">
                   HYROSY LLC, © 2025. All rights reserved.
                 </p>

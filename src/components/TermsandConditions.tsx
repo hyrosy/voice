@@ -270,7 +270,7 @@ const TermsandConditions = () => {
           {/* Terms of Service Sections */}
           <div className="grid lg:grid-cols-1 gap-8 mb-16">
             {TermsandConditionsSections.map((section, index) => (
-              <div key={index} className="backdrop-blur-xl bg-white/10 rounded-3xl p-8 border border-white/20 shadow-2xl hover:bg-white/15 transition-all duration-300 group">
+              <div key={index} className="backdrop-blur-xl bg-white/10 rounded-3xl p-8 border border-foreground/20 shadow-2xl hover:bg-white/15 transition-all duration-300 group">
                 <div className="flex items-start space-x-4 mb-4">
                   <div className="flex-shrink-0 p-3 bg-gradient-to-br from-purple-500/20 to-pink-500/20 rounded-xl group-hover:from-purple-500/30 group-hover:to-pink-500/30 transition-all duration-300">
                     <section.icon className="w-6 h-6 text-purple-300" />
@@ -285,7 +285,7 @@ const TermsandConditions = () => {
           {/* Contact Information */}
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
             {contactInfo.map((info, index) => (
-              <div key={index} className="backdrop-blur-sm bg-white/5 rounded-2xl p-6 border border-white/10 hover:bg-white/10 transition-all duration-300 group">
+              <div key={index} className="backdrop-blur-sm bg-white/5 rounded-2xl p-6 border border-foreground/10 hover:bg-white/10 transition-all duration-300 group">
                 <div className="flex items-start space-x-4">
                   <div className="flex-shrink-0 p-3 bg-gradient-to-br from-purple-500/20 to-pink-500/20 rounded-xl group-hover:from-purple-500/30 group-hover:to-pink-500/30 transition-all duration-300">
                     <info.icon className="w-5 h-5 text-purple-300" />
@@ -300,7 +300,7 @@ const TermsandConditions = () => {
           </div>
 
           {/* Policy Changes Notice */}
-          <div className="backdrop-blur-xl bg-white/10 rounded-3xl p-8 border border-white/20 shadow-2xl mb-12">
+          <div className="backdrop-blur-xl bg-white/10 rounded-3xl p-8 border border-foreground/20 shadow-2xl mb-12">
             <h2 className="text-xl font-semibold text-foreground mb-4">Changes to These Terms of Service</h2>
             <p className="text-gray-300 leading-relaxed">
               You can review the most current version of the Terms of Service at any time on this page. We reserve the right to update, change or replace any part of these Terms of Service by posting updates and/or changes to our website. It is your responsibility to check this page periodically for changes. Your continued use of or access to the website following the posting of any changes constitutes acceptance of those changes.
@@ -308,12 +308,12 @@ const TermsandConditions = () => {
           </div>
 
           {/* Company Information */}
-          <div className="backdrop-blur-sm bg-white/5 rounded-2xl p-8 border border-white/10">
+          <div className="backdrop-blur-sm bg-white/5 rounded-2xl p-8 border border-foreground/10">
             <div className="text-center space-y-4">
               <h3 className="text-xl font-semibold text-foreground">UCPMAROC</h3>
               <p className="text-gray-300">Operated by HYROSY LLC</p>
               <p className="text-sm text-gray-400">Limited liability company registered in the United States</p>
-              <div className="pt-4 border-t border-white/10">
+              <div className="pt-4 border-t border-foreground/10">
                 <p className="text-sm text-gray-400">
                   HYROSY LLC, © 2025. All rights reserved.
                 </p>

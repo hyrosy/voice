@@ -423,7 +423,7 @@ const handleToggleLike = async (demo: Demo) => {
              </span>
           </a>
           {/* Changed link to actor sign up */}
-          <Link to="/actor-signup" className="group px-8 py-4 bg-white/10 border border-white/20 text-white font-semibold rounded-full transition-all duration-300 hover:bg-white/20 hover:scale-105 inline-flex items-center justify-center">
+          <Link to="/actor-signup" className="group px-8 py-4 bg-white/10 border border-foreground/20 text-white font-semibold rounded-full transition-all duration-300 hover:bg-white/20 hover:scale-105 inline-flex items-center justify-center">
              <div className="flex items-center gap-2">
                <UserPlus size={20} className="group-hover:rotate-12 transition-transform duration-300" />
                <span>Join the Roster</span>

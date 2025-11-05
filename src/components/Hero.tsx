@@ -22,7 +22,7 @@ const Hero: React.FC = () => {
           
           {/* Content Section */}
           <div className="space-y-6">
-            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 border border-white/20 text-muted-foreground">
+            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 border border-foreground/20 text-muted-foreground">
               <Sparkles size={16} className="text-yellow-400" />
               <span className="text-sm font-medium">AI-Powered Digital Marketing</span>
             </div>
@@ -46,7 +46,7 @@ const Hero: React.FC = () => {
                 </div>
               </Link>
               
-              <Link to="/digital-marketing" className="group px-8 py-4 bg-white/10 border border-white/20 text-foreground font-semibold rounded-full transition-all duration-300 hover:bg-white/20 hover:scale-105 inline-flex items-center justify-center">
+              <Link to="/digital-marketing" className="group px-8 py-4 bg-white/10 border border-foreground/20 text-foreground font-semibold rounded-full transition-all duration-300 hover:bg-white/20 hover:scale-105 inline-flex items-center justify-center">
                 <div className="flex items-center gap-2">
                   <Award size={20} className="group-hover:rotate-12 transition-transform duration-300" />
                   <span>Our Services</span>
