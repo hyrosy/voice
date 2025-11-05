@@ -5,7 +5,6 @@
 @tailwind utilities;
 
 /* --- 1. NEW SHADCN/UI THEME LAYER --- */
-/* This is the "New York" / "Binance" style dark theme */
 @layer base {
   /* --- LIGHT THEME (Default) --- */
   :root {
@@ -33,53 +32,40 @@
 
   /* --- YOUR CUSTOM DARK THEME --- */
   .dark {
-    /* Main page background (Your bg-slate-900) */
     --background: 222 47% 11%;
-    /* Default text (White) */
     --foreground: 210 40% 98%;
-    /* Modal/Card background (Your bg-card) */
     --card: 222 39% 18%; 
     --card-foreground: 210 40% 98%;
-    /* Popover/Dropdown background */
     --popover: 222 39% 18%;
     --popover-foreground: 210 40% 98%;
-    /* Primary buttons (Your Purple) */
     --primary: 262 52% 57%;
     --primary-foreground: 210 40% 98%;
-    /* Secondary buttons (Your slate) */
     --secondary: 217 33% 27%; /* slate-700 */
     --secondary-foreground: 210 40% 98%;
-    /* Muted (Receiver chat bubble) */
     --muted: 217 33% 27%; /* slate-700 */
     --muted-foreground: 215 20% 65%; /* slate-400 */
-    /* Hover states */
     --accent: 217 33% 22%; /* slate-800 */
     --accent-foreground: 210 40% 98%;
-    /* Destructive (red) */
     --destructive: 0 63% 31%;
     --destructive-foreground: 210 40% 98%;
-    /* Borders */
     --border: 217 33% 27%; /* slate-700 */
-    /* Input field backgrounds */
     --input: 217 33% 24%; /* slate-700 */
-    /* Focus rings (Your Purple) */
     --ring: 262 52% 57%;
   }
+
+  /* --- ALL GLOBAL RULES MOVED INTO THE SAME BLOCK --- */
   * {
-    @apply border-border; /* This means border-color: hsl(var(--border)) */
+    @apply border-border;
   }
-  /* THIS FIXES THE "WHITE BORDER" ON MOBILE */
   html {
     @apply bg-background;
   }
-  
   body {
-    @apply bg-background text-foreground; /* Use theme variables */
+    @apply bg-background text-foreground;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     text-rendering: optimizeLegibility;
   }
-
 }
 
 
