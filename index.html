@@ -8,7 +8,15 @@
     
 
     <title>Vite + React + TS</title>
-    
+    <script>
+      (function() {
+        // If user has explicitly set theme to 'light', do nothing (let default CSS apply).
+        // Otherwise, add 'dark' to the <html> tag immediately.
+        if (localStorage.getItem('theme') !== 'light') {
+          document.documentElement.classList.add('dark');
+        }
+      })();
+    </script>
 
     <script>
     (function() {
@@ -24,7 +32,6 @@
     <meta name="description" content="UCPMAROC - AI-Powered Digital Marketing Agency with proven ROI. We offer social media marketing, web development and lead generation services.">
     <title>UCPMAROC Agency | AI-Powered Digital Marketing Agency</title>
     
-    <script src="https://cdn.tailwindcss.com"></script>
 
     <script type="text/javascript">
       function googleTranslateElementInit() {
