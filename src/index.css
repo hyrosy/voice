@@ -70,7 +70,9 @@
 
 /* --- 2. UPDATED BASE STYLES --- */
 @layer base {
-  
+  * {
+    @apply border-border; /* <-- THIS IS THE PROBLEM */
+  }
   
   /* THIS FIXES THE "WHITE BORDER" ON MOBILE */
   html {
