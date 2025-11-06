@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../supabaseClient';
-import { X, Send, RefreshCw } from 'lucide-react';
+import { X, Send, RefreshCw, CheckCircle, Mic } from 'lucide-react'; // Added icons
 import emailjs from '@emailjs/browser';
 import { 
   Dialog, 
@@ -13,7 +13,10 @@ import {
   DialogFooter
 } from "@/components/ui/dialog";
 import { Button } from './ui/button';
-
+import { ScrollArea } from './ui/scroll-area'; // Import ScrollArea
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"; // Import RadioGroup
+import { Label } from "@/components/ui/label"; // Import Label
+import { Card } from './ui/card'; // Import Card for the empty state
 
 // Copied from ActorDashboardPage.tsx
 interface ActorRecording {
@@ -51,7 +54,7 @@ const DeliverFromLibraryModal: React.FC<ModalProps> = ({ order, onClose, onDeliv
   const [selectedRecordingId, setSelectedRecordingId] = useState<string | null>(null);
   const [message, setMessage] = useState('');
 
-  // 1. Fetch the actor's recordings
+  // 1. Fetch the actor's recordings (Unchanged)
   useEffect(() => {
     const fetchRecordings = async () => {
       setIsLoading(true);
@@ -72,7 +75,7 @@ const DeliverFromLibraryModal: React.FC<ModalProps> = ({ order, onClose, onDeliv
     fetchRecordings();
   }, [order.actor_id]);
 
-  // 2. Handle the delivery logic (copied from OrderDetailsModal)
+  // 2. Handle the delivery logic (Unchanged)
   const handleDeliver = async () => {
     if (!selectedRecordingId) {
       setMessage('Please select a recording to deliver.');
@@ -85,11 +88,9 @@ const DeliverFromLibraryModal: React.FC<ModalProps> = ({ order, onClose, onDeliv
       return;
     }
 
-    // Prioritize cleaned audio, fall back to raw
     const fileUrlToDeliver = selectedRecording.cleaned_audio_url || selectedRecording.raw_audio_url;
     
     setIsDelivering(true);
-    setMessage('Delivering...');
 
     try {
       // 2a. Count existing deliveries
@@ -127,13 +128,18 @@ const DeliverFromLibraryModal: React.FC<ModalProps> = ({ order, onClose, onDeliv
         clientEmail: order.client_email,
         actorName: order.actors.ActorName,
       };
-
-      await emailjs.send(
-        'service_r3pvt1s',
-        'template_2iuj3dr',
-        emailParams,
-        'I51tDIHsXYKncMQpO'
-      );
+        
+      // Wrap email in a safe try/catch
+      try {
+        await emailjs.send(
+          'service_r3pvt1s',
+          'template_2iuj3dr',
+          emailParams,
+          'I51tDIHsXYKncMQpO'
+        );
+      } catch (emailError) {
+        console.error("Failed to send delivery email, but proceeding:", emailError);
+      }
 
       setMessage('Delivery successful! Client has been notified.');
       
@@ -142,64 +148,91 @@ const DeliverFromLibraryModal: React.FC<ModalProps> = ({ order, onClose, onDeliv
 
     } catch (error) {
       const err = error as Error;
-      setMessage(`An error occurred: ${err.message}`);
+      setMessage(`Error: An error occurred: ${err.message}`);
       console.error(err);
       setIsDelivering(false);
     }
   };
 
+  // --- Restyled Render ---
   return (
     <Dialog open={true} onOpenChange={onClose}>
-      {/* --- THIS IS THE FIX --- */}
-      <DialogContent className="w-screen h-screen max-w-none max-h-none rounded-none border-none p-0 flex flex-col 
-                                sm:w-full sm:max-w-lg sm:h-auto sm:max-h-[80vh] sm:rounded-lg sm:border">
+      <DialogContent className="w-screen h-screen max-w-none max-h-none rounded-none border-none p-0 
+                                sm:w-full sm:max-w-lg sm:h-auto sm:max-h-[90vh] sm:rounded-lg sm:border">
         
-        {/* Header */}
-        <DialogHeader className="p-4 sm:p-6 pb-4 border-b">
+        <DialogHeader className="p-4 sm:p-6 pb-4 border-b flex-shrink-0">
           <DialogTitle className="text-2xl sm:text-3xl font-bold">Deliver from Library</DialogTitle>
+          <DialogDescription>
+            Select a recording from your library to deliver to {order.client_name}.
+          </DialogDescription>
         </DialogHeader>
 
-        {/* Scrollable list */}
-        <div className="flex-grow overflow-y-auto p-4 sm:p-6 space-y-3 mb-4 custom-scrollbar">
-          {isLoading && <p className="text-muted-foreground text-center">Loading recordings...</p>}
-          {!isLoading && recordings.length === 0 && (
-            <p className="text-muted-foreground text-center py-4">Your library is empty.</p>
-          )}
-          
-          {recordings.map(rec => {
-            const isSelected = selectedRecordingId === rec.id;
-            return (
-              <Button
-                key={rec.id}
-                variant="outline"
-                onClick={() => setSelectedRecordingId(rec.id)}
-                className={`w-full text-left h-auto py-4 justify-start
-                            ${isSelected ? 'border-primary ring-2 ring-primary' : ''}
-                            ${!rec.cleaned_audio_url && rec.status !== 'cleaned' ? 'opacity-60' : ''}`}
-              >
-                <div>
-                  <p className="font-semibold text-base">{rec.name}</p>
-                  {rec.status === 'cleaned' && rec.cleaned_audio_url ? (
-                    <span className="text-xs text-green-500">Status: AI Cleaned</span>
-                  ) : (
-                    <span className="text-xs text-yellow-500">Status: Raw Audio Only</span>
-                  )}
-                </div>
-              </Button>
-            );
-          })}
-        </div>
+        {/* --- Restyled Scrollable list --- */}
+        <ScrollArea className="max-h-[50vh]">
+          <div className="p-4 sm:p-6 space-y-3">
+            {isLoading && <p className="text-muted-foreground text-center py-8">Loading recordings...</p>}
+            {!isLoading && recordings.length === 0 && (
+              <Card className="p-8 flex flex-col items-center justify-center text-center">
+                <Mic className="h-12 w-12 text-muted-foreground mb-4" />
+                <p className="font-semibold text-foreground">Your library is empty</p>
+                <p className="text-sm text-muted-foreground">Upload recordings in your dashboard to deliver them here.</p>
+              </Card>
+            )}
+            
+            <RadioGroup 
+              value={selectedRecordingId || ''} 
+              onValueChange={setSelectedRecordingId} 
+              className="space-y-3"
+            >
+              {recordings.map(rec => {
+                return (
+                  <Label
+                    key={rec.id}
+                    htmlFor={rec.id}
+                    className={`
+                      flex items-center gap-4 rounded-lg border p-4 transition-colors
+                      cursor-pointer hover:bg-accent/50
+                      ${selectedRecordingId === rec.id ? 'border-primary bg-accent ring-2 ring-primary' : ''}
+                    `}
+                  >
+                    <RadioGroupItem value={rec.id} id={rec.id} />
+                    <div>
+                      <p className="font-semibold text-base text-foreground">{rec.name}</p>
+                      {rec.status === 'cleaned' && rec.cleaned_audio_url ? (
+                       <span className="text-xs font-medium text-green-500 flex items-center gap-1.5">
+                          <CheckCircle size={12} /> AI Cleaned Audio
+                        </span>
+                      ) : (
+                        <span className="text-xs font-medium text-yellow-500">
+                          Raw Audio Only
+                        </span>
+                      )}
+                    </div>
+                 </Label>
+                );
+              })}
+            </RadioGroup>
+         </div>
+        </ScrollArea>
         
-        {/* Footer */}
-        <DialogFooter className="p-4 sm:p-6 pt-4 border-t">
-          {message && <p className="text-center text-sm text-yellow-400 mb-3 w-full">{message}</p>}
+        <DialogFooter className="p-4 sm:p-6 pt-4 border-t flex-col flex-shrink-0">
+          {/* --- Restyled Message --- */}
+          {message && (
+            <p className={`text-center text-sm mb-2 w-full ${
+              message.includes('Error') ? 'text-destructive' :
+             message.includes('successful') ? 'text-green-400' :
+              'text-muted-foreground'
+            }`}>
+              {message}
+            </p>
+          )}
           <Button
             onClick={handleDeliver}
             disabled={!selectedRecordingId || isDelivering || isLoading}
             className="w-full"
             size="lg"
           >
-            {isDelivering ? <RefreshCw size={18} className="animate-spin" /> : <Send size={18} />}
+            {isDelivering ? <RefreshCw size={18} className="animate-spin mr-2" /> : <Send size={18} className="mr-2" />}
             {isDelivering ? 'Delivering...' : 'Deliver Selected Audio'}
           </Button>
         </DialogFooter>

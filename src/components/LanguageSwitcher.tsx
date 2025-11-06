@@ -1,53 +1,58 @@
 // In src/components/LanguageSwitcher.tsx
-import React, { useState } from 'react';
+import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { Globe, ChevronDown } from 'lucide-react';
+import { Globe, Check } from 'lucide-react';
+
+// Import shadcn components
+import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 const languages = [
-  { code: 'en', name: 'English' },
-  { code: 'fr', name: 'Français' },
-  { code: 'ar', name: 'العربية' },
+  { code: 'en', name: 'English', shortName: 'EN' },
+  { code: 'fr', name: 'Français', shortName: 'FR' },
+  { code: 'ar', name: 'العربية', shortName: 'AR' },
 ];
 
 const LanguageSwitcher: React.FC = () => {
-  const { i18n } = useTranslation();
-  const [isOpen, setIsOpen] = useState(false);
+  const { i18n } = useTranslation();
 
-  const currentLanguage = languages.find(lang => lang.code === i18n.language) || languages[0];
+  const currentLanguage = languages.find(lang => lang.code === i18n.language) || languages[0];
 
-  const changeLanguage = (langCode: string) => {
-    i18n.changeLanguage(langCode);
-    setIsOpen(false);
-  };
+  const changeLanguage = (langCode: string) => {
+    i18n.changeLanguage(langCode);
+  };
 
-  return (
-    <div className="relative" onMouseLeave={() => setIsOpen(false)}>
-      <button
-        onMouseEnter={() => setIsOpen(true)}
-        className="flex items-center gap-1.5 px-3 py-2 bg-slate-700/50 border border rounded-full text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors"
-      >
-        <Globe size={16} />
-        <span>{currentLanguage.name}</span>
-        <ChevronDown size={16} className={`transition-transform ${isOpen ? 'rotate-180' : ''}`} />
-      </button>
-      
-      {isOpen && (
-        <div className="absolute right-0 top-full pt-2 w-40">
-          <div className="bg-card rounded-lg shadow-xl border border overflow-hidden animate-in fade-in zoom-in-95">
-            {languages.map(lang => (
-              <button
-                key={lang.code}
-                onClick={() => changeLanguage(lang.code)}
-                className="w-full text-left block px-4 py-3 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground"
-              >
-                {lang.name}
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
-    </div>
-  );
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button 
+          variant="outline" // Use the standard outline variant
+          size="sm" // Use small size for a compact look
+          className="flex items-center gap-1.5 rounded-full" // Keep the rounded-full style
+        >
+          <Globe size={16} />
+          <span>{currentLanguage.shortName}</span>
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-40">
+        {languages.map(lang => (
+          <DropdownMenuItem
+            key={lang.code}
+            onClick={() => changeLanguage(lang.code)}
+            className="flex items-center justify-between"
+          >
+            <span>{lang.name}</span>
+            {currentLanguage.code === lang.code && <Check size={16} />}
+          </DropdownMenuItem>
+        ))}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
 };
 
 export default LanguageSwitcher;
