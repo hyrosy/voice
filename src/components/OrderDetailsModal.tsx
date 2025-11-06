@@ -22,8 +22,9 @@ import {
 } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+// --- NOTE: Removed ScrollArea, as we'll scroll the tab content directly ---
 
-// --- Interfaces ---
+// --- Interfaces (Unchanged) ---
 interface Order {
   client_email: any;
   actor_id: any;
@@ -44,7 +45,9 @@ interface Order {
   quote_video_type?: string | null;
   quote_footage_choice?: string | null;
   deliveries: { id: string; created_at: string; file_url: string; version_number: number }[];
-  offer_price: number | null; // This is correct
+  
+  // --- THIS IS THE FIX (Step 1) ---
+  offer_price: number | null; // <-- Added this field
 }
 interface Offer {
   id: string;
@@ -79,10 +82,14 @@ const OrderDetailsModal: React.FC<ModalProps> = ({ order, onClose, onUpdate, onA
     const [message, setMessage] = useState('');
     const [isConfirming, setIsConfirming] = useState(false);
     const [isLibraryModalOpen, setIsLibraryModalOpen] = useState(false);
+    
+    // Offer State
     const [offerTitle, setOfferTitle] = useState('');
     const [offerAgreement, setOfferAgreement] = useState('');
     const [offerPrice, setOfferPrice] = useState<number | string>('');
     const [isSendingOffer, setIsSendingOffer] = useState(false);
+    
+    // Offer History State
     const [offerHistory, setOfferHistory] = useState<Offer[]>([]);
     const [loadingHistory, setLoadingHistory] = useState(false);
 
@@ -93,39 +100,40 @@ const OrderDetailsModal: React.FC<ModalProps> = ({ order, onClose, onUpdate, onA
         delivery: !['awaiting_offer', 'offer_made'].includes(order.status),
     });
 
-    // Fetches offer history and pre-fills form
+    // --- State & Logic (All Unchanged) ---
     useEffect(() => {
-        const fetchOfferHistoryAndPrice = async () => {
-            if (order.status === 'awaiting_offer' || order.status === 'offer_made') {
-                setLoadingHistory(true);
-                const { data, error } = await supabase
-                    .from('offers')
-                    .select('*')
-                    .eq('order_id', order.id)
-                    .order('created_at', { ascending: false });
+      // This fetch is still correct, it pre-populates the "Make an Offer" form
+      if (order.status === 'awaiting_offer' || order.status === 'offer_made') {
+        const fetchOfferHistory = async () => {
+          setLoadingHistory(true);
+          const { data, error } = await supabase
+            .from('offers')
+            .select('*')
+            .eq('order_id', order.id)
+            .order('created_at', { ascending: false });
 
-                if (error) {
-                    console.error("Error fetching offer history:", error);
-                    setMessage(`Error: ${error.message}`);
-                } else {
-                    setOfferHistory(data as Offer[]);
-                    // Pre-fill form with the latest offer OR the order's existing price
-                    const latestOffer = data?.[0];
-                    if (latestOffer) {
-                        setOfferTitle(latestOffer.offer_title);
-                        setOfferAgreement(latestOffer.offer_agreement || '');
-                        setOfferPrice(latestOffer.offer_price);
-                    } else if (order.offer_price) {
-                        // Pre-fill with direct order price if no history exists
-                        setOfferTitle(order.service_type === 'voice_over' ? "Voice Over" : "Service Quote");
-                        setOfferPrice(order.offer_price);
-                    }
-                }
-                setLoadingHistory(false);
+          if (error) {
+            console.error("Error fetching offer history:", error);
+            setMessage(`Error: ${error.message}`);
+          } else {
+            setOfferHistory(data as Offer[]);
+            // Pre-fill form with the latest offer OR the order's existing price
+            const latestOffer = data?.[0];
+            if (latestOffer) {
+              setOfferTitle(latestOffer.offer_title);
+              setOfferAgreement(latestOffer.offer_agreement || '');
+              setOfferPrice(latestOffer.offer_price);
+            } else if (order.offer_price) {
+              // Pre-fill with direct order price if it exists
+              setOfferTitle(order.service_type === 'voice_over' ? "Voice Over" : "Service Quote");
+              setOfferPrice(order.offer_price);
             }
+          }
+          setLoadingHistory(false);
         };
-        fetchOfferHistoryAndPrice();
-    }, [order.id, order.status, order.offer_price, order.service_type]);
+        fetchOfferHistory();
+      }
+    }, [order.id, order.status, order.offer_price, order.service_type]); // Added dependencies
 
     const toggleSection = (section: keyof typeof openSections) => {
         setOpenSections(prev => ({ ...prev, [section]: !prev[section] }));
@@ -160,7 +168,7 @@ const OrderDetailsModal: React.FC<ModalProps> = ({ order, onClose, onUpdate, onA
       onClose();
     }
 
-    // handleSendOffer (Corrected)
+    // handleSendOffer (This is correct as-is)
     const handleSendOffer = async () => {
       const price = parseFloat(String(offerPrice));
       if (!offerTitle.trim()) {
@@ -218,10 +226,12 @@ const OrderDetailsModal: React.FC<ModalProps> = ({ order, onClose, onUpdate, onA
     };
     // --- End State & Logic ---
     
-    // --- THIS IS THE FINAL PRICE LOGIC ---
+    // --- THIS IS THE CORRECTED PRICE LOGIC ---
     const latestOfferPrice = offerHistory.length > 0 ? offerHistory[0].offer_price : null;
+    // Use the order's final price first. 
+    // If it's null (e.g., status is 'awaiting_offer'), fall back to the latest offer from history.
     const displayPrice = order.offer_price ?? latestOfferPrice;
-    // ---
+    // --- END CORRECTION ---
 
     const currentStatus = order.status === 'awaiting_offer' ? 'Awaiting Offer' : order.status;
     const statusColorClass = statusColors[order.status as keyof typeof statusColors] || statusColors.default;
@@ -250,87 +260,7 @@ const OrderDetailsModal: React.FC<ModalProps> = ({ order, onClose, onUpdate, onA
 
                         <TabsContent value="details" className="flex-grow overflow-y-auto custom-scrollbar">
                             <div className="p-4 sm:p-6 grid grid-cols-1 lg:grid-cols-3 gap-6">
-                              
-                                {/* --- Right Sidebar (Sticky Actions) --- */}
-                                <div className="lg:col-span-1 space-y-4 lg:sticky lg:top-6 h-fit">
-                                    
-                                    <Card>
-                                      <CardHeader className="pb-2">
-                                        <CardTitle className="text-lg">Order Status</CardTitle>
-                                      </CardHeader>
-                                      <CardContent className="space-y-3">
-                                        <div className="flex justify-between items-center">
-                                          <span className="text-muted-foreground">Status</span>
-                                          <span className={`px-3 py-1 text-xs font-semibold rounded-full ${statusColorClass}`}>
-                                            {currentStatus}
-                                          </span>
-                                        </div>
-                                        <div className="flex justify-between items-center">
-                                          <span className="text-muted-foreground">Service</span>
-                                          <span className="font-semibold capitalize text-foreground">{order.service_type.replace('_', ' ')}</span>
-                                        </div>
-                                        <div className="flex justify-between items-center">
-                                          <span className="text-muted-foreground">Price</span>
-                                          <span className="font-bold text-2xl text-primary">
-                                            {displayPrice ? `${displayPrice.toFixed(2)} MAD` : 'Not Quoted'}
-                                          </span>
-                                        </div>
-                                      </CardContent>
-                                    </Card>
-
-                                    {order.status === 'Awaiting Actor Confirmation' && onActorConfirmPayment && (
-                                        <Card className="bg-green-900/30 border-green-700">
-                                          <CardHeader className="pb-4">
-                                            <CardTitle className="flex items-center gap-2"><Banknote size={18} /> Action Required</CardTitle>
-                                          </CardHeader>
-                                          <CardContent>
-                                            <p className="text-sm text-muted-foreground mb-4">Client has paid. Please check your account and confirm receipt to begin work.</p>
-                                            <Button
-                                                onClick={handleConfirmClick}
-                                                disabled={isConfirming}
-                                                className="w-full bg-green-600 hover:bg-green-700 text-foreground"
-                                            >
-                                                {isConfirming ? <RefreshCw size={18} className="animate-spin" /> : <CheckCircle size={18} />}
-                                                {isConfirming ? 'Confirming...' : 'Confirm Payment Received'}
-                                            </Button>
-                                            {message.includes('Error') && <p className="text-red-400 text-sm mt-3 text-center">{message}</p>}
-                                          </CardContent>
-                                        </Card>
-                                    )}
-
-                                    {(order.status === 'awaiting_offer' || order.status === 'offer_made') && (
-                                        <Card className="bg-blue-900/30 border-blue-700">
-                                          <CardHeader className="pb-4">
-                                            <CardTitle className="flex items-center gap-2">
-                                              <Banknote size={18} /> 
-                                              {order.status === 'offer_made' ? 'Update Your Offer' : 'Make an Offer'}
-                                            </CardTitle>
-                                          </CardHeader>
-                                          <CardContent>
-                                            <div className="space-y-4">
-                                                <div className="space-y-2">
-                                                    <Label htmlFor="offerTitle" className="text-muted-foreground">Offer Title *</Label>
-                                                    <Input id="offerTitle" type="text" placeholder="e.g., Full Video Edit" value={offerTitle} onChange={(e) => setOfferTitle(e.target.value)} className="bg-slate-700 border-slate-600" />
-                                                </div>
-                                                <div className="space-y-2">
-                                                    <Label htmlFor="offerAgreement" className="text-muted-foreground">Offer Agreement (Optional)</Label>
-                                                    <Textarea id="offerAgreement" rows={3} placeholder="e.g., Includes 2 revisions..." value={offerAgreement} onChange={(e) => setOfferAgreement(e.target.value)} className="bg-slate-700 border-slate-600" />
-                                                </div>
-                                                <div className="space-y-2">
-                                                    <Label htmlFor="offerPrice" className="text-muted-foreground">Your Price (MAD) *</Label>
-                                                    <Input id="offerPrice" type="number" step="0.01" placeholder="e.g., 1500" value={offerPrice} onChange={(e) => setOfferPrice(e.target.value)} className="bg-slate-700 border-slate-600" />
-                                                </div>
-                                            </div>
-                                            <Button onClick={handleSendOffer} disabled={isSendingOffer} className="w-full bg-blue-600 hover:bg-blue-700 mt-4">
-                                                {isSendingOffer ? <RefreshCw size={18} className="animate-spin" /> : <Send size={18} />}
-                                                {isSendingOffer ? 'Sending...' : (order.status === 'offer_made' ? 'Update Offer' : 'Send Offer')}
-                                            </Button>
-                                            {message && !message.includes('Error') && <p className="text-green-400 text-sm mt-3 text-center">{message}</p>}
-                                          </CardContent>
-                                        </Card>
-                                    )}
-                                </div>
-
+                                
                                 {/* --- Left Column (Scrollable Content) --- */}
                                 <div className="lg:col-span-2 space-y-4">
                                     
@@ -410,7 +340,85 @@ const OrderDetailsModal: React.FC<ModalProps> = ({ order, onClose, onUpdate, onA
                                     )}
                                 </div>
 
-                                
+                                {/* --- Right Sidebar (Sticky Actions) --- */}
+                                <div className="lg:col-span-1 space-y-4 lg:sticky lg:top-6 h-fit">
+                                    
+                                    <Card>
+                                      <CardHeader className="pb-2">
+                                        <CardTitle className="text-lg">Order Status</CardTitle>
+                                      </CardHeader>
+                                      <CardContent className="space-y-3">
+                                        <div className="flex justify-between items-center">
+                                          <span className="text-muted-foreground">Status</span>
+                                          <span className={`px-3 py-1 text-xs font-semibold rounded-full ${statusColorClass}`}>
+                                            {currentStatus}
+                                          </span>
+                                        </div>
+                                        <div className="flex justify-between items-center">
+                                          <span className="text-muted-foreground">Service</span>
+                                          <span className="font-semibold capitalize text-foreground">{order.service_type.replace('_', ' ')}</span>
+                                        </div>
+                                        <div className="flex justify-between items-center">
+                                          <span className="text-muted-foreground">Price</span>
+                                          <span className="font-bold text-2xl text-primary">
+                                            {displayPrice ? `${displayPrice.toFixed(2)} MAD` : 'Not Quoted'}
+                                          </span>
+                                        </div>
+                                      </CardContent>
+                                    </Card>
+
+                                    {order.status === 'Awaiting Actor Confirmation' && onActorConfirmPayment && (
+                                        <Card className="bg-green-900/30 border-green-700">
+                                          <CardHeader className="pb-4">
+                                            <CardTitle className="flex items-center gap-2"><Banknote size={18} /> Action Required</CardTitle>
+                                          </CardHeader>
+                                          <CardContent>
+                                            <p className="text-sm text-muted-foreground mb-4">Client has paid. Please check your account and confirm receipt to begin work.</p>
+                                            <Button
+                                                onClick={handleConfirmClick}
+                                                disabled={isConfirming}
+                                                className="w-full bg-green-600 hover:bg-green-700 text-foreground"
+                                            >
+                                                {isConfirming ? <RefreshCw size={18} className="animate-spin" /> : <CheckCircle size={18} />}
+                                                {isConfirming ? 'Confirming...' : 'Confirm Payment Received'}
+                                            </Button>
+                                            {message.includes('Error') && <p className="text-red-400 text-sm mt-3 text-center">{message}</p>}
+                                          </CardContent>
+                                        </Card>
+                                    )}
+
+                                    {(order.status === 'awaiting_offer' || order.status === 'offer_made') && (
+                                        <Card className="bg-blue-900/30 border-blue-700">
+                                          <CardHeader className="pb-4">
+                                            <CardTitle className="flex items-center gap-2">
+                                              <Banknote size={18} /> 
+                                              {order.status === 'offer_made' ? 'Update Your Offer' : 'Make an Offer'}
+                                            </CardTitle>
+                                          </CardHeader>
+                                          <CardContent>
+                                            <div className="space-y-4">
+                                                <div className="space-y-2">
+                                                    <Label htmlFor="offerTitle" className="text-muted-foreground">Offer Title *</Label>
+                                                    <Input id="offerTitle" type="text" placeholder="e.g., Full Video Edit" value={offerTitle} onChange={(e) => setOfferTitle(e.target.value)} className="bg-slate-700 border-slate-600" />
+                                                </div>
+                                                <div className="space-y-2">
+                                                    <Label htmlFor="offerAgreement" className="text-muted-foreground">Offer Agreement (Optional)</Label>
+                                                    <Textarea id="offerAgreement" rows={3} placeholder="e.g., Includes 2 revisions..." value={offerAgreement} onChange={(e) => setOfferAgreement(e.target.value)} className="bg-slate-700 border-slate-600" />
+                                                </div>
+                                                <div className="space-y-2">
+                                                    <Label htmlFor="offerPrice" className="text-muted-foreground">Your Price (MAD) *</Label>
+                                                    <Input id="offerPrice" type="number" step="0.01" placeholder="e.g., 1500" value={offerPrice} onChange={(e) => setOfferPrice(e.target.value)} className="bg-slate-700 border-slate-600" />
+                                                </div>
+                                            </div>
+                                            <Button onClick={handleSendOffer} disabled={isSendingOffer} className="w-full bg-blue-600 hover:bg-blue-700 mt-4">
+                                                {isSendingOffer ? <RefreshCw size={18} className="animate-spin" /> : <Send size={18} />}
+                                                {isSendingOffer ? 'Sending...' : (order.status === 'offer_made' ? 'Update Offer' : 'Send Offer')}
+                                            </Button>
+                                            {message && !message.includes('Error') && <p className="text-green-400 text-sm mt-3 text-center">{message}</p>}
+                                          </CardContent>
+                                        </Card>
+                                    )}
+                                </div>
                             </div>
                         </TabsContent>
 
@@ -426,6 +434,7 @@ const OrderDetailsModal: React.FC<ModalProps> = ({ order, onClose, onUpdate, onA
                 </DialogContent>
             </Dialog>
 
+            {/* Library Modal (Unchanged) */}
             {isLibraryModalOpen && order.service_type === 'voice_over' && (
               <DeliverFromLibraryModal
                 order={order}

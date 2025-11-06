@@ -5,7 +5,9 @@ import { Link, useParams } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
 import { 
   Download, Check, RotateCcw, Banknote, FileText, Package, MessageSquare, 
-  Copy, CreditCard, CheckCircle, ChevronDown, ChevronUp, Star, Bell, Info, Send, Wallet, History
+  Copy, CreditCard, CheckCircle, ChevronDown, ChevronUp, Star, Bell, Info, Send, Wallet, History,
+  Mic, PencilLine, Video, // --- Added service icons ---
+  RefreshCw
 } from 'lucide-react';
 import AccordionItem from '../components/AccordionItem';
 import ChatBox from '../components/ChatBox';
@@ -19,47 +21,56 @@ import { Label } from "@/components/ui/label";
 import { Elements } from '@stripe/react-stripe-js';
 import { loadStripe } from '@stripe/stripe-js';
 import StripeCheckoutForm from '../components/StripeCheckoutForm';
+import { ScrollArea } from '@/components/ui/scroll-area'; // --- Added ScrollArea ---
+import { Textarea } from '@/components/ui/textarea'; // --- Added Textarea for reviews ---
+import { useTheme } from "next-themes"; // --- Added useTheme ---
+import { DialogHeader } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogTitle, DialogDescription } from '@radix-ui/react-dialog';
 // ---
 
 const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY);
 
-// --- 1. UPDATED Order Interface ---
+// --- 1. UPDATED Order Interface (to match OrderDetailsModal) ---
 interface Order {
-  client_email: any;
   id: string;
   order_id_string: string;
   client_name: string;
+  client_email: string; // Added this
   status: string;
-  total_price: number | null; // Can be null
-  payment_method: 'stripe' | 'bank' | null;
   script: string;
-  revisions_used: number;
-  actor_id: string;
+  final_audio_url?: string;
+  actor_id: string; // Added this
   actors: {
-      id: string;
-      ActorEmail: any;
-      ActorName: string;
-      revisions_allowed: number;
-      direct_payment_enabled?: boolean;
-      bank_name?: string | null;
-      bank_holder_name?: string | null;
-      bank_iban?: string | null;
-      bank_account_number?: string | null;
+    id: string; // Added this
+    ActorEmail: any;
+    ActorName: string;
+    revisions_allowed: number;
+    direct_payment_enabled?: boolean;
+    bank_name?: string | null;
+    bank_holder_name?: string | null;
+    bank_iban?: string | null;
+    bank_account_number?: string | null;
+    HeadshotURL?: string; // Added for display
   };
-  deliveries: { file_url: string, created_at: string }[];
-  // New Quote Fields
+  deliveries: {
+    id: number; file_url: string, created_at: string, version_number: number 
+}[]; // Added version_number
+  revisions_used: number; // Added this
+  
+  // Service & Quote Fields
   service_type: 'voice_over' | 'scriptwriting' | 'video_editing';
-  offer_price: number | null;
+  offer_price: number | null; // This is the key field
   word_count?: number;
   usage?: string | null;
   quote_est_duration?: string | null;
   quote_video_type?: string | null;
   quote_footage_choice?: string | null;
-  // NEW: Add offers array and latest_offer object
+
+  // Joined Offer data
   offers: Offer[];
   latest_offer: Offer | null;
 }
-
+// (Interfaces for Offer and Review are unchanged)
 interface Offer {
   id: string;
   created_at: string;
@@ -67,22 +78,41 @@ interface Offer {
   offer_agreement: string | null;
   offer_price: number;
 }
-
 interface Review {
     id: string;
     rating: number;
     comment: string | null;
     created_at: string;
 }
+// --- End Interfaces ---
 
-// Bank details for "Awaiting Payment"
+// (Bank details and helper maps are unchanged)
 const bankOptions = [
     { name: 'Attijariwafa Bank', holder: 'UCPMAROC', iban: 'MA64 0077 8000 0219 5000 0005 47', accountNumber: '0077 8000 0219 5000 0005 47' },
     { name: 'CIH Bank', holder: 'HYROSY LLC', iban: 'MA64 2307 8059 1321 2210 5711 02', accountNumber: '2307 8059 1321 2210 5711 02' },
 ];
 
+const serviceIcons = {
+  voice_over: <Mic className="h-5 w-5" />,
+  scriptwriting: <PencilLine className="h-5 w-5" />,
+  video_editing: <Video className="h-5 w-5" />,
+};
+
+const statusColors: { [key: string]: string } = {
+  Completed: 'bg-green-500/20 text-green-300',
+  'Awaiting Actor Confirmation': 'bg-yellow-500/20 text-yellow-300 animate-pulse',
+  'Awaiting Payment': 'bg-yellow-500/20 text-yellow-300 animate-pulse',
+  'awaiting_offer': 'bg-blue-500/20 text-blue-300',
+  'offer_made': 'bg-primary/20 text-primary animate-pulse',
+  'In Progress': 'bg-blue-500/20 text-blue-300',
+  'Pending Approval': 'bg-primary/20 text-primary animate-pulse',
+  default: 'bg-muted-foreground/20 text-muted-foreground'
+};
+
+
 const ClientOrderPage = () => {
     const { orderId } = useParams<{ orderId: string }>();
+    const { theme } = useTheme(); // For Stripe
     const [order, setOrder] = useState<Order | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
@@ -90,13 +120,13 @@ const ClientOrderPage = () => {
     const [copySuccess, setCopySuccess] = useState('');
     const [expandedBank, setExpandedBank] = useState<string | null>(null);
     const [openSections, setOpenSections] = useState({
-        payment: true,
-        script: true,
+        // payment: true, // This will be moved to the sidebar
+        script: false,
         deliveries: true,
-        communication: true,
+        // communication: true, // This will be moved to the sidebar
         quote_details: true,
-        offer_history: false, // Start history closed
-});
+        offer_history: true,
+    });
     
     // Review State
     const [rating, setRating] = useState<number>(0);
@@ -106,130 +136,261 @@ const ClientOrderPage = () => {
     const [reviewMessage, setReviewMessage] = useState<string>('');
     const [existingReview, setExistingReview] = useState<Review | null>(null);
     const [isLoadingReview, setIsLoadingReview] = useState<boolean>(true);
-    const [isChatVisible, setIsChatVisible] = useState(true);
     
-    // --- 2. NEW Payment State ---
+    // Payment State
     const [paymentMethod, setPaymentMethod] = useState<'stripe' | 'bank' | null>(null);
     const [clientSecret, setClientSecret] = useState<string | null>(null);
     const [isSettingUpStripe, setIsSettingUpStripe] = useState(false);
+    const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
     const [statusMessage, setStatusMessage] = useState('');
     const [notifyingAdmin, setNotifyingAdmin] = useState(false);
     const [notificationMessage, setNotificationMessage] = useState('');
-    const [isLoading, setIsLoading] = useState(true);
+    const [isLoading, setIsLoading] = useState(true); // This was duplicated, removed one
+
+    // Local page message (avoid using global `onmessage`)
+    const [pageMessage, setPageMessage] = useState<string | null>(null);
+    
+
     const toggleSection = (section: keyof typeof openSections) => {
         setOpenSections(prev => ({ ...prev, [section]: !prev[section] }));
     };
 
-
-    // --- 3. UPDATED fetchOrderAndReview ---
+    // --- 3. UPDATED fetchOrderAndReview (to match actor modal) ---
     const fetchOrderAndReview = useCallback(async () => {
-         if (!orderId) {
-             setError('No order ID provided.');
-             setLoading(false);
-             return;
-         }
+        if (!orderId) {
+            setError('No order ID provided.');
+            setLoading(false);
+            return;
+        }
 
-         const { data: orderData, error: orderError } = await supabase
-             .from('orders')
-             .select(`
+        // Use new variable for this function's loading state
+        setIsLoading(true); 
+        const { data: orderData, error: orderError } = await supabase
+            .from('orders')
+            .select(`
                 *,
-                actors ( id, ActorName, ActorEmail, revisions_allowed, direct_payment_enabled, bank_name, bank_holder_name, bank_iban, bank_account_number ),
-                deliveries ( file_url, created_at ),
+                actors ( id, ActorName, ActorEmail, revisions_allowed, direct_payment_enabled, bank_name, bank_holder_name, bank_iban, bank_account_number, HeadshotURL ),
+                deliveries ( id, file_url, created_at, version_number ),
                 offers ( * )
-             `)
-             .eq('id', orderId)
-             .order('created_at', { foreignTable: 'deliveries', ascending: false })
-             .single();
+            `)
+            .eq('id', orderId)
+            .order('created_at', { foreignTable: 'deliveries', ascending: false })
+            .order('created_at', { foreignTable: 'offers', ascending: false }) // Get newest offer first
+            .single();
 
-         if (orderError) {
-             setError('Order not found or you do not have permission.');
-             console.error(orderError);
-             setLoading(false);
-             return;
-         }
+        if (orderError) {
+            setError('Order not found or you do not have permission.');
+            console.error(orderError);
+            setLoading(false);
+            return;
+        }
 
-         // --- NEW: Process the offers ---
-         if (orderData.offers && orderData.offers.length > 0) {
-           // Sort offers to find the newest one
-           orderData.offers.sort((a: Offer, b: Offer) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
-           orderData.latest_offer = orderData.offers[0]; // Attach the latest one
-         } else {
-           orderData.latest_offer = null;
-         }
-         // ---
+        // --- NEW: Process the offers (from your file) ---
+        if (orderData.offers && orderData.offers.length > 0) {
+          orderData.latest_offer = orderData.offers[0]; // Already sorted by query
+        } else {
+          orderData.latest_offer = null;
+        }
+        // ---
 
-         setOrder(orderData as Order);
-         setLoading(false);
-         
-         // Reset payment state on fetch
-         setPaymentMethod(null);
-         setClientSecret(null);
-         setStatusMessage('');
+        setOrder(orderData as Order);
+        setLoading(false);
+        setIsLoading(false); // Make sure to set the page loading to false
+        
+        // Reset payment state on fetch
+        setPaymentMethod(null);
+        setClientSecret(null);
+        setStatusMessage('');
             
-         const { data: { user } } = await supabase.auth.getUser();
-         if (!user) {
-             setIsLoadingReview(false);
-             return;
-         }
-         setIsLoggedIn(true);
-
-         let clientProfileId: string | null = null;
-         try {
-             const { data: clientProfile } = await supabase.from('clients').select('id').eq('user_id', user.id).single();
-             clientProfileId = clientProfile?.id ?? null;
-         } catch(e) { /* ignore */ }
-            
-         if (orderData.status === 'Completed' && clientProfileId) {
-             setIsLoadingReview(true);
-             try {
-                const { data: reviewData } = await supabase
-                    .from('reviews')
-                    .select('*')
-                    .eq('order_id', orderId)
-                    .eq('client_id', clientProfileId)
-                    .maybeSingle();
-                if (reviewData) setExistingReview(reviewData as Review);
-             } catch (e) { console.error("Exception checking review:", e); }
-             setIsLoadingReview(false);
-         } else {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) {
             setIsLoadingReview(false);
-         }
+            return;
+        }
+        setIsLoggedIn(true);
+
+        let clientProfileId: string | null = null;
+        try {
+            const { data: clientProfile } = await supabase.from('clients').select('id').eq('user_id', user.id).single();
+            clientProfileId = clientProfile?.id ?? null;
+        } catch(e) { /* ignore */ }
+            
+        if (orderData.status === 'Completed' && clientProfileId) {
+            setIsLoadingReview(true);
+            try {
+              const { data: reviewData } = await supabase
+                  .from('reviews')
+                  .select('*')
+                  .eq('order_id', orderId)
+                  .eq('client_id', clientProfileId)
+                  .maybeSingle();
+              if (reviewData) setExistingReview(reviewData as Review);
+            } catch (e) { console.error("Exception checking review:", e); }
+            setIsLoadingReview(false);
+        } else {
+          setIsLoadingReview(false);
+        }
     }, [orderId]); // Use useCallback
 
-     useEffect(() => {
+    useEffect(() => {
         fetchOrderAndReview();
     }, [fetchOrderAndReview]); // Use the memoized function
 
 
+    // --- handleAcceptOffer (THIS IS THE CRITICAL FIX) ---
+    const handleAcceptOffer = async () => {
+      if (!order || !order.latest_offer) {
+        setStatusMessage("No offer to accept.");
+        return;
+      }
+      
+      const latestOffer = order.latest_offer;
+      const finalPrice = latestOffer.offer_price;
 
+      setIsLoading(true);
+      setStatusMessage('');
+      
+      try {
+        // Update the order with BOTH status and the final price
+        const { error } = await supabase
+          .from('orders')
+          .update({ 
+            status: 'Awaiting Payment',
+            offer_price: finalPrice // <-- THIS SAVES THE PRICE
+          })
+          .eq('id', order.id);
+
+        if (error) throw error;
+
+        // Send email to actor
+        await emailjs.send(
+          'service_r3pvt1s',
+          'template_n2y66co', // Client Accepted Offer
+          {
+            orderId: order.order_id_string,
+            order_uuid: order.id,
+            clientName: order.client_name,
+            actorName: order.actors.ActorName,
+            actorEmail: order.actors.ActorEmail,
+            offerPrice: finalPrice.toFixed(2),
+            offerTitle: latestOffer.offer_title,
+            offerAgreement: latestOffer.offer_agreement || "N/A",
+          },
+          'I51tDIHsXYKncMQpO'
+        );
+
+        setStatusMessage('Offer accepted! Please complete the payment.');
+        fetchOrderAndReview(); // Re-fetch to show new status
+
+      } catch (error) {
+        const err = error as Error;
+        console.error('Error accepting offer:', err);
+        setStatusMessage(`Error: ${err.message}`);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    // --- END CRITICAL FIX ---
+
+    // --- onSuccessfulStripePayment (THIS IS THE CRITICAL FIX) ---
+    const onSuccessfulStripePayment = async (intentId: string) => {
+      if (!order) return;
+      
+      // Determine the price. Use order.offer_price (which is set for both VO and accepted quotes)
+      const finalPrice = order.offer_price;
+      if (!finalPrice) {
+        setStatusMessage("Error: Order price is missing. Cannot confirm payment.");
+        return;
+      }
+
+      setStatusMessage('Processing Payment...');
+      try {
+        const { error } = await supabase
+          .from('orders')
+          .update({
+            status: 'In Progress',
+            payment_method: 'stripe',
+            stripe_payment_intent_id: intentId,
+            offer_price: finalPrice // --- Ensure price is saved ---
+          })
+          .eq('id', order.id);
+        
+        if (error) throw error;
+
+        // Send notification email to Actor
+        const emailParams = {
+            actorName: order.actors.ActorName,
+            actorEmail: order.actors.ActorEmail,
+            orderIdString: order.order_id_string,
+            clientName: order.client_name,
+        };
+        emailjs.send('service_r3pvt1s', 'template_zmx5e0u', emailParams, 'I51tDIHsXYKncMQpO')
+          .catch(err => console.error('Failed to send actor notification email:', err));
+        
+        setStatusMessage('Payment Successful! The order is now In Progress.');
+        fetchOrderAndReview(); // Refresh the page
+        setIsPaymentModalOpen(false); // Close the stripe modal
+
+      } catch (err) {
+        setStatusMessage(`Error: ${(err as Error).message}. Please contact support.`);
+      }
+    };
+    // --- END CRITICAL FIX ---
+
+    // --- handleBankTransferConfirmation (THIS IS THE CRITICAL FIX) ---
+    const handleBankTransferConfirmation = async () => {
+      if (!order) return;
+
+      // Determine the price. Use order.offer_price
+      const finalPrice = order.offer_price;
+      if (!finalPrice) {
+        setStatusMessage("Error: Order price is missing. Cannot confirm payment.");
+        return;
+      }
+
+      setStatusMessage('Updating order...');
+      try {
+        const { error } = await supabase
+          .from('orders')
+          .update({
+            status: 'Awaiting Payment', // Status is set when *accepting*
+            payment_method: 'bank',
+            offer_price: finalPrice // --- Ensure price is saved ---
+          })
+          .eq('id', order.id);
+        
+        if (error) throw error;
+        fetchOrderAndReview(); // Refresh to show the next step (bank details)
+      } catch (err) {
+        setStatusMessage(`Error: ${(err as Error).message}.`);
+      }
+    };
+    // --- END CRITICAL FIX ---
+
+    // (All other handlers are unchanged)
     const handleApproval = async () => {
         if (!order) return;
         await supabase.from('orders').update({ status: 'Completed' }).eq('id', order.id);
         fetchOrderAndReview(); // Refresh data
     };
-
     const handleRevisionRequest = async () => {
         if (!order) return;
         const newRevisionCount = order.revisions_used + 1;
         await supabase.from('orders').update({ status: 'In Progress', revisions_used: newRevisionCount }).eq('id', order.id);
-
         const emailParams = {
             orderId: order.order_id_string,
             actorName: order.actors.ActorName,
             actorEmail: order.actors.ActorEmail,
             clientName: order.client_name,
         };
-
         emailjs.send(
             'service_r3pvt1s',
             'template_w9k1a08',
             emailParams,
             'I51tDIHsXYKncMQpO'
         ).catch(err => console.error("Failed to send revision email:", err));
-
         fetchOrderAndReview(); // Refresh data
     };
-
     const copyToClipboard = async (text: string, fieldName: string) => {
         try {
             await navigator.clipboard.writeText(text);
@@ -241,8 +402,7 @@ const ClientOrderPage = () => {
              setTimeout(() => setCopySuccess(''), 2000);
         }
     };
-
-     const handleReviewSubmit = async (e: React.FormEvent) => {
+    const handleReviewSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!order || rating === 0) {
             setReviewMessage('Please select a star rating.');
@@ -252,16 +412,12 @@ const ClientOrderPage = () => {
              setReviewMessage('Cannot submit review: Actor ID missing.');
              return;
         }
-
-         const { data: { user } } = await supabase.auth.getUser();
-         if (!user) { setReviewMessage('You must be logged in.'); return; }
-         const { data: clientProfile } = await supabase.from('clients').select('id').eq('user_id', user.id).single();
-         if (!clientProfile?.id) { setReviewMessage('Could not verify client profile.'); return; }
-
-
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) { setReviewMessage('You must be logged in.'); return; }
+        const { data: clientProfile } = await supabase.from('clients').select('id').eq('user_id', user.id).single();
+        if (!clientProfile?.id) { setReviewMessage('Could not verify client profile.'); return; }
         setIsSubmittingReview(true);
         setReviewMessage('');
-
         try {
             const { data: newReview, error } = await supabase
                 .from('reviews')
@@ -274,7 +430,6 @@ const ClientOrderPage = () => {
                 })
                 .select()
                 .single();
-
             if (error) {
                 if (error.code === '23505') {
                      setReviewMessage('You have already submitted a review for this order.');
@@ -294,34 +449,25 @@ const ClientOrderPage = () => {
             setIsSubmittingReview(false);
         }
     };
-
-    // --- MODIFIED: Mark as Paid Handler (Admin notification disabled) ---
     const handleMarkAsPaid = async () => {
         if (!order) return;
         setNotifyingAdmin(true);
-        setNotificationMessage(''); // Clear previous message
-
+        setNotificationMessage(''); 
         const isDirectToActor = order.actors?.direct_payment_enabled === true;
         const newStatus = isDirectToActor ? 'Awaiting Actor Confirmation' : 'Awaiting Admin Confirmation';
-        
-        // 1. Update the order status in Supabase (This still works for both)
         const { error: updateError } = await supabase
             .from('orders')
             .update({ status: newStatus })
             .eq('id', order.id);
-
         if (updateError) {
             console.error("Failed to update order status:", updateError);
             setNotificationMessage(`Error: ${updateError.message}`);
             setNotifyingAdmin(false);
             return;
         }
-
-        // 2. Send notification email ONLY if it's a direct-to-actor payment
         if (isDirectToActor) {
             const templateId = 'template_my3996b'; // Actor template
             const recipientEmail = order.actors.ActorEmail; // Actor email
-            
             const emailParams = {
                 clientName: order.client_name,
                 clientEmail: order.client_email,
@@ -330,620 +476,508 @@ const ClientOrderPage = () => {
                 recipientEmail: recipientEmail,
                 actorName: order.actors.ActorName,
             };
-
             try {
                 await emailjs.send(
-                    'service_r3pvt1s', // Your Service ID
+                    'service_r3pvt1s', 
                     templateId,
                     emailParams,
-                    'I51tDIHsXYKncMQpO' // Your Public Key
+                    'I51tDIHsXYKncMQpO' 
                 );
-                
-                // 3. Update UI (Success for Actor)
                 setNotificationMessage('Actor notified successfully!');
-                fetchOrderAndReview(); // Re-fetch order to get new status
-
+                fetchOrderAndReview(); 
             } catch (err) {
                 console.error("Failed to send actor notification:", err);
                 setNotificationMessage('Status updated, but failed to notify actor.');
             }
         } else {
-            // --- This is the change ---
-            // It's an admin payment. We skip the email.
             console.log("Admin notification temporarily disabled. Status set to 'Awaiting Admin Confirmation'.");
-            // 3. Update UI (Success for Admin, without email)
             setNotificationMessage('Payment marked, awaiting admin confirmation.');
-            fetchOrderAndReview(); // Re-fetch order to get new status
+            fetchOrderAndReview(); 
         }
-        
-        setNotifyingAdmin(false); // Reset button state
+        setNotifyingAdmin(false); 
     };
-    // --- END Mark as Paid Handler ---
-
-    // --- 4. NEW Payment Handlers (from QuoteCalculatorModal) ---
-    const handlePaymentMethodChange = async (method: 'stripe' | 'bank') => {
-      if (!order) return;
-
-      // Prefer the latest offer price, fall back to the legacy offer_price field if present.
-      const amount = order.latest_offer?.offer_price ?? order.offer_price ?? null;
-      if (amount === null || amount === undefined) {
-        setStatusMessage('No offer price available. Please contact support.');
-        return;
-      }
-      
-      setPaymentMethod(method);
-      setStatusMessage('');
-
-      if (method === 'stripe') {
+    const handleStripePaymentClick = async () => {
+        if (!order) return;
+        const amount = order.offer_price; // Use the already-set price
+        if (amount === null || amount === undefined) {
+          setStatusMessage('No offer price available. Please contact support.');
+          return;
+        }
         setIsSettingUpStripe(true);
         setStatusMessage('Initializing secure payment...');
         try {
           const { data, error: invokeError } = await supabase.functions.invoke('create-payment-intent', {
-            body: { amount }, // safe non-null amount variable
+            body: { amount },
           });
           if (invokeError) throw invokeError;
           if (data.error) throw new Error(data.error);
           if (!data.client_secret) throw new Error("Payment client secret is missing.");
           
           setClientSecret(data.client_secret);
+          setIsPaymentModalOpen(true);
           setStatusMessage('');
         } catch (error) {
           setStatusMessage(`Error: ${(error as Error).message}. Please try again.`);
           setClientSecret(null);
-          setPaymentMethod(null);
         } finally {
           setIsSettingUpStripe(false);
         }
-      }
     };
 
-    const onSuccessfulStripePayment = async (intentId: string) => {
-      if (!order || !order.latest_offer) return;
-      setStatusMessage('Processing Payment...');
-      try {
-        const { error } = await supabase
-          .from('orders')
-          .update({
-            status: 'In Progress',
-            payment_method: 'stripe',
-            stripe_payment_intent_id: intentId,
-            total_price: order.latest_offer.offer_price // <-- SET FINAL PRICE
-          })
-          .eq('id', order.id);
-        
-        if (error) throw error;
 
-        // Send notification email to Actor
-        const emailParams = {
-            actorName: order.actors.ActorName,
-            actorEmail: order.actors.ActorEmail,
-            orderIdString: order.order_id_string,
-            clientName: order.client_name,
-        };
-        emailjs.send('service_r3pvt1s', 'template_zmx5e0u', emailParams, 'I51tDIHsXYKncMQpO')
-          .catch(err => console.error('Failed to send actor notification email:', err));
-        
-        setStatusMessage('Payment Successful! The order is now In Progress.');
-        fetchOrderAndReview(); // Refresh the page
-      } catch (err) {
-        setStatusMessage(`Error: ${(err as Error).message}. Please contact support.`);
-      }
-    };
-
-    const handleBankTransferConfirmation = async () => {
-      if (!order || !order.latest_offer) return;
-      setStatusMessage('Updating order...');
-      try {
-        const { error } = await supabase
-          .from('orders')
-          .update({
-            status: 'Awaiting Payment',
-            payment_method: 'bank',
-            total_price: order.latest_offer.offer_price // <-- SET FINAL PRICE
-          })
-          .eq('id', order.id);
-        
-        if (error) throw error;
-        fetchOrderAndReview();
-      } catch (err) {
-        setStatusMessage(`Error: ${(err as Error).message}.`);
-      }
-    };
-    // --- END Payment Handlers ---
-
-
-
-    if (loading) {
+    if (loading || isLoading) {
         return <div className="min-h-screen bg-background flex items-center justify-center text-foreground">Loading Your Order...</div>;
     }
 
     if (error || !order) {
-        return <div className="min-h-screen bg-background flex items-center justify-center text-red-400">{error || 'Could not load order.'}</div>;
+        return <div className="min-h-screen bg-background flex items-center justify-center text-destructive">{error || 'Could not load order.'}</div>;
     }
 
     const latestDelivery = order.deliveries?.[0];
     const canRequestRevision = order.revisions_used < order.actors.revisions_allowed;
-
+    
+    // --- THIS IS THE CORRECTED PRICE LOGIC ---
+    // The order's offer_price is the single source of truth.
+    const displayPrice = order.offer_price;
+    // ---
+    
+    const currentStatus = order.status === 'awaiting_offer' ? 'Awaiting Offer' : order.status;
+    const statusColorClass = statusColors[order.status as keyof typeof statusColors] || statusColors.default;
     return (
         <div className="min-h-screen bg-background p-4 md:p-8">
-            <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-5 gap-8">
+            {pageMessage && <div className="mb-4 p-3 bg-card border rounded-lg text-center text-sm">{pageMessage}</div>}
+
+            <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-8">
 
                 {/* --- Left Column (Main Content) --- */}
-                <div className="lg:col-span-3 space-y-8">
-                    {/* 1. Main Order Summary Card */}
-                    <div className="bg-card/50 backdrop-blur-xl rounded-2xl p-6 border border/50">
-                        <h1 className="text-3xl font-bold text-foreground mb-2">Order #{order.order_id_string}</h1>
-                        <p className="text-muted-foreground mb-6">For voice actor: <span className="font-semibold text-foreground">{order.actors.ActorName}</span></p>
-                        <div className="grid grid-cols-2 gap-4">
-                            <div>
-                                <p className="text-sm text-muted-foreground">Status</p>
-                                <span className={`px-3 py-1 text-sm font-semibold rounded-full inline-block mt-1 ${
-                                     order.status === 'Completed' ? 'bg-green-500/20 text-green-400' :
-                                     (order.status === 'Awaiting Admin Confirmation' || order.status === 'Awaiting Actor Confirmation') ? 'bg-yellow-500/20 text-yellow-400' :
-                                     order.status === 'Awaiting Payment' ? 'bg-orange-500/20 text-orange-400' :
-                                     'bg-blue-500/20 text-blue-400' // Default for In Progress, etc.
-                                }`}>
-                                    {order.status}
-                                </span>
-                            </div>
-                            <div>
-                                <p className="text-sm text-muted-foreground">Total Price</p>
-                                <p className="font-bold text-foreground text-lg">{(order.total_price ?? 0).toFixed(2)} MAD</p>
-                            </div>
+                <div className="lg:col-span-2 space-y-6">
+                    
+                    {/* --- Order Header Card --- */}
+                    <Card>
+                      <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
+                        <div>
+                          <CardTitle className="text-3xl font-bold text-foreground mb-1">
+                            {order.service_type === 'voice_over' ? `Order #${order.order_id_string}` : `Quote #${order.order_id_string}`}
+                          </CardTitle>
+                          <CardDescription className="text-base">
+                            For: {order.actors.ActorName}
+                          </CardDescription>
                         </div>
-                        <div className="mt-6 border-t pt-4 text-center">
-                            {isLoggedIn ? (
-                                <Link to="/client-dashboard" className="text-purple-400 hover:text-accent-foreground transition font-semibold">
-                                    View All Your Orders
-                                </Link>
-                            ) : (
-                                <Link to="/client-auth" state={{ email: order.client_email }} className="text-purple-400 hover:text-accent-foreground transition font-semibold">
-                                    Create an account to track all your orders
-                                </Link>
-                            )}
-                        </div>
-                    </div>
+                        {isLoggedIn ? (
+                          <Button asChild variant="ghost" className="mt-4 sm:mt-0">
+                            <Link to="/client-dashboard">View All Orders</Link>
+                          </Button>
+                        ) : (
+                          <Button asChild variant="ghost" className="mt-4 sm:mt-0">
+                            <Link to="/client-auth" state={{ email: order.client_email }}>
+                              Login to see all orders
+                            </Link>
+                          </Button>
+                        )}
+                      </CardHeader>
+                    </Card>
 
-                    {/* --- 5. UPDATED "Accept Offer" Section --- */}
+                    {/* --- Review Section (Completed) --- */}
+                    {order.status === 'Completed' && (
+                      <Card>
+                        <CardHeader>
+                          <CardTitle className="flex items-center gap-2">
+                            <Star size={18}/> {existingReview ? 'Your Review' : 'Leave a Review'}
+                          </CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                          {isLoadingReview ? (
+                            <p className="text-muted-foreground text-sm">Loading review status...</p>
+                          ) : existingReview ? (
+                            <div className="space-y-3">
+                              <div className="flex items-center">
+                                {[1, 2, 3, 4, 5].map((star) => (
+                                  <Star
+                                    key={star}
+                                    size={20}
+                                    className={`cursor-default ${
+                                      star <= existingReview.rating ? 'text-yellow-400 fill-current' : 'text-muted-foreground/30'
+                                    }`}
+                                  />
+                                ))}
+                                <span className="ml-2 text-sm text-muted-foreground">({existingReview.rating}/5 stars)</span>
+                              </div>
+                              {existingReview.comment && (
+                                <p className="text-muted-foreground bg-muted p-3 rounded text-sm italic">"{existingReview.comment}"</p>
+                              )}
+                              <p className="text-xs text-muted-foreground">Reviewed on: {new Date(existingReview.created_at).toLocaleDateString()}</p>
+                            </div>
+                          ) : (
+                            <form onSubmit={handleReviewSubmit} className="space-y-4">
+                              <div>
+                                <Label className="block text-sm font-medium text-muted-foreground mb-2">Your Rating *</Label>
+                                <div className="flex items-center">
+                                  {[1, 2, 3, 4, 5].map((star) => (
+                                    <button
+                                      type="button"
+                                      key={star}
+                                      onClick={() => setRating(star)}
+                                      onMouseEnter={() => setHoverRating(star)}
+                                      onMouseLeave={() => setHoverRating(0)}
+                                      className="p-1 text-muted-foreground/30 hover:text-yellow-400 transition-colors"
+                                    >
+                                      <Star
+                                        size={24}
+                                        className={`${
+                                          star <= (hoverRating || rating) ? 'text-yellow-400 fill-current' : ''
+                                        }`}
+                                      />
+                                    </button>
+                                  ))}
+                                </div>
+                              </div>
+                              <div>
+                                <Label htmlFor="reviewComment" className="block text-sm font-medium text-muted-foreground mb-1">Your Comment (Optional)</Label>
+                                <Textarea
+                                  id="reviewComment"
+                                  rows={4}
+                                  value={comment}
+                                  onChange={(e) => setComment(e.target.value)}
+                                  placeholder="Tell us about your experience..."
+                                />
+                              </div>
+                              <div className="text-right">
+                                {reviewMessage && (
+                                   <p className={`text-sm mb-2 text-center ${reviewMessage.includes('Error') || reviewMessage.includes('Failed') ? 'text-destructive' : 'text-green-400'}`}>{reviewMessage}</p>
+                                )}
+                                <Button
+                                  type="submit"
+                                  disabled={isSubmittingReview || rating === 0}
+                                >
+                                  {isSubmittingReview ? 'Submitting...' : 'Submit Review'}
+                                </Button>
+                              </div>
+                            </form>
+                          )}
+                        </CardContent>
+                      </Card>
+                    )}
+
+                    {/* --- Order Details Accordions --- */}
+                    <div className="space-y-4">
+                      {order.service_type !== 'voice_over' && (
+                        <AccordionItem title="Quote Details" icon={<Info size={18} />} isOpen={openSections.quote_details} onToggle={() => toggleSection('quote_details')}>
+                          <div className="bg-card p-4 rounded-b-lg space-y-2 text-sm border-t">
+                            {order.service_type === 'scriptwriting' && (
+                              <>
+                                <div className="flex justify-between"><span className="text-muted-foreground">Est. Video Duration:</span><span className="font-semibold text-foreground">{order.quote_est_duration || 'N/A'} min</span></div>
+                                <div className="flex justify-between"><span className="text-muted-foreground">Est. Word Count:</span><span className="font-semibold text-foreground">{order.word_count || 'N/A'}</span></div>
+                              </>
+                            )}
+                            {order.service_type === 'video_editing' && (
+                              <>
+                                <div className="flex justify-between"><span className="text-muted-foreground">Video Type:</span><span className="font-semibold text-foreground capitalize">{order.quote_video_type || 'N/A'}</span></div>
+                                <div className="flex justify-between"><span className="text-muted-foreground">Footage:</span><span className="font-semibold text-foreground">{order.quote_footage_choice === 'has_footage' ? 'Client has footage' : 'Needs stock footage'}</span></div>
+                              </>
+                            )}
+                          </div>
+                        </AccordionItem>
+                      )}
+
+                      <AccordionItem
+                        title={order.service_type === 'voice_over' ? "Script" : "Project Description"}
+                        icon={<FileText size={18}/>}
+                        isOpen={openSections.script}
+                        onToggle={() => toggleSection('script')}
+                      >
+                        <div className="bg-card p-4 rounded-b-lg max-h-60 overflow-y-auto custom-scrollbar border-t">
+                          <p className="text-muted-foreground whitespace-pre-wrap">{order.script}</p>
+                        </div>
+                      </AccordionItem>
+
+                      <AccordionItem 
+                        title="Deliveries" 
+                        icon={<Package size={18}/>} 
+                        isOpen={openSections.deliveries} 
+                        onToggle={() => toggleSection('deliveries')}
+                      >
+                        <div className="bg-card p-4 rounded-b-lg border-t">
+                          {order.deliveries && order.deliveries.length > 0 ? (
+                            <div className="space-y-6">
+                              {order.deliveries.map((delivery, index) => (
+                                <div key={delivery.id || index} className="bg-background p-4 rounded-lg">
+                                  <p className="font-semibold text-lg mb-2 text-foreground">
+                                    Version {delivery.version_number || (order.deliveries.length - index)}
+                                    {index === 0 && <span className="text-xs text-primary ml-2">(Latest)</span>}
+                                  </p>
+                                  <p className="text-xs text-muted-foreground mb-3">Delivered on: {new Date(delivery.created_at).toLocaleString()}</p>
+                                  <audio controls src={delivery.file_url} className="w-full mb-3"></audio>
+                                  <Button asChild variant="outline" size="sm">
+                                    <a href={delivery.file_url} download>
+                                      <Download size={16} className="mr-2" />
+                                      Download Version {delivery.version_number || (order.deliveries.length - index)}
+                                    </a>
+                                  </Button>
+                                </div>
+                              ))}
+
+                              {order.status === 'Pending Approval' && (
+                                <div className="mt-6 pt-6 border-t space-y-4">
+                                  <h3 className="text-lg font-semibold text-foreground">Review & Confirm Latest Delivery</h3>
+                                  <div className="flex flex-col sm:flex-row gap-4">
+                                    <Button onClick={handleApproval} size="lg" className="w-full bg-green-600 hover:bg-green-700">
+                                      <Check size={20} className="mr-2" /> Accept Delivery
+                                    </Button>
+                                    {canRequestRevision ? (
+                                      <Button onClick={handleRevisionRequest} size="lg" variant="outline" className="w-full">
+                                        <RotateCcw size={16} className="mr-2" /> Request Revision ({order.actors.revisions_allowed - order.revisions_used} left)
+                                      </Button>
+                                    ) : (
+                                      <Button size="lg" variant="outline" className="w-full" disabled>
+                                        <RotateCcw size={16} className="mr-2" /> No revisions remaining
+                                      </Button>
+                                    )}
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          ) : (
+                            <p className="text-muted-foreground text-center py-4">The actor has not delivered the files yet.</p>
+                          )}
+                        </div>
+                      </AccordionItem>
+                    </div>
+                </div>
+
+                {/* --- Right Column (Sticky Sidebar) --- */}
+                <div className="lg:col-span-1 space-y-6 lg:sticky lg:top-24 h-fit">
+                    
+                    {/* --- Status Card --- */}
+                    <Card>
+                      <CardHeader className="pb-2">
+                        <CardTitle className="text-lg">Order Status</CardTitle>
+                      </CardHeader>
+                      <CardContent className="space-y-3">
+                        <div className="flex justify-between items-center">
+                          <span className="text-muted-foreground">Status</span>
+                          <span className={`px-3 py-1 text-xs font-semibold rounded-full ${statusColorClass}`}>
+                            {currentStatus}
+                          </span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <span className="text-muted-foreground">Service</span>
+                          <span className="font-semibold capitalize text-foreground">{order.service_type.replace('_', ' ')}</span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <span className="text-muted-foreground">Price</span>
+                          <span className="font-bold text-2xl text-primary">
+                            {displayPrice ? `${displayPrice.toFixed(2)} MAD` : 'Not Quoted'}
+                          </span>
+                        </div>
+                      </CardContent>
+                    </Card>
+
+                    {/* --- Action Card: Accept Offer --- */}
                     {order.status === 'offer_made' && order.latest_offer && (
                       <Card className="animate-in fade-in duration-300 border-primary shadow-lg shadow-primary/10">
                         <CardHeader>
                           <CardTitle className="text-2xl flex items-center gap-3">
-                            <Banknote className="text-primary" />
-                            Your Quote is Ready
+                            <Banknote className="text-primary" /> Your Quote is Ready
                           </CardTitle>
                           <CardDescription>
-                            {order.actors.ActorName} has sent you an offer for your "{order.service_type.replace('_', ' ')}" request.
+                            {order.actors.ActorName} has sent you an offer.
                           </CardDescription>
                         </CardHeader>
-                        <CardContent className="space-y-6">
-                          
-                          {/* --- NEW: Offer Details --- */}
-                          <Card className="bg-background">
+                        <CardContent className="space-y-4">
+                          <Card className="bg-muted/50">
                             <CardHeader className="pb-4">
-                              <CardTitle className="text-lg">
-                                {order.latest_offer.offer_title}
-                              </CardTitle>
-                              <CardDescription>
-                                {new Date(order.latest_offer.created_at).toLocaleString()}
-                              </CardDescription>
+                              <CardTitle className="text-lg">{order.latest_offer.offer_title}</CardTitle>
+                              <CardDescription>{new Date(order.latest_offer.created_at).toLocaleString()}</CardDescription>
                             </CardHeader>
-                            <CardContent className="space-y-4">
+                            <CardContent>
                               {order.latest_offer.offer_agreement && (
-                                <p className="text-sm text-foreground whitespace-pre-wrap">
+                                <p className="text-sm text-muted-foreground whitespace-pre-wrap mb-4">
                                   {order.latest_offer.offer_agreement}
                                 </p>
                               )}
-                              <div className="text-right bg-muted p-4 rounded-lg">
+                              <div className="text-right">
                                 <Label className="text-sm text-muted-foreground">Total Price</Label>
                                 <p className="text-4xl font-bold text-primary">{order.latest_offer.offer_price.toFixed(2)} MAD</p>
                               </div>
                             </CardContent>
                           </Card>
-                          {/* --- END: Offer Details --- */}
-
-                            <div className="pt-6 border-t">
-                            <Label className="block mb-3 font-medium">Choose Payment Method *</Label>
-                            <RadioGroup value={paymentMethod || ''} onValueChange={(val) => handlePaymentMethodChange(val as 'stripe' | 'bank')}>
-                              <div className="space-y-4">
-                                <Label htmlFor="r-stripe" className={`p-4 border-2 rounded-lg flex items-center gap-4 cursor-pointer ${paymentMethod === 'stripe' ? 'border-primary' : 'border-border'}`}>
-                                  <RadioGroupItem value="stripe" id="r-stripe" disabled={isSettingUpStripe} />
-                                  <CreditCard className="w-5 h-5" />
-                                  <div>
-                                    <p className="font-semibold">Pay by Card (Stripe)</p>
-                                    <p className="text-sm text-muted-foreground">Securely pay with your credit/debit card.</p>
-                                  </div>
-                                </Label>
-                                <Label htmlFor="r-bank" className={`p-4 border-2 rounded-lg flex items-center gap-4 cursor-pointer ${paymentMethod === 'bank' ? 'border-primary' : 'border-border'}`}>
-                                  <RadioGroupItem value="bank" id="r-bank" disabled={isSettingUpStripe} />
-                                  <Wallet className="w-5 h-5" />
-                                  <div>
-                                    <p className="font-semibold">Bank Transfer</p>
-                                    <p className="text-sm text-muted-foreground">Receive payment details and pay manually.</p>
-                                  </div>
-                                </Label>
-                              </div>
-                            </RadioGroup>
-
-                            {statusMessage && (
-                              <p className={`text-center text-sm mt-4 ${statusMessage.includes('Error') ? 'text-destructive' : 'text-muted-foreground'}`}>
-                                {statusMessage}
-                              </p>
-                            )}
-
-                            {paymentMethod === 'stripe' && clientSecret && !isSettingUpStripe && (
-                              <div className="mt-4 pt-4 border-t">
-                                <Elements stripe={stripePromise} options={{ clientSecret, appearance: { theme: 'night', labels: 'floating' } }}>
-                                  <StripeCheckoutForm onSuccessfulPayment={onSuccessfulStripePayment} />
-                                </Elements>
-                              </div>
-                            )}
-                            {paymentMethod === 'bank' && (
-                              <Button onClick={handleBankTransferConfirmation} className="w-full mt-4" size="lg">
-                                Accept & Get Bank Details
-                              </Button>
-                            )}
-                          </div>
+                          <Button onClick={handleAcceptOffer} size="lg" className="w-full" disabled={isLoading}>
+                            {isLoading ? <RefreshCw className="mr-2 h-4 w-4 animate-spin" /> : <CheckCircle className="mr-2 h-4 w-4" />}
+                            Accept Offer & Proceed to Payment
+                          </Button>
                         </CardContent>
                       </Card>
                     )}
-                    {/* --- END: Accept Offer Section --- */}                    
-
-
-
-
-
-
-
-
-
-
-
-
-
-                    {/* --- 2. Accordion Sections for All Other Details --- */}
-                    <div className="space-y-4">
-                        {/* --- Payment Details Accordion --- */}
-                        <AccordionItem title="Payment Details" icon={<Banknote size={20}/>} isOpen={openSections.payment} onToggle={() => toggleSection('payment')}>
-                            
-                            {/* 1. If Paid via Stripe */}
-                            {order.payment_method === 'stripe' && (
-                                <div className="flex items-center gap-3 bg-background p-4 rounded-lg">
-                                     <CreditCard size={20} className="text-blue-400"/>
-                                     <div>
-                                         <p className="font-semibold text-foreground">Paid via Card (Stripe)</p>
-                                         <p className="text-sm text-muted-foreground">Payment has been processed.</p>
-                                     </div>
-                                 </div>
-                            )}
-
-                            {/* 2. If Bank Transfer and ALREADY Confirmed (In Progress, Completed, etc.) */}
-                            {order.payment_method === 'bank' && !['Awaiting Payment', 'Awaiting Admin Confirmation', 'Awaiting Actor Confirmation'].includes(order.status) && (
-                                 <div className="flex items-center gap-3 bg-background p-4 rounded-lg">
-                                     <CheckCircle size={20} className="text-green-400"/>
-                                     <div>
-                                         <p className="font-semibold text-foreground">Payment Received</p>
-                                         <p className="text-sm text-muted-foreground">Bank transfer confirmed.</p>
-                                     </div>
-                                 </div>
-                            )}
-
-                             {/* 3. If Bank Transfer and AWAITING Payment */}
-                            {order.payment_method === 'bank' && order.status === 'Awaiting Payment' && (
-                                <div className="space-y-4">
-                                     <p className="text-muted-foreground">Please complete the payment using the details below. Use your Order ID (<strong className="text-foreground">{order.order_id_string}</strong>) as the payment reference.</p>
-                                     <button onClick={() => copyToClipboard(order.order_id_string, 'Order ID')} className="mb-2 text-xs text-blue-400 hover:underline inline-flex items-center gap-1"> <Copy size={12}/> Copy Order ID </button>
-
-                                     {/* Check if Actor Direct Payment is Enabled */}
-                                     {order.actors?.direct_payment_enabled ? (
-                                         // Show ACTOR's Bank Details
-                                         <div className="bg-purple-900/20 border border-purple-700/50 p-4 rounded-lg text-sm space-y-2 relative text-muted-foreground">
-                                             <p className="text-xs text-purple-300 font-semibold mb-2">Please pay the actor directly:</p>
-                                             {/* ... (Actor bank details with copy buttons) ... */}
-                                             <div className="flex justify-between items-center group">
-                                                 <span><strong className="font-semibold text-muted-foreground w-28 inline-block">Bank Name:</strong> {order.actors.bank_name || 'N/A'}</span>
-                                                 {order.actors.bank_name && <button onClick={() => copyToClipboard(order.actors.bank_name!, 'Bank Name')} className="p-1 text-muted-foreground hover:text-accent-foreground transition-colors"> <Copy size={14}/> </button>}
-                                             </div>
-                                             <div className="flex justify-between items-center group">
-                                                 <span><strong className="font-semibold text-muted-foreground w-28 inline-block">Account Holder:</strong> {order.actors.bank_holder_name || 'N/A'}</span>
-                                                  {order.actors.bank_holder_name && <button onClick={() => copyToClipboard(order.actors.bank_holder_name!, 'Account Holder')} className="p-1 text-muted-foreground hover:text-accent-foreground transition-colors"> <Copy size={14}/> </button>}
-                                             </div>
-                                              <div className="flex justify-between items-center group">
-                                                 <span><strong className="font-semibold text-muted-foreground w-28 inline-block">IBAN:</strong> {order.actors.bank_iban || 'N/A'}</span>
-                                                 {order.actors.bank_iban && <button onClick={() => copyToClipboard(order.actors.bank_iban!, 'IBAN')} className="p-1 text-muted-foreground hover:text-accent-foreground transition-colors"> <Copy size={14}/> </button>}
-                                             </div>
-                                             <div className="flex justify-between items-center group">
-                                                 <span><strong className="font-semibold text-muted-foreground w-28 inline-block">Account No (RIB):</strong> {order.actors.bank_account_number || 'N/A'}</span>
-                                                  {order.actors.bank_account_number && <button onClick={() => copyToClipboard(order.actors.bank_account_number!, 'Account Number')} className="p-1 text-muted-foreground hover:text-accent-foreground transition-colors"> <Copy size={14}/> </button>}
-                                             </div>
-                                             {copySuccess && (
-                                                 <p className="absolute -bottom-5 right-0 text-xs text-green-400 transition-opacity duration-300">{copySuccess}</p>
-                                             )}
-                                         </div>
-                                     ) : (
-                                         // Show AGENCY's Bank Details (Nested Accordion)
-                                         <div className="space-y-2 relative">
-                                              <p className="text-xs text-muted-foreground font-semibold mb-2">Please pay the agency using one of these options:</p>
-                                             {bankOptions.map((bank) => {
-                                                 const isOpen = expandedBank === bank.name;
-                                                 return (
-                                                     <div key={bank.name} className="bg-background rounded-lg border border overflow-hidden">
-                                                         <button onClick={() => setExpandedBank(isOpen ? null : bank.name)} className="w-full flex justify-between items-center p-3 text-left hover:bg-card transition-colors">
-                                                               <span className="font-semibold text-foreground">{bank.name}</span>
-                                                               {isOpen ? <ChevronUp size={18} className="text-muted-foreground"/> : <ChevronDown size={18} className="text-muted-foreground"/>}
-                                                         </button>
-                                                         {isOpen && (
-                                                             <div className="p-3 border-t text-sm space-y-2 text-muted-foreground animate-in fade-in duration-300">
-                                                                  <div className="flex justify-between items-center group">
-                                                                      <span><strong className="font-semibold text-muted-foreground w-28 inline-block">Account Holder:</strong> {bank.holder}</span>
-                                                                      <button onClick={() => copyToClipboard(bank.holder, 'Account Holder')} className="p-1 text-muted-foreground hover:text-accent-foreground transition-colors"> <Copy size={14}/> </button>
-                                                                  </div>
-                                                                  <div className="flex justify-between items-center group">
-                                                                      <span><strong className="font-semibold text-muted-foreground w-28 inline-block">IBAN:</strong> {bank.iban}</span>
-                                                                      <button onClick={() => copyToClipboard(bank.iban, 'IBAN')} className="p-1 text-muted-foreground hover:text-accent-foreground transition-colors"> <Copy size={14}/> </button>
-                                                                  </div>
-                                                                  <div className="flex justify-between items-center group">
-                                                                      <span><strong className="font-semibold text-muted-foreground w-28 inline-block">Account No (RIB):</strong> {bank.accountNumber}</span>
-                                                                      <button onClick={() => copyToClipboard(bank.accountNumber, 'Account Number')} className="p-1 text-muted-foreground hover:text-accent-foreground transition-colors"> <Copy size={14}/> </button>
-                                                                  </div>
-                                                             </div>
-                                                         )}
-                                                     </div>
-                                                 );
-                                             })}
-                                             {copySuccess && (
-                                                  <p className="absolute -bottom-5 right-0 text-xs text-green-400 transition-opacity duration-300">{copySuccess}</p>
-                                              )}
-                                         </div>
-                                     )}
-
-                                     {/* Mark as Paid Button */}
-                                     <div className="mt-6 pt-4 border-t text-center">
-                                          <button
-                                            onClick={handleMarkAsPaid}
-                                            disabled={notifyingAdmin || !!notificationMessage.includes('successfully')} // Disable if sending or already sent
-                                            className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 rounded-lg text-foreground font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                                        >
-                                            <Bell size={18} /> {notifyingAdmin ? 'Notifying...' : (notificationMessage.includes('successfully') ? 'Notification Sent' : 'I Have Paid (Notify)')}
-                                          </button>
-                                          {notificationMessage && (
-                                              <p className={`text-xs mt-2 ${notificationMessage.includes('Failed') ? 'text-red-400' : 'text-green-400'}`}>{notificationMessage}</p>
-                                          )}
-                                     </div>
-                                 </div>
-                            )}
-                            
-                            {/* 4. Show "Pending Confirmation" Message */}
-                            {(order.status === 'Awaiting Admin Confirmation' || order.status === 'Awaiting Actor Confirmation') && (
-                                <div className="p-4 bg-background rounded-lg text-center">
-                                    <p className="font-semibold text-yellow-400">🕒 Awaiting Payment Confirmation</p>
-                                    <p className="text-sm text-muted-foreground mt-1">We have notified the {order.status === 'Awaiting Admin Confirmation' ? 'admin' : 'actor'}. The status will update once payment is confirmed.</p>
+                    
+                    {/* --- Action Card: Awaiting Payment --- */}
+                    {order.status === 'Awaiting Payment' && (
+                      <Card className="animate-in fade-in duration-300 border-yellow-500/50">
+                        <CardHeader>
+                          <CardTitle className="text-2xl flex items-center gap-3">
+                            <Wallet className="text-yellow-400" /> Complete Your Payment
+                          </CardTitle>
+                          <CardDescription>
+                            Please choose your preferred payment method to begin the order.
+                          </CardDescription>
+                        </CardHeader>
+                        <CardContent className="space-y-4">
+                          <RadioGroup value={paymentMethod || ''} onValueChange={(val) => setPaymentMethod(val as 'stripe' | 'bank')}>
+                            <Card className={`transition hover:border-primary cursor-pointer ${paymentMethod === 'stripe' ? 'border-primary bg-accent' : ''}`}>
+                              <Label htmlFor="r-stripe" className="flex items-center gap-4 p-4 cursor-pointer">
+                                <RadioGroupItem value="stripe" id="r-stripe" />
+                                <CreditCard className="w-5 h-5 text-primary" />
+                                <div>
+                                  <p className="font-semibold">Pay by Card (Stripe)</p>
+                                  <p className="text-sm text-muted-foreground">Securely pay with your credit/debit card.</p>
                                 </div>
-                            )}
+                              </Label>
+                            </Card>
+                            <Card className={`transition hover:border-primary cursor-pointer ${paymentMethod === 'bank' ? 'border-primary bg-accent' : ''}`}>
+                              <Label htmlFor="r-bank" className="flex items-center gap-4 p-4 cursor-pointer">
+                                <RadioGroupItem value="bank" id="r-bank" />
+                                <Banknote className="w-5 h-5 text-primary" />
+                                <div>
+                                  <p className="font-semibold">Bank Transfer</p>
+                                  <p className="text-sm text-muted-foreground">Pay manually and notify the {order.actors.direct_payment_enabled ? 'actor' : 'admin'}.</p>
+                                </div>
+                              </Label>
+                            </Card>
+                          </RadioGroup>
 
-                            {/* Fallback if no payment method (should not happen in this flow) */}
-                            {!order.payment_method && (
-                                 <p className="text-slate-500">Payment details unavailable.</p>
-                            )}
-                        </AccordionItem>
+                          {statusMessage && (
+                            <p className={`text-center text-sm ${statusMessage.includes('Error') ? 'text-destructive' : 'text-muted-foreground'}`}>
+                              {statusMessage}
+                            </p>
+                          )}
 
-                        {/* --- NEW: Offer History Accordion --- */}
-                        {order.offers && order.offers.length > 0 && (
-                          <AccordionItem
-                            title="Offer History"
-                            icon={<History size={18} />}
-                            isOpen={openSections.offer_history}
-                            onToggle={() => toggleSection('offer_history')}
-                          >
-                            <div className="bg-background p-4 rounded-lg space-y-3 max-h-40 overflow-y-auto custom-scrollbar">
-                              {order.offers.map(offer => (
-                                <div key={offer.id} className="pb-3 border-b border last:border-b-0">
-                                  <div className="flex justify-between items-center mb-1">
-                                    <span className="font-semibold text-foreground">{offer.offer_title}</span>
-                                    <span className="font-bold text-lg text-primary">{offer.offer_price.toFixed(2)} MAD</span>
+                          {paymentMethod === 'stripe' && (
+                            <Button onClick={handleStripePaymentClick} disabled={isSettingUpStripe} className="w-full" size="lg">
+                              {isSettingUpStripe ? <RefreshCw className="mr-2 h-4 w-4 animate-spin" /> : <CreditCard className="mr-2 h-4 w-4" />}
+                              Proceed to Stripe
+                            </Button>
+                          )}
+
+                          {paymentMethod === 'bank' && (
+                            <AccordionItem title="Bank Transfer Details" icon={<Info size={18} />} isOpen={true} onToggle={() => {}}>
+                              <div className="bg-card p-4 rounded-b-lg border-t space-y-4">
+                                <p className="text-muted-foreground text-sm">Please complete the payment using the details below. Use your Order ID (<strong className="text-foreground">{order.order_id_string}</strong>) as the payment reference.</p>
+                                
+                                {order.actors?.direct_payment_enabled ? (
+                                  // Actor's Bank Details
+                                  <div className="bg-background p-4 rounded-lg text-sm space-y-2 relative text-muted-foreground">
+                                    <p className="text-xs text-primary font-semibold mb-2">Please pay the actor directly:</p>
+                                    <div className="flex justify-between items-center group">
+                                      <span><strong className="font-semibold text-muted-foreground w-28 inline-block">Bank Name:</strong> {order.actors.bank_name || 'N/A'}</span>
+                                      {order.actors.bank_name && <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => copyToClipboard(order.actors.bank_name!, 'Bank Name')}><Copy size={14}/></Button>}
+                                    </div>
+                                    <div className="flex justify-between items-center group">
+                                      <span><strong className="font-semibold text-muted-foreground w-28 inline-block">Account Holder:</strong> {order.actors.bank_holder_name || 'N/A'}</span>
+                                      {order.actors.bank_holder_name && <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => copyToClipboard(order.actors.bank_holder_name!, 'Account Holder')}><Copy size={14}/></Button>}
+                                    </div>
+                                    <div className="flex justify-between items-center group">
+                                      <span><strong className="font-semibold text-muted-foreground w-28 inline-block">IBAN:</strong> {order.actors.bank_iban || 'N/A'}</span>
+                                      {order.actors.bank_iban && <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => copyToClipboard(order.actors.bank_iban!, 'IBAN')}><Copy size={14}/></Button>}
+                                    </div>
+                                    <div className="flex justify-between items-center group">
+                                      <span><strong className="font-semibold text-muted-foreground w-28 inline-block">Account No (RIB):</strong> {order.actors.bank_account_number || 'N/A'}</span>
+                                      {order.actors.bank_account_number && <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => copyToClipboard(order.actors.bank_account_number!, 'Account Number')}><Copy size={14}/></Button>}
+                                    </div>
+                                    {copySuccess && <p className="text-xs text-green-400 text-right">{copySuccess}</p>}
                                   </div>
-                                  <p className="text-xs text-muted-foreground mb-2">{new Date(offer.created_at).toLocaleString()}</p>
-                                  <p className="text-sm text-muted-foreground whitespace-pre-wrap">{offer.offer_agreement || "No agreement details provided."}</p>
-                                </div>
-                              ))}
-                            </div>
-                          </AccordionItem>
-                        )}
-
-
-                        {/* --- NEW: Quote Details Section --- */}
-                        {order.service_type !== 'voice_over' && (
-                          <AccordionItem
-                            title="Quote Details"
-                            icon={<Info size={18} />}
-                            isOpen={openSections.quote_details}
-                            onToggle={() => toggleSection('quote_details')}
-                          >
-                            <div className="bg-background p-4 rounded-lg space-y-2 text-sm">
-                              {order.service_type === 'scriptwriting' && (
-                                <>
-                                  <div className="flex justify-between"><span className="text-muted-foreground">Est. Video Duration:</span><span className="font-semibold text-foreground">{order.quote_est_duration || 'N/A'} min</span></div>
-                                  <div className="flex justify-between"><span className="text-muted-foreground">Est. Word Count:</span><span className="font-semibold text-foreground">{order.word_count || 'N/A'}</span></div>
-                                </>
-                              )}
-                              {order.service_type === 'video_editing' && (
-                                <>
-                                  <div className="flex justify-between"><span className="text-muted-foreground">Video Type:</span><span className="font-semibold text-foreground capitalize">{order.quote_video_type || 'N/A'}</span></div>
-                                  <div className="flex justify-between"><span className="text-muted-foreground">Footage:</span><span className="font-semibold text-foreground">{order.quote_footage_choice === 'has_footage' ? 'Client has footage' : 'Needs stock footage'}</span></div>
-                                </>
-                              )}
-                            </div>
-          
-                          </AccordionItem>
-                        )}
-
-
-
-                        {/* Script Accordion */}
-                        <AccordionItem
-                          title={order.service_type === 'voice_over' ? "Script" : "Project Description"}
-                          icon={<FileText size={20}/>}
-                          isOpen={openSections.script}
-                          onToggle={() => toggleSection('script')}
-                        >
-                          <div className="bg-background p-4 rounded-lg max-h-60 overflow-y-auto">
-                             <p className="text-muted-foreground whitespace-pre-wrap">{order.script}</p>
-                          </div>
-                        </AccordionItem>
-
-                        {/* Deliveries Accordion */}
-                            <AccordionItem 
-                            title="Deliveries" 
-                            icon={<Package size={20}/>} 
-                            isOpen={openSections.deliveries} 
-                            onToggle={() => toggleSection('deliveries')}
-                            >                            
-                            {order.deliveries && order.deliveries.length > 0 ? (
-                                <div className="space-y-6">
-                                    {order.deliveries.map((delivery, index) => (
-                                      <div key={index} className="bg-background p-4 rounded-lg">
-                                        <p className="font-semibold text-lg mb-2 text-foreground">
-                                            Version {order.deliveries.length - index}
-                                            {index === 0 && <span className="text-xs text-blue-400 ml-2">(Latest)</span>}
-                                        </p>
-                                        <audio controls src={delivery.file_url} className="w-full mb-3"></audio>
-                                        <a href={delivery.file_url} download className="text-sm text-blue-400 hover:underline">
-                                            Download Version {order.deliveries.length - index}
-                                        </a>
+                                ) : (
+                                  // Agency Bank Details
+                                  <div className="space-y-2 relative">
+                                    {bankOptions.map((bank) => (
+                                      <div key={bank.name} className="bg-background rounded-lg border overflow-hidden">
+                                        <button onClick={() => setExpandedBank(expandedBank === bank.name ? null : bank.name)} className="w-full flex justify-between items-center p-3 text-left hover:bg-muted/50 transition-colors">
+                                          <span className="font-semibold text-foreground">{bank.name}</span>
+                                          {expandedBank === bank.name ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+                                        </button>
+                                        {expandedBank === bank.name && (
+                                          <div className="p-3 border-t text-sm space-y-2 text-muted-foreground animate-in fade-in duration-300">
+                                            <div className="flex justify-between items-center group">
+                                              <span><strong className="w-28 inline-block">Account Holder:</strong> {bank.holder}</span>
+                                              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => copyToClipboard(bank.holder, 'Account Holder')}><Copy size={14}/></Button>
+                                            </div>
+                                            <div className="flex justify-between items-center group">
+                                              <span><strong className="w-28 inline-block">IBAN:</strong> {bank.iban}</span>
+                                              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => copyToClipboard(bank.iban, 'IBAN')}><Copy size={14}/></Button>
+                                            </div>
+                                            <div className="flex justify-between items-center group">
+                                              <span><strong className="w-28 inline-block">Account No (RIB):</strong> {bank.accountNumber}</span>
+                                              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => copyToClipboard(bank.accountNumber, 'Account Number')}><Copy size={14}/></Button>
+                                            </div>
+                                            {copySuccess && <p className="text-xs text-green-400 text-right">{copySuccess}</p>}
+                                          </div>
+                                        )}
                                       </div>
                                     ))}
-
-                                    {order.status === 'Pending Approval' && (
-                                        <div className="mt-6 pt-6 border-t space-y-4">
-                                            <h3 className="text-lg font-semibold text-foreground">Review & Confirm Latest Delivery</h3>
-                                            <div className="flex gap-4">
-                                                <button onClick={handleApproval} className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-green-600 hover:bg-green-700 rounded-lg text-foreground font-semibold">
-                                                    <Check size={20} /> Accept Delivery
-                                                </button>
-                                                {canRequestRevision ? (
-                                                    <button onClick={handleRevisionRequest} className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-yellow-600 hover:bg-yellow-700 rounded-lg text-foreground font-semibold">
-                                                        <RotateCcw size={20} /> Request Revision ({order.actors.revisions_allowed - order.revisions_used} left)
-                                                    </button>
-                                                ) : (
-                                                    <div className="w-full text-center p-3 bg-slate-700 rounded-lg">
-                                                        <p className="text-muted-foreground text-sm">No revisions remaining.</p>
-                                                    </div>
-                                                )}
-                                            </div>
-                                        </div>
-                                    )}
-                                </div>
-                            ) : (
-                                <p className="text-slate-500 text-center">The actor has not delivered the files yet.</p>
-                            )}
-                        </AccordionItem>
-                    </div>
-
-                    {/* --- Review Section (Only if order is Completed) --- */}
-                    {order.status === 'Completed' && (
-                        <div className="p-5 bg-card/50 rounded-lg border border/50">
-                            <h2 className="text-lg font-semibold mb-4 text-foreground flex items-center gap-2">
-                                <Star size={18}/> {existingReview ? 'Your Review' : 'Leave a Review'}
-                            </h2>
-                            {isLoadingReview ? (
-                                <p className="text-muted-foreground text-sm">Loading review status...</p>
-                            ) : existingReview ? (
-                                // Display Existing Review
-                                <div className="space-y-3">
-                                    <div className="flex items-center">
-                                        {[1, 2, 3, 4, 5].map((star) => (
-                                            <Star
-                                                key={star}
-                                                size={20}
-                                                className={`cursor-default ${
-                                                    star <= existingReview.rating ? 'text-yellow-400 fill-current' : 'text-slate-600'
-                                                }`}
-                                            />
-                                        ))}
-                                        <span className="ml-2 text-sm text-muted-foreground">({existingReview.rating}/5 stars)</span>
-                                    </div>
-                                    {existingReview.comment && (
-                                         <p className="text-muted-foreground bg-slate-700/50 p-3 rounded text-sm italic">"{existingReview.comment}"</p>
-                                    )}
-                                     <p className="text-xs text-slate-500">Reviewed on: {new Date(existingReview.created_at).toLocaleDateString()}</p>
-                                </div>
-                            ) : (
-                                // Show Review Form
-                                <form onSubmit={handleReviewSubmit} className="space-y-4">
-                                    <div>
-                                        <label className="block text-sm font-medium text-muted-foreground mb-2">Your Rating *</label>
-                                        <div className="flex items-center">
-                                            {[1, 2, 3, 4, 5].map((star) => (
-                                                <button
-                                                    type="button"
-                                                    key={star}
-                                                    onClick={() => setRating(star)}
-                                                    onMouseEnter={() => setHoverRating(star)}
-                                                    onMouseLeave={() => setHoverRating(0)}
-                                                    className="p-1 text-slate-600 hover:text-yellow-400 transition-colors"
-                                                >
-                                                    <Star
-                                                        size={24}
-                                                        className={`${
-                                                            star <= (hoverRating || rating) ? 'text-yellow-400 fill-current' : ''
-                                                        }`}
-                                                    />
-                                                </button>
-                                            ))}
-                                        </div>
-                                    </div>
-                                    <div>
-                                         <label htmlFor="reviewComment" className="block text-sm font-medium text-muted-foreground mb-1">Your Comment (Optional)</label>
-                                         <textarea
-                                            id="reviewComment"
-                                            rows={4}
-                                            value={comment}
-                                            onChange={(e) => setComment(e.target.value)}
-                                            placeholder="Tell us about your experience..."
-                                            className="w-full bg-slate-700 border border-slate-600 rounded-md p-3 text-foreground text-sm focus:ring-purple-500 focus:border-purple-500"
-                                        />
-                                    </div>
-                                    <div className="text-right">
-                                         {reviewMessage && (
-                                             <p className={`text-sm mb-2 text-center ${reviewMessage.includes('Error') || reviewMessage.includes('Failed') ? 'text-red-400' : 'text-green-400'}`}>{reviewMessage}</p>
-                                         )}
-                                         <button
-                                            type="submit"
-                                            disabled={isSubmittingReview || rating === 0}
-                                            className="px-6 py-2.5 bg-purple-600 hover:bg-purple-700 rounded-lg text-foreground font-semibold transition-colors disabled:opacity-50"
-                                        >
-                                            {isSubmittingReview ? 'Submitting...' : 'Submit Review'}
-                                         </button>
-                                    </div>
-                                </form>
-                            )}
-                        </div>
+                                  </div>
+                                )}
+                                <Button onClick={handleMarkAsPaid} disabled={notifyingAdmin} className="w-full" size="lg">
+                                  {notifyingAdmin ? <RefreshCw className="mr-2 h-4 w-4 animate-spin" /> : <Bell className="mr-2 h-4 w-4" />}
+                                  {notifyingAdmin ? 'Notifying...' : 'I Have Paid (Notify)'}
+                                </Button>
+                                {notificationMessage && (
+                                  <p className={`text-center text-sm ${notificationMessage.includes('Error') ? 'text-destructive' : 'text-green-400'}`}>
+                                    {notificationMessage}
+                                  </p>
+                                )}
+                              </div>
+                            </AccordionItem>
+                          )}
+                        </CardContent>
+                      </Card>
                     )}
+
+                    {/* --- Action Card: Awaiting Confirmation --- */}
+                    {(order.status === 'Awaiting Admin Confirmation' || order.status === 'Awaiting Actor Confirmation') && (
+                      <Card className="animate-in fade-in duration-300 border-yellow-500/50">
+                        <CardHeader className="flex-row items-center gap-3 space-y-0">
+                          <RefreshCw className="h-6 w-6 text-yellow-400 animate-spin" />
+                          <CardTitle>Awaiting Payment Confirmation</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                          <p className="text-muted-foreground">
+                            We have notified the {order.status === 'Awaiting Admin Confirmation' ? 'admin' : 'actor'}. Your order status will update to "In Progress" once payment is confirmed.
+                          </p>
+
+                        </CardContent>
+                      </Card>
+                    )}
+
+                    {/* --- Communication Card --- */}
+                    <Card>
+                        <CardHeader>
+                            <CardTitle className="text-lg flex items-center gap-2">
+                                <MessageSquare size={18}/> Communication
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent className="p-0">
+                            <ChatBox orderId={order.id} userRole="client" />
+                        </CardContent>
+                    </Card>
                 </div>
-
-
-                {/* --- Right Column (Chat) --- */}
-                <div className="lg:col-span-2">
-                     <div className="sticky top-24 bg-card/50 backdrop-blur-md rounded-lg border border/50 overflow-hidden">
-                         {/* Chat Header/Toggle Button */}
-                         <button
-                            onClick={() => setIsChatVisible(!isChatVisible)}
-                            className="w-full flex justify-between items-center p-4 text-left bg-card hover:bg-accent/50 transition-colors"
-                        >
-                            <h2 className="text-lg font-semibold text-foreground flex items-center gap-2"><MessageSquare size={18}/> Communication</h2>
-                            {isChatVisible ? <ChevronUp size={20} className="text-muted-foreground"/> : <ChevronDown size={20} className="text-muted-foreground"/>}
-                        </button>
-
-                        {/* Conditionally Render ChatBox */}
-                        {isChatVisible && (
-                             <div className="animate-in fade-in duration-300"> {/* Optional animation */}
-                                 <ChatBox orderId={order.id} userRole="client" />
-                             </div>
-                        )}
-                     </div>
-                </div>
-
             </div>
+
+            {/* --- Stripe Payment Modal --- */}
+            <Dialog open={isPaymentModalOpen} onOpenChange={setIsPaymentModalOpen}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Complete Your Payment</DialogTitle>
+                        <DialogDescription>
+                            Please enter your card details below to pay {order.offer_price?.toFixed(2)} MAD.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="mt-4">
+                        {clientSecret && (
+                            <Elements stripe={stripePromise} options={{ clientSecret, appearance: { theme: 'night', labels: 'floating' } }}>
+                                <StripeCheckoutForm onSuccessfulPayment={onSuccessfulStripePayment} />
+                            </Elements>
+                        )}
+                    </div>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 };
