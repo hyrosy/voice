@@ -147,7 +147,7 @@ const Navbar: React.FC = () => {
 
             {/* --- RIGHT SIDE ICONS & BUTTONS --- */}
             <div className="flex items-center gap-4">
-              <div className="hidden lg:block text-white">
+              <div className="hidden lg:block text-foreground">
                 <LanguageSwitcher />
               </div>
 
