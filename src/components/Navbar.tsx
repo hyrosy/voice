@@ -235,11 +235,11 @@ const Navbar: React.FC = () => {
           
           <div className="space-y-4">
             <h4 className="text-sm font-semibold text-muted-foreground uppercase">Portals</h4>
-            <Link to="/client-auth" onClick={closeMenu} className="flex items-center justify-center gap-3 w-full px-6 py-3 bg-gradient-to-r from-purple-600 to-blue-600 text-foreground font-semibold rounded-full hover:scale-105 transition-transform">
+            <Link to="/client-auth" onClick={closeMenu} className="flex items-center justify-center gap-3 w-full px-6 py-3 bg-gradient-to-r from-purple-600 to-blue-600 text-white font-semibold rounded-full hover:scale-105 transition-transform">
               <UserCircle size={18} />
               Client Login
             </Link>
-            <Link to="/actor-login" onClick={closeMenu} className="flex items-center justify-center gap-3 w-full px-6 py-3 bg-slate-700 text-foreground font-semibold rounded-full hover:bg-slate-600 transition-colors">
+            <Link to="/actor-login" onClick={closeMenu} className="flex items-center justify-center gap-3 w-full px-6 py-3 bg-slate-700 text-white font-semibold rounded-full hover:bg-slate-600 transition-colors">
               <UserCheck size={18} />
               Talent Login
             </Link>
