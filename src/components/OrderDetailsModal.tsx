@@ -22,6 +22,7 @@ import {
 } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { DEG2RAD } from 'three/src/math/MathUtils.js';
 // --- NOTE: Removed ScrollArea, as we'll scroll the tab content directly ---
 
 // --- Interfaces (Unchanged) ---
@@ -47,7 +48,7 @@ interface Order {
   deliveries: { id: string; created_at: string; file_url: string; version_number: number }[];
   
   // --- THIS IS THE FIX (Step 1) ---
-  offer_price: number | null; // <-- Added this field
+  total_price: number | null; // <-- Added this field
 }
 interface Offer {
   id: string;
@@ -123,37 +124,46 @@ const OrderDetailsModal: React.FC<ModalProps> = ({ order, onClose, onUpdate, onA
               setOfferTitle(latestOffer.offer_title);
               setOfferAgreement(latestOffer.offer_agreement || '');
               setOfferPrice(latestOffer.offer_price);
-            } else if (order.offer_price) {
-              // Pre-fill with direct order price if it exists
-              setOfferTitle(order.service_type === 'voice_over' ? "Voice Over" : "Service Quote");
-              setOfferPrice(order.offer_price);
-            }
+            } else if (order.total_price) {
+            // Pre-fill with direct order price if it exists
+            setOfferTitle(order.service_type === 'voice_over' ? "Voice Over" : "Service Quote");
+            setOfferPrice(order.total_price);
+          }
           }
           setLoadingHistory(false);
         };
         fetchOfferHistory();
       }
-    }, [order.id, order.status, order.offer_price, order.service_type]); // Added dependencies
+    }, [order.id, order.status, order.total_price, order.service_type]); // Added dependencies
 
     const toggleSection = (section: keyof typeof openSections) => {
         setOpenSections(prev => ({ ...prev, [section]: !prev[section] }));
     };
   
-    const handleConfirmClick = async () => {
-        if (!onActorConfirmPayment) return;
-        setIsConfirming(true);
-        setMessage('');
-        try {
-          await onActorConfirmPayment(order.id, order.client_email, order.client_name, order.order_id_string);
-        } catch (error) {
-          const err = error as Error;
-          console.error("Failed to confirm payment:", err);
-          setMessage(`Error: ${err.message}`);
-          setIsConfirming(false);
-        }
-    };
     
-    const handleDeliverySuccess = () => {
+    const handleConfirmClick = async () => {
+        if (!onActorConfirmPayment) return;
+        setIsConfirming(true);
+        setMessage('');
+        try {
+          await onActorConfirmPayment(order.id, order.client_email, order.client_name, order.order_id_string);
+
+          // --- MODIFIED SUCCESS LOGIC ---
+          setMessage('Payment confirmed successfully!');
+          onUpdate(); // This calls fetchOrders() from the parent
+          // The modal will no longer close automatically
+          // --- END OF MODIFIED LOGIC ---
+
+        } catch (error) {
+          const err = error as Error;
+          console.error("Failed to confirm payment:", err);
+          setMessage(`Error: ${err.message}`);
+          setIsConfirming(false); // Re-enable the button on error
+        }
+    };    
+
+
+      const handleDeliverySuccess = () => {
       if (order.service_type === 'voice_over') {
         setIsLibraryModalOpen(true);
       } else {
@@ -167,6 +177,7 @@ const OrderDetailsModal: React.FC<ModalProps> = ({ order, onClose, onUpdate, onA
       onUpdate();
       onClose();
     }
+    
 
     // handleSendOffer (This is correct as-is)
     const handleSendOffer = async () => {
@@ -197,9 +208,9 @@ const OrderDetailsModal: React.FC<ModalProps> = ({ order, onClose, onUpdate, onA
 
         // 2. Update the main 'orders' table with status AND price
         const { error: updateError } = await supabase
-          .from('orders')
-          .update({ status: 'offer_made', offer_price: price }) // This persists the price
-          .eq('id', order.id);
+        .from('orders')
+        .update({ status: 'offer_made' }) // Price is now only in the 'offers' table
+        .eq('id', order.id);
         if (updateError) throw updateError;
 
         // 3. Send email
@@ -227,11 +238,10 @@ const OrderDetailsModal: React.FC<ModalProps> = ({ order, onClose, onUpdate, onA
     // --- End State & Logic ---
     
     // --- THIS IS THE CORRECTED PRICE LOGIC ---
-    const latestOfferPrice = offerHistory.length > 0 ? offerHistory[0].offer_price : null;
-    // Use the order's final price first. 
-    // If it's null (e.g., status is 'awaiting_offer'), fall back to the latest offer from history.
-    const displayPrice = order.offer_price ?? latestOfferPrice;
-    // --- END CORRECTION ---
+// --- THIS IS THE FINAL PRICE LOGIC ---
+const latestOfferPrice = offerHistory.length > 0 ? offerHistory[0].offer_price : null;
+const displayPrice = latestOfferPrice ?? order.total_price;
+// ---    // --- END CORRECTION ---
 
     const currentStatus = order.status === 'awaiting_offer' ? 'Awaiting Offer' : order.status;
     const statusColorClass = statusColors[order.status as keyof typeof statusColors] || statusColors.default;
@@ -372,6 +382,7 @@ const OrderDetailsModal: React.FC<ModalProps> = ({ order, onClose, onUpdate, onA
                                           <CardHeader className="pb-4">
                                             <CardTitle className="flex items-center gap-2"><Banknote size={18} /> Action Required</CardTitle>
                                           </CardHeader>
+                                          
                                           <CardContent>
                                             <p className="text-sm text-muted-foreground mb-4">Client has paid. Please check your account and confirm receipt to begin work.</p>
                                             <Button
@@ -380,12 +391,23 @@ const OrderDetailsModal: React.FC<ModalProps> = ({ order, onClose, onUpdate, onA
                                                 className="w-full bg-green-600 hover:bg-green-700 text-foreground"
                                             >
                                                 {isConfirming ? <RefreshCw size={18} className="animate-spin" /> : <CheckCircle size={18} />}
-                                                {isConfirming ? 'Confirming...' : 'Confirm Payment Received'}
+                                                {isConfirming ? 'Confirming...' : 'Confirm Payment'}
                                             </Button>
                                             {message.includes('Error') && <p className="text-red-400 text-sm mt-3 text-center">{message}</p>}
                                           </CardContent>
                                         </Card>
                                     )}
+
+                                    {/* --- THIS IS THE FIX --- */}
+                                    {/* Display message outside the card, styled for success/error */}
+                                    {message && (
+                                       <p className={`text-sm mt-3 text-center ${
+                                        message.includes('Error') ? 'text-destructive' : 'text-green-400'
+                                      }`}>
+                                       {message}
+                                      </p>
+                                    )}
+                                    {/* --- END FIX --- */}
 
                                     {(order.status === 'awaiting_offer' || order.status === 'offer_made') && (
                                         <Card className="bg-blue-900/30 border-blue-700">
@@ -428,9 +450,6 @@ const OrderDetailsModal: React.FC<ModalProps> = ({ order, onClose, onUpdate, onA
                         </TabsContent>
                     </Tabs>
                     
-                    <DialogFooter className="p-4 sm:p-6 pt-4 border-t flex-shrink-0">
-                      <Button variant="outline" onClick={onClose}>Close</Button>
-                    </DialogFooter>
                 </DialogContent>
             </Dialog>
 

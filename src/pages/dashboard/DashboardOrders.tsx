@@ -29,7 +29,7 @@ interface Order {
     ActorEmail?: string;
   };
   service_type: 'voice_over' | 'scriptwriting' | 'video_editing';
-  offer_price: number | null;
+  total_price: number | null;
   deliveries: { id: string; created_at: string; file_url: string; version_number: number }[];
 }
 
@@ -67,17 +67,83 @@ const DashboardOrders: React.FC = () => {
           new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
         ),
       }));
-      setOrders(sortedOrderData as Order[]);
+
+    setOrders(sortedOrderData as Order[]);
     }
-    setLoading(false);
-  }, [actorData.id]);
+    setLoading(false);
+  }, [actorData.id]); // <-- Add selectedOrder as a dependency
 
   useEffect(() => {
     fetchOrders();
   }, [fetchOrders]);
 
-  const handleActorConfirmPayment = async (orderId: string, clientEmail: string, clientName: string, orderIdString: string) => {
-    // ... (existing logic) ...
+  // ... after your existing useEffect ...
+
+  // --- NEW: Realtime Subscription ---
+  useEffect(() => {
+    // 1. Only subscribe if we have an actor ID
+    if (!actorData.id) return;
+
+    // 2. Create a channel to listen for changes
+    const channel = supabase
+      .channel(`public:orders:actor_id=eq.${actorData.id}`) // A unique name for this channel
+      .on(
+        'postgres_changes', // Listen for any database change
+        {
+          event: 'INSERT', // Specifically for new orders/quotes
+          schema: 'public',
+          table: 'orders',
+          filter: `actor_id=eq.${actorData.id}` // **IMPORTANT: Only listen for orders for THIS actor**
+        },
+        (payload) => {
+          console.log('New order received!', payload);
+          
+          // Set a message and refresh the list
+          setMessage('A new order or quote request has arrived!');
+          fetchOrders();
+        }
+      )
+      .subscribe();
+
+    // 3. The cleanup function: Unsubscribe when the component unmounts
+    return () => {
+      supabase.removeChannel(channel);
+    };
+
+  }, [actorData.id, fetchOrders, setMessage]); // Re-run if actor or fetch function changes
+
+
+  // 1. CREATE THE FUNCTION that does the actual work
+    const handleActorConfirmPayment = async (orderId: string, clientEmail: string, clientName: string, orderIdString: string) => {
+    // This is the logic that was missing
+    
+    // 1. Update the order status in Supabase
+    const { error } = await supabase
+        .from('orders')
+        .update({ status: 'In Progress' })
+        .eq('id', orderId)
+        .select() // <-- ADD .select()
+        .single(); // <-- ADD .single()
+
+    if (error) {
+        console.error("Failed to update order status:", error);
+        throw new Error(error.message); 
+    }
+
+    // 2. Send notification email to Client
+    const emailParams = {
+        clientName: clientName,
+        clientEmail: clientEmail,
+        orderIdString: orderIdString,
+    };
+    
+    // Use your "Actor Confirmed" email template
+    //await emailjs.send('service_r3pvt1s', 'YOUR_ACTOR_CONFIRMED_TEMPLATE_ID', emailParams, 'I51tDIHsXYKncMQpO');
+
+    await fetchOrders();
+
+    // 4. Manually update the selectedOrder state
+    setSelectedOrder(prev => (prev ? { ...prev, status: 'In Progress' } : null));
   };
 
   const filteredOrders = orders.filter(order => {
@@ -102,6 +168,7 @@ const DashboardOrders: React.FC = () => {
       </p>
     </div>
   );
+
 
   return (
     <div className="max-w-4xl mx-auto">
@@ -171,9 +238,9 @@ const DashboardOrders: React.FC = () => {
                         {order.status === 'awaiting_offer' ? 'Awaiting Offer' : order.status}
                       </span>
                       {/* --- ENHANCEMENT: Show price --- */}
-                      {order.offer_price && order.status !== 'awaiting_offer' && (
+                      {order.total_price && order.status !== 'awaiting_offer' && (
                         <p className="text-sm font-semibold text-foreground mt-0 sm:mt-1.5">
-                          {order.offer_price} MAD
+                          {order.total_price} MAD
                         </p>
                       )}
                     </div>

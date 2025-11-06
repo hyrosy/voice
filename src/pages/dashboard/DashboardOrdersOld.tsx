@@ -31,6 +31,8 @@ interface Order {
   service_type: 'voice_over' | 'scriptwriting' | 'video_editing';
   offer_price: number | null;
   deliveries: { id: string; created_at: string; file_url: string; version_number: number }[];
+  total_price: number | null;
+
 }
 
 const DashboardOrders: React.FC = () => {

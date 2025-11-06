@@ -243,14 +243,14 @@ const VoiceOverLandingPage = () => {
 
   return (
     // --- ENHANCEMENT: Use simple 'bg-background' ---
-    <div className="flex-grow pt-20 min-h-screen bg-background text-foreground">
+    <div className="flex-grow pt-0 min-h-screen bg-background text-foreground">
       
       {/* Hero Section */}
       {/* --- ENHANCEMENT: Removed blobs, using simple background and clean padding --- */}
       <section className="relative py-32 md:py-48 flex items-center justify-center text-center">
         <div className="relative z-10 px-4 max-w-6xl mx-auto">
           <div className="mb-8">
-            <div className="inline-flex items-center justify-center w-20 h-20 bg-primary rounded-full mb-6 shadow-lg">
+            {/*<div className="inline-flex items-center justify-center w-20 h-20 bg-primary rounded-full mb-6 shadow-lg">
               <Mic className="w-10 h-10 text-primary-foreground" />
             </div>
             

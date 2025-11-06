@@ -115,47 +115,81 @@ const QuoteCalculatorModal: React.FC<ModalProps> = ({ actor, onClose }) => {
     setClientInfo({ ...clientInfo, [e.target.name]: e.target.value });
   };
 
+  // --- 4. MODIFIED createOrderInSupabase ---
   const createOrderInSupabase = async (
-    currentServiceType: ServiceType, orderStatus: string, finalPrice: number | null,
-    method: 'stripe' | 'bank' | null, paymentIntentId: string | null = null
+    currentServiceType: ServiceType,
+    orderStatus: string,
+    finalPrice: number | null,
+    method: 'stripe' | 'bank' | null,
+    paymentIntentId: string | null = null
   ) => {
-    const orderDataToInsert: any = {
-      order_id_string: orderId, actor_id: actor?.id, client_name: clientInfo.name,
-      client_email: clientInfo.email.toLowerCase(), script: projectDescription || scriptText,
-      status: orderStatus, service_type: currentServiceType, payment_method: method,
-      stripe_payment_intent_id: paymentIntentId, offer_price: finalPrice,
+
+    const orderDataToInsert: any = { // Use 'any' to build flexibly
+      order_id_string: orderId,
+      actor_id: actor?.id,
+      client_name: clientInfo.name,
+      client_email: clientInfo.email.toLowerCase(),
+      script: projectDescription || scriptText, // Use project description or script
+      status: orderStatus,
+      service_type: currentServiceType,
+      payment_method: method,
+      stripe_payment_intent_id: paymentIntentId,
+      total_price: finalPrice,
     };
+
+    // Add service-specific data
     if (currentServiceType === 'voice_over') {
-      orderDataToInsert.word_count = wordCount; orderDataToInsert.usage = usage;
+      orderDataToInsert.word_count = wordCount;
+      orderDataToInsert.usage = usage;
     } else if (currentServiceType === 'scriptwriting') {
-      orderDataToInsert.word_count = estimatedWordCount; orderDataToInsert.quote_est_duration = estimatedDuration;
+      orderDataToInsert.word_count = estimatedWordCount;
+      orderDataToInsert.quote_est_duration = estimatedDuration;
     } else if (currentServiceType === 'video_editing') {
-      orderDataToInsert.quote_video_type = videoType; orderDataToInsert.quote_footage_choice = footageChoice;
+      orderDataToInsert.quote_video_type = videoType;
+      orderDataToInsert.quote_footage_choice = footageChoice;
     }
+    
     const { data: newOrder, error: invokeError } = await supabase.functions.invoke(
-        'create-order', { body: orderDataToInsert }
+        'create-order',
+        { body: orderDataToInsert }
     );
+
     if (invokeError) throw invokeError;
     if (newOrder && newOrder.error) throw new Error(newOrder.error);
     if (!newOrder || !newOrder.id) throw new Error("Failed to create order.");
+
     setNewOrderId(newOrder.id);
     return newOrder;
   };
 
+  // --- 5. MODIFIED sendEmails ---
   const sendEmails = async (newOrder: any, isQuote: boolean) => {
     try {
       const adminParams = {
-          orderId: newOrder.order_id_string, actorName: actor.ActorName, clientName: clientInfo.name,
-          clientEmail: clientInfo.email, totalPrice: isQuote ? "N/A (Quote Request)" : totalPrice.toFixed(2),
-          serviceType: newOrder.service_type, script: newOrder.script,
-      };
-      const clientParams = {
-          orderId: newOrder.order_id_string, order_uuid: newOrder.id, actorName: actor.ActorName,
+          orderId: newOrder.order_id_string,
+          actorName: actor.ActorName,
+          clientName: clientInfo.name,
+          clientEmail: clientInfo.email,
           totalPrice: isQuote ? "N/A (Quote Request)" : totalPrice.toFixed(2),
-          clientName: clientInfo.name, clientEmail: clientInfo.email, isQuote: isQuote,
+          serviceType: newOrder.service_type,
+          script: newOrder.script,
       };
+
+      const clientParams = {
+          orderId: newOrder.order_id_string,
+          order_uuid: newOrder.id,
+          actorName: actor.ActorName,
+          totalPrice: isQuote ? "N/A (Quote Request)" : totalPrice.toFixed(2),
+          clientName: clientInfo.name,
+          clientEmail: clientInfo.email,
+          isQuote: isQuote,
+      };
+
+      // Admin Email
       await emailjs.send('service_r3pvt1s', 'template_o4hehdi', adminParams, 'I51tDIHsXYKncMQpO');
+      // Client Email
       await emailjs.send('service_r3pvt1s', 'template_shq9k38', clientParams, 'I51tDIHsXYKncMQpO');
+
     } catch (error) {
       console.error("Email sending failed:", error);
     }

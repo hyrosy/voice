@@ -59,7 +59,7 @@ interface Order {
   
   // Service & Quote Fields
   service_type: 'voice_over' | 'scriptwriting' | 'video_editing';
-  offer_price: number | null; // This is the key field
+  total_price: number | null; // This is the key field
   word_count?: number;
   usage?: string | null;
   quote_est_duration?: string | null;
@@ -256,14 +256,16 @@ const ClientOrderPage = () => {
           .from('orders')
           .update({ 
             status: 'Awaiting Payment',
-            offer_price: finalPrice // <-- THIS SAVES THE PRICE
+            total_price: finalPrice // <-- THIS SAVES THE PRICE
           })
           .eq('id', order.id);
 
         if (error) throw error;
 
         // Send email to actor
-        await emailjs.send(
+        
+        try {
+          await emailjs.send(
           'service_r3pvt1s',
           'template_n2y66co', // Client Accepted Offer
           {
@@ -282,22 +284,31 @@ const ClientOrderPage = () => {
         setStatusMessage('Offer accepted! Please complete the payment.');
         fetchOrderAndReview(); // Re-fetch to show new status
 
-      } catch (error) {
-        const err = error as Error;
-        console.error('Error accepting offer:', err);
-        setStatusMessage(`Error: ${err.message}`);
-      } finally {
-        setIsLoading(false);
-      }
-    };
+      } catch (emailError) {
+          console.error("Failed to send 'offer accepted' email:", emailError);
+          // Just log it, don't stop the function
+        }
+        // --- END FIX ---
+
+        // This will now run even if the email fails
+        setStatusMessage('Offer accepted! Please complete the payment.');
+        await fetchOrderAndReview(); // Add await to ensure it finishes before "finally"
+
+      } catch (error) { // This will now only catch critical DB errors
+        const err = error as Error;
+        console.error('Error accepting offer:', err);
+        setStatusMessage(`Error: ${err.message}`);
+      } finally {
+        setIsLoading(false);
+      }
+    };
     // --- END CRITICAL FIX ---
 
     // --- onSuccessfulStripePayment (THIS IS THE CRITICAL FIX) ---
     const onSuccessfulStripePayment = async (intentId: string) => {
       if (!order) return;
       
-      // Determine the price. Use order.offer_price (which is set for both VO and accepted quotes)
-      const finalPrice = order.offer_price;
+      const finalPrice = order.latest_offer?.offer_price ?? order.total_price;
       if (!finalPrice) {
         setStatusMessage("Error: Order price is missing. Cannot confirm payment.");
         return;
@@ -311,29 +322,32 @@ const ClientOrderPage = () => {
             status: 'In Progress',
             payment_method: 'stripe',
             stripe_payment_intent_id: intentId,
-            offer_price: finalPrice // --- Ensure price is saved ---
+            total_price: finalPrice // --- Ensure price is saved ---
           })
           .eq('id', order.id);
         
         if (error) throw error;
 
         // Send notification email to Actor
+        try {
         const emailParams = {
             actorName: order.actors.ActorName,
             actorEmail: order.actors.ActorEmail,
             orderIdString: order.order_id_string,
             clientName: order.client_name,
         };
-        emailjs.send('service_r3pvt1s', 'template_zmx5e0u', emailParams, 'I51tDIHsXYKncMQpO')
-          .catch(err => console.error('Failed to send actor notification email:', err));
-        
-        setStatusMessage('Payment Successful! The order is now In Progress.');
-        fetchOrderAndReview(); // Refresh the page
-        setIsPaymentModalOpen(false); // Close the stripe modal
+        await emailjs.send('service_r3pvt1s', 'template_zmx5e0u', emailParams, 'I51tDIHsXYKncMQpO');
+        } catch (emailError) {
+        console.error('Failed to send actor notification email:', emailError);
+        }
+                
+                setStatusMessage('Payment Successful! The order is now In Progress.');
+        await fetchOrderAndReview(); // Add await here too
+        setIsPaymentModalOpen(false); 
 
-      } catch (err) {
+        } catch (err) { // This will now only catch DB errors
         setStatusMessage(`Error: ${(err as Error).message}. Please contact support.`);
-      }
+        }
     };
     // --- END CRITICAL FIX ---
 
@@ -341,8 +355,7 @@ const ClientOrderPage = () => {
     const handleBankTransferConfirmation = async () => {
       if (!order) return;
 
-      // Determine the price. Use order.offer_price
-      const finalPrice = order.offer_price;
+      const finalPrice = order.latest_offer?.offer_price ?? order.total_price;
       if (!finalPrice) {
         setStatusMessage("Error: Order price is missing. Cannot confirm payment.");
         return;
@@ -355,7 +368,7 @@ const ClientOrderPage = () => {
           .update({
             status: 'Awaiting Payment', // Status is set when *accepting*
             payment_method: 'bank',
-            offer_price: finalPrice // --- Ensure price is saved ---
+            total_price: finalPrice // --- Ensure price is saved ---
           })
           .eq('id', order.id);
         
@@ -465,6 +478,7 @@ const ClientOrderPage = () => {
             setNotifyingAdmin(false);
             return;
         }
+
         if (isDirectToActor) {
             const templateId = 'template_my3996b'; // Actor template
             const recipientEmail = order.actors.ActorEmail; // Actor email
@@ -484,21 +498,28 @@ const ClientOrderPage = () => {
                     'I51tDIHsXYKncMQpO' 
                 );
                 setNotificationMessage('Actor notified successfully!');
-                fetchOrderAndReview(); 
+                await fetchOrderAndReview(); 
             } catch (err) {
-                console.error("Failed to send actor notification:", err);
-                setNotificationMessage('Status updated, but failed to notify actor.');
-            }
-        } else {
-            console.log("Admin notification temporarily disabled. Status set to 'Awaiting Admin Confirmation'.");
-            setNotificationMessage('Payment marked, awaiting admin confirmation.');
-            fetchOrderAndReview(); 
-        }
-        setNotifyingAdmin(false); 
-    };
+                console.error("Failed to send actor notification:", err);
+                // This is just a warning now, not a failure message
+                setNotificationMessage('Payment marked, but failed to notify actor.');
+            } finally {
+                // --- THIS IS THE FIX ---
+                // This runs regardless of email success or failure
+                await fetchOrderAndReview(); 
+                setNotifyingAdmin(false);
+                // --- END FIX ---
+            }
+        } else {
+            console.log("Admin notification temporarily disabled.");
+            setNotificationMessage('Payment marked, awaiting admin confirmation.');
+            await fetchOrderAndReview(); 
+            setNotifyingAdmin(false); // Make sure this is set here too
+        }
+    };
     const handleStripePaymentClick = async () => {
         if (!order) return;
-        const amount = order.offer_price; // Use the already-set price
+        const amount = order.total_price; // Use the already-set price
         if (amount === null || amount === undefined) {
           setStatusMessage('No offer price available. Please contact support.');
           return;
@@ -538,7 +559,7 @@ const ClientOrderPage = () => {
     
     // --- THIS IS THE CORRECTED PRICE LOGIC ---
     // The order's offer_price is the single source of truth.
-    const displayPrice = order.offer_price;
+    const displayPrice = order.latest_offer?.offer_price ?? order.total_price;
     // ---
     
     const currentStatus = order.status === 'awaiting_offer' ? 'Awaiting Offer' : order.status;
@@ -966,7 +987,7 @@ const ClientOrderPage = () => {
                     <DialogHeader>
                         <DialogTitle>Complete Your Payment</DialogTitle>
                         <DialogDescription>
-                            Please enter your card details below to pay {order.offer_price?.toFixed(2)} MAD.
+                            Please enter your card details below to pay {order.total_price?.toFixed(2)} MAD.
                         </DialogDescription>
                     </DialogHeader>
                     <div className="mt-4">
