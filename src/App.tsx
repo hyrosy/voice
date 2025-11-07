@@ -6,7 +6,7 @@ import Footer from './components/Footer'; // Import Footer
 import HomePage from './pages/HomePage';
 //import OptInPage from './pages/OptInPage';
 //import ThankYouPage from './pages/ThankYouPage';
-//import PortfolioPage from './pages/PortfolioPage';
+import PortfolioPage from './pages/PortfolioPage';
 import PrivacyPolicyPage from './components/PrivacyPolicy.tsx';
 import ContactUsPage from './pages/ContactUsPage'; // Import the Contact Us page
 import TermsofService from './components/TermsofService.tsx';
@@ -93,7 +93,6 @@ function App() {
         <Route path="/thank-you" element={<ThankYouPage />} />
         <Route path="/software-development" element={<SoftwareServicesPage />} />
         <Route path="/digital-marketing" element={<MarketingServices />} />
-        <Route path="/portfolio" element={<PortfolioPage />} />
         <Route path="/customized-package" element={<CustomizedPackages />} />
         <Route path="/cinema-portfolio" element={<CinematoGraphyPage />} />
 
@@ -114,6 +113,8 @@ function App() {
         <Route path="/admin/actors" element={<AdminActorListPage />} />   {/* <-- Add Actor route */}
         <Route path="/admin/clients" element={<AdminClientListPage />} />  {/* <-- Add Client route */}
         <Route path="/create-profile" element={<CreateProfilePromptPage />} /> {/* <-- Add new route */}
+        <Route path="/portfolio" element={<PortfolioPage />} />
+
         {/* --- NEW Actor Dashboard Layout --- */}
           <Route path="/dashboard" element={<ActorDashboardLayout />}>
             <Route index element={<DashboardOrders />} /> {/* /dashboard */}
