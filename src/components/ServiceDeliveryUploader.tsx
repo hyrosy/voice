@@ -7,12 +7,19 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { UploadCloud, Link as LinkIcon, RefreshCw, Send, Archive } from 'lucide-react';
+import emailjs from '@emailjs/browser'; // <-- 1. ADD THIS IMPORT
 
 interface ServiceDeliveryUploaderProps {
   order: {
     id: string;
     actor_id: string;
     service_type: 'voice_over' | 'scriptwriting' | 'video_editing';
+    order_id_string: string;
+    client_name: string;
+    client_email: string;
+    actors: {
+      ActorName: string;
+    };
   };
   onDeliverySuccess: () => void; // Function to call on success
 }
@@ -67,6 +74,25 @@ const ServiceDeliveryUploader: React.FC<ServiceDeliveryUploaderProps> = ({ order
       .update({ status: 'Pending Approval' })
       .eq('id', order.id);
     if (updateError) throw updateError;
+    try {
+      const emailParams = {
+        orderId: order.order_id_string,
+        order_uuid: order.id,
+        clientName: order.client_name,
+        clientEmail: order.client_email,
+        actorName: order.actors.ActorName,
+      };
+      
+      await emailjs.send(
+        'service_r3pvt1s',
+        'template_b9896qj', // "New Delivery (To Client)"
+        emailParams,
+        'I51tDIHsXYKncMQpO'
+      );
+    } catch (emailError) {
+      console.error("Failed to send new delivery email:", emailError);
+      // Do not block the function from succeeding, just log the error
+    }
   };
 
   // Handler for FILE upload

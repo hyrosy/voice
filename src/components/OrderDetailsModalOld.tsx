@@ -428,7 +428,7 @@ const OrderDetailsModal: React.FC<ModalProps> = ({ order, onClose, onUpdate, onA
 
         // TODO: Create a template for "Offer Updated"
 
-        const templateId = isUpdate ? 'YOUR_OFFER_UPDATED_TEMPLATE_ID' : 'YOUR_QUOTE_OFFER_TEMPLATE_ID';
+        const templateId = isUpdate ? 'template_o2d8g9i' : 'template_9t0d50d';
 
 
 
