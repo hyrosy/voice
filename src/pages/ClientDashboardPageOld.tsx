@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../supabaseClient';
 import { Link, useNavigate } from 'react-router-dom';
-import { Heart, Star } from 'lucide-react'; // <-- 1. Import Star icon
-
+import { Heart, Star, MessageSquare } from 'lucide-react'; // <-- 1. Import Star icon
 interface Order {
   id: string;
   order_id_string: string;
@@ -77,6 +76,10 @@ const ClientDashboardPage = () => {
         await supabase.auth.signOut();
         navigate('/client-auth');
     };
+    const navLinks = [
+    // ... (your existing links: Orders, Library, etc.)
+    { name: "Inbox", href: "/messages?ctx=client", icon: MessageSquare } // <-- ADD THIS
+];
 
     if (loading) {
         return <div className="min-h-screen bg-background flex items-center justify-center text-foreground">Loading Your Dashboard...</div>;
@@ -110,11 +113,16 @@ const ClientDashboardPage = () => {
                         >
                             <Star size={16} /> My Favorites
                         </Link>
-                        {/* --- END OF NEW LINK --- */}
-                        {/* "My Shortlist" Button (MOVED HERE) */}
+
+                        <Link
+                            to="/messages"
+                            className="order-first sm:order-none w-full sm:w-auto px-5 py-2.5 bg-yellow-600 hover:bg-yellow-700 rounded-lg text-foreground font-semibold text-sm transition-colors shadow flex items-center justify-center gap-2"
+                        >
+                            <MessageSquare size={16} /> Inbox
+                        </Link>
+
                         <Link
                             to="/my-shortlist"
-                            // `order-first` makes it appear above Log Out on mobile, `sm:order-none` resets for desktop
                             className="order-first sm:order-none w-full sm:w-auto px-5 py-2.5 bg-purple-600 hover:bg-purple-700 rounded-lg text-foreground font-semibold text-sm transition-colors shadow hover:shadow-lg hover:shadow-purple-900/30 flex items-center justify-center gap-2"
                         >
                             <Heart size={16} /> My Shortlist

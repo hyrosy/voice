@@ -1,7 +1,7 @@
 // In src/components/OrderDetailsModal.tsx
 
 import { supabase } from '../supabaseClient';
-import { X, Paperclip, CheckCircle, Archive, FileText, Package, Info, MessageSquare, Banknote, RefreshCw, Send, Download, History, Mic, PencilLine, Video } from 'lucide-react';
+import { X, LinkIcon, Paperclip, CheckCircle, Archive, FileText, Package, Info, MessageSquare, Banknote, RefreshCw, Send, Download, History, Mic, PencilLine, Video } from 'lucide-react';
 import ChatBox from './ChatBox';
 import React, { useState, useEffect } from 'react';
 import emailjs from '@emailjs/browser';
@@ -46,9 +46,14 @@ interface Order {
   quote_video_type?: string | null;
   quote_footage_choice?: string | null;
   deliveries: { id: string; created_at: string; file_url: string; version_number: number }[];
-  
+  last_message_sender_role: 'client' | 'actor' | null;
+  actor_has_unread_messages: boolean;
+  client_has_unread_messages: boolean;
   // --- THIS IS THE FIX (Step 1) ---
   total_price: number | null; // <-- Added this field
+  from_chat_offer: boolean;
+  material_file_urls: string[] | null; // <-- ADD THIS
+  project_notes: string | null;      // <-- ADD THIS
 }
 interface Offer {
   id: string;
@@ -77,6 +82,48 @@ const statusColors = {
   awaiting_offer: 'bg-yellow-500/20 text-yellow-300',
   offer_made: 'bg-blue-500/20 text-blue-300',
   default: 'bg-yellow-500/20 text-yellow-400'
+};
+
+// --- 1. Rename this component and update its props/logic ---
+const MaterialsDisplay: React.FC<{ script: string | null, fileUrls: string[] | null }> = ({ script, fileUrls }) => {
+  if (!script && (!fileUrls || fileUrls.length === 0)) {
+    return <p className="text-muted-foreground">The client has not uploaded any materials yet.</p>;
+  }
+
+  const scriptText = script?.trim();
+  const fileLinks = fileUrls || [];
+
+  return (
+    <div className="space-y-4">
+      {scriptText && (
+        <div>
+          <h4 className="font-semibold text-foreground mb-2">Project Details / Notes</h4>
+          <p className="text-muted-foreground whitespace-pre-wrap">{scriptText}</p>
+        </div>
+      )}
+      
+      {fileLinks.length > 0 && (
+        <div>
+          <h4 className="font-semibold text-foreground mb-3">Attached Files</h4>
+          <div className="space-y-2">
+            {fileLinks.map((url, index) => (
+              <Button
+                key={index}
+                asChild
+                variant="outline"
+                className="w-full justify-start text-left h-auto"
+              >
+                <a href={url} target="_blank" rel="noopener noreferrer">
+                  <LinkIcon className="h-4 w-4 mr-2 flex-shrink-0" />
+                  <span className="truncate">{url.split('/').pop()}</span>
+                </a>
+              </Button>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
 };
 
 const OrderDetailsModal: React.FC<ModalProps> = ({ order, onClose, onUpdate, onActorConfirmPayment }) => {
@@ -135,6 +182,36 @@ const OrderDetailsModal: React.FC<ModalProps> = ({ order, onClose, onUpdate, onA
         fetchOfferHistory();
       }
     }, [order.id, order.status, order.total_price, order.service_type]); // Added dependencies
+    
+    // --- ADD THIS NEW USE-EFFECT ---
+    // This implements "Mark as Read" when the user opens the chat.
+    useEffect(() => {
+        const markAsRead = async () => {
+            // This modal is for the 'actor', so we check and update the actor's flag
+            if (order.actor_has_unread_messages) {
+                const { error } = await supabase
+                    .from('orders')
+                    .update({ 
+                    actor_has_unread_messages: false,
+                    notification_due_at: null // <-- ADD THIS LINE
+                })
+                    .eq('id', order.id);
+                
+                if (error) {
+                    console.error("Error marking messages as read:", error);
+                } else {
+                    // Successfully marked as read.
+                    // If you have a notification bubble on the parent page,
+                    // calling onUpdate() here would refresh it.
+                    // onUpdate(); // This is optional
+                }
+            }
+        };
+        
+        markAsRead();
+    // We only want this to run when the modal opens or the specific flag changes
+    }, [order.id, order.actor_has_unread_messages]);
+    // --- END ADD ---
 
     const toggleSection = (section: keyof typeof openSections) => {
         setOpenSections(prev => ({ ...prev, [section]: !prev[section] }));
@@ -150,7 +227,6 @@ const OrderDetailsModal: React.FC<ModalProps> = ({ order, onClose, onUpdate, onA
 
           // --- MODIFIED SUCCESS LOGIC ---
           setMessage('Payment confirmed successfully!');
-          onUpdate(); // This calls fetchOrders() from the parent
           // The modal will no longer close automatically
           // --- END OF MODIFIED LOGIC ---
 
@@ -299,6 +375,21 @@ const displayPrice = latestOfferPrice ?? order.total_price;
                                         </div>
                                     </AccordionItem>
 
+                                    {/* 2. Show Project Materials */}
+                                            <AccordionItem 
+                                              title="Project Materials (from Client)" 
+                                              icon={<FileText size={18} />} 
+                                              isOpen={true} 
+                                              onToggle={() => {}}
+                                            >
+                                              <div className="bg-background p-4 rounded-lg max-h-60 overflow-y-auto custom-scrollbar">
+                                                <MaterialsDisplay 
+                                                    script={order.project_notes} 
+                                                    fileUrls={order.material_file_urls} 
+                                                />
+                                              </div>
+                                            </AccordionItem>
+
                                     {!['awaiting_offer', 'offer_made', 'Awaiting Payment'].includes(order.status) && (
                                         <AccordionItem title={`Deliver ${order.service_type.replace('_', ' ')}`} icon={<Package size={18} />} isOpen={openSections.delivery} onToggle={() => toggleSection('delivery')}>
                                             {order.deliveries && order.deliveries.length > 0 && (
@@ -446,9 +537,18 @@ const displayPrice = latestOfferPrice ?? order.total_price;
 
                         {/* --- Tab 2: Communication --- */}
                         <TabsContent value="chat" className="flex-grow flex flex-col p-0 overflow-hidden">
-                            <ChatBox orderId={order.id} userRole="actor" />
-                        </TabsContent>
-                    </Tabs>
+                            <ChatBox orderId={order.id}
+                            userRole="actor"
+                            orderData={{
+                              last_message_sender_role: order.last_message_sender_role,
+                              client_email: order.client_email,
+                              client_name: order.client_name,
+                              actor_email: order.actors.ActorEmail || '',
+                              actor_name: order.actors.ActorName,
+                              order_id_string: order.order_id_string
+                            }} conversationId={''} currentUserId={''} otherUserName={''} />
+                          </TabsContent>
+                        </Tabs>
                     
                 </DialogContent>
             </Dialog>

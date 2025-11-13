@@ -11,7 +11,8 @@ import {
   CheckCircle, 
   DollarSign, 
   Inbox,
-  ArrowRight
+  ArrowRight,
+  MessageSquare
 } from 'lucide-react';
 
 // --- shadcn/ui Imports ---
@@ -114,6 +115,7 @@ const ClientDashboardPage = () => {
         
         {/* --- RESTYLED HEADER SECTION --- */}
         <div className="flex flex-col sm:flex-row justify-between sm:items-center mb-8 gap-4">
+          
           <div className="flex items-center gap-4">
             <Avatar className="h-16 w-16 hidden sm:flex">
               {/* Added a fallback for empty clientName */}
@@ -126,6 +128,12 @@ const ClientDashboardPage = () => {
           </div>
           
           <div className="flex flex-col sm:flex-row sm:items-center gap-2 w-full sm:w-auto">
+            <Button asChild variant="outline" className="w-full sm:w-auto">
+              <Link to="/messages"> {/* This is the top-level route */}
+                <MessageSquare size={16} className="mr-2 text-primary" /> Inbox
+              </Link>
+            </Button>
+
             <Button asChild variant="outline" className="w-full sm:w-auto">
               <Link to="/my-favorites">
                 <Star size={16} className="mr-2 text-yellow-500" /> My Favorites

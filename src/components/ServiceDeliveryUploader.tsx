@@ -11,6 +11,7 @@ import emailjs from '@emailjs/browser'; // <-- 1. ADD THIS IMPORT
 
 interface ServiceDeliveryUploaderProps {
   order: {
+    from_chat_offer: any;
     id: string;
     actor_id: string;
     service_type: 'voice_over' | 'scriptwriting' | 'video_editing';
@@ -22,6 +23,7 @@ interface ServiceDeliveryUploaderProps {
     };
   };
   onDeliverySuccess: () => void; // Function to call on success
+  
 }
 
 // Define allowed file types for each service
@@ -181,6 +183,34 @@ const ServiceDeliveryUploader: React.FC<ServiceDeliveryUploaderProps> = ({ order
       setIsLoading(false);
     }
   };
+
+  // If it's a flexible chat offer, show a generic uploader.
+    if (order.from_chat_offer) {
+        return (
+            <div>
+                <h4 className="text-sm font-semibold text-foreground mb-3">
+                    Upload Your Delivery
+                </h4>
+                <p className="text-xs text-muted-foreground mb-2">
+                    Upload any files for your "video photo" service.
+                </p>
+                {/* Simple generic file uploader that reuses handleFileUpload */}
+                <form onSubmit={handleFileUpload} className="space-y-4">
+                  <Label htmlFor="generic-file">Select File</Label>
+                  <Input
+                    id="generic-file"
+                    type="file"
+                    accept="*/*"
+                    onChange={(e) => setFile(e.target.files?.[0] || null)}
+                  />
+                  <Button type="submit" disabled={isLoading || !file} className="w-full">
+                    {isLoading ? <RefreshCw className="mr-2 h-4 w-4 animate-spin" /> : <UploadCloud className="mr-2 h-4 w-4" />}
+                    Deliver File
+                  </Button>
+                </form>
+            </div>
+        );
+    }
 
   // --- Render Script Writing Delivery ---
   if (order.service_type === 'scriptwriting') {

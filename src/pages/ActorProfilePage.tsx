@@ -6,7 +6,8 @@ import { supabase } from '../supabaseClient';
 import QuoteCalculatorModal from '../components/QuoteCalculatorModal';
 import { Play, Pause, Mic, Phone, CheckCircle, Share2, Heart, UserPlus, Star, PencilLine, Video, FileText } from 'lucide-react';
 import GlobalAudioPlayer from '../components/GlobalAudioPlayer';
-
+import { MessageSquare } from 'lucide-react'; // <-- Import an icon
+import { useNavigate } from 'react-router-dom'; // <-- Make sure this is imported
 // --- shadcn/ui Imports ---
 // We'll use these to build the new service tabs
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -80,8 +81,8 @@ interface CurrentTrack {
 
 const ActorProfilePage = () => {
     // Correctly get the slug from the URL parameter named 'actorName'
-const { actorName: actorSlug } = useParams<{ actorName: string }>();
-    const [actor, setActor] = useState<Actor | null>(null);
+    const { actorName: actorSlug } = useParams<{ actorName: string }>();
+    const [actor, setActor] = useState<any>(null); // Assuming you have actor state
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState('');
     const [isQuoteModalOpen, setIsQuoteModalOpen] = useState(false);
@@ -96,7 +97,7 @@ const { actorName: actorSlug } = useParams<{ actorName: string }>();
     const [currentTime, setCurrentTime] = useState(0);
     const [duration, setDuration] = useState(0);
     const audioRef = useRef<HTMLAudioElement>(null);
-
+    const navigate = useNavigate();
     // Follow State
     const [isFollowing, setIsFollowing] = useState(false);
     
@@ -108,6 +109,7 @@ const { actorName: actorSlug } = useParams<{ actorName: string }>();
     const [videoDemos, setVideoDemos] = useState<VideoDemo[]>([]);
     const [availableServices, setAvailableServices] = useState<any[]>([]); // To store enabled services
     // ---
+    const [isStartingChat, setIsStartingChat] = useState(false);
 
 
     // Data fetching (already optimized)
@@ -413,6 +415,55 @@ const { actorName: actorSlug } = useParams<{ actorName: string }>();
         )) : <p className="text-muted-foreground text-center py-8 md:col-span-2 lg:col-span-3">No video demos found.</p>}
       </div>
     );
+
+    // --- ADD THIS FUNCTION ---
+const handleMessageActor = async () => {
+    setIsStartingChat(true);
+
+    // 1. Get the logged-in client (User A)
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+        // Not logged in! Redirect to login.
+        // This is your feature: "must have an account"
+        navigate('/client-auth');
+        return;
+    }
+
+    // 2. Get the client's profile_id
+    const { data: clientProfile } = await supabase
+        .from('clients')
+        .select('id')
+        .eq('user_id', user.id)
+        .single();
+
+    if (!clientProfile) {
+        console.error("Client profile not found.");
+        // You should show a toast/alert here
+        setIsStartingChat(false);
+        return;
+    }
+
+    // 3. Get the actor's IDs (User B) from the profile you already fetched
+    const actorUserId = actor.user_id; // The auth.users(id)
+    const actorProfileId = actor.id;    // The actors(id)
+
+    // 4. Call the database function you created in Step 2
+    const { data: conversationId, error } = await supabase.rpc(
+        'get_or_create_conversation', {
+            actor_user_id_input: actorUserId,
+            client_user_id_input: user.id
+        }
+    );
+
+    setIsStartingChat(false);
+
+    if (error) {
+        console.error("Error starting conversation:", error);
+    } else {
+        // 5. Success! Redirect to the new messages page
+        navigate(`/messages/${conversationId}`);
+    }
+};
     
     if (isLoading) {
         return (
@@ -496,6 +547,14 @@ const { actorName: actorSlug } = useParams<{ actorName: string }>();
                   <Button onClick={handleToggleFollow} size="lg" variant={isFollowing ? 'default' : 'outline'} className="rounded-full">
                       {isFollowing ? 'Following' : 'Follow'}
                   </Button>
+                  <Button 
+                    onClick={handleMessageActor}
+                    disabled={isStartingChat}
+                    variant="outline"
+                >
+                    <MessageSquare className="mr-2 h-4 w-4" />
+                    {isStartingChat ? "Starting..." : "Message Actor"}
+                </Button>
               </div>
 
               {/* --- Bio Section (Unchanged) --- */}

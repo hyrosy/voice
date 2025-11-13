@@ -34,7 +34,7 @@ import AdminActorListPage from './pages/AdminActorListPage';   // <-- Import Act
 import AdminClientListPage from './pages/AdminClientListPage';  // <-- Import Client List
 import CreateProfilePromptPage from './pages/CreateProfilePromptPage'; // <-- Import new page
 import FavoriteActorsPage from './pages/FavoriteActorsPage'; // <-- 1. Import the new page
-
+import MessagesPage from './pages/MessagesPage'; // <-- Import new page
 // --- NEW: Actor Dashboard Layout & Pages ---
 import ActorDashboardLayout from './layouts/ActorDashboardLayout';
 import DashboardOrders from './pages/dashboard/DashboardOrders';
@@ -109,16 +109,20 @@ function App() {
         <Route path="/actor-login" element={<ActorLoginPage />} />
         <Route path="/actor-signup" element={<ActorSignUpPage />} />
         <Route path="/my-shortlist" element={<MyShortlistPage />} />
+        <Route path="/messages" element={<MessagesPage />} />
+        <Route path="/messages/:conversationId" element={<MessagesPage />} />
         <Route path="/admin/order/:orderId" element={<AdminOrderDetailPage />} /> {/* <-- Add this route */}
         <Route path="/admin/actors" element={<AdminActorListPage />} />   {/* <-- Add Actor route */}
         <Route path="/admin/clients" element={<AdminClientListPage />} />  {/* <-- Add Client route */}
         <Route path="/create-profile" element={<CreateProfilePromptPage />} /> {/* <-- Add new route */}
         <Route path="/portfolio" element={<PortfolioPage />} />
-
+        {/* --- END NEW ROUTES --- */}
         {/* --- NEW Actor Dashboard Layout --- */}
           <Route path="/dashboard" element={<ActorDashboardLayout />}>
             <Route index element={<DashboardOrders />} /> {/* /dashboard */}
             <Route path="profile" element={<DashboardProfile />} /> {/* /dashboard/profile */}
+            <Route path="messages" element={<MessagesPage />} />
+            <Route path="messages/:conversationId" element={<MessagesPage />} />
             <Route path="services" element={<DashboardServices />} /> {/* /dashboard/services */}
             <Route path="demos" element={<DashboardDemos />} /> {/* /dashboard/demos */}
             <Route path="library" element={<DashboardLibrary />} /> {/* /dashboard/library */}

@@ -7,7 +7,7 @@ import {
   Download, Check, RotateCcw, Banknote, FileText, Package, MessageSquare, 
   Copy, CreditCard, CheckCircle, ChevronDown, ChevronUp, Star, Bell, Info, Send, Wallet, History,
   Mic, PencilLine, Video, // --- Added service icons ---
-  RefreshCw
+  RefreshCw, LinkIcon
 } from 'lucide-react';
 import AccordionItem from '../components/AccordionItem';
 import ChatBox from '../components/ChatBox';
@@ -26,7 +26,8 @@ import { Textarea } from '@/components/ui/textarea'; // --- Added Textarea for r
 import { useTheme } from "next-themes"; // --- Added useTheme ---
 import { DialogHeader } from '@/components/ui/dialog';
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from '@radix-ui/react-dialog';
-// ---
+import ProjectMaterialsUploader from '@/components/ProjectMaterialsUploader'; // <-- Import new component
+
 
 const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY);
 
@@ -69,6 +70,12 @@ interface Order {
   // Joined Offer data
   offers: Offer[];
   latest_offer: Offer | null;
+  last_message_sender_role: 'client' | 'actor' | null;
+  actor_has_unread_messages: boolean;
+  client_has_unread_messages: boolean;
+  from_chat_offer: boolean;
+  material_file_urls: string[] | null; // <-- ADD THIS
+  project_notes: string | null;      // <-- ADD THIS
 }
 // (Interfaces for Offer and Review are unchanged)
 interface Offer {
@@ -109,6 +116,48 @@ const statusColors: { [key: string]: string } = {
   default: 'bg-muted-foreground/20 text-muted-foreground'
 };
 
+// --- ADD THIS HELPER COMPONENT ---
+const MaterialsDisplay: React.FC<{ script: string | null, fileUrls: string[] | null }> = ({ script, fileUrls }) => {
+  if (!script && (!fileUrls || fileUrls.length === 0)) {
+    return <p className="text-muted-foreground">The client has not uploaded any materials yet.</p>;
+  }
+
+  const scriptText = script?.trim();
+  const fileLinks = fileUrls || [];
+
+  return (
+    <div className="space-y-4">
+      {scriptText && (
+        <div>
+          <h4 className="font-semibold text-foreground mb-2">Project Details / Notes</h4>
+          <p className="text-muted-foreground whitespace-pre-wrap">{scriptText}</p>
+        </div>
+      )}
+      
+      {fileLinks.length > 0 && (
+        <div>
+          <h4 className="font-semibold text-foreground mb-3">Attached Files</h4>
+          <div className="space-y-2">
+            {fileLinks.map((url, index) => (
+              <Button
+                key={index}
+                asChild
+                variant="outline"
+                className="w-full justify-start text-left h-auto"
+              >
+                <a href={url} target="_blank" rel="noopener noreferrer">
+                  <LinkIcon className="h-4 w-4 mr-2 flex-shrink-0" />
+                  <span className="truncate">{url.split('/').pop()}</span>
+                </a>
+              </Button>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+// --- END HELPER COMPONENT ---
 
 const ClientOrderPage = () => {
     const { orderId } = useParams<{ orderId: string }>();
@@ -236,6 +285,33 @@ const ClientOrderPage = () => {
         fetchOrderAndReview();
     }, [fetchOrderAndReview]); // Use the memoized function
 
+    // --- ADD THIS NEW USE-EFFECT ---
+    // This implements "Mark as Read" when the client opens the order page.
+    useEffect(() => {
+        const markAsRead = async () => {
+            // This page is for the 'client', so we check and update the client's flag
+            // We check `order` exists first.
+            if (order && order.client_has_unread_messages) {
+                const { error } = await supabase
+                    .from('orders')
+                    .update({ 
+                    actor_has_unread_messages: false,
+                    notification_due_at: null // <-- ADD THIS LINE
+                })
+                    .eq('id', order.id);
+                
+                if (error) {
+                    console.error("Error marking messages as read:", error);
+                }
+                // No need to re-fetch, just set the flag locally if needed
+                // or let the subscription handle it.
+            }
+        };
+        
+        markAsRead();
+    // Run this check whenever the order data (or the specific flag) changes
+    }, [order?.id, order?.client_has_unread_messages]);
+    // --- END ADD ---
 
     // --- handleAcceptOffer (THIS IS THE CRITICAL FIX) ---
     const handleAcceptOffer = async () => {
@@ -572,8 +648,8 @@ const ClientOrderPage = () => {
 
                 {/* --- Left Column (Main Content) --- */}
                 <div className="lg:col-span-2 space-y-6">
-                    
-                    {/* --- Order Header Card --- */}
+
+                  {/* --- Order Header Card --- */}
                     <Card>
                       <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
                         <div>
@@ -597,6 +673,42 @@ const ClientOrderPage = () => {
                         )}
                       </CardHeader>
                     </Card>
+
+                    {/* 2. Check if materials need to be uploaded */}
+                    {order.status === 'In Progress' && !order.project_notes && !order.material_file_urls && (                    <Card>
+                        <CardHeader>
+                            <CardTitle>Upload Your Project Materials</CardTitle>
+                            <CardDescription>
+                                Please upload your script, files, or any other materials
+                                the actor needs to begin.
+                            </CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            <ProjectMaterialsUploader 
+                                order={order} 
+                                onUploadComplete={() => fetchOrderAndReview()} 
+                            />
+                        </CardContent>
+                    </Card>
+                )}
+                  {/* 3. Check if materials can be *displayed* */}
+                  {(order.project_notes || order.material_file_urls) && (
+                      <AccordionItem
+                          title="Project Materials"
+                          icon={<FileText size={18}/>}
+                          isOpen={true}
+                          onToggle={() => {}}
+                      >
+                          <div className="bg-card p-4 rounded-b-lg max-h-60 overflow-y-auto custom-scrollbar border-t">
+                              <MaterialsDisplay 
+                                  script={order.project_notes} 
+                                  fileUrls={order.material_file_urls} 
+                              />
+                          </div>
+                      </AccordionItem>
+                  )}
+                    
+                    
 
                     {/* --- Review Section (Completed) --- */}
                     {order.status === 'Completed' && (
@@ -679,7 +791,11 @@ const ClientOrderPage = () => {
                       </Card>
                     )}
 
+
+
                     {/* --- Order Details Accordions --- */}
+
+                    {order.script && (
                     <div className="space-y-4">
                       {order.service_type !== 'voice_over' && (
                         <AccordionItem title="Quote Details" icon={<Info size={18} />} isOpen={openSections.quote_details} onToggle={() => toggleSection('quote_details')}>
@@ -763,6 +879,7 @@ const ClientOrderPage = () => {
                         </div>
                       </AccordionItem>
                     </div>
+                    )}
                 </div>
 
                 {/* --- Right Column (Sticky Sidebar) --- */}
@@ -975,7 +1092,16 @@ const ClientOrderPage = () => {
                             </CardTitle>
                         </CardHeader>
                         <CardContent className="p-0">
-                            <ChatBox orderId={order.id} userRole="client" />
+                            <ChatBox orderId={order.id}
+                            userRole="client"
+                            orderData={{
+                              last_message_sender_role: order.last_message_sender_role,
+                              client_email: order.client_email,
+                              client_name: order.client_name,
+                              actor_email: order.actors.ActorEmail || '',
+                              actor_name: order.actors.ActorName,
+                              order_id_string: order.order_id_string
+                            }} conversationId={''} currentUserId={''} otherUserName={''} />
                         </CardContent>
                     </Card>
                 </div>
