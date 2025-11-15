@@ -14,7 +14,8 @@ import {
   AudioLines, 
   Settings, 
   LogOut,
-  MessageSquare
+  MessageSquare,
+  DollarSign
 } from 'lucide-react';
 import { cn } from "@/lib/utils";
 import { Separator } from '@/components/ui/separator';
@@ -38,6 +39,7 @@ const navItems = [
   { to: "/dashboard/services", name: "Services", icon: Settings },
   { to: "/dashboard/demos", name: "Demos", icon: Music },
   { to: "/dashboard/library", name: "Library", icon: AudioLines },
+  { to: "/dashboard/earnings", name: "Earnings", icon: DollarSign }, // <-- ADD THIS
 ];
 
 const ActorDashboardLayout = () => {

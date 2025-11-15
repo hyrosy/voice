@@ -1,6 +1,6 @@
 // In src/pages/ActorLoginPage.tsx
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { supabase } from '../supabaseClient';
 import { Link, useNavigate } from 'react-router-dom';
 import { UserCheck, RefreshCw } from 'lucide-react'; // Import icons
@@ -19,6 +19,34 @@ const ActorLoginPage = () => {
     const [password, setPassword] = useState('');
     const [message, setMessage] = useState('');
     const navigate = useNavigate();
+useEffect(() => {
+        const checkSession = async () => {
+            const { data: { session } } = await supabase.auth.getSession();
+            if (session) {
+                const { data: actorProfile } = await supabase
+                  .from('actors')
+                  .select('id')
+                  .eq('user_id', session.user.id)
+                  .maybeSingle();
+
+                if (actorProfile) {
+                    navigate('/dashboard');
+                } else {
+                    const { data: clientProfile } = await supabase
+                      .from('clients')
+                      .select('id')
+                      .eq('user_id', session.user.id)
+                      .maybeSingle();
+                    
+                    if (clientProfile) {
+                       navigate('/client-dashboard');
+                    }
+                }
+            }
+        };
+
+        checkSession();
+    }, [navigate]);
 
     // --- Login logic is unchanged ---
     const handleLogin = async (e: React.FormEvent) => {

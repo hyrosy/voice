@@ -18,97 +18,99 @@ serve(async (req) => {
     );
     console.log("Supabase admin client initialized.");
 
-    // Get the Authorization header to verify the caller.
-    const authHeader = req.headers.get('Authorization')
-    if (!authHeader) {
-      throw new Error('Missing Authorization header');
-    }
-    // Use the header to get the user making the request
-    const { data: { user }, error: userError } = await supabaseAdmin.auth.getUser(authHeader.replace('Bearer ', ''));
-    if (userError || !user) {
-        throw new Error(`Authentication error: ${userError?.message || 'User not found'}`);
-    }
-    console.log("Caller User ID:", user.id);
+    // --- THIS IS THE CORRECTED AUTH FLOW ---
+    const authHeader = req.headers.get('Authorization')
+    if (!authHeader) {
+      throw new Error('Missing Authorization header');
+    }
 
-    // Verify the user is an admin by checking the 'actors' table
-    const { data: adminProfile, error: adminCheckError } = await supabaseAdmin
-      .from('actors')
-      .select('role')
-      .eq('user_id', user.id)
-      .single();
+    // 1. Get the user response *safely*
+    const { data: userData, error: userError } = await supabaseAdmin.auth.getUser(authHeader.replace('Bearer ', ''));
+    
+    // 2. Check for an error *before* destructuring
+    if (userError || !userData?.user) {
+        throw new Error(`Authentication error: ${userError?.message || 'User not found'}`);
+    }
 
-    if (adminCheckError || adminProfile?.role !== 'admin') {
-      console.warn(`Admin check failed for user ${user.id}:`, adminCheckError);
-      throw new Error('Permission denied: User is not an admin.');
-    }
-    console.log("Admin role verified.");
+    // 3. Now it's safe to get the user
+    const user = userData.user;
+    console.log("Caller User ID:", user.id);
+    // --- END CORRECTION ---
 
-    // Fetch client profiles from public.clients
-    const { data: clientsData, error: clientsError } = await supabaseAdmin
-      .from('clients')
-      .select('id, full_name, company_name, user_id') // Fetch necessary client data
-      .order('full_name', { ascending: true });
+    // Verify the user is an admin by checking the 'actors' table
+    const { data: adminProfile, error: adminCheckError } = await supabaseAdmin
+      .from('actors')
+      .select('role')
+      .eq('user_id', user.id)
+      .single();
 
-    if (clientsError) {
-      throw clientsError;
-    }
-    console.log(`Fetched ${clientsData?.length || 0} client profiles.`);
+    if (adminCheckError || adminProfile?.role !== 'admin') {
+      console.warn(`Admin check failed for user ${user.id}:`, adminCheckError);
+      throw new Error('Permission denied: User is not an admin.');
+    }
+    console.log("Admin role verified.");
 
-    // If no clients, return empty array
-    if (!clientsData || clientsData.length === 0) {
-       return new Response(JSON.stringify([]), {
-         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-         status: 200,
-       });
-    }
+    // Fetch client profiles from public.clients
+    const { data: clientsData, error: clientsError } = await supabaseAdmin
+      .from('clients')
+      .select('id, full_name, company_name, user_id') //
+      .order('full_name', { ascending: true });
 
-    // Extract user_ids to fetch corresponding auth users
-    const userIds = clientsData.map(c => c.user_id);
+    if (clientsError) {
+      throw clientsError;
+    }
+    console.log(`Fetched ${clientsData?.length || 0} client profiles.`);
 
-    // Fetch auth users using the Admin API (can only be done server-side)
-    // Note: listUsers might require pagination for large numbers of users
-    const { data: usersResponse, error: usersError } = await supabaseAdmin.auth.admin.listUsers({
-       page: 1,
-       perPage: 1000, // Adjust if you have more clients
-    });
+    if (!clientsData || clientsData.length === 0) {
+       return new Response(JSON.stringify([]), {
+         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+         status: 200,
+       });
+    }
 
-    if (usersError) {
-      throw usersError;
-    }
+    // Extract user_ids to fetch corresponding auth users
+    const userIds = clientsData.map(c => c.user_id);
 
-    // Create a map of user_id -> email for easy lookup
-    const emailMap: { [userId: string]: string } = {};
-    usersResponse?.users.forEach(authUser => {
-        if (authUser.email) { // Ensure email exists
-           emailMap[authUser.id] = authUser.email;
-        }
-    });
-    console.log("Created email map for fetched users.");
+    // Fetch auth users using the Admin API
+    const { data: usersResponse, error: usersError } = await supabaseAdmin.auth.admin.listUsers({
+       page: 1,
+       perPage: 1000,
+    });
 
+    if (usersError) {
+      throw usersError;
+    }
 
-    // Combine client profiles with their emails
-    const clientsWithEmails = clientsData.map(client => ({
-      ...client,
-      email: emailMap[client.user_id] || 'N/A (Email not found in Auth)', // Add email from map
-    }));
+    // Create a map of user_id -> email for easy lookup
+    const emailMap: { [userId: string]: string } = {};
+    usersResponse?.users.forEach(authUser => {
+        if (authUser.email) {
+           emailMap[authUser.id] = authUser.email;
+        }
+    });
+    console.log("Created email map for fetched users.");
 
-    // Return the combined data
+    // Combine client profiles with their emails
+    const clientsWithEmails = clientsData.map(client => ({
+      ...client,
+      email: emailMap[client.user_id] || 'N/A (Email not found in Auth)',
+    }));
+
     return new Response(
-      JSON.stringify(clientsWithEmails),
-      {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 200, // OK
-      }
-    )
-  } catch (error) {
-    console.error("Error in get-clients-with-emails function:", error);
-    return new Response(
-      JSON.stringify({ error: error.message }),
-      {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        // Use 401 for Auth errors, 403 for Permission denied, 500 for others
-        status: error.message.startsWith('Permission denied') ? 403 : error.message.startsWith('Authentication error') ? 401 : 500,
-      }
-    )
-  }
+      JSON.stringify(clientsWithEmails),
+      {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 200,
+      }
+    )
+  } catch (error) {
+    console.error("Error in get-clients-with-emails function:", error);
+    return new Response(
+      JSON.stringify({ error: error.message }),
+      {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+       status: error.message.startsWith('Permission denied') ? 403 : error.message.startsWith('Authentication error') ? 401 : 500,
+      }
+    )
+  }
 })

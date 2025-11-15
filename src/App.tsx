@@ -42,6 +42,9 @@ import DashboardProfile from './pages/dashboard/DashboardProfile';
 import DashboardServices from './pages/dashboard/DashboardServices';
 import DashboardDemos from './pages/dashboard/DashboardDemos';
 import DashboardLibrary from './pages/dashboard/DashboardLibrary';
+import ActorEarningsPage from './pages/dashboard/ActorEarningsPage'; // <-- 1. Import the new page
+import AdminPayoutsPage from './pages/AdminPayoutsPage'; // <-- 1. Import the new page
+import ActorPayoutSettingsPage from './pages/dashboard/ActorPayoutSettingsPage'; // <-- 1. Import the new page
 
 function App() {
   
@@ -116,6 +119,7 @@ function App() {
         <Route path="/admin/clients" element={<AdminClientListPage />} />  {/* <-- Add Client route */}
         <Route path="/create-profile" element={<CreateProfilePromptPage />} /> {/* <-- Add new route */}
         <Route path="/portfolio" element={<PortfolioPage />} />
+        <Route path="/admin/payouts" element={<AdminPayoutsPage />} />
         {/* --- END NEW ROUTES --- */}
         {/* --- NEW Actor Dashboard Layout --- */}
           <Route path="/dashboard" element={<ActorDashboardLayout />}>
@@ -126,6 +130,8 @@ function App() {
             <Route path="services" element={<DashboardServices />} /> {/* /dashboard/services */}
             <Route path="demos" element={<DashboardDemos />} /> {/* /dashboard/demos */}
             <Route path="library" element={<DashboardLibrary />} /> {/* /dashboard/library */}
+            <Route path="earnings" element={<ActorEarningsPage />} />
+            <Route path="payout-settings" element={<ActorPayoutSettingsPage />} />
           </Route>
       </Routes>
       </main>

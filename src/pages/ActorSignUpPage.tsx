@@ -1,6 +1,6 @@
 // In src/pages/ActorSignUpPage.tsx
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { supabase } from '../supabaseClient';
 import { Link, useNavigate } from 'react-router-dom';
 import { UserPlus, RefreshCw } from 'lucide-react'; // Import icons
@@ -20,6 +20,36 @@ const ActorSignUpPage = () => {
     const [password, setPassword] = useState('');
     const [message, setMessage] = useState('');
     const navigate = useNavigate(); // Added for consistency, though only trigger is used
+
+useEffect(() => {
+        const checkSession = async () => {
+            const { data: { session } } = await supabase.auth.getSession();
+            if (session) {
+                const { data: actorProfile } = await supabase
+                  .from('actors')
+                  .select('id')
+                  .eq('user_id', session.user.id)
+                  .maybeSingle();
+
+                if (actorProfile) {
+                    navigate('/dashboard');
+              } else {
+                   const { data: clientProfile } = await supabase
+                      .from('clients')
+                      .select('id')
+                .eq('user_id', session.user.id)
+                      .maybeSingle();
+                    
+                    if (clientProfile) {
+                        navigate('/client-dashboard');
+                    }
+                }
+            }
+        };
+
+        checkSession();
+    }, [navigate]);
+    // --- END ADD ---
 
     // --- SignUp logic is unchanged ---
     const handleSignUp = async (e: React.FormEvent) => {

@@ -1,6 +1,6 @@
 // In src/pages/ClientAuthPage.tsx
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react'; // <-- 1. Add useEffect
 import { supabase } from '../supabaseClient';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { UserCircle, RefreshCw } from 'lucide-react'; // Import loading icon
@@ -23,6 +23,43 @@ const ClientAuthPage = () => {
     const [message, setMessage] = useState('');
     const [isSignUp, setIsSignUp] = useState(true);
     const navigate = useNavigate();
+    // --- 2. ADD THIS ENTIRE useEffect HOOK ---
+    useEffect(() => {
+        const checkSession = async () => {
+            const { data: { session } } = await supabase.auth.getSession();
+            if (session) {
+                // User is logged in. Let's find out their role.
+              // We check for an actor profile first.
+                const { data: actorProfile } = await supabase
+                  .from('actors')
+                  .select('id')
+                  .eq('user_id', session.user.id)
+                  .maybeSingle();
+
+                if (actorProfile) {
+                    // This user is an actor, send them to the actor dashboard
+                    navigate('/dashboard');
+                } else {
+                    // Not an actor, check if they are a client
+                    const { data: clientProfile } = await supabase
+                      .from('clients')
+                      .select('id')
+                      .eq('user_id', session.user.id)
+                      .maybeSingle();
+                    
+                    if (clientProfile) {
+                        // This user is a client, send them to the client dashboard
+                        navigate('/client-dashboard');
+                    }
+                  // If they have neither profile (e.g., mid-signup),
+                  // we do nothing and let them stay on the page.
+                }
+            }
+            // If no session, do nothing.
+        };
+
+        checkSession();
+    }, [navigate]);
 
     // --- Auth logic is unchanged ---
     const handleAuthAction = async (e: React.FormEvent) => {

@@ -10,7 +10,7 @@ export const corsHeaders = (origin: string | null) => {
   const accessControlAllowOrigin = inAllowedList ? origin : allowedOrigins[1]; // Default to production
 
   return {
-    'Access-Control-Allow-Origin': accessControlAllowOrigin!,
-    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-api-key',
-  };
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS', // <-- THIS IS THE FIX
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',  };
 };

@@ -3,120 +3,158 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
-import { ArrowLeft, Users } from 'lucide-react'; // Reusing Users icon
+import { ArrowLeft, Users, ArrowRight, UserRound, Building } from 'lucide-react'; // Added new icons
 
-// Interface for Client data on this page
+// --- shadcn/ui Imports ---
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+// ---
+
+// Interface (Unchanged)
 interface ClientProfile {
-    id: string;
-    full_name: string;
-    company_name?: string | null;
-    user_id: string; // Link to auth.users
-    // We need email, but it's in auth.users, requires a join or separate fetch
-    email: string; // Function should now return email
+    id: string;
+    full_name: string;
+    company_name?: string | null;
+    user_id: string; 
+    email: string; 
 }
 
 const AdminClientListPage: React.FC = () => {
-    const [clients, setClients] = useState<ClientProfile[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState('');
-    const navigate = useNavigate();
+    const [clients, setClients] = useState<ClientProfile[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState('');
+    const navigate = useNavigate();
 
-    const fetchClients = useCallback(async () => {
-        setLoading(true);
-        setError('');
+    // --- (All your data fetching logic is correct) ---
+    // The Edge Function call and error handling (lines 42-65) look solid.
+    // There are no obvious errors in your 'invoke' call.
+   const fetchClients = useCallback(async () => {
+        setLoading(true);
+        setError('');
 
-        // --- Check Admin Role ---
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) { navigate('/actor-login'); return; }
-        const { data: profile } = await supabase.from('actors').select('role').eq('user_id', user.id).single();
-        if (profile?.role !== 'admin') { navigate('/dashboard'); return; }
-        // --- End Admin Role Check ---
+        // --- Check Admin Role (This part is correct) ---
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) { navigate('/actor-login'); return; }
+        const { data: profile } = await supabase.from('actors').select('role').eq('user_id', user.id).single();
+        if (profile?.role !== 'admin') { navigate('/dashboard'); return; }
+        // --- End Admin Role Check ---
 
-        /// --- CALL EDGE FUNCTION INSTEAD ---
-       try {
-           const { data: clientsData, error: functionError } = await supabase.functions.invoke(
-                'get-clients-with-emails'
-           );
+        // --- THIS IS THE NEW, SIMPLER QUERY ---
+        // No more Edge Function!
+        const { data, error: fetchError } = await supabase
+            .from('clients')
+            .select('id, full_name, company_name, user_id, email') // We can just select email now!
+            .order('full_name', { ascending: true });
 
-            if (functionError) {
-               // Handle errors during invocation (network, function not found)
-                throw functionError;
-            }
-             if (clientsData && clientsData.error) {
-                 // Handle errors returned BY the function (e.g., permission denied)
-                 throw new Error(clientsData.error);
-             }
-             if (!clientsData || !Array.isArray(clientsData)) {
-                 // Handle unexpected response format
-                 throw new Error("Invalid data received from function.");
-             }
+        if (fetchError) {
+            setError(`Error fetching clients: ${fetchError.message}`);
+            console.error(fetchError);
+            setClients([]);
+        } else {
+            setClients(data as ClientProfile[]);
+        }
+        setLoading(false);
+    }, [navigate]);
+    // --- END REPLACEMENT ---
 
-            console.log("Fetched clients via function:", clientsData);
-            setClients(clientsData as ClientProfile[]); // Set state with data from function
+    useEffect(() => {
+        fetchClients();
+    }, [fetchClients]);
 
-       } catch (error) {
-           const err = error as Error;
-           console.error("Error fetching clients via function:", err);
-           setError(`Error fetching clients: ${err.message}`);
-           setClients([]); // Clear clients on error
-       } finally {
-           setLoading(false);
-       }
-       }, [navigate]);
-       // --- END FUNCTION CALL ---
+    if (loading) {
+        return <div className="min-h-screen bg-background flex items-center justify-center text-foreground">Loading Clients...</div>;
+    }
 
-    useEffect(() => {
-        fetchClients();
-    }, [fetchClients]);
+    return (
+        <div className="min-h-screen bg-background p-4 md:p-8 text-foreground">
+            <div className="max-w-7xl mx-auto">
+                
+            {/* --- 1. RESTYLED HEADER --- */}
+            <Button asChild variant="ghost" className="mb-6">
+              <Link to="/admin"> {/* <-- Make sure this path is correct */}
+                  <ArrowLeft size={16} className="mr-2" /> Back to Admin Dashboard
+                </Link>
+            </Button>
 
-    // TODO: Add functions to view client's orders, potentially deactivate/delete client
+            {error && <p className="mb-4 p-3 bg-destructive/10 border border-destructive/50 rounded-md text-sm text-destructive">{error}</p>}
 
-    if (loading) {
-        return <div className="min-h-screen bg-background flex items-center justify-center text-foreground">Loading Clients...</div>;
-    }
-
-    return (
-        <div className="min-h-screen bg-background p-4 md:p-8 text-foreground">
-            <div className="max-w-7xl mx-auto">
-                {/* Back Link */}
-                <Link to="/admin" className="inline-flex items-center gap-2 text-muted-foreground hover:text-accent-foreground mb-6 transition-colors">
-                    <ArrowLeft size={16} /> Back to Admin Dashboard
-                </Link>
-
-                <h1 className="text-3xl font-bold mb-6 flex items-center gap-3"><Users /> Manage Clients</h1>
-
-                {error && <p className="mb-4 p-3 bg-red-900/50 border border-red-700 rounded-md text-sm text-red-300">{error}</p>}
-
-                <div className="bg-card rounded-lg border border overflow-x-auto">
-                    <table className="w-full text-left min-w-[700px]">
-                        <thead className="bg-slate-700 text-xs uppercase text-muted-foreground">
-                            <tr>
-                                <th className="p-4">Name</th>
-                                <th className="p-4">Company</th>
-                                <th className="p-4">Email</th>
-                                <th className="p-4">Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {clients.map(client => (
-                                <tr key={client.id} className="border-b border hover:bg-accent/50 text-sm">
-                                    <td className="p-4 font-semibold">{client.full_name}</td>
-                                    <td className="p-4 text-muted-foreground">{client.company_name || '-'}</td>
-                                    <td className="p-4 text-muted-foreground">{client.email}</td> {/* Should display actual email now */}
-                                    {/*<td className="p-4 whitespace-nowrap">
-                                        <button className="text-xs text-blue-400 hover:underline">View Orders</button>
-                                    </td>*/}
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                    {clients.length === 0 && !loading && (
-                        <p className="text-center text-slate-500 p-8">No clients found.</p>
-                    )}
-                </div>
-            </div>
-        </div>
-    );
+                {/* --- 2. RESTYLED CARD & TABLE --- */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-3">
+                  <Users /> Manage Clients
+                </CardTitle>
+                <CardDescription>
+                  A list of all client accounts on the platform.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="overflow-x-auto">
+                    <Table className="min-w-[700px]">
+                        <TableHeader>
+                            <TableRow>
+                                <TableHead>Name</TableHead>
+                                <TableHead>Company</TableHead>
+                                <TableHead>Email</TableHead>
+                                <TableHead className="text-right">Actions</TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            {clients.map(client => (
+                                <TableRow key={client.id} className="text-sm">
+                                    <TableCell className="font-medium">
+                                        <div className="flex items-center gap-3">
+                                          <Avatar className="h-8 w-8">
+                                            <AvatarFallback>{client.full_name?.charAt(0).toUpperCase() || 'C'}</AvatarFallback>
+                                          </Avatar>
+                                          <div className="flex flex-col">
+                                            <span className="font-semibold">{client.full_name}</span>
+                                            <span className="text-xs text-muted-foreground sm:hidden">{client.email}</span>
+                                          </div>
+                                        </div>
+                                      </TableCell>
+                                    <TableCell className="text-muted-foreground">
+                                        <div className="flex items-center gap-2">
+                                          {client.company_name ? (
+                                            <>
+                                              <Building className="h-4 w-4" />
+                                              {client.company_name}
+                                            </>
+                                          ) : '-'}
+                                        </div>
+                                      </TableCell>
+                                    <TableCell className="text-muted-foreground hidden sm:table-cell">{client.email}</TableCell>
+                                    <TableCell className="text-right">
+                                        {/* Example action button */}
+                                        {/* <Button asChild variant="outline" size="sm">
+                                          <Link to={`/admin/client/${client.id}/orders`}>
+                                              <span className="hidden sm:inline">View Orders</span>
+                                              <ArrowRight className="h-4 w-4 sm:hidden" />
+                                          </Link>
+                                        </Button> */}
+                                    </TableCell>
+                                </TableRow>
+                            ))}
+                        </TableBody>
+                    </Table>
+                    {clients.length === 0 && !loading && (
+                        <p className="text-center text-muted-foreground p-8">No clients found.</p>
+                    )}
+                </div>
+              </CardContent>
+                </Card>
+            </div>
+        </div>
+    );
 };
 
 export default AdminClientListPage;
