@@ -81,7 +81,7 @@ const AdminClientListPage: React.FC = () => {
             {/* --- 1. RESTYLED HEADER --- */}
             <Button asChild variant="ghost" className="mb-6">
               <Link to="/admin"> {/* <-- Make sure this path is correct */}
-                  <ArrowLeft size={16} className="mr-2" /> Back to Admin Dashboard
+                  <ArrowLeft size={16} className="mr-2" />  
                 </Link>
             </Button>
 

@@ -511,8 +511,8 @@ const handleMessageActor = async () => {
                             className="w-28 h-28 md:w-52 md:h-52 rounded-full object-cover flex-shrink-0 shadow-2xl shadow-black/50"
                         />
                         <div className="text-left flex-grow">
-                            <h1 className="text-4xl sm:text-5xl md:text-8xl font-black tracking-tighter text-foreground break-words">{actor.ActorName}</h1>
-                            <div className="flex flex-wrap items-center justify-start gap-x-3 gap-y-1 text-muted-foreground text-sm md:text-base mt-1 md:mt-2">                                
+                            <h1 className="text-4xl sm:text-5xl md:text-8xl font-black tracking-tighter text-white break-words">{actor.ActorName}</h1>
+                            <div className="flex flex-wrap items-center justify-start gap-x-3 gap-y-1 text-foreground text-sm md:text-base mt-1 md:mt-2">                                
                                 <span>{actor.Language} | {actor.Gender}</span>
                                 <span className="mx-1">&middot;</span>
                                 <span>{followerCount} Followers</span>

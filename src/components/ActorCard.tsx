@@ -1,7 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { Play, Pause, Heart, Users, Repeat, DollarSign } from 'lucide-react';
-
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 // A more detailed interface for the data this card now needs
 export interface Actor {
   id: string;
@@ -38,11 +38,17 @@ const ActorCard: React.FC<ActorCardProps> = ({ actor, onPlayClick, isCurrentlyPl
     >
       {/* Image & Play Button */}
       <div className="relative mb-4">
-        <img 
+        <Avatar className="w-full h-auto aspect-square rounded-md">
+        <AvatarImage 
           src={actor.HeadshotURL} 
           alt={actor.ActorName} 
-          className="w-full rounded-md aspect-square object-cover"
+          className="object-cover"
         />
+        <AvatarFallback className="text-3xl">
+          {/* This creates the initials, e.g., "HK" */}
+          {actor.ActorName?.split(' ').map(n => n[0]).join('')}
+        </AvatarFallback>
+      </Avatar>
         <button
           onClick={handlePlayButtonClick}
           className={`absolute bottom-2 right-2 w-12 h-12 bg-primary text-primary-foreground rounded-full flex items-center justify-center

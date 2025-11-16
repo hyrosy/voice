@@ -42,6 +42,7 @@
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-i18next": "^16.2.1",
+    "react-player": "^3.4.0",
     "react-router-dom": "^6.21.3",
     "react-router-hash-link": "^2.4.3",
     "swiper": "^11.2.8",

@@ -1,118 +1,199 @@
+// In src/pages/PortfolioPage.tsx
+
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../supabaseClient';
-import { Demo } from '../components/DemoCard';
-import DemoCard from '../components/DemoCard'; // Import the new component
+import { 
+  Demo, 
+  AudioDemoCard, 
+  VideoDemoCard, 
+  ScriptDemoCard 
+} from '@/components/DemoCards';
+import TalentCard from '../components/TalentCard'; // <-- 1. Import our new card
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Info } from 'lucide-react';
+import { Skeleton } from "@/components/ui/skeleton"; // <-- 2. Import Skeleton
 
-// This is a placeholder for your global audio player logic
-// You can integrate this with your existing GlobalAudioPlayer
-const useDemoPlayer = () => {
-  const [currentTrack, setCurrentTrack] = useState<string | null>(null);
-  
-  const handlePlayClick = (demo: Demo) => {
-    console.log("Playing demo:", demo.demo_url);
-    // Add logic here to set track in your GlobalAudioPlayer
-    // For now, we'll just log it.
-    // setCurrentTrack(demo.demo_url);
-  };
-
-  return { currentTrack, handlePlayClick };
-};
-
+// Define the actor type
+interface Actor {
+  slug: string;
+  HeadshotURL: string | null;
+  ActorName: string;
+  bio: string | null;
+  service_scriptwriting: boolean;
+  service_videoediting: boolean;
+  service_voiceover: boolean; // We'll add this
+}
 
 const PortfolioPage: React.FC = () => {
-  const [allDemos, setAllDemos] = useState<Demo[]>([]);
-  const [filteredDemos, setFilteredDemos] = useState<Demo[]>([]);
+  // Demos State
+  const [allDemos, setAllDemos] = useState<Demo[]>([]);
+  const [filteredDemos, setFilteredDemos] = useState<Demo[]>([]);
+  
+  // Actors State
+  const [allActors, setAllActors] = useState<Actor[]>([]); // <-- 3. Add state for actors
+
   const [currentFilter, setCurrentFilter] = useState<'all' | 'audio' | 'video' | 'script'>('all');
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  
-  const { handlePlayClick } = useDemoPlayer();
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  // 1. Fetch all demos on component mount
-  useEffect(() => {
-    const fetchDemos = async () => {
-      setIsLoading(true);
-      setError(null);
+  // 4. Fetch *both* demos and actors
+  useEffect(() => {
+    const fetchAllData = async () => {
+      setIsLoading(true);
+      setError(null);
+      
+      // Fetch Demos (existing logic)
+      const { data: demoData, error: demoError } = await supabase.rpc('get_all_demos');
       
-      const { data, error } = await supabase.rpc('get_all_demos');
+      // Fetch Actors (new logic)
+      const { data: actorData, error: actorError } = await supabase
+        .from('actors')
+        .select(`
+          slug, 
+          HeadshotURL, 
+          ActorName, 
+          bio, 
+          service_scriptwriting, 
+          service_videoediting,
+          IsActive
+        `)
+        .eq('IsActive', true); // Only show active actors
 
-      if (error) {
-        console.error("Error fetching demos:", error);
-        setError("Could not load demos at this time. Please try again later.");
-      } else if (data) {
-        setAllDemos(data as Demo[]);
-        setFilteredDemos(data as Demo[]); // Initially, show all
-      }
-      setIsLoading(false);
-    };
+      if (demoError || actorError) {
+        console.error("Error fetching data:", demoError, actorError);
+        setError("Could not load content. Please try again later.");
+      } else {
+        setAllDemos(demoData as Demo[]);
+        // Add the 'service_voiceover' property
+        const actorsWithVO = actorData.map(actor => ({
+          ...actor,
+          service_voiceover: true 
+        }));
+        setAllActors(actorsWithVO);
+      }
+      setIsLoading(false);
+    };
 
-    fetchDemos();
-  }, []);
+    fetchAllData();
+  }, []);
 
-  // 2. Filter demos when the filter or data changes
-  useEffect(() => {
-    if (currentFilter === 'all') {
-      setFilteredDemos(allDemos);
-    } else {
+  // 5. Update filtering logic
+  useEffect(() => {
+    if (currentFilter === 'all') {
+      setFilteredDemos([]); // We're showing actors, so clear the demos
+    } else {
+      // This is your existing logic, it's perfect
       setFilteredDemos(allDemos.filter(demo => demo.demo_type === currentFilter));
+    }
+  }, [currentFilter, allDemos]);
+
+// --- 2. NEW: Helper function to render the correct card ---
+  const renderDemoCard = (demo: Demo) => {
+    switch (demo.demo_type) {
+      case 'audio':
+        return <AudioDemoCard key={demo.demo_id} demo={demo} />;
+      case 'video':
+        return <VideoDemoCard key={demo.demo_id} demo={demo} />;
+      case 'script':
+        return <ScriptDemoCard key={demo.demo_id} demo={demo} />;
+      default:
+        return null;
     }
-  }, [currentFilter, allDemos]);
+  };
 
-  return (
-    <div className="container max-w-7xl mx-auto px-4 py-12">
-      <div className="text-center mb-12">
-        <h1 className="text-4xl md:text-5xl font-bold text-foreground mb-4">
-          Demo Gallery
-        </h1>
-        <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
-          Browse the latest audio, video, and script demos from our entire roster of talent.
-        </p>
-      </div>
+  return (
+    <div className="container max-w-7xl mx-auto px-4 py-12">
+      <div className="text-center mb-12">
+        <h1 className="text-4xl md:text-5xl font-bold text-foreground mb-4">
+          Our Talent & Demos
+        </h1>
+        <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
+          Browse our marketplace by talent, or listen to the latest demos
+          for audio, video, and scripts.
+        </p>
+      </div>
 
-      <Tabs 
-        value={currentFilter} 
-        onValueChange={(value) => setCurrentFilter(value as any)} 
-        className="w-full mb-8"
-      >
-        <TabsList className="grid w-full grid-cols-4 max-w-md mx-auto">
-          <TabsTrigger value="all">All</TabsTrigger>
-          <TabsTrigger value="audio">Audio</TabsTrigger>
-          <TabsTrigger value="video">Video</TabsTrigger>
-          <TabsTrigger value="script">Scripts</TabsTrigger>
-        </TabsList>
-      </Tabs>
+      <Tabs 
+        value={currentFilter} 
+        onValueChange={(value) => setCurrentFilter(value as any)} 
+        className="w-full mb-8"
+      >
+        <TabsList className="grid w-full grid-cols-4 max-w-md mx-auto">
+          <TabsTrigger value="all">All Talent</TabsTrigger>
+          <TabsTrigger value="audio">Audio</TabsTrigger>
+          <TabsTrigger value="video">Video</TabsTrigger>
+          <TabsTrigger value="script">Scripts</TabsTrigger>
+        </TabsList>
 
-      {/* Content Area */}
-      <div>
+        {/* --- 3. UPDATED: Content Section --- */}
         {isLoading ? (
-          <p className="text-center text-muted-foreground">Loading demos...</p>
-          // TODO: Add Skeleton loaders here
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+            {[...Array(8)].map((_, i) => (
+              <Skeleton key={i} className="rounded-xl aspect-[3/4]" />
+            ))}
+          </div>
         ) : error ? (
           <Alert variant="destructive" className="max-w-xl mx-auto">
             <AlertTitle>Error</AlertTitle>
             <AlertDescription>{error}</AlertDescription>
           </Alert>
-        ) : filteredDemos.length === 0 ? (
-          <Alert className="max-w-xl mx-auto">
-            <Info className="h-4 w-4" />
-            <AlertTitle>No Demos Found</AlertTitle>
-            <AlertDescription>
-              There are no demos matching this filter.
-            </AlertDescription>
-          </Alert>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            {filteredDemos.map(demo => (
-            <DemoCard key={demo.demo_id} demo={demo} />
-            ))}
-          </div>
+          <>
+            {/* --- "ALL TALENT" TAB (Correct) --- */}
+            <TabsContent value="all">
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+                {allActors.map(actor => (
+                  <TalentCard key={actor.slug} actor={actor} />
+                ))}
+              </div>
+            </TabsContent>
+
+            {/* --- "AUDIO" TAB (Uses new render function) --- */}
+            <TabsContent value="audio">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                {filteredDemos.length > 0 ? (
+                  filteredDemos.map(renderDemoCard)
+                ) : (
+                  <p className="text-center text-muted-foreground col-span-full">
+                    No audio demos found.
+                  </p>
+                )}
+              </div>
+            </TabsContent>
+
+            {/* --- "VIDEO" TAB (Uses new render function) --- */}
+            <TabsContent value="video">
+              {/* As per your idea, we can use a different grid for videos */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {filteredDemos.length > 0 ? (
+                  filteredDemos.map(renderDemoCard)
+                ) : (
+                  <p className="text-center text-muted-foreground col-span-full">
+                    No video demos found.
+                  </p>
+                )}
+              </div>
+            </TabsContent>
+
+            {/* --- "SCRIPT" TAB (Uses new render function) --- */}
+            <TabsContent value="script">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                {filteredDemos.length > 0 ? (
+                  filteredDemos.map(renderDemoCard)
+                ) : (
+                  <p className="text-center text-muted-foreground col-span-full">
+                    No script demos found.
+                  </p>
+                )}
+              </div>
+            </TabsContent>
+          </>
         )}
-      </div>
-    </div>
-  );
+              </Tabs>
+            </div>
+  );
+
 };
 
 export default PortfolioPage;
