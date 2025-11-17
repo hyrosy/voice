@@ -21,6 +21,7 @@ export interface Demo {
   actor_name: string;
   actor_slug: string;
   actor_headshot: string;
+  likes?: number;
 }
 
 interface DemoCardProps {

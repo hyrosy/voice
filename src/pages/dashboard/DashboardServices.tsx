@@ -21,6 +21,7 @@ import { Mic, PencilLine, Video, Save } from 'lucide-react';
 interface ActorServiceData {
   id: string;
   // Voice Over
+  service_voiceover: boolean; // <-- 1. NEW FIELD
   BaseRate_per_Word: number;
   revisions_allowed: number;
   WebMultiplier: number;
@@ -50,7 +51,7 @@ const DashboardServices: React.FC = () => {
     
     const { data, error } = await supabase
       .from('actors')
-      .select('id, BaseRate_per_Word, revisions_allowed, WebMultiplier, BroadcastMultiplier, service_scriptwriting, service_script_description, service_script_rate, service_videoediting, service_video_description, service_video_rate')
+      .select('id, service_voiceover, BaseRate_per_Word, revisions_allowed, WebMultiplier, BroadcastMultiplier, service_scriptwriting, service_script_description, service_script_rate, service_videoediting, service_video_description, service_video_rate')
       .eq('id', layoutActorData.id)
       .single();
 
@@ -68,8 +69,7 @@ const DashboardServices: React.FC = () => {
   }, [fetchServiceData]);
 
   // --- Handlers ---
-  const handleServiceToggle = async (serviceName: 'service_scriptwriting' | 'service_videoediting', isEnabled: boolean) => {
-    if (!servicesData.id) return;
+const handleServiceToggle = async (serviceName: 'service_scriptwriting' | 'service_videoediting' | 'service_voiceover', isEnabled: boolean) => {    if (!servicesData.id) return;
     setServicesData(prev => ({ ...prev, [serviceName]: isEnabled }));
     
     // Also save this change immediately
@@ -101,6 +101,7 @@ const DashboardServices: React.FC = () => {
     
     // Payload includes all fields from this page
     const updatePayload = {
+      service_voiceover: servicesData.service_voiceover, // <-- Save new field
       BaseRate_per_Word: servicesData.BaseRate_per_Word,
       revisions_allowed: servicesData.revisions_allowed,
       WebMultiplier: servicesData.WebMultiplier,
@@ -138,10 +139,20 @@ const DashboardServices: React.FC = () => {
         {/* --- 1. Voice Over Card --- */}
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-lg">Voice Over</CardTitle>
-            <Mic className="h-5 w-5 text-primary" />
+            <div className="flex items-center gap-2">
+                <CardTitle className="text-lg">Voice Over</CardTitle>
+                <Mic className="h-5 w-5 text-primary" />
+            </div>
+            <div className="flex items-center space-x-2">
+                <Label htmlFor="service_voiceover" className="text-sm text-muted-foreground">Enable</Label>
+                <Switch 
+                  id="service_voiceover"
+                  checked={servicesData.service_voiceover ?? true} // Default to true
+                  onCheckedChange={(isChecked) => handleServiceToggle('service_voiceover', isChecked)}
+                />
+            </div>
           </CardHeader>
-          <CardContent>
+          <CardContent className={servicesData.service_voiceover === false ? "opacity-50 pointer-events-none" : ""}>
             <CardDescription className="mb-4">This is your core service. Set your base rates here.</CardDescription>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-2">

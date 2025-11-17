@@ -64,10 +64,11 @@ const VoiceOverLandingPage = () => {
 
       if (viewMode === 'actors') {
         // --- ACTOR SEARCH LOGIC ---
-        let actorQuery = supabase
-          .from('actors')
-          .select(`*, actor_followers(count), demo_likes(count)`)
-          .eq('IsActive', true);
+      let actorQuery = supabase
+          .from('actors')
+          .select(`*, actor_followers(count), demo_likes(count)`)
+          .eq('IsActive', true) // Admin check
+          .eq('service_voiceover', true); // <-- ADD THIS: Actor's own toggle check
 
         if (languageFilter !== 'all') actorQuery = actorQuery.eq('Language', languageFilter);
         if (genderFilter !== 'all') actorQuery = actorQuery.eq('Gender', genderFilter);

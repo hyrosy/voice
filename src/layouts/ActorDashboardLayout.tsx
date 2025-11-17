@@ -15,10 +15,20 @@ import {
   Settings, 
   LogOut,
   MessageSquare,
-  DollarSign
+  DollarSign,
+  Menu,
+  X
 } from 'lucide-react';
 import { cn } from "@/lib/utils";
 import { Separator } from '@/components/ui/separator';
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+  SheetClose
+} from "@/components/ui/sheet";
 
 interface Actor {
   id: string;
@@ -40,6 +50,21 @@ const navItems = [
   { to: "/dashboard/demos", name: "Demos", icon: Music },
   { to: "/dashboard/library", name: "Library", icon: AudioLines },
   { to: "/dashboard/earnings", name: "Earnings", icon: DollarSign }, // <-- ADD THIS
+];
+
+// Mobile Bottom Bar (Only show top 3 + Menu)
+const mobilePrimaryItems = [
+  { to: "/dashboard", name: "Orders", icon: ListOrdered },
+  { to: "/dashboard/messages", name: "Inbox", icon: MessageSquare }, // <-- UPDATED
+  { to: "/dashboard/profile", name: "Profile", icon: User },
+  { to: "/dashboard/earnings", name: "Earnings", icon: DollarSign }, // <-- ADD THIS
+];
+
+// Menu Drawer Items (The rest)
+const mobileMenuItems = [
+  { to: "/dashboard/services", name: "Services", icon: Settings },
+  { to: "/dashboard/demos", name: "Demos", icon: Music },
+  { to: "/dashboard/library", name: "Library", icon: AudioLines },
 ];
 
 const ActorDashboardLayout = () => {
@@ -147,36 +172,80 @@ const ActorDashboardLayout = () => {
 
       {/* --- Mobile Bottom Nav (Restored) --- */}
       {/* (No changes needed here, the 'navItems' update fixed the links) */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-background border-t border-border flex justify-around p-1 z-50">
-        {navItems.map((item) => (
-          <NavLink
-            key={item.name}
-            to={item.to}
-            end
-            className={({ isActive }) =>
-              cn(
-                "flex flex-col items-center p-2 rounded-lg w-1/6",
-                isActive 
-                  ? 'text-primary' 
-                  : 'text-muted-foreground hover:text-primary'
-             )
-            }
-          >
-            <item.icon className="h-5 w-5" />
-            <span className="text-xs mt-1">{item.name}</span>
-          </NavLink>
-        ))}
-         {/* (Logout button is correct) */}
-         <button 
-            onClick={handleLogout} 
-            className="flex flex-col items-center p-2 rounded-lg text-muted-foreground w-1/6 hover:text-destructive"
-          >
-            <LogOut className="h-5 w-5" />
-            <span className="text-xs mt-1">Log Out</span>
-          </button>
-      </nav>
-    </div>
-  );
+      {/* --- Mobile Bottom Nav (Redesigned) --- */}
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-background border-t border-border flex justify-around items-center h-16 px-2 z-50 pb-safe">
+        
+        {/* 1. Primary Items */}
+        {mobilePrimaryItems.map((item) => (
+          <NavLink
+            key={item.name}
+            to={item.to}
+            end={item.to === '/dashboard'}
+            className={({ isActive }) =>
+              cn(
+                "flex flex-col items-center justify-center w-full h-full space-y-1",
+                isActive 
+                  ? 'text-primary' 
+                  : 'text-muted-foreground hover:text-primary'
+              )
+            }
+          >
+            <item.icon className="h-5 w-5" />
+            <span className="text-[10px] font-medium">{item.name}</span>
+          </NavLink>
+        ))}
+
+        {/* 2. The "Menu" Drawer Trigger */}
+        <Sheet>
+          <SheetTrigger asChild>
+            <button className="flex flex-col items-center justify-center w-full h-full space-y-1 text-muted-foreground hover:text-primary">
+              <Menu className="h-5 w-5" />
+              <span className="text-[10px] font-medium">Menu</span>
+            </button>
+          </SheetTrigger>
+          <SheetContent side="bottom" className="h-[60vh] rounded-t-xl">
+            <SheetHeader className="text-left mb-4">
+              <SheetTitle>Menu</SheetTitle>
+            </SheetHeader>
+            
+            <div className="grid gap-2">
+              {mobileMenuItems.map((item) => (
+                <SheetClose asChild key={item.name}>
+                  <NavLink
+                    to={item.to}
+                    className={({ isActive }) =>
+                      cn(
+                        buttonVariants({ variant: isActive ? "secondary" : "ghost" }),
+                        "w-full justify-start gap-4 text-base h-12"
+                      )
+                    }
+                  >
+                    <item.icon className="h-5 w-5" />
+                    {item.name}
+                  </NavLink>
+                </SheetClose>
+              ))}
+
+              <Separator className="my-2" />
+
+              {/* Logout in Menu */}
+              <SheetClose asChild>
+                <Button 
+                  variant="ghost" 
+                  onClick={handleLogout} 
+                  className="w-full justify-start gap-4 text-base h-12 text-destructive hover:text-destructive hover:bg-destructive/10"
+                >
+                  <LogOut className="h-5 w-5" />
+                  Log Out
+                </Button>
+              </SheetClose>
+            </div>
+          </SheetContent>
+        </Sheet>
+
+      </nav>
+    </div>
+  );
 };
 
 export default ActorDashboardLayout;

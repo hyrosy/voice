@@ -50,6 +50,7 @@ interface Actor {
   BaseRate_per_Word: string;
   WebMultiplier: string;
   BroadcastMultiplier: string;
+  service_voiceover: boolean; // <-- 1. Add new field
   ActorEmail: string;
   slug: string;
   actor_followers: { count: number }[];
@@ -142,33 +143,38 @@ const ActorProfilePage = () => {
 
           // --- NEW: Consolidate available services ---
           const services = [];
-          services.push({
-            id: 'voice_over',
-            title: 'Voice Over',
-            icon: Mic,
-            description: 'Professional voice overs.',
-            rate: `From ${actorData.BaseRate_per_Word} MAD/word`
-          });
-          if (actorData.service_scriptwriting) {
+          
+          // Only add Voice Over if enabled
+          if (actorData.service_voiceover) { // <-- 2. Check the flag
             services.push({
-              id: 'scriptwriting',
-              title: 'Script Writing',
-              icon: PencilLine,
-              description: actorData.service_script_description || 'Professional script writing.',
-              rate: actorData.service_script_rate > 0 ? `From ${actorData.service_script_rate} MAD/word` : 'Quote-based'
-            });
+                id: 'voice_over',
+                title: 'Voice Over',
+                icon: Mic,
+                description: 'Professional voice overs.',
+                rate: `From ${actorData.BaseRate_per_Word} MAD/word`
+            });
           }
-          if (actorData.service_videoediting) {
-            services.push({
-              id: 'video_editing',
-              title: 'Video Editing',
-              icon: Video,
-              description: actorData.service_video_description || 'Professional video editing.',
-              rate: actorData.service_video_rate > 0 ? `From ${actorData.service_video_rate} MAD/min` : 'Quote-based'
-            });
-          }
-          setAvailableServices(services);
-          // ---
+
+          if (actorData.service_scriptwriting) {
+            services.push({
+              id: 'scriptwriting',
+              title: 'Script Writing',
+              icon: PencilLine,
+              description: actorData.service_script_description || 'Professional script writing.',
+              rate: actorData.service_script_rate > 0 ? `From ${actorData.service_script_rate} MAD/word` : 'Quote-based'
+            });
+          }
+          if (actorData.service_videoediting) {
+            services.push({
+              id: 'video_editing',
+              title: 'Video Editing',
+              icon: Video,
+              description: actorData.service_video_description || 'Professional video editing.',
+              rate: actorData.service_video_rate > 0 ? `From ${actorData.service_video_rate} MAD/min` : 'Quote-based'
+            });
+          }
+          setAvailableServices(services);
+          // ---
 
           // 2. Fetch Reviews
           setIsLoadingReviews(true);
@@ -502,7 +508,7 @@ const handleMessageActor = async () => {
         <div className="min-h-screen bg-background text-foreground">
             <audio ref={audioRef} src={currentTrack?.url || ''} />
             
-            <header className="h-auto md:h-96 relative flex items-end bg-gradient-to-t from-background via-purple-900/50 to-purple-800">
+            <header className="h-auto md:h-96 relative flex items-end bg-gradient-to-t from-background via-green-900/50 to-green-800">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full py-8">
                     <div className="flex flex-row items-center gap-4 md:gap-8 z-10 w-full">
                         <img 
@@ -535,10 +541,21 @@ const handleMessageActor = async () => {
             <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
               {/* --- Action Buttons (Unchanged) --- */}
               <div className="flex items-center gap-4 sm:gap-6 mb-12 flex-wrap">
-                  <Button onClick={() => handlePlayPause()} size="lg" className="w-16 h-16 rounded-full">
-                      {isPlaying ? <Pause size={32} /> : <Play size={32} className="ml-1" />}
-                  </Button>
-                  <Button onClick={() => setIsQuoteModalOpen(true)} size="lg" variant="outline" className="rounded-full">
+                    {/* Replace the <Button> with this <div> block */}
+                <div 
+                onClick={() => handlePlayPause()} 
+                className="w-14 h-14 rounded-full  flex items-center justify-center cursor-pointer hover:opacity-90 transition-opacity shadow-lg"
+                role="button"
+                tabIndex={0}
+                >
+                    {isPlaying ? (
+                    <Pause size={28} className="text-primary-foreground" fill="foreground" />
+                    ) : (
+                    <Play size={28} className="ml-1 text-primary-foreground" fill="foreground" />
+                    )}
+                </div>    
+                   
+                    <Button onClick={() => setIsQuoteModalOpen(true)} size="lg" variant="outline" className="rounded-full">
                       Get a Quote
                   </Button>
                   <Button onClick={handleShare} size="lg" variant="outline" className="rounded-full">
@@ -571,30 +588,48 @@ const handleMessageActor = async () => {
               <div className="mb-12">
                 {/* Check if we should show tabs (more than one service) */}
                 {availableServices.length > 1 ? (
-                  <Tabs defaultValue="voice_over" className="w-full">
+                  <Tabs defaultValue={availableServices[0]?.id} className="w-full">
+                    
+                    <TabsList className="grid w-full grid-cols-3 mb-6 h-auto">
+                      {availableServices.map(service => (
+                        <TabsTrigger key={service.id} value={service.id} className="h-auto p-4 flex flex-col gap-2">
+                          <service.icon className="h-6 w-6" />
+                          <span className="font-semibold text-base">{service.title}</span>
+                          <span className="font-normal text-xs text-muted-foreground">{service.rate}</span>
+                        </TabsTrigger>
+                      ))}
+                    </TabsList>
                     
-                    <TabsList className="grid w-full grid-cols-3 mb-6 h-auto">
-                      {availableServices.map(service => (
-                        <TabsTrigger key={service.id} value={service.id} className="h-auto p-4 flex flex-col gap-2">
-                          <service.icon className="h-6 w-6" />
-                          <span className="font-semibold text-base">{service.title}</span>
-                          <span className="font-normal text-xs text-muted-foreground">{service.rate}</span>
-                        </TabsTrigger>
-                      ))}
-                    </TabsList>
-                    
-                    <TabsContent value="voice_over"><AudioDemoList /></TabsContent>
-                    <TabsContent value="scriptwriting"><ScriptDemoList /></TabsContent>
-                    <TabsContent value="video_editing"><VideoDemoList /></TabsContent>
-                  </Tabs>
-                ) : (
-                  // If only VO, show the list directly (old behavior)
-                  <>
-                    <h2 className="text-2xl font-bold mb-4">Demos</h2>
-                    <AudioDemoList />
-                  </>
-                )}
-              </div>
+                    {actor.service_voiceover && (
+                        <TabsContent value="voice_over"><AudioDemoList /></TabsContent>
+                    )}
+                    <TabsContent value="scriptwriting"><ScriptDemoList /></TabsContent>
+                    <TabsContent value="video_editing"><VideoDemoList /></TabsContent>
+                  </Tabs>
+                ) : (
+                  // If only ONE service is available, show it directly
+                  <>
+                    {availableServices[0]?.id === 'voice_over' && (
+                        <>
+                          <h2 className="text-2xl font-bold mb-4">Demos</h2>
+                          <AudioDemoList />
+                        </>
+                    )}
+                    {availableServices[0]?.id === 'scriptwriting' && (
+                        <>
+                          <h2 className="text-2xl font-bold mb-4">Scripts</h2>
+                          <ScriptDemoList />
+                        </>
+                    )}
+                    {availableServices[0]?.id === 'video_editing' && (
+                        <>
+                          <h2 className="text-2xl font-bold mb-4">Videos</h2>
+                          <VideoDemoList />
+                        </>
+                    )}
+                  </>
+                )}
+              </div>
               {/* --- End Dynamic Portfolio --- */}
 
               {/* --- Reviews Section (Unchanged) --- */}
@@ -625,7 +660,7 @@ const handleMessageActor = async () => {
                    )}
                </div>
             </main>
-
+            {actor.service_voiceover && (        
             <GlobalAudioPlayer
                 audioRef={audioRef}
                 currentTrack={currentTrack}
@@ -634,7 +669,7 @@ const handleMessageActor = async () => {
                 duration={duration}
                 currentTime={currentTime}
             />
-
+            )}
             {isQuoteModalOpen && actor && ( <QuoteCalculatorModal actor={actor} onClose={() => setIsQuoteModalOpen(false)} /> )}
         </div>
     );

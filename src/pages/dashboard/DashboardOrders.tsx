@@ -31,6 +31,18 @@ interface Order {
   service_type: 'voice_over' | 'scriptwriting' | 'video_editing';
   total_price: number | null;
   deliveries: { id: string; created_at: string; file_url: string; version_number: number }[];
+  last_message_content: string | null;
+  last_message_timestamp: string | null;
+  actor_has_unread_messages: boolean;
+  client_has_unread_messages: boolean;
+  from_chat_offer: boolean;
+  material_file_urls: string[] | null; // <-- ADD THIS
+  last_message_sender_role: 'client' | 'actor' | null;
+  project_notes: string | null;      // <-- ADD THIS
+
+
+
+
 }
 
 // --- ENHANCEMENT: Helper map for service icons ---
