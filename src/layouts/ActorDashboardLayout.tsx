@@ -17,7 +17,8 @@ import {
   MessageSquare,
   DollarSign,
   Menu,
-  X
+  X,
+  ChevronRight
 } from 'lucide-react';
 import { cn } from "@/lib/utils";
 import { Separator } from '@/components/ui/separator';
@@ -29,6 +30,7 @@ import {
   SheetTrigger,
   SheetClose
 } from "@/components/ui/sheet";
+import { Card, CardContent } from "@/components/ui/card"; // <-- Import Card
 
 interface Actor {
   id: string;
@@ -62,9 +64,9 @@ const mobilePrimaryItems = [
 
 // Menu Drawer Items (The rest)
 const mobileMenuItems = [
-  { to: "/dashboard/services", name: "Services", icon: Settings },
-  { to: "/dashboard/demos", name: "Demos", icon: Music },
-  { to: "/dashboard/library", name: "Library", icon: AudioLines },
+  { to: "/dashboard/services", name: "Services", icon: Settings, description: "Manage your rates & offers." },
+  { to: "/dashboard/demos", name: "Demos", icon: Music, description: "Upload Demos." },
+  { to: "/dashboard/library", name: "Library", icon: AudioLines, description: "Record Voice & Clean with Ai." },
 ];
 
 const ActorDashboardLayout = () => {
@@ -170,12 +172,10 @@ const ActorDashboardLayout = () => {
         <Outlet context={{ actorData, role: 'actor' }} /> {/* <-- 6. Pass the role */}
       </main>
 
-      {/* --- Mobile Bottom Nav (Restored) --- */}
-      {/* (No changes needed here, the 'navItems' update fixed the links) */}
-      {/* --- Mobile Bottom Nav (Redesigned) --- */}
+      {/* --- Mobile Bottom Nav --- */}
       <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-background border-t border-border flex justify-around items-center h-16 px-2 z-50 pb-safe">
         
-        {/* 1. Primary Items */}
+        {/* Primary Items */}
         {mobilePrimaryItems.map((item) => (
           <NavLink
             key={item.name}
@@ -195,7 +195,7 @@ const ActorDashboardLayout = () => {
           </NavLink>
         ))}
 
-        {/* 2. The "Menu" Drawer Trigger */}
+        {/* The "Menu" Drawer Trigger */}
         <Sheet>
           <SheetTrigger asChild>
             <button className="flex flex-col items-center justify-center w-full h-full space-y-1 text-muted-foreground hover:text-primary">
@@ -203,43 +203,53 @@ const ActorDashboardLayout = () => {
               <span className="text-[10px] font-medium">Menu</span>
             </button>
           </SheetTrigger>
-          <SheetContent side="bottom" className="h-[60vh] rounded-t-xl">
-            <SheetHeader className="text-left mb-4">
-              <SheetTitle>Menu</SheetTitle>
+          
+          <SheetContent side="bottom" className="rounded-t-xl h-[85vh] sm:h-auto overflow-y-auto">
+            <SheetHeader className="text-left mb-6">
+              <SheetTitle className="text-2xl font-bold">Menu</SheetTitle>
             </SheetHeader>
             
-            <div className="grid gap-2">
+            {/* --- THIS IS THE FIX: Grid of Cards --- */}
+            <div className="grid grid-cols-1 gap-4 pb-8">
               {mobileMenuItems.map((item) => (
                 <SheetClose asChild key={item.name}>
-                  <NavLink
-                    to={item.to}
-                    className={({ isActive }) =>
-                      cn(
-                        buttonVariants({ variant: isActive ? "secondary" : "ghost" }),
-                        "w-full justify-start gap-4 text-base h-12"
-                      )
-                    }
-                  >
-                    <item.icon className="h-5 w-5" />
-                    {item.name}
-                  </NavLink>
+                  <Link to={item.to} className="block group">
+                    <Card className="hover:border-primary transition-colors shadow-sm">
+                      <CardContent className="flex items-center p-4 gap-4">
+                        {/* Icon Box */}
+                        <div className="p-3 rounded-full bg-primary/10 text-primary group-hover:bg-primary group-hover:text-primary-foreground transition-colors">
+                          <item.icon className="h-6 w-6" />
+                        </div>
+                        
+                        {/* Text Content */}
+                        <div className="flex-grow">
+                          <h3 className="font-semibold text-foreground text-lg">{item.name}</h3>
+                          <p className="text-sm text-muted-foreground line-clamp-1">{item.description}</p>
+                        </div>
+
+                        {/* Arrow */}
+                        <ChevronRight className="h-5 w-5 text-muted-foreground group-hover:text-primary transition-colors" />
+                      </CardContent>
+                    </Card>
+                  </Link>
                 </SheetClose>
               ))}
-
-              <Separator className="my-2" />
-
-              {/* Logout in Menu */}
-              <SheetClose asChild>
-                <Button 
-                  variant="ghost" 
-                  onClick={handleLogout} 
-                  className="w-full justify-start gap-4 text-base h-12 text-destructive hover:text-destructive hover:bg-destructive/10"
-                >
-                  <LogOut className="h-5 w-5" />
-                  Log Out
-                </Button>
-              </SheetClose>
             </div>
+
+            <Separator className="my-4" />
+
+            {/* Logout Button */}
+            <SheetClose asChild>
+              <Button 
+                variant="destructive" 
+                onClick={handleLogout} 
+                className="w-full justify-center gap-2 h-12 text-base font-medium mt-2 mb-8"
+              >
+                <LogOut className="h-5 w-5" />
+                Log Out
+              </Button>
+            </SheetClose>
+
           </SheetContent>
         </Sheet>
 
