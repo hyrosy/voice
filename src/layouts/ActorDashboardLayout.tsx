@@ -243,12 +243,13 @@ const ActorDashboardLayout = () => {
               <Button 
                 variant="destructive" 
                 onClick={handleLogout} 
-                className="w-full justify-center gap-2 h-12 text-base font-medium mt-2 mb-8"
+                className="w-full justify-center bg-yellow text-foreground gap-2 h-12"
               >
-                <LogOut className="h-5 w-5" />
+                <LogOut className=" h-5 w-5" />
                 Log Out
               </Button>
             </SheetClose>
+
 
           </SheetContent>
         </Sheet>

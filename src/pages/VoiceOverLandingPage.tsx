@@ -7,6 +7,7 @@ import { supabase } from '../supabaseClient';
 import GlobalAudioPlayer from '../components/GlobalAudioPlayer';
 import ActorCard, { Actor } from '../components/ActorCard'; // <-- Import ActorCard
 import DemoPlayerRow, { Demo } from '../components/DemoPlayerRow'; // --- ENHANCEMENT: Import new component
+import QuotesCarousel from '../components/QuotesCarousel';
 
 // --- ENHANCEMENT: Import Shadcn components ---
 import { buttonVariants } from '@/components/ui/button';
@@ -286,6 +287,12 @@ const VoiceOverLandingPage = () => {
           </div>
         </div>
       </section> 
+
+      {/* --- ADD THIS NEW SECTION HERE --- */}
+      <QuotesCarousel />
+      {/* ------------------------------- */}
+
+
 
       {/* Join Section */}
       {/* --- ENHANCEMENT: Using 'bg-card/50' for a subtle contrast --- */}
