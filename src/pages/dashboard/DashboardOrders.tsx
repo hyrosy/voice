@@ -39,10 +39,6 @@ interface Order {
   material_file_urls: string[] | null; // <-- ADD THIS
   last_message_sender_role: 'client' | 'actor' | null;
   project_notes: string | null;      // <-- ADD THIS
-
-
-
-
 }
 
 // --- ENHANCEMENT: Helper map for service icons ---

@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
 import emailjs from '@emailjs/browser';
 import Navbar from './components/Navbar'; // Import Navbar
 import Footer from './components/Footer'; // Import Footer
@@ -45,6 +45,46 @@ import DashboardLibrary from './pages/dashboard/DashboardLibrary';
 import ActorEarningsPage from './pages/dashboard/ActorEarningsPage'; // <-- 1. Import the new page
 import AdminPayoutsPage from './pages/AdminPayoutsPage'; // <-- 1. Import the new page
 import ActorPayoutSettingsPage from './pages/dashboard/ActorPayoutSettingsPage'; // <-- 1. Import the new page
+import PortfolioBuilderPage from './pages/dashboard/PortfolioBuilderPage.tsx';
+import PortfolioRenderer from './pages/PortfolioRenderer'; // <-- Import it
+
+
+
+// --- 1. Create a Layout Component to handle conditional Footer ---
+const Layout = ({ children }: { children: React.ReactNode }) => {
+  const location = useLocation();
+  
+  // Pages where we want to HIDE the footer for a full-screen "App" feel
+  const hideFooterPaths = [
+    '/dashboard', 
+    '/messages', 
+    '/client-dashboard',
+    '/admin',
+    '/pro', // <-- ADD THIS LINE
+    // Add auth pages if you want them clean too:
+    // '/actor-login', '/client-auth', '/actor-signup' 
+  ];
+
+  const hideNavbarPaths = [
+    '/pro', 
+    // You can add others here if you want, e.g. '/login', '/register'
+  ];
+
+  const shouldHideFooter = hideFooterPaths.some(path => location.pathname.startsWith(path));
+  const shouldHideNavbar = hideNavbarPaths.some(path => location.pathname.startsWith(path));
+  return (
+    <>
+      {!shouldHideNavbar && <Navbar />}
+      
+      {/* --- MOVED MAIN TAG HERE --- */}
+      {/* Logic: If navbar is hidden (Portfolio), NO padding. Otherwise, add pt-20. */}
+      <main className={`flex-grow ${shouldHideNavbar ? "" : "pt-20"}`}>
+        {children}
+      </main>
+      {!shouldHideFooter && <Footer />}
+    </>
+  );
+};
 
 function App() {
   
@@ -81,11 +121,10 @@ function App() {
   return (
     <Router>
       <ScrollToTop />
-      <Navbar />
-      <main className="flex-grow pt-20">
+      <main className="flex-grow">
+        
+        <Layout>
         <Routes>
-
-
 {/* start of temporary disabled routes
         <Route path="/members" element={<MembersPage />} /> {/* Add route for Members Page */}
         <Route path="/privacy-policy" element={<PrivacyPolicyPage/>}/>
@@ -132,10 +171,13 @@ function App() {
             <Route path="library" element={<DashboardLibrary />} /> {/* /dashboard/library */}
             <Route path="earnings" element={<ActorEarningsPage />} />
             <Route path="payout-settings" element={<ActorPayoutSettingsPage />} />
+            <Route path="Portfolio" element={<PortfolioBuilderPage />} /> 
           </Route>
+          <Route path="/pro/:slug" element={<PortfolioRenderer />} />
+
       </Routes>
+      </Layout>
       </main>
-      <Footer />
     </Router>
   );
 }

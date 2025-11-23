@@ -345,10 +345,10 @@ const displayPrice = latestOfferPrice ?? order.total_price;
                         </TabsList>
 
                         <TabsContent value="details" className="flex-grow overflow-y-auto custom-scrollbar">
-                            <div className="p-4 sm:p-6 grid grid-cols-1 lg:grid-cols-3 gap-6">
+                            <div className="p-4 sm:p-6 flex flex-col-reverse lg:grid lg:grid-cols-3 gap-6">
                                 
                                 {/* --- Left Column (Scrollable Content) --- */}
-                                <div className="lg:col-span-2 space-y-4">
+                                <div className="lg:col-span-2 space-y-6">
                                     
                                     {order.service_type !== 'voice_over' && (
                                         <AccordionItem title="Quote Details" icon={<Info size={18} />} isOpen={openSections.quote_details} onToggle={() => toggleSection('quote_details')}>
@@ -442,7 +442,7 @@ const displayPrice = latestOfferPrice ?? order.total_price;
                                 </div>
 
                                 {/* --- Right Sidebar (Sticky Actions) --- */}
-                                <div className="lg:col-span-1 space-y-4 lg:sticky lg:top-6 h-fit">
+                                <div className="lg:col-span-1 space-y-6 lg:sticky lg:top-24 h-fit">
                                     
                                     <Card>
                                       <CardHeader className="pb-2">
@@ -501,8 +501,8 @@ const displayPrice = latestOfferPrice ?? order.total_price;
                                     {/* --- END FIX --- */}
 
                                     {(order.status === 'awaiting_offer' || order.status === 'offer_made') && (
-                                        <Card className="bg-blue-900/30 border-blue-700">
-                                          <CardHeader className="pb-4">
+                                        <Card className=" border-blue-700">
+                                          <CardHeader className="pb-4 text-foreground">
                                             <CardTitle className="flex items-center gap-2">
                                               <Banknote size={18} /> 
                                               {order.status === 'offer_made' ? 'Update Your Offer' : 'Make an Offer'}
@@ -512,15 +512,15 @@ const displayPrice = latestOfferPrice ?? order.total_price;
                                             <div className="space-y-4">
                                                 <div className="space-y-2">
                                                     <Label htmlFor="offerTitle" className="text-muted-foreground">Offer Title *</Label>
-                                                    <Input id="offerTitle" type="text" placeholder="e.g., Full Video Edit" value={offerTitle} onChange={(e) => setOfferTitle(e.target.value)} className="bg-slate-700 border-slate-600" />
+                                                    <Input id="offerTitle" type="text" placeholder="e.g., Full Video Edit" value={offerTitle} onChange={(e) => setOfferTitle(e.target.value)} className=" border-slate-600" />
                                                 </div>
                                                 <div className="space-y-2">
                                                     <Label htmlFor="offerAgreement" className="text-muted-foreground">Offer Agreement (Optional)</Label>
-                                                    <Textarea id="offerAgreement" rows={3} placeholder="e.g., Includes 2 revisions..." value={offerAgreement} onChange={(e) => setOfferAgreement(e.target.value)} className="bg-slate-700 border-slate-600" />
+                                                    <Textarea id="offerAgreement" rows={3} placeholder="e.g., Includes 2 revisions..." value={offerAgreement} onChange={(e) => setOfferAgreement(e.target.value)} className=" border-slate-600" />
                                                 </div>
                                                 <div className="space-y-2">
                                                     <Label htmlFor="offerPrice" className="text-muted-foreground">Your Price (MAD) *</Label>
-                                                    <Input id="offerPrice" type="number" step="0.01" placeholder="e.g., 1500" value={offerPrice} onChange={(e) => setOfferPrice(e.target.value)} className="bg-slate-700 border-slate-600" />
+                                                    <Input id="offerPrice" type="number" step="0.01" placeholder="e.g., 1500" value={offerPrice} onChange={(e) => setOfferPrice(e.target.value)} className=" border-slate-600" />
                                                 </div>
                                             </div>
                                             <Button onClick={handleSendOffer} disabled={isSendingOffer} className="w-full bg-blue-600 hover:bg-blue-700 mt-4">

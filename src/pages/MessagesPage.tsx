@@ -165,9 +165,12 @@ const MessagesPage = () => {
 
     return (
         <div className={`
-          flex w-full bg-background text-foreground 
-          ${outletContext?.role === 'actor' ? 'h-full' : 'h-[100svh]'}
-        `}>
+      flex w-full bg-background text-foreground 
+      ${outletContext?.role === 'actor' 
+          ? 'h-full' // Actor: Fit parent (which is handled by ActorDashboardLayout)
+          : 'h-[calc(100vh-4rem)]' // Client: Full screen MINUS Navbar (assuming h-16/4rem)
+      }
+    `}>
             {/* --- Sidebar (Conversation List) --- */}
             <nav className={`
                 ${conversationId ? 'hidden' : 'flex'} 

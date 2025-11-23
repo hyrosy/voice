@@ -644,12 +644,12 @@ const ClientOrderPage = () => {
         <div className="min-h-screen bg-background p-4 md:p-8">
             {pageMessage && <div className="mb-4 p-3 bg-card border rounded-lg text-center text-sm">{pageMessage}</div>}
 
-            <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <div className="max-w-7xl mx-auto flex flex-col-reverse lg:grid lg:grid-cols-3 gap-8">
 
                 {/* --- Left Column (Main Content) --- */}
                 <div className="lg:col-span-2 space-y-6">
 
-                  {/* --- Order Header Card --- */}
+                  {/* --- Order Header Card --- 
                     <Card>
                       <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
                         <div>
@@ -672,7 +672,7 @@ const ClientOrderPage = () => {
                           </Button>
                         )}
                       </CardHeader>
-                    </Card>
+                    </Card>*/}
 
                     {/* 2. Check if materials need to be uploaded */}
                     {order.status === 'In Progress' && !order.project_notes && !order.material_file_urls && (                    <Card>
@@ -878,14 +878,58 @@ const ClientOrderPage = () => {
                           )}
                         </div>
                       </AccordionItem>
+                                          {/* --- Communication Card --- */}
+                    <Card>
+                        <CardHeader>
+                            <CardTitle className="text-lg flex items-center gap-2">
+                                <MessageSquare size={18}/> Communication
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent className="p-0">
+                            <ChatBox orderId={order.id}
+                            userRole="client"
+                            orderData={{
+                              last_message_sender_role: order.last_message_sender_role,
+                              client_email: order.client_email,
+                              client_name: order.client_name,
+                              actor_email: order.actors.ActorEmail || '',
+                              actor_name: order.actors.ActorName,
+                              order_id_string: order.order_id_string
+                            }} conversationId={''} currentUserId={''} otherUserName={''} />
+                        </CardContent>
+                    </Card>
+
                     </div>
                     )}
                 </div>
+                
 
                 {/* --- Right Column (Sticky Sidebar) --- */}
                 <div className="lg:col-span-1 space-y-6 lg:sticky lg:top-24 h-fit">
                     
                     {/* --- Status Card --- */}
+                    <Card>
+                      <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
+                        <div>
+                          <CardTitle className="text-2xl font-bold text-foreground mb-1">
+                            {order.service_type === 'voice_over' ? `Order #${order.order_id_string}` : `Quote #${order.order_id_string}`}
+                          </CardTitle>
+                          <CardDescription className="text-base mb-1">
+                            For: {order.actors.ActorName}
+                          </CardDescription>
+                          {isLoggedIn ? (
+                            <Link to="/client-dashboard">View All Orders</Link>
+                        ) : (
+                          <Button asChild variant="ghost" className="mt-4 sm:mt-0">
+                            <Link to="/client-auth" state={{ email: order.client_email }}>
+                              Login to see all orders
+                            </Link>
+                          </Button>
+                        )}
+                        </div>
+                        
+                      </CardHeader>
+                    </Card>
                     <Card>
                       <CardHeader className="pb-2">
                         <CardTitle className="text-lg">Order Status</CardTitle>
@@ -908,6 +952,7 @@ const ClientOrderPage = () => {
                           </span>
                         </div>
                       </CardContent>
+                      
                     </Card>
 
                     {/* --- Action Card: Accept Offer --- */}
@@ -1084,26 +1129,6 @@ const ClientOrderPage = () => {
                       </Card>
                     )}
 
-                    {/* --- Communication Card --- */}
-                    <Card>
-                        <CardHeader>
-                            <CardTitle className="text-lg flex items-center gap-2">
-                                <MessageSquare size={18}/> Communication
-                            </CardTitle>
-                        </CardHeader>
-                        <CardContent className="p-0">
-                            <ChatBox orderId={order.id}
-                            userRole="client"
-                            orderData={{
-                              last_message_sender_role: order.last_message_sender_role,
-                              client_email: order.client_email,
-                              client_name: order.client_name,
-                              actor_email: order.actors.ActorEmail || '',
-                              actor_name: order.actors.ActorName,
-                              order_id_string: order.order_id_string
-                            }} conversationId={''} currentUserId={''} otherUserName={''} />
-                        </CardContent>
-                    </Card>
                 </div>
             </div>
 

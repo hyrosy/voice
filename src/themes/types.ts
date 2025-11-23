@@ -1,0 +1,25 @@
+import React from 'react';
+
+// The shape of the data passed to each block
+// (This matches your 'PortfolioSection' data structure)
+export interface BlockProps {
+  data: any; 
+  actorId?: string; // Some blocks (like Services) might need the ID to fetch more data
+  allSections?: any[]; // <-- NEW: Pass all sections so Header can read them
+  isPreview?: boolean; // <-- Add this prop
+}
+
+// The contract: Every theme MUST export these components
+export interface PortfolioThemeDefinition {
+  Header: React.FC<BlockProps>;
+  Hero: React.FC<BlockProps>;
+  About: React.FC<BlockProps>;
+  Gallery: React.FC<BlockProps>;
+  Services: React.FC<BlockProps>;
+  Contact: React.FC<BlockProps>;
+  Stats: React.FC<BlockProps>;
+  Demos: React.FC<BlockProps>;
+  Reviews: React.FC<BlockProps>;
+  ImageSlider: React.FC<BlockProps>; // <-- Add
+  VideoSlider: React.FC<BlockProps>; // <-- Add
+}

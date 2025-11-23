@@ -151,13 +151,24 @@ const ConversationChatBox: React.FC<ChatBoxProps> = ({ conversationId, currentUs
         setIsLoading(false);
     };
 
+    const messagePaddingClass = currentUserProfileType === 'actor' 
+        ? 'pb-32' // Clears Mobile Nav (h-16) + Input (~h-16) + Margin
+        : 'pb-20'; // Clears Input only (~h-16)
+
+    // The calculated bottom position for the input form
+    const fixedInputBottom = currentUserProfileType === 'actor'
+        ? 'bottom-[4rem]' // 4rem is the height of your mobile bottom nav (h-16)
+        : 'bottom-0'; // Client view has no bottom nav
+
     return (
-        <div className="flex flex-col h-full">
-            {/* --- NEW CHAT HEADER --- */}
-            <div className="flex-shrink-0 p-3 border-b flex items-center gap-3">
-                <Link 
-                    to="/messages" 
-                    className="md:hidden p-1 rounded-full hover:bg-muted" // <-- Mobile only
+            
+        // Outer Container: Set relative for positioning
+        <div className="relative h-full flex flex-col">
+            
+            {/* 1. Header (Top Bar) */}
+            <div className="flex-shrink-0 p-3 border-b flex items-center gap-3 bg-background relative z-20">
+                <Link                    to={currentUserProfileType === 'actor' ? '/dashboard/messages' : '/messages'} 
+                    className="md:hidden p-1 rounded-full hover:bg-muted"
                 >
                     <ArrowLeft className="h-5 w-5" />
                 </Link>
@@ -167,9 +178,7 @@ const ConversationChatBox: React.FC<ChatBoxProps> = ({ conversationId, currentUs
                 </Avatar>
                 <div>
                     <h3 className="text-base font-semibold">{otherUserName}</h3>
-                    {/* You could add an 'online' status here later */}
                 </div>
-                {/* --- THIS IS THE NEW BUTTON --- */}
                 {currentUserProfileType === 'actor' && (
                     <Button 
                         variant="ghost" 
@@ -180,12 +189,12 @@ const ConversationChatBox: React.FC<ChatBoxProps> = ({ conversationId, currentUs
                         <FilePlus2 className="h-5 w-5" />
                     </Button>
                 )}
-                {/* --- END NEW BUTTON --- */}
             </div>
-            {/* --- END NEW CHAT HEADER --- */}
 
-            {/* ... (welcome message) ... */}
-            <ScrollArea className="flex-grow p-4">
+            {/* --- 2. Message Area (The Scrollable Content) --- */}
+            {/* pb-32 lifts content above the fixed input form (p-4 + form height) 
+               AND the fixed mobile dashboard nav bar (h-16). */}
+            <div className="flex-grow h-0 overflow-y-auto p-4 pb-32 md:pb-20"> 
                 {messagesLoading ? (
                     <div className="flex justify-center items-center h-full">
                         <p>Loading messages...</p>
@@ -201,6 +210,7 @@ const ConversationChatBox: React.FC<ChatBoxProps> = ({ conversationId, currentUs
                         </p>
                     </div>
                 ) : (
+
                     <div className="space-y-4">
 
 
@@ -285,11 +295,10 @@ const ConversationChatBox: React.FC<ChatBoxProps> = ({ conversationId, currentUs
                 </div>
                 ) 
             }
-
-            </ScrollArea>
-            
-            <div className="flex-shrink-0 p-4 border-t">
-                <form onSubmit={handleSendMessage} className="flex gap-2">
+        </div>            
+           {/* --- 3. Input Form (FIXED TO THE VIEWPORT) --- */}
+            {/* This uses fixed positioning to bypass the scroll issues. */}
+            <div className={`fixed inset-x-0 p-4 border-t bg-background flex-shrink-0 z-50 md:bottom-0 md:left-0 md:right-0 md:border-t ${fixedInputBottom}`}>        <form onSubmit={handleSendMessage} className="flex gap-2">
                     <Input
                         type="text"
                         value={newMessage}
@@ -306,16 +315,13 @@ const ConversationChatBox: React.FC<ChatBoxProps> = ({ conversationId, currentUs
                     </Button>
                 </form>
             </div>
-            {/* --- RENDER THE MODAL --- */}
+
+            {/* --- MODAL RENDERING (This remains correct) --- */}
             {isOfferModalOpen && (
                 <CreateOfferFromChatModal 
                     onClose={() => setIsOfferModalOpen(false)}
                     onSend={handleSendOffer}
                 />
-            )}
-
-            {isOfferModalOpen && (
-                <p>OFFER MODAL WOULD GO HERE</p> // We will build this next
             )}
         </div>
     );
