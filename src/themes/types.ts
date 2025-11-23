@@ -23,4 +23,7 @@ export interface PortfolioThemeDefinition {
   Reviews: React.FC<BlockProps>;
   ImageSlider: React.FC<BlockProps>; // <-- Add
   VideoSlider: React.FC<BlockProps>; // <-- Add
+  Team: React.FC<BlockProps>;
+  Map: React.FC<BlockProps>;
+  Pricing: React.FC<BlockProps>;
 }

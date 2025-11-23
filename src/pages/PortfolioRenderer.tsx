@@ -111,6 +111,9 @@ const PortfolioRenderer = () => {
                     case 'image_slider': return <ActiveTheme.ImageSlider key={section.id} data={section.data} />;
                     case 'video_slider': return <ActiveTheme.VideoSlider key={section.id} data={section.data} />;
                     case 'header': return <ActiveTheme.Header data={section.data} allSections={sections} />; // <-- Pass allSections!
+                    case 'team': return <ActiveTheme.Team key={section.id} data={section.data} />;
+                    case 'map': return <ActiveTheme.Map key={section.id} data={section.data} />;
+                    case 'pricing': return <ActiveTheme.Pricing key={section.id} data={section.data} />;
                     default: return null;
                 }
                         })()}

@@ -98,6 +98,9 @@ const PortfolioPreview = ({ sections, theme }: { sections: PortfolioSection[], t
                 case 'stats': return <ActiveTheme.Stats key={section.id} data={section.data} />;
                 case 'demos': return <ActiveTheme.Demos key={section.id} data={section.data} />;
                 case 'reviews': return <ActiveTheme.Reviews key={section.id} data={section.data} />;
+                case 'team': return <ActiveTheme.Team key={section.id} data={section.data} />;
+                case 'map': return <ActiveTheme.Map key={section.id} data={section.data} />;
+                case 'pricing': return <ActiveTheme.Pricing key={section.id} data={section.data} />;
                 default: return <div key={section.id} className="p-4 text-center text-red-500">Unknown Block Type</div>;
             }
           })
@@ -324,6 +327,10 @@ const PortfolioBuilderPage = () => {
                               <DropdownMenuItem onClick={() => handleAddSection('stats')}>Statistics / Milestones</DropdownMenuItem>
                               <DropdownMenuItem onClick={() => handleAddSection('reviews')}>Client Reviews</DropdownMenuItem>
                               <DropdownMenuItem onClick={() => handleAddSection('contact')}>Contact Block</DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => handleAddSection('team')}>Team Section</DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => handleAddSection('map')}>Location Map</DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => handleAddSection('pricing')}>Pricing Plans</DropdownMenuItem>
+                            
                           </DropdownMenuContent>
                       </DropdownMenu>
                   </div>

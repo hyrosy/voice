@@ -12,7 +12,10 @@ export type SectionType =
   | 'gallery' 
   | 'contact'
   | 'image_slider'  // <-- NEW
-  | 'video_slider'; // <-- NEW
+  | 'video_slider' // <-- NEW
+  | 'team'
+  | 'map'
+  | 'pricing';
 
 export interface PortfolioSection {
   id: string;
@@ -182,6 +185,37 @@ export const DEFAULT_PORTFOLIO_SECTIONS: PortfolioSection[] = [
       emailText: "Request a Quote",
       showSocials: true,
       showPhone: false // <-- NEW
+    }
+  },
+  
+  {
+    id: 'team-1',
+    type: 'team',
+    isVisible: true,
+    data: {
+      title: "Meet The Team",
+      members: [] // { name, role, image, bio }
+    }
+  },
+  {
+    id: 'map-1',
+    type: 'map',
+    isVisible: true,
+    data: {
+      title: "Find Us",
+      // Default placeholder embed (Eiffel Tower)
+      mapUrl: "https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d2624.9916256937595!2d2.292292615509614!3d48.85837007928757!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x47e66e2964e36e27%3A0x8a1c868dbaf5d4fd!2sEiffel%20Tower!5e0!3m2!1sen!2sus!4v1647551887234!5m2!1sen!2sus",
+      height: "medium" // medium | large
+    }
+  },
+  {
+    id: 'pricing-1',
+    type: 'pricing',
+    isVisible: true,
+    data: {
+      title: "Pricing Plans",
+      layout: "cards", // cards | slider
+      plans: [] // { name, price, features, cta }
     }
   }
 ];

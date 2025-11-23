@@ -8,6 +8,9 @@ import ImageSlider from './ImageSlider'; // <-- NEW
 import VideoSlider from './VideoSlider'; // <-- NEW
 import Header from './Header'; // <-- Import
 import ServicesShowcase from './ServicesShowcase'; // <-- Import
+import Team from './Team';
+import Map from './Map';
+import Pricing from './Pricing';
 
 // Temporary Placeholders
 const Stats = () => <div className="py-20 text-center bg-muted">Stats Section (Coming Soon)</div>;
@@ -27,4 +30,7 @@ export const ModernTheme: PortfolioThemeDefinition = {
   Reviews,
   ImageSlider, // <-- Export
   VideoSlider, // <-- Export
+  Team,
+  Map,
+  Pricing
 };

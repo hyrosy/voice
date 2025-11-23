@@ -12,7 +12,7 @@ import {
   SelectTrigger, 
   SelectValue 
 } from "@/components/ui/select";
-import { Trash2, X, Plus, Image as ImageIcon, Link as LinkIcon } from 'lucide-react';
+import { Map, Users, DollarSign, Trash2, X, Plus, Image as ImageIcon, Link as LinkIcon } from 'lucide-react';
 import PortfolioMediaManager, { UnifiedMediaItem } from './PortfolioMediaManager';
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { PortfolioSection } from '../../types/portfolio';
@@ -49,7 +49,13 @@ const SectionEditor: React.FC<SectionEditorProps> = ({ section, isOpen, onClose,
   };
 
   const handleMediaSelect = (item: UnifiedMediaItem) => {
-    
+
+    if (activeMediaField.startsWith('member-image-')) {
+        const index = parseInt(activeMediaField.split('-').pop() || '0');
+        updateMember(index, 'image', item.url);
+
+    } else
+
     if (activeMediaField.startsWith('slider-image-')) {
         const index = parseInt(activeMediaField.split('-').pop() || '0');
         handleUpdateSlide('image', index, 'url', item.url);
@@ -131,6 +137,38 @@ const SectionEditor: React.FC<SectionEditorProps> = ({ section, isOpen, onClose,
         }
     };
     updateField('menuConfig', newConfig);
+  };
+
+  // Team Helpers
+  const handleAddMember = () => {
+      const current = formData.members || [];
+      updateField('members', [...current, { name: 'New Member', role: 'Role', image: '' }]);
+  };
+  const updateMember = (idx: number, field: string, val: any) => {
+      const current = [...(formData.members || [])];
+      current[idx][field] = val;
+      updateField('members', current);
+  };
+  const removeMember = (idx: number) => {
+      const current = [...(formData.members || [])];
+      current.splice(idx, 1);
+      updateField('members', current);
+  };
+
+  // Pricing Helpers
+  const handleAddPlan = () => {
+      const current = formData.plans || [];
+      updateField('plans', [...current, { name: 'Basic', price: '1000', features: 'Feature 1, Feature 2' }]);
+  };
+  const updatePlan = (idx: number, field: string, val: any) => {
+      const current = [...(formData.plans || [])];
+      current[idx][field] = val;
+      updateField('plans', current);
+  };
+  const removePlan = (idx: number) => {
+      const current = [...(formData.plans || [])];
+      current.splice(idx, 1);
+      updateField('plans', current);
   };
 
 
@@ -301,6 +339,122 @@ const SectionEditor: React.FC<SectionEditorProps> = ({ section, isOpen, onClose,
                   {formData.backgroundImage ? "Change Image" : "Select Image"}
                 </Button>
               </div>
+            </div>
+          </div>
+        );
+
+        case 'team':
+        return (
+          <div className="space-y-6">
+            <div className="space-y-2">
+              <Label>Section Title</Label>
+              <Input value={formData.title || ''} onChange={e => updateField('title', e.target.value)} />
+            </div>
+            <div className="space-y-3 pt-4 border-t">
+               <div className="flex justify-between items-center">
+                   <Label>Team Members</Label>
+                   <Button size="sm" variant="outline" onClick={handleAddMember}><Plus className="w-4 h-4 mr-2" /> Add Member</Button>
+               </div>
+               <div className="space-y-4">
+                   {(formData.members || []).map((member: any, idx: number) => (
+                       <div key={idx} className="border p-4 rounded-md bg-muted/20 space-y-3">
+                           <div className="flex gap-4 items-start">
+                               {/* Image Picker */}
+                               <div 
+                                 className="w-16 h-16 bg-muted rounded-full flex-shrink-0 relative overflow-hidden group cursor-pointer border" 
+                                 onClick={() => { setActiveMediaField(`member-image-${idx}`); setIsMediaPickerOpen(true); }}
+                               >
+                                   {member.image ? <img src={member.image} className="w-full h-full object-cover" /> : <Users className="w-6 h-6 text-muted-foreground absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" />}
+                               </div>
+                               <div className="flex-grow grid gap-2">
+                                   <Input placeholder="Name" value={member.name} onChange={e => updateMember(idx, 'name', e.target.value)} />
+                                   <Input placeholder="Role" value={member.role} onChange={e => updateMember(idx, 'role', e.target.value)} />
+                               </div>
+                               <Button size="icon" variant="ghost" className="text-destructive" onClick={() => removeMember(idx)}><Trash2 className="w-4 h-4" /></Button>
+                           </div>
+                           <Textarea placeholder="Short Bio (Optional)" value={member.bio} onChange={e => updateMember(idx, 'bio', e.target.value)} rows={2} />
+                       </div>
+                   ))}
+               </div>
+            </div>
+          </div>
+        );
+
+      // --- MAP SECTION EDITOR ---
+      case 'map':
+        return (
+          <div className="space-y-6">
+            <div className="space-y-2">
+              <Label>Section Title</Label>
+              <Input value={formData.title || ''} onChange={e => updateField('title', e.target.value)} />
+            </div>
+            <div className="space-y-2">
+              <Label>Google Maps Embed URL</Label>
+              <Input value={formData.mapUrl || ''} onChange={e => updateField('mapUrl', e.target.value)} placeholder='<iframe src="..."> or https://...' />
+              <p className="text-xs text-muted-foreground">Go to Google Maps {'>'} Share {'>'} Embed a map {'>'} Copy HTML (src only)</p>
+            </div>
+            <div className="space-y-2">
+                <Label>Height</Label>
+                <Select value={formData.height || 'medium'} onValueChange={(val) => updateField('height', val)}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="medium">Medium (400px)</SelectItem>
+                        <SelectItem value="large">Large (600px)</SelectItem>
+                    </SelectContent>
+                </Select>
+            </div>
+          </div>
+        );
+
+      // --- PRICING SECTION EDITOR ---
+      case 'pricing':
+        return (
+          <div className="space-y-6">
+            <div className="space-y-2">
+              <Label>Section Title</Label>
+              <Input value={formData.title || ''} onChange={e => updateField('title', e.target.value)} />
+            </div>
+             <div className="space-y-2">
+                <Label>Layout Mode</Label>
+                <Select value={formData.layout || 'cards'} onValueChange={(val) => updateField('layout', val)}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="cards">Grid Cards</SelectItem>
+                        <SelectItem value="slider">Carousel Slider</SelectItem>
+                    </SelectContent>
+                </Select>
+            </div>
+            <div className="space-y-3 pt-4 border-t">
+               <div className="flex justify-between items-center">
+                   <Label>Pricing Plans</Label>
+                   <Button size="sm" variant="outline" onClick={handleAddPlan}><Plus className="w-4 h-4 mr-2" /> Add Plan</Button>
+               </div>
+               <div className="space-y-4">
+                   {(formData.plans || []).map((plan: any, idx: number) => (
+                       <div key={idx} className="border p-4 rounded-md bg-muted/20 space-y-3 relative">
+                           <Button size="icon" variant="ghost" className="absolute top-2 right-2 text-destructive" onClick={() => removePlan(idx)}><Trash2 className="w-4 h-4" /></Button>
+                           
+                           <div className="grid grid-cols-2 gap-2">
+                               <div className="space-y-1">
+                                   <Label className="text-xs">Plan Name</Label>
+                                   <Input placeholder="e.g. Basic" value={plan.name} onChange={e => updatePlan(idx, 'name', e.target.value)} />
+                               </div>
+                               <div className="space-y-1">
+                                   <Label className="text-xs">Price</Label>
+                                   <Input placeholder="e.g. $100" value={plan.price} onChange={e => updatePlan(idx, 'price', e.target.value)} />
+                               </div>
+                           </div>
+                           <div className="space-y-1">
+                               <Label className="text-xs">Features (Comma separated)</Label>
+                               <Textarea placeholder="Feature 1, Feature 2, Feature 3" value={plan.features} onChange={e => updatePlan(idx, 'features', e.target.value)} />
+                           </div>
+                           <div className="space-y-1">
+                               <Label className="text-xs">Button Text</Label>
+                               <Input placeholder="e.g. Choose Plan" value={plan.cta} onChange={e => updatePlan(idx, 'cta', e.target.value)} />
+                           </div>
+                       </div>
+                   ))}
+               </div>
             </div>
           </div>
         );
