@@ -7,6 +7,7 @@ export type SectionType =
   | 'stats' 
   | 'demos' 
   | 'services' 
+  | 'services_showcase' // <-- NEW
   | 'reviews' 
   | 'gallery' 
   | 'contact'
@@ -81,6 +82,18 @@ export const DEFAULT_PORTFOLIO_SECTIONS: PortfolioSection[] = [
       layout: "grid",
       showAudio: true, // <-- NEW
       showVideo: true  // <-- NEW
+    }
+  },
+  {
+    id: 'showcase-1',
+    type: 'services_showcase',
+    isVisible: true,
+    data: {
+      title: "My Services & Work",
+      showRates: true,
+      showDemos: true,
+      ctaText: "Request a Quote",
+      ctaLink: "#contact" // or open modal
     }
   },
   {

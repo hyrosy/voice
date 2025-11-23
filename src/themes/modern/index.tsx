@@ -7,6 +7,7 @@ import Contact from './Contact';
 import ImageSlider from './ImageSlider'; // <-- NEW
 import VideoSlider from './VideoSlider'; // <-- NEW
 import Header from './Header'; // <-- Import
+import ServicesShowcase from './ServicesShowcase'; // <-- Import
 
 // Temporary Placeholders
 const Stats = () => <div className="py-20 text-center bg-muted">Stats Section (Coming Soon)</div>;
@@ -19,6 +20,7 @@ export const ModernTheme: PortfolioThemeDefinition = {
   About,
   Gallery,
   Services,
+  ServicesShowcase, // <-- Export
   Contact,
   Stats,
   Demos,

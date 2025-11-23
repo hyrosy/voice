@@ -515,6 +515,56 @@ const SectionEditor: React.FC<SectionEditorProps> = ({ section, isOpen, onClose,
           </div>
         );
 
+        case 'services_showcase':
+        return (
+          <div className="space-y-6">
+            <div className="space-y-2">
+              <Label>Section Title</Label>
+              <Input value={formData.title || 'My Services & Work'} onChange={e => updateField('title', e.target.value)} />
+            </div>
+
+            <div className="flex items-center justify-between border p-3 rounded-md">
+                <div className="space-y-0.5">
+                    <Label htmlFor="showRates">Show Rates & Description</Label>
+                    <p className="text-xs text-muted-foreground">Display the starting price and details for each service.</p>
+                </div>
+                <Switch 
+                  id="showRates"
+                  checked={formData.showRates !== false} 
+                  onCheckedChange={(checked) => updateField('showRates', checked)}
+                />
+             </div>
+
+             <div className="flex items-center justify-between border p-3 rounded-md">
+                <div className="space-y-0.5">
+                    <Label htmlFor="showDemos">Show Demos</Label>
+                    <p className="text-xs text-muted-foreground">Display your uploaded demos for each service category.</p>
+                </div>
+                <Switch 
+                  id="showDemos"
+                  checked={formData.showDemos !== false} 
+                  onCheckedChange={(checked) => updateField('showDemos', checked)}
+                />
+             </div>
+
+             <div className="pt-4 border-t space-y-2">
+                <Label>Call to Action Button</Label>
+                <div className="grid grid-cols-2 gap-2">
+                    <Input 
+                        value={formData.ctaText || ''} 
+                        onChange={e => updateField('ctaText', e.target.value)} 
+                        placeholder="Button Text" 
+                    />
+                    <Input 
+                        value={formData.ctaLink || ''} 
+                        onChange={e => updateField('ctaLink', e.target.value)} 
+                        placeholder="#contact" 
+                    />
+                </div>
+             </div>
+          </div>
+        );
+
       case 'services':
         return (
            <div className="space-y-4">

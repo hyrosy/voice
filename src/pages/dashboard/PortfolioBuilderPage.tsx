@@ -93,6 +93,7 @@ const PortfolioPreview = ({ sections, theme }: { sections: PortfolioSection[], t
                 case 'image_slider': return <ActiveTheme.ImageSlider key={section.id} data={section.data} />;
                 case 'video_slider': return <ActiveTheme.VideoSlider key={section.id} data={section.data} />;
                 case 'services': return <ActiveTheme.Services key={section.id} data={section.data} />;
+                case 'services_showcase': return <ActiveTheme.ServicesShowcase key={section.id} data={section.data} />;
                 case 'contact': return <ActiveTheme.Contact key={section.id} data={section.data} />;
                 case 'stats': return <ActiveTheme.Stats key={section.id} data={section.data} />;
                 case 'demos': return <ActiveTheme.Demos key={section.id} data={section.data} />;
@@ -319,6 +320,9 @@ const PortfolioBuilderPage = () => {
                               <DropdownMenuItem onClick={() => handleAddSection('video_slider')}>Video Slider</DropdownMenuItem>
                               <DropdownMenuItem onClick={() => handleAddSection('demos')}>Media / Demos</DropdownMenuItem>
                               <DropdownMenuItem onClick={() => handleAddSection('services')}>Services & Rates</DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => handleAddSection('services_showcase')}>Services Showcase</DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => handleAddSection('stats')}>Statistics / Milestones</DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => handleAddSection('reviews')}>Client Reviews</DropdownMenuItem>
                               <DropdownMenuItem onClick={() => handleAddSection('contact')}>Contact Block</DropdownMenuItem>
                           </DropdownMenuContent>
                       </DropdownMenu>

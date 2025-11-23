@@ -7,6 +7,7 @@ import { Loader2 } from 'lucide-react';
 // Import the registry
 import { THEME_REGISTRY, DEFAULT_THEME } from '../themes/registry';
 
+
 // --- 1. DEFINE THE THEME WRAPPER HERE ---
 const ThemeWrapper = ({ children, theme }: { children: React.ReactNode, theme: any }) => {
   // Map font IDs to Tailwind classes
@@ -36,17 +37,19 @@ const PortfolioRenderer = () => {
 
   useEffect(() => {
     const fetchPortfolio = async () => {
-        // 1. Find actor by slug (ActorName)
+        // 1. Find actor by SLUG (case-insensitive)
+        // We check BOTH the 'slug' column AND 'ActorName' just in case
         const { data: actorData, error: actorError } = await supabase
             .from('actors')
             .select('id')
-            .eq('ActorName', slug) 
+            .or(`slug.ilike.${slug},ActorName.ilike.${slug}`) // Checks both columns!
             .single();
 
         if (actorError || !actorData) {
-            setError(true);
-            setLoading(false);
-            return;
+             console.error("Actor not found for slug:", slug, actorError); // Debug log
+             setError(true);
+             setLoading(false);
+             return;
         }
 
         // 2. Fetch portfolio
@@ -99,6 +102,7 @@ const PortfolioRenderer = () => {
                     case 'hero': return <ActiveTheme.Hero key={section.id} data={section.data} />;
                     case 'about': return <ActiveTheme.About key={section.id} data={section.data} />;
                     case 'gallery': return <ActiveTheme.Gallery key={section.id} data={section.data} />;
+                    case 'services_showcase': return <ActiveTheme.ServicesShowcase key={section.id} data={section.data} actorId={portfolio.actor_id} />;
                     case 'services': return <ActiveTheme.Services key={section.id} data={section.data} actorId={portfolio.actor_id} />;
                     case 'contact': return <ActiveTheme.Contact key={section.id} data={section.data} />;
                     case 'stats': return <ActiveTheme.Stats key={section.id} data={section.data} />;
