@@ -2,7 +2,6 @@ import { PortfolioThemeDefinition } from '../types';
 import Hero from './Hero';
 import About from './About';
 import Gallery from './Gallery';
-import Services from './Services';
 import Contact from './Contact';
 import ImageSlider from './ImageSlider'; // <-- NEW
 import VideoSlider from './VideoSlider'; // <-- NEW
@@ -22,11 +21,9 @@ export const ModernTheme: PortfolioThemeDefinition = {
   Hero,
   About,
   Gallery,
-  Services,
   ServicesShowcase, // <-- Export
   Contact,
   Stats,
-  Demos,
   Reviews,
   ImageSlider, // <-- Export
   VideoSlider, // <-- Export

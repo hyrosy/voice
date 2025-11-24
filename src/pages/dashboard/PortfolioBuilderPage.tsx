@@ -92,11 +92,9 @@ const PortfolioPreview = ({ sections, theme }: { sections: PortfolioSection[], t
                 case 'gallery': return <ActiveTheme.Gallery key={section.id} data={section.data} />;
                 case 'image_slider': return <ActiveTheme.ImageSlider key={section.id} data={section.data} />;
                 case 'video_slider': return <ActiveTheme.VideoSlider key={section.id} data={section.data} />;
-                case 'services': return <ActiveTheme.Services key={section.id} data={section.data} />;
                 case 'services_showcase': return <ActiveTheme.ServicesShowcase key={section.id} data={section.data} />;
                 case 'contact': return <ActiveTheme.Contact key={section.id} data={section.data} />;
                 case 'stats': return <ActiveTheme.Stats key={section.id} data={section.data} />;
-                case 'demos': return <ActiveTheme.Demos key={section.id} data={section.data} />;
                 case 'reviews': return <ActiveTheme.Reviews key={section.id} data={section.data} />;
                 case 'team': return <ActiveTheme.Team key={section.id} data={section.data} />;
                 case 'map': return <ActiveTheme.Map key={section.id} data={section.data} />;
@@ -319,17 +317,16 @@ const PortfolioBuilderPage = () => {
                               <DropdownMenuItem onClick={() => handleAddSection('hero')}>Hero Section</DropdownMenuItem>
                               <DropdownMenuItem onClick={() => handleAddSection('about')}>About Me</DropdownMenuItem>
                               <DropdownMenuItem onClick={() => handleAddSection('gallery')}>Image Gallery</DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => handleAddSection('image_slider')}>Image Slider (Cinematic)</DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => handleAddSection('image_slider')}>Image Slider</DropdownMenuItem>
                               <DropdownMenuItem onClick={() => handleAddSection('video_slider')}>Video Slider</DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => handleAddSection('demos')}>Media / Demos</DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => handleAddSection('services')}>Services & Rates</DropdownMenuItem>
                               <DropdownMenuItem onClick={() => handleAddSection('services_showcase')}>Services Showcase</DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => handleAddSection('stats')}>Statistics / Milestones</DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => handleAddSection('reviews')}>Client Reviews</DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => handleAddSection('contact')}>Contact Block</DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => handleAddSection('contact')}>Contact</DropdownMenuItem>
                               <DropdownMenuItem onClick={() => handleAddSection('team')}>Team Section</DropdownMenuItem>
                               <DropdownMenuItem onClick={() => handleAddSection('map')}>Location Map</DropdownMenuItem>
                               <DropdownMenuItem onClick={() => handleAddSection('pricing')}>Pricing Plans</DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => handleAddSection('stats')}>Statistics / Milestones (Soon)</DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => handleAddSection('reviews')}>Client Reviews (Soon)</DropdownMenuItem>
+
                             
                           </DropdownMenuContent>
                       </DropdownMenu>

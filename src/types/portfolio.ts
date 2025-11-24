@@ -5,8 +5,6 @@ export type SectionType =
   | 'hero' 
   | 'about' 
   | 'stats' 
-  | 'demos' 
-  | 'services' 
   | 'services_showcase' // <-- NEW
   | 'reviews' 
   | 'gallery' 
@@ -76,17 +74,7 @@ export const DEFAULT_PORTFOLIO_SECTIONS: PortfolioSection[] = [
       customStats: [] // <-- NEW: Array for manual stats
     }
   },
-  {
-    id: 'demos-1',
-    type: 'demos',
-    isVisible: true,
-    data: {
-      title: "Featured Work",
-      layout: "grid",
-      showAudio: true, // <-- NEW
-      showVideo: true  // <-- NEW
-    }
-  },
+
   {
     id: 'showcase-1',
     type: 'services_showcase',
@@ -99,16 +87,7 @@ export const DEFAULT_PORTFOLIO_SECTIONS: PortfolioSection[] = [
       ctaLink: "#contact" // or open modal
     }
   },
-  {
-    id: 'services-1',
-    type: 'services',
-    isVisible: true,
-    data: {
-      title: "Services & Rates",
-      showRates: true,
-      displayMode: "cards" // <-- NEW
-    }
-  },
+  
   {
     id: 'gallery-1',
     type: 'gallery',

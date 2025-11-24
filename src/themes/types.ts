@@ -15,11 +15,9 @@ export interface PortfolioThemeDefinition {
   Hero: React.FC<BlockProps>;
   About: React.FC<BlockProps>;
   Gallery: React.FC<BlockProps>;
-  Services: React.FC<BlockProps>;
   ServicesShowcase: React.FC<BlockProps>; // <-- Add this
   Contact: React.FC<BlockProps>;
   Stats: React.FC<BlockProps>;
-  Demos: React.FC<BlockProps>;
   Reviews: React.FC<BlockProps>;
   ImageSlider: React.FC<BlockProps>; // <-- Add
   VideoSlider: React.FC<BlockProps>; // <-- Add

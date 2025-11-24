@@ -4,7 +4,8 @@ import { supabase } from '../supabaseClient';
 import { PortfolioSection } from '../types/portfolio';
 import { cn } from "@/lib/utils";
 import { Loader2 } from 'lucide-react';
-// Import the registry
+import BuilderFooter from '../components/builderfooter';
+// // Import the registry
 import { THEME_REGISTRY, DEFAULT_THEME } from '../themes/registry';
 
 
@@ -103,10 +104,8 @@ const PortfolioRenderer = () => {
                     case 'about': return <ActiveTheme.About key={section.id} data={section.data} />;
                     case 'gallery': return <ActiveTheme.Gallery key={section.id} data={section.data} />;
                     case 'services_showcase': return <ActiveTheme.ServicesShowcase key={section.id} data={section.data} actorId={portfolio.actor_id} />;
-                    case 'services': return <ActiveTheme.Services key={section.id} data={section.data} actorId={portfolio.actor_id} />;
                     case 'contact': return <ActiveTheme.Contact key={section.id} data={section.data} />;
                     case 'stats': return <ActiveTheme.Stats key={section.id} data={section.data} />;
-                    case 'demos': return <ActiveTheme.Demos key={section.id} data={section.data} />;
                     case 'reviews': return <ActiveTheme.Reviews key={section.id} data={section.data} />;
                     case 'image_slider': return <ActiveTheme.ImageSlider key={section.id} data={section.data} />;
                     case 'video_slider': return <ActiveTheme.VideoSlider key={section.id} data={section.data} />;
@@ -122,12 +121,12 @@ const PortfolioRenderer = () => {
                 // --------------------------------
             })
         }
-        {/* 2. ADD THE NEW CUSTOM FOOTER HERE */}
-        <footer className="py-8 text-center text-xs md:text-sm opacity-60 bg-background text-foreground/80 border-t border-foreground/5">
-           <p>© {new Date().getFullYear()} UCPMAROC (Operated by HYROSY LLC). All rights reserved.</p>
-           <p className="mt-1 font-medium">Made with Allah Blessings ❤️</p>
-        </footer>
+
+    <BuilderFooter />
     </ThemeWrapper>
+    
+    
+    
   );
 };
 
