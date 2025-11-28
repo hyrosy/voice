@@ -4,7 +4,6 @@ import { supabase } from '../supabaseClient';
 import { PortfolioSection } from '../types/portfolio';
 import { cn } from "@/lib/utils";
 import { Loader2 } from 'lucide-react';
-import BuilderFooter from '@/components/builderfooter';
 // // Import the registry
 import { THEME_REGISTRY, DEFAULT_THEME } from '../themes/registry';
 
@@ -122,7 +121,6 @@ const PortfolioRenderer = () => {
             })
         }
 
-    <BuilderFooter />
     </ThemeWrapper>
     
     
