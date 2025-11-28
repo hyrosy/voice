@@ -251,7 +251,7 @@ const WhitePaperModal = () => {
                 </div>
 
                 <p className="text-center font-semibold text-lg">
-                    "In the name of God, the Merciful, the All-Knowing."
+                    "In the name of Allah, the Merciful, the All-Knowing."
                 </p>
 
                 <p>
