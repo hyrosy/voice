@@ -638,37 +638,6 @@ const SectionEditor: React.FC<SectionEditorProps> = ({ section, isOpen, onClose,
           </div>
         );
 
-      case 'demos':
-        return (
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label>Section Title</Label>
-              <Input value={formData.title || 'Featured Work'} onChange={e => updateField('title', e.target.value)} />
-            </div>
-            <div className="space-y-2">
-              <Label>Layout Style</Label>
-              <Select 
-                value={formData.layout || 'grid'} 
-                onValueChange={(val) => updateField('layout', val)}
-              >
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="grid">Grid View</SelectItem>
-                  <SelectItem value="list">List View</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="flex items-center justify-between border p-3 rounded-md">
-                <Label htmlFor="showAudio">Show Audio Demos</Label>
-                <Switch id="showAudio" checked={formData.showAudio !== false} onCheckedChange={(c) => updateField('showAudio', c)} />
-             </div>
-             <div className="flex items-center justify-between border p-3 rounded-md">
-                <Label htmlFor="showVideo">Show Video Demos</Label>
-                <Switch id="showVideo" checked={formData.showVideo !== false} onCheckedChange={(c) => updateField('showVideo', c)} />
-             </div>
-          </div>
-        );
-
         case 'services_showcase':
         return (
           <div className="space-y-6">
@@ -719,37 +688,7 @@ const SectionEditor: React.FC<SectionEditorProps> = ({ section, isOpen, onClose,
           </div>
         );
 
-      case 'services':
-        return (
-           <div className="space-y-4">
-            <div className="space-y-2">
-              <Label>Section Title</Label>
-              <Input value={formData.title || 'What I Offer'} onChange={e => updateField('title', e.target.value)} />
-            </div>
-            <div className="space-y-2">
-              <Label>Display Mode</Label>
-              <Select 
-                value={formData.displayMode || 'cards'} 
-                onValueChange={(val) => updateField('displayMode', val)}
-              >
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="cards">Cards (Grid)</SelectItem>
-                  <SelectItem value="list">Simple List</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="flex items-center justify-between border p-3 rounded-md">
-                <Label htmlFor="showRates">Show Starting Rates</Label>
-                <Switch 
-                  id="showRates"
-                  checked={formData.showRates !== false}
-                  onCheckedChange={(checked) => updateField('showRates', checked)}
-                />
-             </div>
-           </div>
-        );
-
+      
       case 'reviews':
         return (
           <div className="space-y-4">

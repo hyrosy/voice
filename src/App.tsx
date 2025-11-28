@@ -139,9 +139,9 @@ function App() {
         <Route path="/cinema-portfolio" element={<CinematoGraphyPage />} />
 
 {/* end of temporary disabled routes*/}
-        <Route path="/Home" element={<HomePage />} />
+        <Route path="/" element={<HomePage />} />
         <Route path="/my-favorites" element={<FavoriteActorsPage />} /> {/* <-- 2. Add this new route */}
-        <Route path="/" element={<VoiceOverLandingPage />} />
+        <Route path="/Voiceover" element={<VoiceOverLandingPage />} />
         <Route path="/actor/:actorName" element={<ActorProfilePage />} />
         <Route path="/dashboard" element={<ActorDashboardPage />} />
         <Route path="/order/:orderId" element={<ClientOrderPage />} />
