@@ -509,7 +509,7 @@ const HomePage = () => {
             <p className="text-2xl text-muted-foreground mb-12 max-w-2xl mx-auto">
                Find the perfect voice, script, or edit for your next big idea today.
             </p>
-            <Button size="lg" className="h-20 px-12 text-2xl rounded-full shadow-2xl hover:shadow-primary/40 transition-all hover:scale-105" asChild>
+               <Button size="lg" className="h-16 px-10 text-xl rounded-full shadow-2xl shadow-primary/30 hover:scale-105 transition-transform" asChild>
                 <Link to="/portfolio">Explore the Marketplace <ArrowRight className="ml-3 w-8 h-8" /></Link>
             </Button>
          </div>
