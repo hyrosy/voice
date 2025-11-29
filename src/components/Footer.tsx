@@ -152,22 +152,22 @@ const Footer = () => {
 
                   {/* Google Translate - Styled Pill */}
                   <div className="mt-12">
-                      <div className="p-1 pl-4 rounded-full bg-white/5 border border-white/10 flex items-center justify-between backdrop-blur-md">
-                          <div className="flex items-center gap-2">
-                             <Globe size={14} className="text-neutral-400"/>
-                             <span className="text-xs font-medium text-neutral-300">Language</span>
-                          </div>
-                          
-                          <div className="flex items-center gap-2">
-                            <button onClick={handleResetTranslation} className="p-2 hover:bg-white/10 rounded-full text-neutral-400 hover:text-white transition-colors">
-                                <RefreshCw size={14} />
-                            </button>
-                            {/* Google Widget Container - Scaled down to fit pill */}
-                            <div className="relative overflow-hidden w-32 h-8">
-                                <div id="google_translate_element" className="absolute -top-3 -left-2 scale-75 origin-top-left" />
-                            </div>
-                          </div>
-                      </div>
+                      <div className="mb-8">
+                                <div className="flex justify-between items-center mb-4">
+                                   <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                                      <Globe size={20} /> Translate
+                                   </h3>
+                                   {/* NEW: Reset Button */}
+                                   <button 
+                                      onClick={handleResetTranslation} 
+                                      className="text-xs text-muted-foreground hover:text-accent-foreground inline-flex items-center gap-1 transition-colors"
+                                   >
+                                      <RefreshCw size={14} /> Reset to English
+                                   </button>
+                                </div>
+                                {/* This is the original, hidden widget */}
+                                <div id="google_translate_element"></div>
+                              </div>
                   </div>
               </div>
           </div>
