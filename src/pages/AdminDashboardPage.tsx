@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react'; // <-- Import useMemo
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
-import { CheckCircle, Clock, ListOrdered, Hourglass, Banknote, ArrowUpDown, Filter, X as XIcon, Search, Users, AlertTriangle } from 'lucide-react'; // <-- Add Search here
+import { CheckCircle, Clock, ListOrdered, Hourglass, Banknote, ArrowUpDown, Filter, X as XIcon, Globe, Search, Users, AlertTriangle } from 'lucide-react'; // <-- Add Search here
 import emailjs from '@emailjs/browser';
 import { Link } from 'react-router-dom';
 // --- shadcn/ui Imports ---
@@ -344,6 +344,11 @@ const AdminDashboardPage = () => {
                       <Banknote size={16} className="mr-2" /> Manage Payouts
                     </Link>
                   </Button>
+                  <Button asChild variant="outline">
+                  <Link to="/admin/domains">
+                    <Globe className="mr-2 h-4 w-4" /> Manage Domains
+                  </Link>
+                </Button>
                 </div>
                 
                 {message && <p className="mb-4 p-3 bg-card rounded-md text-sm">{message}</p>}

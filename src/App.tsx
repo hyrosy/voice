@@ -47,7 +47,12 @@ import AdminPayoutsPage from './pages/AdminPayoutsPage'; // <-- 1. Import the ne
 import ActorPayoutSettingsPage from './pages/dashboard/ActorPayoutSettingsPage'; // <-- 1. Import the new page
 import PortfolioBuilderPage from './pages/dashboard/PortfolioBuilderPage.tsx';
 import PortfolioRenderer from './pages/PortfolioRenderer'; // <-- Import it
-
+import AdminDomainListPage from './pages/AdminDomainListPage';
+import DomainMarketplace from './pages/marketplace/DomainMarketplace'; // Adjust path
+import DomainCheckout from './pages/marketplace/DomainCheckout';     // Adjust path
+import DomainThankYouPage from './pages/marketplace/DomainThankYouPage';
+import AdminDomainOrderDetailPage from './pages/AdminDomainOrderDetailPage';
+import DomainOrderPage from './pages/marketplace/DomainOrderPage';
 
 
 // --- 1. Create a Layout Component to handle conditional Footer ---
@@ -156,6 +161,12 @@ function App() {
         <Route path="/admin/order/:orderId" element={<AdminOrderDetailPage />} /> {/* <-- Add this route */}
         <Route path="/admin/actors" element={<AdminActorListPage />} />   {/* <-- Add Actor route */}
         <Route path="/admin/clients" element={<AdminClientListPage />} />  {/* <-- Add Client route */}
+        <Route path="/admin/domains" element={<AdminDomainListPage />} />
+        <Route path="/marketplace/order/:id/thank-you" element={<DomainThankYouPage />} />
+        <Route path="/admin/domains/order/:id" element={<AdminDomainOrderDetailPage />} />
+        <Route path="/marketplace/order/:id/status" element={<DomainOrderPage />} />
+        <Route path="/marketplace/domains" element={<DomainMarketplace />} />
+        <Route path="/marketplace/domains/:id/checkout" element={<DomainCheckout />} />
         <Route path="/create-profile" element={<CreateProfilePromptPage />} /> {/* <-- Add new route */}
         <Route path="/portfolio" element={<PortfolioPage />} />
         <Route path="/admin/payouts" element={<AdminPayoutsPage />} />
