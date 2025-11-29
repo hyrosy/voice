@@ -10,16 +10,17 @@ import { THEME_REGISTRY, DEFAULT_THEME } from '../themes/registry';
 
 // --- 1. DEFINE THE THEME WRAPPER HERE ---
 const ThemeWrapper = ({ children, theme }: { children: React.ReactNode, theme: any }) => {
-  // Map font IDs to Tailwind classes
   const fontClass = theme?.font === 'serif' ? 'font-serif' : theme?.font === 'mono' ? 'font-mono' : 'font-sans';
-  
-  // We can also apply the primary color as a CSS variable if needed
-  // For now, we rely on Tailwind classes, but this wrapper is the place to inject dynamic styles.
   const style = theme?.primaryColor ? { '--primary-color': theme.primaryColor } as React.CSSProperties : {};
 
   return (
     <div 
-      className={cn("min-h-screen bg-background text-foreground", fontClass)}
+      className={cn(
+          "min-h-screen bg-background text-foreground", 
+          fontClass,
+          // --- ADD THIS LINE ---
+          "transform-gpu subpixel-antialiased" // Force GPU acceleration
+      )}
       data-theme={theme?.templateId} 
       style={style}
     >
