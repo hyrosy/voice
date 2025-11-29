@@ -62,6 +62,7 @@ const Gallery: React.FC<BlockProps> = ({ data }) => {
                                 <img 
                                     src={img.url} 
                                     alt={img.alt || `Gallery Item ${i}`} 
+                                    decoding="async" // <--- ADD THIS    
                                     className="w-full h-auto object-cover transition-transform duration-700 ease-out group-hover:scale-110 will-change-transform" 
                                     loading="lazy"
                                 />

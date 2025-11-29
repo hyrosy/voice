@@ -25,6 +25,8 @@ const Hero: React.FC<BlockProps> = ({ data }) => {
                     alt="Hero Background" 
                     className="w-full h-full object-cover animate-ken-burns scale-100 opacity-90" 
                     style={{ animationDuration: '20s' }}
+                    loading="eager" // Hero should load fast
+                    decoding="sync"
                 />
              </div>
              

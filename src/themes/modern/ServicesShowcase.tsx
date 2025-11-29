@@ -165,8 +165,7 @@ const ServicesShowcase: React.FC<BlockProps> = ({ data, actorId }) => {
 
     return (
         <section className="relative py-24 px-4 bg-neutral-950 overflow-hidden min-h-screen">
-            <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 brightness-100 contrast-150 mix-blend-overlay"></div>
-            
+        <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 brightness-100 contrast-150 mix-blend-overlay hidden md:block"></div>            
             <div className="container max-w-7xl mx-auto relative z-10">
                 <div className="text-center mb-16 space-y-4">
                     <h2 className="text-4xl md:text-5xl font-bold text-white tracking-tight">
