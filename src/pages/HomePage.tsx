@@ -216,8 +216,8 @@ const LearnSection = () => (
                 
                 <div className="flex flex-wrap gap-4">
                      <Button size="lg" className="bg-white text-black hover:bg-neutral-200 text-lg h-14 px-8 rounded-full shadow-xl shadow-yellow-500/10" asChild>
-                        <a href="https://learn.ucpmaroc.com" target="_blank" rel="noopener noreferrer">
-                            Start Learning <ArrowRight className="ml-2 w-5 h-5" />
+                        <a href="https://www.ucpmaroc.com" target="_blank" rel="noopener noreferrer">
+                            Coming Soon <ArrowRight className="ml-2 w-5 h-5" />
                         </a>
                     </Button>
                     <div className="flex items-center gap-4 text-sm font-medium text-slate-400 px-4">

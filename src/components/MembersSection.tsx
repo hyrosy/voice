@@ -32,11 +32,11 @@ const members: Member[] = [
 
     id: 1,
 
-    name: 'Hamza EA',
+    name: 'Hamza Kadiri Elmaana',
 
-    role: 'CEO & Co-Founder',
+    role: 'Project Developement',
 
-    specialty: 'Strategy & Innovation',
+    specialty: 'Marketing & Innovation',
 
     image: 'https://d2ah09ed4k10ng.cloudfront.net/DSCF5573.JPG',
 
@@ -96,7 +96,7 @@ const members: Member[] = [
 
     id: 5,
 
-    name: 'Jebri strawhat',
+    name: 'Abd Eljabar Bazzi',
 
     role: 'Cinematographer',
 
@@ -114,7 +114,7 @@ const members: Member[] = [
 
     name: 'Abderrazak Trajja',
 
-    role: 'Voice Over Artist',
+    role: 'Communication & Relations Manager',
 
     specialty: 'Voice Acting & Audio Production',
 
@@ -146,9 +146,9 @@ const members: Member[] = [
 
     name: 'Ayoub Sbaihi',
 
-    role: 'Voice Over Artist',
+    role: 'Production Manager',
 
-    specialty: 'Narration & Dubbing',
+    specialty: 'Directing & Voice Acting',
 
     image: 'https://d2ah09ed4k10ng.cloudfront.net/501451766_18016166447717339_1194100904261373844_n.jpg',
 
@@ -168,7 +168,103 @@ const members: Member[] = [
 
     image: 'https://d2ah09ed4k10ng.cloudfront.net/502749732_18462993526073959_2326641292068939243_n.jpg',
 
-    accent: 'from-gray-500 to-slate-500',
+    accent: 'from-indigo-500 to-purple-500',
+
+  },
+
+  {
+
+    id: 10,
+
+    name: 'Ahmed SQALLI HOUSSAINI', // Corrected typo
+
+    role: 'Data Analyst',
+
+    specialty: 'Software Engineer, Backend/API Developer, Data Analyst',
+
+    image: 'https://d2ah09ed4k10ng.cloudfront.net/502749732_18462993526073959_2326641292068939243_n.jpg',
+
+    accent: 'from-blue-500 to-purple-500',
+
+  },
+
+  {
+
+    id: 11,
+
+    name: 'Anas Kabour', // Corrected typo
+
+    role: 'Branding Specialist',
+
+    specialty: 'Graphic Design & Brand Strategy',
+
+    image: 'https://d2ah09ed4k10ng.cloudfront.net/502749732_18462993526073959_2326641292068939243_n.jpg',
+
+    accent: 'from-red-500 to-yellow-500',
+
+  },
+
+  {
+
+    id: 12,
+
+    name: 'Nassira Belgadi', // Corrected typo
+
+    role: 'Human Resources Manager',
+
+    specialty: 'Management & Recruitment',
+
+    image: 'https://d2ah09ed4k10ng.cloudfront.net/502749732_18462993526073959_2326641292068939243_n.jpg',
+
+    accent: 'from-pink-500 to-red-500',
+
+  },
+
+  {
+
+    id: 13,
+
+    name: 'Tariq', // Corrected typo
+
+    role: 'UCP Academy Coordinator',
+
+    specialty: 'Non-profit & Educational Programs',
+
+    image: 'https://d2ah09ed4k10ng.cloudfront.net/502749732_18462993526073959_2326641292068939243_n.jpg',
+
+    accent: 'from-green-500 to-blue-500',
+
+  },
+
+  {
+
+    id: 14,
+
+    name: 'Keshida', // Corrected typo
+
+    role: 'Development Partner',
+
+    specialty: 'Framer & No-Code Solutions',
+
+    image: 'https://d2ah09ed4k10ng.cloudfront.net/502749732_18462993526073959_2326641292068939243_n.jpg',
+
+    accent: 'from-red-500 to-yellow-500',
+
+  },
+
+  {
+
+    id: 15,
+
+    name: 'Mouad Bouissel', // Corrected typo
+
+    role: 'Development Partner',
+
+    specialty: 'Framer & Full-Stack Development',
+
+    image: 'https://d2ah09ed4k10ng.cloudfront.net/502749732_18462993526073959_2326641292068939243_n.jpg',
+
+    accent: 'from-red-500 to-slate-500',
 
   },
 

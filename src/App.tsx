@@ -81,11 +81,10 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
     <>
       {!shouldHideNavbar && <Navbar />}
       
-      {/* --- MOVED MAIN TAG HERE --- */}
-      {/* Logic: If navbar is hidden (Portfolio), NO padding. Otherwise, add pt-20. */}
       <main className={`flex-grow ${shouldHideNavbar ? "" : "pt-20"}`}>
         {children}
       </main>
+
       {!shouldHideFooter && <Footer />}
     </>
   );

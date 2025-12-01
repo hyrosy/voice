@@ -38,7 +38,7 @@ const ClientAuthPage = () => {
 
                 if (actorProfile) {
                     // This user is an actor, send them to the actor dashboard
-                    navigate('/dashboard');
+                    navigate('/client-dashboard');
                 } else {
                     // Not an actor, check if they are a client
                     const { data: clientProfile } = await supabase
