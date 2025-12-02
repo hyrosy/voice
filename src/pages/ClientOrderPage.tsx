@@ -95,8 +95,8 @@ interface Review {
 
 // (Bank details and helper maps are unchanged)
 const bankOptions = [
-    { name: 'Attijariwafa Bank', holder: 'UCPMAROC', iban: 'MA64 0077 8000 0219 5000 0005 47', accountNumber: '0077 8000 0219 5000 0005 47' },
-    { name: 'CIH Bank', holder: 'HYROSY LLC', iban: 'MA64 2307 8059 1321 2210 5711 02', accountNumber: '2307 8059 1321 2210 5711 02' },
+    { name: 'Attijariwafa Bank', holder: 'Coming Soon', iban: 'Coming Soon', accountNumber: 'Coming Soon' },
+    { name: 'CIH Bank', holder: 'HAMZA KADIRI ELMAANA', iban: 'MA64 2304 5025 9646 2211 0019 0095', accountNumber: '2596462211001900' },
 ];
 
 const serviceIcons = {

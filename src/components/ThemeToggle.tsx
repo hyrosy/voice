@@ -8,12 +8,12 @@ import { Moon, Sun } from 'lucide-react';
 const getInitialTheme = (): 'dark' | 'light' => {
   if (typeof window !== 'undefined') {
     // If the user has explicitly set it to light, return light.
-    if (localStorage.theme === 'light') {
+    if (localStorage.theme === 'dark') {
       return 'light';
     }
   }
   // Otherwise, default to dark.
-  return 'light';
+  return 'dark';
 };
 
 const ThemeToggle: React.FC = () => {
