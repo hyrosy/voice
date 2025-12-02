@@ -85,8 +85,8 @@ const mobileMenuItems = [
   },
   // --- ADDED PORTFOLIO CARD HERE ---
   { 
-    to: "/dashboard/portfolio", 
-    name: "Portfolio", 
+    to: "/dashboard", 
+    name: "Portfolio Coming Soon", 
     icon: LayoutTemplate,
     description: "Build your public website"
   },
