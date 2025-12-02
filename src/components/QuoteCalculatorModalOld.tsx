@@ -610,10 +610,7 @@ const QuoteCalculatorModal: React.FC<ModalProps> = ({ actor, onClose }) => {
                   <CardContent className="p-6">
                     <p className="mb-2"><span className="font-bold text-muted-foreground">Order ID:</span> {orderId}</p>
                     <p className="mb-4"><span className="font-bold text-muted-foreground">Amount Due:</span> {totalPrice.toFixed(2)} MAD</p>
-                    <h4 className="font-bold text-lg mb-2 border-t pt-4 text-foreground">Bank Transfer Details:</h4>
-                    <p className="text-sm text-muted-foreground">Bank Name: Attijariwafa Bank</p>
-                    <p className="text-sm text-muted-foreground">Account Holder: UCPMAROC</p>
-                    <p className="text-sm text-muted-foreground">IBAN: MA64 0077 8000 0219 5000 0005 47</p>
+                
                     <p className="font-bold text-foreground mt-4">IMPORTANT: Please use your Order ID ({orderId}) as the payment reference.</p>
                   </CardContent>
                 </Card>
