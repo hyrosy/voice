@@ -542,22 +542,27 @@ const ClientOrderPage = () => {
         if (!order) return;
         setNotifyingAdmin(true);
         setNotificationMessage(''); 
-        const isDirectToActor = order.actors?.direct_payment_enabled === true;
-        const newStatus = isDirectToActor ? 'Awaiting Actor Confirmation' : 'Awaiting Admin Confirmation';
-        const { error: updateError } = await supabase
-            .from('orders')
-            .update({ status: newStatus })
-            .eq('id', order.id);
-        if (updateError) {
-            console.error("Failed to update order status:", updateError);
-            setNotificationMessage(`Error: ${updateError.message}`);
+
+        // 1. CALL THE SECURE DATABASE FUNCTION
+        // This bypasses RLS restrictions safely
+        const { error: rpcError } = await supabase.rpc('confirm_client_payment', {
+            p_order_id: order.id
+        });
+
+        if (rpcError) {
+            console.error("Failed to update order status:", rpcError);
+            setNotificationMessage(`Error: ${rpcError.message}`);
             setNotifyingAdmin(false);
             return;
         }
 
+        // 2. Database success! Now try email (Non-blocking)
+        // We check the local state for the email logic, which is fine for notifications
+        const isDirectToActor = order.actors?.direct_payment_enabled === true;
+
         if (isDirectToActor) {
-            const templateId = 'template_my3996b'; // Actor template
-            const recipientEmail = order.actors.ActorEmail; // Actor email
+            const templateId = 'template_my3996b'; 
+            const recipientEmail = order.actors.ActorEmail; 
             const emailParams = {
                 clientName: order.client_name,
                 clientEmail: order.client_email,
@@ -566,6 +571,7 @@ const ClientOrderPage = () => {
                 recipientEmail: recipientEmail,
                 actorName: order.actors.ActorName,
             };
+
             try {
                 await emailjs.send(
                     'service_r3pvt1s', 
@@ -573,26 +579,20 @@ const ClientOrderPage = () => {
                     emailParams,
                     'I51tDIHsXYKncMQpO' 
                 );
-                setNotificationMessage('Actor notified successfully!');
-                await fetchOrderAndReview(); 
+                setNotificationMessage('Payment confirmed & Actor notified!');
             } catch (err) {
-                console.error("Failed to send actor notification:", err);
-                // This is just a warning now, not a failure message
-                setNotificationMessage('Payment marked, but failed to notify actor.');
-            } finally {
-                // --- THIS IS THE FIX ---
-                // This runs regardless of email success or failure
-                await fetchOrderAndReview(); 
-                setNotifyingAdmin(false);
-                // --- END FIX ---
-            }
-        } else {
-            console.log("Admin notification temporarily disabled.");
-            setNotificationMessage('Payment marked, awaiting admin confirmation.');
-            await fetchOrderAndReview(); 
-            setNotifyingAdmin(false); // Make sure this is set here too
-        }
-    };
+                console.error("Failed to send actor notification:", err);
+                // Valid success state, just missing email
+                setNotificationMessage('Payment confirmed! (Email failed, but actor will see it in dashboard)');
+            }
+        } else {
+            setNotificationMessage('Payment confirmed! Awaiting admin confirmation.');
+        }
+
+        // 3. Always refresh and finish
+        await fetchOrderAndReview(); 
+        setNotifyingAdmin(false);
+    };
     const handleStripePaymentClick = async () => {
         if (!order) return;
         const amount = order.total_price; // Use the already-set price
