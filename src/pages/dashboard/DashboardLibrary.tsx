@@ -331,8 +331,14 @@ const DashboardLibrary: React.FC = () => {
               <form onSubmit={handleUploadRecording} className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="recording-file-upload">Audio File</Label>
-                  <Input id="recording-file-upload" type="file" accept="audio/*" onChange={handleUploadFileChange} required />
-                </div>
+                  <Input 
+                    id="recording-file-upload" 
+                    type="file" 
+                    // Accept standard web audio + iOS/Mac formats + common video formats that contain audio
+                    accept="audio/*, .m4a, .mp3, .wav, .aac, .ogg, .webm" 
+                    onChange={handleUploadFileChange} 
+                    required 
+                  />                </div>
                 <div className="space-y-2">
                   <Label htmlFor="uploading-recording-name">Recording Name</Label>
                   <Input id="uploading-recording-name" value={uploadingRecordingName} onChange={(e) => setUploadingRecordingName(e.target.value)} placeholder="e.g., 'Audition Take 1'" required />
