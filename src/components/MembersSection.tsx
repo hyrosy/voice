@@ -30,17 +30,17 @@ const members: Member[] = [
 
   {
 
-    id: 1,
+    id: 5,
 
-    name: 'Hamza Kadiri Elmaana',
+    name: 'Abd Eljabar Bazzi',
 
-    role: 'Project Developement',
+    role: 'Cinematographer',
 
-    specialty: 'Marketing & Innovation',
+    specialty: 'Video Editing & VFX',
 
-    image: 'https://d2ah09ed4k10ng.cloudfront.net/DSCF5573.JPG',
+    image: 'https://d2ah09ed4k10ng.cloudfront.net/457507784_500820326017618_7102724725175186626_n.jpg',
 
-    accent: 'from-blue-500 to-purple-500',
+    accent: 'from-yellow-500 to-amber-500',
 
   },
 
@@ -62,6 +62,24 @@ const members: Member[] = [
 
   {
 
+    id: 9,
+
+    name: 'Mustapha Nassoh', // Corrected typo
+
+    role: 'Operations Manager',
+
+    specialty: 'Photography & Logistics',
+
+    image: 'https://d2ah09ed4k10ng.cloudfront.net/502749732_18462993526073959_2326641292068939243_n.jpg',
+
+    accent: 'from-indigo-500 to-purple-500',
+
+  },
+
+  
+
+  {
+
     id: 3,
 
     name: 'Nabil El Bachiri',
@@ -75,6 +93,24 @@ const members: Member[] = [
     accent: 'from-red-500 to-orange-500',
 
   },
+
+  {
+
+    id: 8,
+
+    name: 'Ayoub Sbaihi',
+
+    role: 'Production Manager',
+
+    specialty: 'Directing & Voice Acting',
+
+    image: 'https://d2ah09ed4k10ng.cloudfront.net/501451766_18016166447717339_1194100904261373844_n.jpg',
+
+    accent: 'from-orange-500 to-red-500',
+
+  },
+  
+
 
   {
 
@@ -94,17 +130,33 @@ const members: Member[] = [
 
   {
 
-    id: 5,
+    id: 12,
 
-    name: 'Abd Eljabar Bazzi',
+    name: 'Nassira Belgadi', // Corrected typo
 
-    role: 'Cinematographer',
+    role: 'Human Resources Manager',
 
-    specialty: 'Video Editing & VFX',
+    specialty: 'Management & Recruitment',
 
-    image: 'https://d2ah09ed4k10ng.cloudfront.net/457507784_500820326017618_7102724725175186626_n.jpg',
+    image: '',
 
-    accent: 'from-yellow-500 to-amber-500',
+    accent: 'from-pink-500 to-red-500',
+
+  },
+
+  {
+
+    id: 1,
+
+    name: 'Hamza Kadiri Elmaana',
+
+    role: 'Project Developement',
+
+    specialty: 'Marketing & Innovation',
+
+    image: 'https://d2ah09ed4k10ng.cloudfront.net/DSCF5573.JPG',
+
+    accent: 'from-blue-500 to-purple-500',
 
   },
 
@@ -124,6 +176,9 @@ const members: Member[] = [
 
   },
 
+  
+
+
   {
 
     id: 7,
@@ -140,38 +195,8 @@ const members: Member[] = [
 
   },
 
-  {
-
-    id: 8,
-
-    name: 'Ayoub Sbaihi',
-
-    role: 'Production Manager',
-
-    specialty: 'Directing & Voice Acting',
-
-    image: 'https://d2ah09ed4k10ng.cloudfront.net/501451766_18016166447717339_1194100904261373844_n.jpg',
-
-    accent: 'from-orange-500 to-red-500',
-
-  },
-
-  {
-
-    id: 9,
-
-    name: 'Mustapha Nassoh', // Corrected typo
-
-    role: 'Operations Manager',
-
-    specialty: 'Photography & Logistics',
-
-    image: 'https://d2ah09ed4k10ng.cloudfront.net/502749732_18462993526073959_2326641292068939243_n.jpg',
-
-    accent: 'from-indigo-500 to-purple-500',
-
-  },
-
+  
+  
   {
 
     id: 10,
@@ -204,21 +229,6 @@ const members: Member[] = [
 
   },
 
-  {
-
-    id: 12,
-
-    name: 'Nassira Belgadi', // Corrected typo
-
-    role: 'Human Resources Manager',
-
-    specialty: 'Management & Recruitment',
-
-    image: '',
-
-    accent: 'from-pink-500 to-red-500',
-
-  },
 
   {
 
