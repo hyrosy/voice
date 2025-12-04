@@ -358,8 +358,8 @@ const EcosystemSection = () => {
                             Access world-class training in Voice Over, Video Editing, and Scriptwriting through our dedicated Academy.
                         </p>
                         <Button variant="link" className="text-yellow-400 p-0 text-lg group-hover:translate-x-2 transition-transform" asChild>
-                            <a href="https://learn.ucpmaroc.com" target="_blank" rel="noopener noreferrer">
-                                Visit Academy <ArrowRight className="ml-2 w-5 h-5" />
+                            <a href="https://www.ucpmaroc.com" target="_blank" rel="noopener noreferrer">
+                                Coming Soon <ArrowRight className="ml-2 w-5 h-5" />
                             </a>
                         </Button>
                     </div>
