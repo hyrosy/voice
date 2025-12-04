@@ -68,7 +68,7 @@ const ActorEarningsPage = () => {
   }, [fetchEarnings]);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 pt-20 pb-8">
         <Card>
         <CardHeader>
           <CardTitle>Payout Settings</CardTitle>

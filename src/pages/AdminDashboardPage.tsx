@@ -273,7 +273,7 @@ const AdminDashboardPage = () => {
     }
 
     return (
-        <div className="min-h-screen bg-background p-4 md:p-8 text-foreground">
+        <div className="min-h-screen bg-background p-4 md:p-8 text-foreground pt-20">
             <div className="max-w-7xl mx-auto">
                 <h1 className="text-3xl font-bold mb-6">Admin Dashboard: All Orders</h1>
 

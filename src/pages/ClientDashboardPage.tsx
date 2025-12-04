@@ -110,8 +110,8 @@ const ClientDashboardPage = () => {
   }
 
   return (
-    <div className="min-h-screen bg-muted/40 p-4 md:p-8">
-      <div className="max-w-6xl mx-auto">
+    <div className="min-h-screen bg-muted/40 p-4 md:p-8 pt-20">
+      <div className="max-w-6xl mx-auto pt-20">
         
         {/* --- RESTYLED HEADER SECTION --- */}
         <div className="flex flex-col sm:flex-row justify-between sm:items-center mb-8 gap-4">

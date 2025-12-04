@@ -505,7 +505,7 @@ const handleMessageActor = async () => {
     };
 
     return (
-        <div className="min-h-screen bg-background text-foreground">
+        <div className="min-h-screen bg-background text-foreground pt-20">
             <audio ref={audioRef} src={currentTrack?.url || ''} />
             
             <header className="h-auto md:h-96 relative flex items-end bg-gradient-to-t from-background via-purple-900/50 to-purple-800">

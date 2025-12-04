@@ -81,7 +81,7 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
     <>
       {!shouldHideNavbar && <Navbar />}
       
-      <main className={`flex-grow ${shouldHideNavbar ? "" : "pt-20"}`}>
+      <main className={`flex-grow ${shouldHideNavbar ? "" : "pt-0"}`}>
         {children}
       </main>
 

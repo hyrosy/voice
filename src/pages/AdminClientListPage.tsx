@@ -75,7 +75,7 @@ const AdminClientListPage: React.FC = () => {
     }
 
     return (
-        <div className="min-h-screen bg-background p-4 md:p-8 text-foreground">
+        <div className="min-h-screen bg-background p-4 md:p-8 text-foreground pt-20">
             <div className="max-w-7xl mx-auto">
                 
             {/* --- 1. RESTYLED HEADER --- */}
