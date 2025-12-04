@@ -141,7 +141,7 @@ const ActorDashboardLayout = () => {
     <div className="min-h-screen bg-muted/40 text-foreground flex">
       
       {/* --- Desktop Sidebar --- */}
-      <aside className="hidden md:flex flex-col w-64 border-r bg-background">
+      <aside className="hidden md:flex flex-col w-64 border-r bg-background pt-20">
         <div className="flex flex-col items-center text-center p-4">
           <Avatar className="w-20 h-20 mb-4">
             <AvatarImage src={actorData.HeadshotURL} alt={actorData.ActorName} />
