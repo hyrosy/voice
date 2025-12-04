@@ -380,7 +380,7 @@ const  DashboardDemos:  React.FC  =  ()  =>  {
                               <span>{uploadingMainDemo  ?  'Uploading...'  :  'Upload  &  Replace'}</span>
                            </Button>
                         </Label>
-                        <Input  type="file"  id="main-demo-upload"  className="hidden"  accept="audio/*"  onChange={handleMainDemoUpload}  disabled={uploadingMainDemo}  />
+                        <Input  type="file"  id="main-demo-upload"  className="hidden"  accept="audio/*, .m4a, .mp3, .wav, .aac, .ogg, .webm"  onChange={handleMainDemoUpload}  disabled={uploadingMainDemo}  />
                      </CardContent>
                   </Card>
 
@@ -427,7 +427,7 @@ const  DashboardDemos:  React.FC  =  ()  =>  {
 
                            {/*  ---  NEW:  Conditional  Inputs  ---  */}
                            {uploadSource  ===  'upload'  &&  (
-                              <Input  id="demo-file-input"  type="file"  accept="audio/*"  onChange={(e)  =>  setDemoFile(e.target.files?.[0]  ||  null)}  required  />
+                              <Input  id="demo-file-input"  type="file"  accept="audio/*, .m4a, .mp3, .wav, .aac, .ogg, .webm"  onChange={(e)  =>  setDemoFile(e.target.files?.[0]  ||  null)}  required  />
                            )}
 
                            {uploadSource  ===  'library'  &&  (
