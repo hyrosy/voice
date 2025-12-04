@@ -66,7 +66,7 @@ const members: Member[] = [
 
     name: 'Nabil El Bachiri',
 
-    role: 'Property Manager',
+    role: 'Revenue Manager',
 
     specialty: 'Asset Management & Logistics',
 
@@ -182,7 +182,7 @@ const members: Member[] = [
 
     specialty: 'Software Engineer, Backend/API Developer, Data Analyst',
 
-    image: 'https://d2ah09ed4k10ng.cloudfront.net/502749732_18462993526073959_2326641292068939243_n.jpg',
+    image: '',
 
     accent: 'from-blue-500 to-purple-500',
 
@@ -198,7 +198,7 @@ const members: Member[] = [
 
     specialty: 'Graphic Design & Brand Strategy',
 
-    image: 'https://d2ah09ed4k10ng.cloudfront.net/502749732_18462993526073959_2326641292068939243_n.jpg',
+    image: '',
 
     accent: 'from-red-500 to-yellow-500',
 
@@ -214,7 +214,7 @@ const members: Member[] = [
 
     specialty: 'Management & Recruitment',
 
-    image: 'https://d2ah09ed4k10ng.cloudfront.net/502749732_18462993526073959_2326641292068939243_n.jpg',
+    image: '',
 
     accent: 'from-pink-500 to-red-500',
 
@@ -230,7 +230,7 @@ const members: Member[] = [
 
     specialty: 'Non-profit & Educational Programs',
 
-    image: 'https://d2ah09ed4k10ng.cloudfront.net/502749732_18462993526073959_2326641292068939243_n.jpg',
+    image: '',
 
     accent: 'from-green-500 to-blue-500',
 
@@ -246,7 +246,7 @@ const members: Member[] = [
 
     specialty: 'Framer & No-Code Solutions',
 
-    image: 'https://d2ah09ed4k10ng.cloudfront.net/502749732_18462993526073959_2326641292068939243_n.jpg',
+    image: '',
 
     accent: 'from-red-500 to-yellow-500',
 
@@ -262,7 +262,7 @@ const members: Member[] = [
 
     specialty: 'Framer & Full-Stack Development',
 
-    image: 'https://d2ah09ed4k10ng.cloudfront.net/502749732_18462993526073959_2326641292068939243_n.jpg',
+    image: '',
 
     accent: 'from-red-500 to-slate-500',
 
