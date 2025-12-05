@@ -46,7 +46,7 @@ export default function AdminDomainOrderDetailPage() {
   if (loading) return <div className="p-10">Loading...</div>;
 
   return (
-    <div className="min-h-screen bg-background p-8 pt-20">
+    <div className="min-h-screen bg-background p-8">
       <div className="max-w-5xl mx-auto">
         <Button variant="ghost" asChild className="mb-6">
             <Link to="/admin/domains"> <ArrowLeft className="mr-2 w-4 h-4" /> Back </Link>

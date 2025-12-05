@@ -176,7 +176,7 @@ const AdminActorListPage: React.FC = () => {
     }
 
     return (
-        <div className="min-h-screen bg-background p-4 md:p-8 text-foreground pt-20">
+        <div className="min-h-screen bg-background p-4 md:p-8 text-foreground">
             <div className="max-w-7xl mx-auto">
                 {/* Back Link */}
                 <Link to="/admin" className="inline-flex items-center gap-2 text-muted-foreground hover:text-accent-foreground mb-6 transition-colors">

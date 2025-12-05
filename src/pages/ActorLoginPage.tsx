@@ -80,7 +80,7 @@ useEffect(() => {
 
     return (
         // --- FIX: Set base text to "text-foreground" ---
-        <div className="min-h-screen grid grid-cols-1 md:grid-cols-2 bg-background text-foreground pt-20">
+        <div className="min-h-screen grid grid-cols-1 md:grid-cols-2 bg-background text-foreground">
             
             {/* 1. Left Branding Column (Explicitly set text-white) */}
             <div className="hidden md:flex flex-col justify-center items-center p-12 bg-gradient-to-br from-purple-900 via-slate-900 to-slate-900 border-r border-border text-white">

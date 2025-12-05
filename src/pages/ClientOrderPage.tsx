@@ -644,7 +644,7 @@ const ClientOrderPage = () => {
         <div className="min-h-screen bg-background p-4 md:p-8 pt-20">
             {pageMessage && <div className="mb-4 p-3 bg-card border rounded-lg text-center text-sm">{pageMessage}</div>}
 
-            <div className="max-w-7xl mx-auto flex flex-col-reverse lg:grid lg:grid-cols-3 gap-8 pt-20">
+            <div className="max-w-7xl mx-auto flex flex-col-reverse lg:grid lg:grid-cols-3 gap-8">
 
                 {/* --- Left Column (Main Content) --- */}
                 <div className="lg:col-span-2 space-y-6">

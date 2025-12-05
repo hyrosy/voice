@@ -301,7 +301,7 @@ const WhitePaperModal = () => {
 // --- 2. HERO SECTION ---
 const HeroSection = () => {
     return (
-      <section className="relative min-h-screen flex flex-col justify-center items-center text-center px-4 overflow-hidden pt-20">
+      <section className="relative min-h-screen flex flex-col justify-center items-center text-center px-4 overflow-hidden ">
          {/* Abstract Background */}
          <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-40 mix-blend-overlay pointer-events-none"></div>
          

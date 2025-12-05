@@ -352,7 +352,7 @@ const  DashboardDemos:  React.FC  =  ()  =>  {
    
    //  ---  Main  JSX  (Refactored  with  Tabs)  ---
    return  (
-      <div  className="max-w-4xl  mx-auto pt-20">
+      <div  className="max-w-4xl  mx-auto">
          <h1  className="text-3xl  font-bold  mb-6">Manage  Your  Portfolio</h1>
          {message  &&  <div  className={`mb-4  p-3  bg-card  border  rounded-lg  text-center  text-sm  ${message.includes('Error')  ?  'text-destructive'  :  'text-green-500'}`}>{message}</div>}
 
