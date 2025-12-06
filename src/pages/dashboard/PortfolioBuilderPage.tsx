@@ -209,7 +209,7 @@ const PortfolioBuilderPage = () => {
   if (isLoading) return <div className="p-8 text-center">Loading Builder...</div>;
 
   return (
-    <div className="max-w-6xl mx-auto h-[calc(100vh-100px)] flex flex-col pt-20 md:pt-0">
+    <div className="max-w-6xl mx-auto h-[calc(100vh-100px)] flex flex-col pt-20">
       
       {/* Header / Toolbar */}
       <div className="flex justify-between items-center mb-6">

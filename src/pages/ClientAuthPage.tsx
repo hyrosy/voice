@@ -103,7 +103,7 @@ const ClientAuthPage = () => {
     };
 
     return (
-        <div className="min-h-screen grid grid-cols-1 md:grid-cols-2 bg-background text-foreground pt-20 md:pt-0">
+        <div className="min-h-screen grid grid-cols-1 md:grid-cols-2 bg-background text-foreground pt-20">
             
             {/* 1. Left Branding Column (Unchanged, as requested) */}
             <div className="hidden md:flex flex-col justify-center items-center p-12 bg-gradient-to-br from-purple-900 via-slate-900 to-slate-900 border-r border-border">
