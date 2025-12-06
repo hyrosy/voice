@@ -125,7 +125,7 @@ function App() {
   return (
     <Router>
       <ScrollToTop />
-      <main className="flex-grow">
+      <main className="flex flex-col min-h-screen bg-background text-foreground">
         
         <Layout>
         <Routes>
