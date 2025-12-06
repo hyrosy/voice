@@ -81,7 +81,7 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
     <>
       {!shouldHideNavbar && <Navbar />}
       
-      <main className={`flex-grow ${shouldHideNavbar ? "" : ""}`}>
+      <main className={` ${shouldHideNavbar ? "" : ""}`}>
         {children}
       </main>
 
@@ -125,7 +125,7 @@ function App() {
   return (
     <Router>
       <ScrollToTop />
-      <main className="flex flex-col min-h-screen bg-background text-foreground">
+      <main className="">
         
         <Layout>
         <Routes>
