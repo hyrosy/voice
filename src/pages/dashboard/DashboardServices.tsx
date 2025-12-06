@@ -130,7 +130,7 @@ const handleServiceToggle = async (serviceName: 'service_scriptwriting' | 'servi
   }
 
   return (
-    <div className="max-w-4xl mx-auto">
+    <div className="max-w-4xl mx-auto pt-20 md:pt-0">
       <h1 className="text-3xl font-bold mb-6">My Services</h1>
       {message && <div className="mb-4 p-3 bg-card border rounded-lg text-center text-sm">{message}</div>}
 

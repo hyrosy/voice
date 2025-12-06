@@ -211,8 +211,8 @@ const DashboardProfile: React.FC = () => {
   }
 
   return (
-    <div className="max-w-4xl mx-auto">
-      <h1 className="text-3xl font-bold mb-6">Manage Your Profile</h1>
+    <div className="max-w-4xl mx-auto pt-20 md:pt-0">
+      <h1 className="text-3xl font-bold mb-6">Profile</h1>
       {message && <div className="mb-4 p-3 bg-card border rounded-lg text-center text-sm">{message}</div>}
 
       <form onSubmit={handleSaveAll}>

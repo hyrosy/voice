@@ -67,7 +67,7 @@ const ContactUsPage = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-background text-white flex items-center justify-center">
+    <div className="min-h-screen bg-background text-white flex items-center justify-center pt-20 md:pt-0">
       <div className="container mx-auto px-4 py-16 md:py-24">
         
         {/* Main Grid Layout */}

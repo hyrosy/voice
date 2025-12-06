@@ -110,7 +110,7 @@ const ClientDashboardPage = () => {
   }
 
   return (
-    <div className="min-h-screen bg-muted/40 p-4 md:p-8 ">
+    <div className="min-h-screen bg-muted/40 p-4 md:p-8 pt-20 md:pt-0">
       <div className="max-w-6xl mx-auto ">
         
         {/* --- RESTYLED HEADER SECTION --- */}

@@ -241,7 +241,7 @@ const PortfolioPage: React.FC = () => {
   };
 
   return (
-    <div className="container max-w-7xl mx-auto px-4 py-12 pb-32 pt-24"> 
+    <div className="container max-w-7xl mx-auto px-4 py-12 pb-32 pt-24 pt-20 md:pt-0"> 
       
       <audio ref={audioRef} src={currentTrack?.url || ''} />
 

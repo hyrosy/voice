@@ -170,7 +170,7 @@ const MessagesPage = () => {
           ? 'h-full' // Actor: Fit parent (which is handled by ActorDashboardLayout)
           : 'h-[calc(100vh-4rem)]' // Client: Full screen MINUS Navbar (assuming h-16/4rem)
       }
-     `}>
+     pt-20 md:pt-0 `}>
             {/* --- Sidebar (Conversation List) --- */}
             <nav className={`
                 ${conversationId ? 'hidden' : 'flex'} 

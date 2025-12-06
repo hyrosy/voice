@@ -9,7 +9,7 @@ const getInitialTheme = (): 'dark' | 'light' => {
   if (typeof window !== 'undefined') {
     // If the user has explicitly set it to light, return light.
     if (localStorage.theme === 'dark') {
-      return 'light';
+      return 'dark';
     }
   }
   // Otherwise, default to dark.

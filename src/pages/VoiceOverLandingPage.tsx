@@ -245,7 +245,7 @@ const VoiceOverLandingPage = () => {
 
   return (
     // --- ENHANCEMENT: Use simple 'bg-background' ---
-    <div className="flex-grow pt-0 min-h-screen bg-background text-foreground">
+    <div className="flex-grow pt-0 min-h-screen bg-background text-foreground ">
       
       {/* Hero Section */}
       {/* --- ENHANCEMENT: Removed blobs, using simple background and clean padding --- */}
