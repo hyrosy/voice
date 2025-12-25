@@ -180,7 +180,7 @@ const DashboardOrders: React.FC = () => {
 
   return (
     <div className="max-w-4xl mx-auto">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6 pt-20">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6 pt-0">
         <h1 className="text-3xl font-bold">Your Orders</h1>
         
       </div>
