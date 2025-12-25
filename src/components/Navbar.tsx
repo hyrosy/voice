@@ -124,7 +124,7 @@ const Navbar: React.FC = () => {
             <img 
               src="https://ucpmarocgo.s3.us-east-1.amazonaws.com/logo-ucp-maroc.png" 
               alt="UCP Maroc Logo" 
-              className="w-40 md:w-48 transition-transform duration-300 hover:scale-105" 
+              className="w-32 md:w-48 transition-transform duration-300 hover:scale-105"
             />
           </Link>
 
@@ -216,9 +216,9 @@ const Navbar: React.FC = () => {
                   </Button>
                 </SheetTrigger>
                 <SheetContent side="right" className="w-80 max-w-[85vw] flex flex-col p-0">
-                  <SheetHeader className="p-6 pb-4 border-b">
-                    <SheetTitle className="text-2xl">Menu</SheetTitle>
-                  </SheetHeader>
+                <SheetHeader className="px-6 pt-4 pb-4 border-b">
+                <SheetTitle className="text-2xl">Menu</SheetTitle>                  
+                </SheetHeader>
                   
                   <ScrollArea className="flex-1">
                     <div className="p-6">

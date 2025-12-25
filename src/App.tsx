@@ -80,8 +80,11 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
   return (
     <>
       {!shouldHideNavbar && <Navbar />}      
-      <main className={`flex-grow ${shouldHideNavbar ? "" : "pt-0"}`}> {/* Adjust pt-20 to match your navbar height */}        {children}
+
+      <main className={`flex-grow ${shouldHideNavbar ? "" : "pt-20"}`}>
+                {children}
       </main>
+
       {!shouldHideFooter && <Footer />}
     </>
   );
