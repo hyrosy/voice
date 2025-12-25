@@ -224,9 +224,13 @@ const PortfolioBuilderPage = () => {
           </div>
           {isPublished && (
             <Button variant="outline" size="sm" asChild>
-               <a href={`/pro/${actorData.ActorName}`} target="_blank" rel="noreferrer">
-                  <ExternalLink className="w-4 h-4 mr-2" /> View Live
-               </a>
+               <a 
+                href={`/pro/${(actorData.ActorName || 'portfolio').toLowerCase().replace(/\s+/g, '-')}`} 
+                target="_blank" 
+                rel="noreferrer"
+              >
+                <ExternalLink className="w-4 h-4 mr-2" /> View Live
+              </a>
             </Button>
           )}
           <Button onClick={handleSave} disabled={isSaving}>
