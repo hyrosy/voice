@@ -232,13 +232,19 @@ const PortfolioBuilderPage = () => {
 
           <div className="flex items-center gap-2 ml-auto sm:ml-0">
              {isPublished && (
-                <Button variant="outline" size="sm" asChild className="hidden sm:flex">
+                // FIX: Removed "hidden sm:flex" so it shows on mobile
+                // added "px-2 sm:px-4" to make it square-ish on mobile but wide on desktop
+                <Button variant="outline" size="sm" asChild className="px-2 sm:px-4">
                    <a 
                     href={`/pro/${(actorData.ActorName || 'portfolio').toLowerCase().replace(/\s+/g, '-')}`} 
                     target="_blank" 
                     rel="noreferrer"
+                    title="View Live Page"
                   >
-                    <ExternalLink className="w-4 h-4 mr-2" /> Live
+                    {/* Icon always shows */}
+                    <ExternalLink className="w-4 h-4 sm:mr-2" /> 
+                    {/* Text hidden on mobile, visible on desktop */}
+                    <span className="hidden sm:inline">Live</span>
                   </a>
                 </Button>
              )}
