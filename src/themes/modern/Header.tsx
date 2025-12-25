@@ -11,7 +11,7 @@ const Header: React.FC<BlockProps> = ({ data, allSections, isPreview }) => {
     const [isScrolled, setIsScrolled] = useState(false);
     const sections = allSections || [];
 
-    // --- FILTERING LOGIC (Preserved) ---
+    // --- FILTERING LOGIC ---
     const menuItems = sections
         .filter(s => s.isVisible && s.type !== 'header')
         .map(s => {
@@ -38,10 +38,8 @@ const Header: React.FC<BlockProps> = ({ data, allSections, isPreview }) => {
     // --- SCROLL DETECTION ---
     useEffect(() => {
         const handleScroll = () => {
-            // Use a small threshold to avoid flickering at the very top
             setIsScrolled(window.scrollY > 20);
         };
-        // Passive listener improves scroll performance
         window.addEventListener('scroll', handleScroll, { passive: true });
         return () => window.removeEventListener('scroll', handleScroll);
     }, []);
@@ -49,14 +47,12 @@ const Header: React.FC<BlockProps> = ({ data, allSections, isPreview }) => {
     const scrollToSection = (id: string) => {
         const element = document.getElementById(id);
         if (element) {
-            // Offset for the sticky header height
             const y = element.getBoundingClientRect().top + window.pageYOffset - 80;
             window.scrollTo({ top: y, behavior: 'smooth' });
             setIsMenuOpen(false);
         }
     };
 
-    // Prevent scrolling when mobile menu is open
     useEffect(() => {
          if (isMenuOpen) {
              document.body.style.overflow = 'hidden';
@@ -69,8 +65,8 @@ const Header: React.FC<BlockProps> = ({ data, allSections, isPreview }) => {
         <>
         <header 
             className={cn(
+                // Header stays at z-50 (Top Layer)
                 isPreview ? "absolute top-0 left-0 w-full z-50" : "fixed top-0 left-0 w-full z-50 transition-all duration-500 ease-in-out border-b border-transparent",
-                // Glass effect logic
                 data.isSticky && isScrolled 
                     ? "bg-neutral-950/80 backdrop-blur-md border-white/10 py-3 shadow-lg" 
                     : "bg-transparent py-6"
@@ -78,8 +74,8 @@ const Header: React.FC<BlockProps> = ({ data, allSections, isPreview }) => {
         >
             <div className="container mx-auto px-6 h-full flex items-center justify-between">
                 
-                {/* --- LOGO --- */}
-                <div className="flex items-center gap-3 cursor-pointer group" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>
+                {/* --- LOGO (Clickable & Above Menu) --- */}
+                <div className="flex items-center gap-3 cursor-pointer group relative z-50" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>
                     {data.logoImage ? (
                         <img src={data.logoImage} alt="Logo" className="h-10 w-auto transition-transform group-hover:scale-105" />
                     ) : (
@@ -117,8 +113,9 @@ const Header: React.FC<BlockProps> = ({ data, allSections, isPreview }) => {
                 </nav>
 
                 {/* --- MOBILE TOGGLE --- */}
+                {/* z-50 keeps it on the same level as header, visible above z-40 menu */}
                 <button 
-                    className="md:hidden p-2 text-white hover:bg-white/10 rounded-full transition-colors z-[60]" 
+                    className="md:hidden p-2 text-white hover:bg-white/10 rounded-full transition-colors relative z-50" 
                     onClick={() => setIsMenuOpen(!isMenuOpen)}
                     aria-label="Toggle Menu"
                 >
@@ -129,13 +126,24 @@ const Header: React.FC<BlockProps> = ({ data, allSections, isPreview }) => {
 
         {/* --- MOBILE FULLSCREEN MENU --- */}
         <div className={cn(
-            "fixed inset-0 z-[55] bg-neutral-950 md:hidden flex flex-col items-center justify-center space-y-8 transition-all duration-500 ease-in-out will-change-[opacity,transform]",
+            // FIX 1: z-[40] puts it BEHIND the header (z-50) but ABOVE content (z-0)
+            "fixed inset-0 z-[40] bg-neutral-950 md:hidden flex flex-col items-center justify-center space-y-8 transition-all duration-500 ease-in-out will-change-[opacity,transform]",
             isMenuOpen ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
         )}>
-            {/* Background Ambience - Reduced blur for mobile performance */}
+            {/* Background Ambience */}
             <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[300px] h-[300px] bg-indigo-500/20 blur-[50px] md:blur-[100px] rounded-full pointer-events-none" />
 
-            <div className="flex flex-col items-center gap-6 relative z-10 w-full px-8">
+            {/* FIX 2: Added pt-24 to push content down below the fixed header area */}
+            <div className="flex flex-col items-center gap-6 relative z-10 w-full px-8 pt-24 h-full overflow-y-auto">
+                
+                {/* FIX 3: Empty State Handling */}
+                {menuItems.length === 0 && (
+                     <div className="text-neutral-500 text-center">
+                        <p>No visible sections found.</p>
+                        <p className="text-sm opacity-60">Add sections in the builder.</p>
+                     </div>
+                )}
+
                 {menuItems.map((item, idx) => (
                     <button 
                         key={item.id} 
