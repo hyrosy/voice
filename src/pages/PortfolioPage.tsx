@@ -11,6 +11,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Skeleton } from "@/components/ui/skeleton";
 import DemoPlayerRow from '../components/DemoPlayerRow'; 
 import GlobalAudioPlayer from '../components/GlobalAudioPlayer';
+import { Mic, Video, FileText, Users, SearchX } from 'lucide-react';
 
 interface Actor {
   slug: string;
@@ -115,12 +116,13 @@ const PortfolioPage: React.FC = () => {
         
         setAllDemos(demosWithLikes);
         
-        // --- KEY FIX: Initialize filteredDemos immediately ---
-        // This ensures the UI shows the data right away, instead of waiting for the filter effect
+        // Initialize filteredDemos immediately
         if (currentFilter !== 'all') {
              setFilteredDemos(demosWithLikes.filter(demo => demo.demo_type === currentFilter));
+        } else {
+            // Use empty array for 'all' tab if that's the intended behavior (shows actors, not demos)
+            setFilteredDemos([]);
         }
-        // ----------------------------------------------------
 
         // 4. Fetch User Likes
         const { data: { user } } = await supabase.auth.getUser();
@@ -140,9 +142,9 @@ const PortfolioPage: React.FC = () => {
     };
 
     fetchAllData();
-  }, []); // Empty dependency array - runs once on mount
+  }, []);
 
-  // Filter Effect (Updates when user changes tabs)
+  // Filter Effect
   useEffect(() => {
     if (currentFilter === 'all') {
       setFilteredDemos([]); 
@@ -193,7 +195,6 @@ const PortfolioPage: React.FC = () => {
     }
   };
 
-  // --- Like Handler (Corrected to update BOTH states) ---
   const handleToggleLike = async (demo: any) => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return; 
@@ -204,19 +205,18 @@ const PortfolioPage: React.FC = () => {
       // 1. Optimistic UI Update
       if (isLiked) {
           setUserLikes(prev => prev.filter(u => u !== demoUrl));
-          // Update allDemos AND filteredDemos
           const updateDemos = (demos: DemoInterface[]) => demos.map(d => 
             d.demo_url === demoUrl ? { ...d, likes: (d.likes || 1) - 1 } : d
           );
           setAllDemos(prev => updateDemos(prev));
-          setFilteredDemos(prev => updateDemos(prev)); // <-- IMPORTANT: Update filtered list too
+          setFilteredDemos(prev => updateDemos(prev));
       } else {
           setUserLikes(prev => [...prev, demoUrl]);
           const updateDemos = (demos: DemoInterface[]) => demos.map(d => 
             d.demo_url === demoUrl ? { ...d, likes: (d.likes || 0) + 1 } : d
           );
           setAllDemos(prev => updateDemos(prev));
-          setFilteredDemos(prev => updateDemos(prev)); // <-- IMPORTANT: Update filtered list too
+          setFilteredDemos(prev => updateDemos(prev));
       }
 
       // 2. Database Call
@@ -241,115 +241,140 @@ const PortfolioPage: React.FC = () => {
   };
 
   return (
-    <div className="container max-w-7xl mx-auto px-4 py-12 pb-32 pt-24 pt-20"> 
+    <div className="min-h-screen bg-background pb-32"> 
       
       <audio ref={audioRef} src={currentTrack?.url || ''} />
 
-      <div className="text-center mb-12">
-        <h1 className="text-4xl md:text-5xl font-bold text-foreground mb-4">
-          Our Talent & Demos
-        </h1>
-        <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
-          Browse our marketplace by talent, or listen to the latest demos for audio, video, and scripts.
-        </p>
+      {/* --- HERO SECTION with Gradient --- */}
+      <div className="relative pt-28 pb-12 overflow-hidden">
+        <div className="absolute inset-0 bg-primary/5 -z-10" />
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-full max-w-4xl bg-primary/10 blur-[100px] rounded-full -z-10 opacity-50" />
+        
+        <div className="container max-w-7xl mx-auto px-4 text-center space-y-4">
+          <h1 className="text-4xl md:text-5xl lg:text-6xl font-black tracking-tight text-foreground">
+            Our Talent & <span className="text-primary">Demos</span>
+          </h1>
+          <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto">
+            Browse our marketplace by talent, or listen to the latest demos for audio, video, and scripts.
+          </p>
+        </div>
       </div>
 
-      <Tabs 
-        value={currentFilter} 
-        onValueChange={(value) => setCurrentFilter(value as any)} 
-        className="w-full mb-8"
-      >
-        <TabsList className="grid w-full grid-cols-4 max-w-md mx-auto mb-8">
-          <TabsTrigger value="all">All Talent</TabsTrigger>
-          <TabsTrigger value="audio">Audio</TabsTrigger>
-          <TabsTrigger value="video">Video</TabsTrigger>
-          <TabsTrigger value="script">Scripts</TabsTrigger>
-        </TabsList>
-
-        {isLoading ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-            {[...Array(8)].map((_, i) => (
-              <Skeleton key={i} className="rounded-xl aspect-[3/4]" />
-            ))}
+      <div className="container max-w-7xl mx-auto px-4 mt-8">
+        <Tabs 
+          value={currentFilter} 
+          onValueChange={(value) => setCurrentFilter(value as any)} 
+          className="w-full"
+        >
+          {/* --- TABS LIST: Grid on mobile (2x2), Flex on Desktop --- */}
+          <div className="flex justify-center mb-10">
+            <TabsList className="grid grid-cols-2 w-full max-w-[600px] h-auto p-1 gap-1 sm:grid-cols-4 sm:h-12 bg-muted/50 rounded-xl">
+              <TabsTrigger value="all" className="flex items-center gap-2 py-2 data-[state=active]:bg-background data-[state=active]:text-primary data-[state=active]:shadow-sm rounded-lg">
+                <Users size={16} /> All Talent
+              </TabsTrigger>
+              <TabsTrigger value="audio" className="flex items-center gap-2 py-2 data-[state=active]:bg-background data-[state=active]:text-primary data-[state=active]:shadow-sm rounded-lg">
+                <Mic size={16} /> Audio
+              </TabsTrigger>
+              <TabsTrigger value="video" className="flex items-center gap-2 py-2 data-[state=active]:bg-background data-[state=active]:text-primary data-[state=active]:shadow-sm rounded-lg">
+                <Video size={16} /> Video
+              </TabsTrigger>
+              <TabsTrigger value="script" className="flex items-center gap-2 py-2 data-[state=active]:bg-background data-[state=active]:text-primary data-[state=active]:shadow-sm rounded-lg">
+                <FileText size={16} /> Scripts
+              </TabsTrigger>
+            </TabsList>
           </div>
-        ) : error ? (
-          <Alert variant="destructive" className="max-w-xl mx-auto">
-            <AlertTitle>Error</AlertTitle>
-            <AlertDescription>{error}</AlertDescription>
-          </Alert>
-        ) : (
-          <>
-            <TabsContent value="all" className="mt-0">
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-                {allActors.map(actor => (
-                  <TalentCard key={actor.slug} actor={actor} />
-                ))}
-              </div>
-            </TabsContent>
 
-            <TabsContent value="audio" className="mt-0">
-              <div className="max-w-3xl mx-auto space-y-4"> 
-                {filteredDemos.length > 0 ? (
-                  filteredDemos.map(demo => {
-                    // Transform DemoInterface to match DemoPlayerRow's expected prop shape
-                    const rowDemo = {
-                        id: demo.demo_id,
-                        title: demo.demo_title,
-                        demo_url: demo.demo_url || '',
-                        likes: demo.likes || 0, 
-                        actors: {
-                            id: demo.actor_id,
-                            ActorName: demo.actor_name,
-                            slug: demo.actor_slug,
-                            HeadshotURL: demo.actor_headshot
-                        }
-                    };
-
-                    return (
-                        <DemoPlayerRow
-                            key={demo.demo_id}
-                            demo={rowDemo}
-                            onPlayClick={() => handlePlayClick(demo)}
-                            isCurrentlyPlaying={isPlaying && currentTrack?.url === demo.demo_url}
-                            isLiked={userLikes.includes(demo.demo_url || '')}
-                            onToggleLike={() => handleToggleLike(demo)}
-                        />
-                    );
-                  })
+          {isLoading ? (
+            /* --- Loading Skeletons --- */
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 animate-in fade-in-50">
+              {[...Array(8)].map((_, i) => (
+                <div key={i} className="space-y-3">
+                    <Skeleton className="w-full aspect-[3/4] rounded-xl" />
+                    <Skeleton className="h-4 w-3/4" />
+                    <Skeleton className="h-3 w-1/2" />
+                </div>
+              ))}
+            </div>
+          ) : error ? (
+            <Alert variant="destructive" className="max-w-xl mx-auto">
+              <AlertTitle>Error</AlertTitle>
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
+          ) : (
+            <>
+              {/* --- ALL TALENT TAB --- */}
+              <TabsContent value="all" className="mt-0 focus-visible:outline-none animate-in slide-in-from-bottom-2 duration-500">
+                {allActors.length > 0 ? (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+                    {allActors.map(actor => (
+                      <TalentCard key={actor.slug} actor={actor} />
+                    ))}
+                  </div>
                 ) : (
-                  <p className="text-center text-muted-foreground col-span-full py-12">
-                    No audio demos found.
-                  </p>
+                  <EmptyState type="Talent" />
                 )}
-              </div>
-            </TabsContent>
+              </TabsContent>
 
-            <TabsContent value="video" className="mt-0">
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {filteredDemos.length > 0 ? (
-                  filteredDemos.map(renderOtherDemoCard)
-                ) : (
-                  <p className="text-center text-muted-foreground col-span-full py-12">
-                    No video demos found.
-                  </p>
-                )}
-              </div>
-            </TabsContent>
+              {/* --- AUDIO TAB --- */}
+              <TabsContent value="audio" className="mt-0 focus-visible:outline-none animate-in slide-in-from-bottom-2 duration-500">
+                <div className="max-w-4xl mx-auto space-y-4"> 
+                  {filteredDemos.length > 0 ? (
+                    filteredDemos.map(demo => {
+                      const rowDemo = {
+                          id: demo.demo_id,
+                          title: demo.demo_title,
+                          demo_url: demo.demo_url || '',
+                          likes: demo.likes || 0, 
+                          actors: {
+                              id: demo.actor_id,
+                              ActorName: demo.actor_name,
+                              slug: demo.actor_slug,
+                              HeadshotURL: demo.actor_headshot
+                          }
+                      };
 
-            <TabsContent value="script" className="mt-0">
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                      return (
+                          <DemoPlayerRow
+                              key={demo.demo_id}
+                              demo={rowDemo}
+                              onPlayClick={() => handlePlayClick(demo)}
+                              isCurrentlyPlaying={isPlaying && currentTrack?.url === demo.demo_url}
+                              isLiked={userLikes.includes(demo.demo_url || '')}
+                              onToggleLike={() => handleToggleLike(demo)}
+                          />
+                      );
+                    })
+                  ) : (
+                    <EmptyState type="Audio Demos" />
+                  )}
+                </div>
+              </TabsContent>
+
+              {/* --- VIDEO TAB --- */}
+              <TabsContent value="video" className="mt-0 focus-visible:outline-none animate-in slide-in-from-bottom-2 duration-500">
                 {filteredDemos.length > 0 ? (
-                  filteredDemos.map(renderOtherDemoCard)
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        {filteredDemos.map(renderOtherDemoCard)}
+                    </div>
                 ) : (
-                  <p className="text-center text-muted-foreground col-span-full py-12">
-                    No script demos found.
-                  </p>
+                    <EmptyState type="Video Demos" />
                 )}
-              </div>
-            </TabsContent>
-          </>
-        )}
-      </Tabs>
+              </TabsContent>
+
+              {/* --- SCRIPT TAB --- */}
+              <TabsContent value="script" className="mt-0 focus-visible:outline-none animate-in slide-in-from-bottom-2 duration-500">
+                {filteredDemos.length > 0 ? (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                        {filteredDemos.map(renderOtherDemoCard)}
+                    </div>
+                ) : (
+                    <EmptyState type="Script Demos" />
+                )}
+              </TabsContent>
+            </>
+          )}
+        </Tabs>
+      </div>
 
       <GlobalAudioPlayer
         audioRef={audioRef}
@@ -364,5 +389,20 @@ const PortfolioPage: React.FC = () => {
     </div>
   );
 };
+
+// --- Helper Component for Empty States ---
+const EmptyState = ({ type }: { type: string }) => (
+    <div className="flex flex-col items-center justify-center py-16 px-4 text-center space-y-4 border-2 border-dashed border-muted rounded-2xl bg-muted/10">
+        <div className="p-4 rounded-full bg-muted/50">
+            <SearchX className="w-8 h-8 text-muted-foreground" />
+        </div>
+        <div>
+            <h3 className="text-lg font-semibold">No {type} Found</h3>
+            <p className="text-muted-foreground max-w-sm">
+                We couldn't find any items matching this category at the moment. Please check back later.
+            </p>
+        </div>
+    </div>
+);
 
 export default PortfolioPage;

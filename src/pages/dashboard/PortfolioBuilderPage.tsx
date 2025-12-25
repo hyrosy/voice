@@ -7,7 +7,7 @@ import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
-import { GripVertical, Eye, EyeOff, Save, ExternalLink, Loader2, Plus, Palette, Layers } from 'lucide-react';
+import { GripVertical, Eye, EyeOff, Save, ExternalLink, Loader2, Plus, Palette, Layers, Smartphone } from 'lucide-react';
 import { PortfolioSection, DEFAULT_PORTFOLIO_SECTIONS, SectionType } from '../../types/portfolio';
 import SectionEditor from '../../components/dashboard/SectionEditor';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -27,8 +27,7 @@ import {
 import { THEME_REGISTRY, DEFAULT_THEME } from '../../themes/registry'; 
 import { cn } from "@/lib/utils"; 
 
-// --- CONSTANTS (Moved here to ensure they load) ---
-
+// --- CONSTANTS ---
 const LOCAL_PORTFOLIO_TEMPLATES = [
   {
     id: 'modern',
@@ -36,7 +35,7 @@ const LOCAL_PORTFOLIO_TEMPLATES = [
     description: 'Clean lines, ample whitespace, professional feel.',
   },
   {
-    id: 'cinematic', // <-- THIS MATCHES YOUR REGISTRY KEY
+    id: 'cinematic', 
     name: 'Cinematic Dark',
     description: 'Immersive 3D sliders, dark mode, and high contrast.',
   },
@@ -65,28 +64,28 @@ const LOCAL_COLOR_PALETTES = [
 // --- REAL LIVE PREVIEW COMPONENT ---
 const PortfolioPreview = ({ sections, theme }: { sections: PortfolioSection[], theme: any }) => {
   const themeId = theme.templateId || 'modern';
-  // Fallback to modern if the registry lookup fails
   const ActiveTheme = THEME_REGISTRY[themeId] || DEFAULT_THEME;
   const fontClass = theme.font === 'serif' ? 'font-serif' : theme.font === 'mono' ? 'font-mono' : 'font-sans';
 
   return (
     <div className="border rounded-lg h-full flex flex-col bg-white text-black relative shadow-inner overflow-hidden">
-      <div className="bg-slate-800 text-white text-xs p-2 text-center z-50 flex-shrink-0">
+      <div className="bg-slate-800 text-white text-xs p-2 text-center z-50 flex-shrink-0 font-medium tracking-wide">
         Live Preview • {LOCAL_PORTFOLIO_TEMPLATES.find(t => t.id === themeId)?.name || 'Custom'}
       </div>
 
       <div 
-        className={cn("flex-grow overflow-y-auto bg-background text-foreground", fontClass)}
+        className={cn("flex-grow overflow-y-auto bg-background text-foreground custom-scrollbar", fontClass)}
         data-theme={theme.templateId}
       >
         {sections.filter(s => s.isVisible).length === 0 ? (
-          <div className="flex h-full items-center justify-center text-muted-foreground p-8">
-            Add sections to see your portfolio.
+          <div className="flex h-full items-center justify-center text-muted-foreground p-8 flex-col gap-2">
+            <Layers className="w-10 h-10 opacity-20" />
+            <p>Add sections to start building.</p>
           </div>
         ) : (
           sections.filter(s => s.isVisible).map(section => {
             switch (section.type) {
-                case 'header': return <ActiveTheme.Header key={section.id} data={section.data} allSections={sections} isPreview={true} />; // <-- Pass true
+                case 'header': return <ActiveTheme.Header key={section.id} data={section.data} allSections={sections} isPreview={true} />;
                 case 'hero': return <ActiveTheme.Hero key={section.id} data={section.data} />;
                 case 'about': return <ActiveTheme.About key={section.id} data={section.data} />;
                 case 'gallery': return <ActiveTheme.Gallery key={section.id} data={section.data} />;
@@ -99,7 +98,7 @@ const PortfolioPreview = ({ sections, theme }: { sections: PortfolioSection[], t
                 case 'team': return <ActiveTheme.Team key={section.id} data={section.data} />;
                 case 'map': return <ActiveTheme.Map key={section.id} data={section.data} />;
                 case 'pricing': return <ActiveTheme.Pricing key={section.id} data={section.data} />;
-                default: return <div key={section.id} className="p-4 text-center text-red-500">Unknown Block Type</div>;
+                default: return <div key={section.id} className="p-4 text-center text-red-500 text-xs">Unknown Block: {section.type}</div>;
             }
           })
         )}
@@ -118,9 +117,9 @@ const PortfolioBuilderPage = () => {
 
   // Theme State
   const [themeConfig, setThemeConfig] = useState({
-     templateId: 'modern',
-     primaryColor: 'violet',
-     font: 'sans'
+      templateId: 'modern',
+      primaryColor: 'violet',
+      font: 'sans'
   });
 
   // 1. Fetch or Init Portfolio
@@ -206,95 +205,118 @@ const PortfolioBuilderPage = () => {
       }
   }
 
-  if (isLoading) return <div className="p-8 text-center">Loading Builder...</div>;
+  if (isLoading) return (
+      <div className="flex items-center justify-center min-h-[50vh]">
+          <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+  );
 
   return (
-    <div className="max-w-6xl mx-auto h-[calc(100vh-100px)] flex flex-col pt-20">
+    // Responsive Container: 
+    // - On Mobile: Natural height with scrolling (min-h-screen)
+    // - On Desktop: Fixed viewport height (h-screen) to use internal scrolling for panels
+    <div className="max-w-7xl mx-auto flex flex-col pt-20 px-4 lg:px-8 pb-8 lg:pb-0 lg:h-[calc(100vh-20px)] min-h-screen">
       
       {/* Header / Toolbar */}
-      <div className="flex justify-between items-center mb-6">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4 shrink-0">
         <div>
-          <h1 className="text-3xl font-bold">Portfolio Builder</h1>
-          <p className="text-muted-foreground">Drag blocks to reorder. Click to edit content.</p>
+          <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Portfolio Builder</h1>
+          <p className="text-sm text-muted-foreground">Drag blocks to reorder. Click to edit.</p>
         </div>
-        <div className="flex items-center gap-4">
-          <div className="flex items-center gap-2 mr-4">
-            <span className="text-sm font-medium">Published</span>
+        
+        <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto">
+          <div className="flex items-center gap-2 px-3 py-2 bg-muted/50 rounded-lg border">
+            <span className="text-xs font-medium uppercase text-muted-foreground">Published</span>
             <Switch checked={isPublished} onCheckedChange={setIsPublished} />
           </div>
-          {isPublished && (
-            <Button variant="outline" size="sm" asChild>
-               <a 
-                href={`/pro/${(actorData.ActorName || 'portfolio').toLowerCase().replace(/\s+/g, '-')}`} 
-                target="_blank" 
-                rel="noreferrer"
-              >
-                <ExternalLink className="w-4 h-4 mr-2" /> View Live
-              </a>
-            </Button>
-          )}
-          <Button onClick={handleSave} disabled={isSaving}>
-            {isSaving ? <Loader2 className="w-4 h-4 animate-spin mr-2"/> : <Save className="w-4 h-4 mr-2"/>}
-            Save Changes
-          </Button>
+
+          <div className="flex items-center gap-2 ml-auto sm:ml-0">
+             {isPublished && (
+                <Button variant="outline" size="sm" asChild className="hidden sm:flex">
+                   <a 
+                    href={`/pro/${(actorData.ActorName || 'portfolio').toLowerCase().replace(/\s+/g, '-')}`} 
+                    target="_blank" 
+                    rel="noreferrer"
+                  >
+                    <ExternalLink className="w-4 h-4 mr-2" /> Live
+                  </a>
+                </Button>
+             )}
+             <Button onClick={handleSave} disabled={isSaving} size="sm" className="min-w-[100px]">
+                {isSaving ? <Loader2 className="w-4 h-4 animate-spin mr-2"/> : <Save className="w-4 h-4 mr-2"/>}
+                Save
+             </Button>
+          </div>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 flex-grow overflow-hidden min-h-0">
+      {/* Main Grid Layout */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8 flex-grow lg:overflow-hidden min-h-0 relative">
         
-        {/* LEFT: The Editor Sidebar */}
+        {/* LEFT COLUMN (Editor Controls) */}
         <div className="lg:col-span-1 flex flex-col h-full min-h-0">
           
           <Tabs defaultValue="content" className="flex flex-col h-full min-h-0">
               
-              <TabsList className="w-full grid grid-cols-2 mb-2 flex-shrink-0">
-                 <TabsTrigger value="content"><Layers className="w-4 h-4 mr-2"/> Content</TabsTrigger>
-                 <TabsTrigger value="design"><Palette className="w-4 h-4 mr-2"/> Design</TabsTrigger>
+              {/* Tabs List: 3 cols on mobile (Preview added), 2 cols on desktop */}
+              <TabsList className="w-full grid grid-cols-3 lg:grid-cols-2 mb-4 shrink-0">
+                 <TabsTrigger value="content"><Layers className="w-4 h-4 mr-2 hidden sm:block"/> Content</TabsTrigger>
+                 <TabsTrigger value="design"><Palette className="w-4 h-4 mr-2 hidden sm:block"/> Design</TabsTrigger>
+                 <TabsTrigger value="preview" className="lg:hidden"><Smartphone className="w-4 h-4 mr-2"/> Preview</TabsTrigger>
               </TabsList>
 
               {/* --- TAB 1: CONTENT --- */}
-              <TabsContent value="content" className="flex-grow flex flex-col overflow-hidden mt-0">
-                  <div className="flex-grow overflow-y-auto pr-2 pb-4 min-h-0">
+              <TabsContent value="content" className="flex-grow flex flex-col overflow-hidden mt-0 data-[state=inactive]:hidden">
+                  <div className="flex-grow overflow-y-auto pr-2 pb-4 min-h-[400px] lg:min-h-0 custom-scrollbar">
                     <DragDropContext onDragEnd={handleDragEnd}>
                         <Droppable droppableId="sections">
                         {(provided) => (
                             <div {...provided.droppableProps} ref={provided.innerRef} className="space-y-3 pb-4">
                             {sections.map((section, index) => (
                                 <Draggable key={section.id} draggableId={section.id} index={index}>
-                                    {(provided) => (
+                                    {(provided, snapshot) => (
                                         <Card 
                                             ref={provided.innerRef}
                                             {...provided.draggableProps}
-                                            className={`border-l-4 transition-all cursor-pointer hover:bg-accent/50 group ${section.isVisible ? 'border-l-primary' : 'border-l-muted opacity-60'}`}
+                                            className={cn(
+                                                "border-l-4 transition-all cursor-pointer group active:scale-[0.99]",
+                                                section.isVisible ? 'border-l-primary shadow-sm' : 'border-l-muted opacity-60 bg-muted/20',
+                                                snapshot.isDragging && "shadow-lg scale-105 rotate-1 opacity-90 z-50"
+                                            )}
                                             onClick={() => setEditingSection(section)}
                                         >
-                                            <CardContent className="p-4 flex items-center gap-3">
-                                                <div {...provided.dragHandleProps} className="cursor-grab active:cursor-grabbing text-muted-foreground hover:text-foreground">
-                                                    <GripVertical size={20} />
+                                            <CardContent className="p-3 sm:p-4 flex items-center gap-3">
+                                                <div {...provided.dragHandleProps} className="cursor-grab active:cursor-grabbing text-muted-foreground/50 hover:text-foreground p-1">
+                                                    <GripVertical size={22} />
                                                 </div>
                                                 
-                                                <div className="flex-grow font-medium capitalize select-none">
-                                                    {section.type.replace('_', ' ')}
+                                                <div className="flex-grow">
+                                                    <p className="font-semibold text-sm capitalize select-none">
+                                                        {section.type.replace('_', ' ')}
+                                                    </p>
+                                                    {section.data.title && (
+                                                        <p className="text-xs text-muted-foreground truncate max-w-[150px]">
+                                                            {section.data.title}
+                                                        </p>
+                                                    )}
                                                 </div>
 
-                                                <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                <div className="flex items-center gap-1 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
                                                     <Button 
                                                         variant="ghost" 
-                                                        size="sm" 
-                                                        className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground"
+                                                        size="icon" 
+                                                        className="h-8 w-8 text-muted-foreground hover:text-foreground"
                                                         onClick={(e) => toggleSectionVisibility(e, section.id)}
-                                                        title={section.isVisible ? "Hide Section" : "Show Section"}
                                                     >
-                                                        {section.isVisible ? <Eye size={16} /> : <EyeOff size={16} />}
+                                                        {section.isVisible ? <Eye size={18} /> : <EyeOff size={18} />}
                                                     </Button>
                                                     <Button
                                                         variant="ghost"
-                                                        size="sm"
-                                                        className="h-8 w-8 p-0 text-destructive hover:bg-destructive/10"
+                                                        size="icon"
+                                                        className="h-8 w-8 text-destructive/70 hover:text-destructive hover:bg-destructive/10"
                                                         onClick={(e) => handleDeleteSection(e, section.id)}
-                                                        title="Remove Section"
                                                     >
-                                                        <Plus className="w-4 h-4 rotate-45" />
+                                                        <Plus className="w-5 h-5 rotate-45" />
                                                     </Button>
                                                 </div>
                                             </CardContent>
@@ -309,14 +331,14 @@ const PortfolioBuilderPage = () => {
                     </DragDropContext>
                   </div>
 
-                  <div className="pt-4 border-t mt-auto flex-shrink-0">
+                  <div className="pt-4 border-t mt-auto shrink-0 bg-background z-10">
                       <DropdownMenu>
                           <DropdownMenuTrigger asChild>
-                            <Button variant="outline" className="w-full border-dashed">
-                                <Plus className="mr-2 h-4 w-4" /> Add New Section
+                            <Button variant="outline" className="w-full border-dashed h-12 text-muted-foreground hover:text-primary hover:border-primary/50">
+                                <Plus className="mr-2 h-5 w-5" /> Add New Section
                             </Button>
                           </DropdownMenuTrigger>
-                          <DropdownMenuContent className="w-56">
+                          <DropdownMenuContent className="w-64 max-h-[300px] overflow-y-auto" align="end">
                               <DropdownMenuItem onClick={() => handleAddSection('header')}>Header / Navbar</DropdownMenuItem>
                               <DropdownMenuItem onClick={() => handleAddSection('hero')}>Hero Section</DropdownMenuItem>
                               <DropdownMenuItem onClick={() => handleAddSection('about')}>About Me</DropdownMenuItem>
@@ -328,85 +350,93 @@ const PortfolioBuilderPage = () => {
                               <DropdownMenuItem onClick={() => handleAddSection('team')}>Team Section</DropdownMenuItem>
                               <DropdownMenuItem onClick={() => handleAddSection('map')}>Location Map</DropdownMenuItem>
                               <DropdownMenuItem onClick={() => handleAddSection('pricing')}>Pricing Plans</DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => handleAddSection('stats')}>Statistics / Milestones (Soon)</DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => handleAddSection('reviews')}>Client Reviews (Soon)</DropdownMenuItem>
-
-                            
+                              <DropdownMenuItem onClick={() => handleAddSection('stats')}>Statistics</DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => handleAddSection('reviews')}>Client Reviews</DropdownMenuItem>
                           </DropdownMenuContent>
                       </DropdownMenu>
                   </div>
               </TabsContent>
 
-              {/* --- TAB 2: DESIGN (Fixed) --- */}
-              <TabsContent value="design" className="flex-grow flex flex-col overflow-hidden mt-0">
-                 
-                 {/* Template Picker */}
-                 <div className="space-y-3">
-                    <Label>Template Style</Label>
-                    <div className="grid grid-cols-1 gap-2">
-                       {LOCAL_PORTFOLIO_TEMPLATES.map(t => (
-                          <Card 
-                            key={t.id} 
-                            className={cn(
-                                "cursor-pointer border-2 transition-all hover:shadow-md",
-                                themeConfig.templateId === t.id ? 'border-primary bg-primary/5' : 'border-transparent hover:border-muted'
-                            )}
-                            onClick={() => setThemeConfig({...themeConfig, templateId: t.id})}
-                          >
-                             <div className="p-4">
-                                <h4 className="font-bold text-sm">{t.name}</h4>
-                                <p className="text-xs text-muted-foreground mt-1">{t.description}</p>
-                             </div>
-                          </Card>
-                       ))}
+              {/* --- TAB 2: DESIGN --- */}
+              <TabsContent value="design" className="flex-grow flex flex-col overflow-y-auto overflow-x-hidden mt-0 data-[state=inactive]:hidden custom-scrollbar pb-10">
+                  <div className="space-y-6 pr-2">
+                    {/* Template Picker */}
+                    <div className="space-y-3">
+                       <Label className="text-base">Template Style</Label>
+                       <div className="grid grid-cols-1 gap-3">
+                          {LOCAL_PORTFOLIO_TEMPLATES.map(t => (
+                             <Card 
+                               key={t.id} 
+                               className={cn(
+                                   "cursor-pointer border-2 transition-all hover:shadow-md relative overflow-hidden",
+                                   themeConfig.templateId === t.id ? 'border-primary bg-primary/5' : 'border-transparent hover:border-muted'
+                               )}
+                               onClick={() => setThemeConfig({...themeConfig, templateId: t.id})}
+                             >
+                                <div className="p-4">
+                                   <div className="flex justify-between items-center mb-1">
+                                       <h4 className="font-bold">{t.name}</h4>
+                                       {themeConfig.templateId === t.id && <div className="w-2 h-2 rounded-full bg-primary" />}
+                                   </div>
+                                   <p className="text-sm text-muted-foreground">{t.description}</p>
+                                </div>
+                             </Card>
+                          ))}
+                       </div>
                     </div>
-                 </div>
 
-                 {/* Color Picker (Fixed with Hex Codes) */}
-                 <div className="space-y-3">
-                    <Label>Accent Color</Label>
-                    <div className="flex flex-wrap gap-3">
-                       {LOCAL_COLOR_PALETTES.map(color => (
-                          <button
-                             key={color.id}
-                             onClick={() => setThemeConfig({...themeConfig, primaryColor: color.id})}
-                             className={cn(
-                               "w-8 h-8 rounded-full transition-all ring-offset-2 ring-offset-background hover:scale-110 border border-black/10", 
-                               themeConfig.primaryColor === color.id ? 'ring-2 ring-primary scale-110' : ''
-                             )}
-                             style={{ backgroundColor: color.value }} // Apply Hex Code directly
-                             title={color.name}
-                          />
-                       ))}
+                    {/* Color Picker */}
+                    <div className="space-y-3">
+                       <Label className="text-base">Accent Color</Label>
+                       <div className="flex flex-wrap gap-4">
+                          {LOCAL_COLOR_PALETTES.map(color => (
+                             <button
+                                key={color.id}
+                                onClick={() => setThemeConfig({...themeConfig, primaryColor: color.id})}
+                                className={cn(
+                                  "w-10 h-10 rounded-full transition-all ring-offset-2 ring-offset-background hover:scale-110 border border-black/10 shadow-sm", 
+                                  themeConfig.primaryColor === color.id ? 'ring-2 ring-primary scale-110' : ''
+                                )}
+                                style={{ backgroundColor: color.value }}
+                                title={color.name}
+                                aria-label={`Select ${color.name}`}
+                             />
+                          ))}
+                       </div>
                     </div>
-                 </div>
 
-                 {/* Font Picker */}
-                 <div className="space-y-3">
-                    <Label>Typography</Label>
-                    <Select 
-                       value={themeConfig.font} 
-                       onValueChange={(val) => setThemeConfig({...themeConfig, font: val})}
-                    >
-                       <SelectTrigger>
-                         <SelectValue placeholder="Select a font" />
-                       </SelectTrigger>
-                       <SelectContent>
-                         {LOCAL_FONT_OPTIONS.map(font => (
-                           <SelectItem key={font.id} value={font.id}>
-                             <span className={font.value}>{font.name}</span>
-                           </SelectItem>
-                         ))}
-                       </SelectContent>
-                    </Select>
-                 </div>
+                    {/* Font Picker */}
+                    <div className="space-y-3">
+                       <Label className="text-base">Typography</Label>
+                       <Select 
+                           value={themeConfig.font} 
+                           onValueChange={(val) => setThemeConfig({...themeConfig, font: val})}
+                       >
+                           <SelectTrigger className="h-12">
+                             <SelectValue placeholder="Select a font" />
+                           </SelectTrigger>
+                           <SelectContent>
+                             {LOCAL_FONT_OPTIONS.map(font => (
+                               <SelectItem key={font.id} value={font.id}>
+                                 <span className={font.value}>{font.name}</span>
+                               </SelectItem>
+                             ))}
+                           </SelectContent>
+                       </Select>
+                    </div>
+                  </div>
+              </TabsContent>
+
+              {/* --- TAB 3: PREVIEW (MOBILE ONLY) --- */}
+              <TabsContent value="preview" className="lg:hidden flex-grow flex flex-col mt-0 h-[600px] border rounded-lg overflow-hidden bg-background shadow-lg data-[state=inactive]:hidden">
+                   <PortfolioPreview sections={sections} theme={themeConfig} />
               </TabsContent>
               
           </Tabs>
         </div>
 
-        {/* RIGHT: Live Preview */}
-        <div className="lg:col-span-2 hidden lg:block h-full pl-4 border-l min-h-0">
+        {/* RIGHT COLUMN: Desktop Live Preview (Always Visible on LG screens) */}
+        <div className="lg:col-span-2 hidden lg:block h-full pl-6 border-l min-h-0">
            <PortfolioPreview sections={sections} theme={themeConfig} />
         </div>
 
@@ -415,7 +445,7 @@ const PortfolioBuilderPage = () => {
       {/* --- EDITOR SHEET --- */}
       {editingSection && actorData.id && (
          <SectionEditor 
-           sections={sections} // <-- ADD THIS PROP
+           sections={sections}
            section={editingSection}
            isOpen={!!editingSection}
            onClose={() => setEditingSection(null)}
