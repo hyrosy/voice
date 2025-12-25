@@ -23,11 +23,6 @@ const Map: React.FC<BlockProps> = ({ data }) => {
     <section className={cn("relative w-full bg-neutral-950 overflow-hidden border-t border-white/10", heightClass)}>
         
         {/* --- MAP LAYER --- */}
-        {/* THE SECRET SAUCE: 
-            grayscale(100%) -> Removes color
-            invert(92%) -> Turns white backgrounds to dark grey/black
-            contrast(83%) -> Softens the harsh lines
-        */}
         <div className="absolute inset-0 w-full h-full">
             <iframe 
                 src={embedSrc} 
@@ -37,17 +32,21 @@ const Map: React.FC<BlockProps> = ({ data }) => {
                 allowFullScreen 
                 loading="lazy" 
                 referrerPolicy="no-referrer-when-downgrade"
-                className="w-full h-full filter grayscale invert-[0.9] contrast-[0.8] brightness-[0.8] opacity-80 hover:opacity-100 transition-opacity duration-700"
+                // FIX: Added 'will-change-[filter]' to hint the browser
+                className="w-full h-full filter grayscale invert-[0.9] contrast-[0.8] brightness-[0.8] opacity-80 hover:opacity-100 transition-opacity duration-700 will-change-[filter]"
             />
         </div>
 
         {/* --- VIGNETTE OVERLAY --- */}
-        {/* This creates a shadow around the edges to blend the map into your site background */}
         <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(transparent_0%,_var(--tw-gradient-stops))] from-neutral-950/0 to-neutral-950/100" />
 
         {/* --- FLOATING INFO CARD --- */}
         <div className="absolute bottom-8 left-4 right-4 md:left-12 md:right-auto md:w-96 z-10">
-            <div className="bg-neutral-900/80 backdrop-blur-md border border-white/10 p-6 md:p-8 rounded-2xl shadow-2xl space-y-4">
+            {/* FIX 2: 
+                - Mobile: Solid background (bg-neutral-900), No Blur. Fast rendering.
+                - Desktop: Translucent background, Blur. Premium look.
+            */}
+            <div className="bg-neutral-900 md:bg-neutral-900/80 backdrop-blur-none md:backdrop-blur-md border border-white/10 p-6 md:p-8 rounded-2xl shadow-lg md:shadow-2xl space-y-4">
                 
                 {data.title && (
                     <div className="flex items-start gap-3">
@@ -60,9 +59,6 @@ const Map: React.FC<BlockProps> = ({ data }) => {
                         </div>
                     </div>
                 )}
-
-                {/* If you had an address field in your data, you'd render it here. 
-                    Since BlockProps usually just has mapUrl, we can extract a generic CTA */}
                 
                 <p className="text-neutral-400 text-sm leading-relaxed">
                    Visit us at our studio. We are open for appointments Monday through Friday.

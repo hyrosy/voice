@@ -1,3 +1,5 @@
+// In src/themes/modern/ServicesShowcase.tsx
+
 import React, { useState, useEffect } from 'react';
 import { BlockProps } from '../types';
 import { supabase } from '../../supabaseClient';
@@ -20,15 +22,10 @@ const ServicesShowcase: React.FC<BlockProps> = ({ data, actorId }) => {
     const [services, setServices] = useState<ServiceData[]>([]);
     const [loading, setLoading] = useState(true);
 
+    // --- DATA FETCHING (Preserved Logic) ---
     useEffect(() => {
         const loadData = async () => {
-            console.log("--- ServicesShowcase: Start Loading ---");
-            console.log("Actor ID:", actorId);
-
-            if (!actorId) {
-                console.warn("ServicesShowcase: No actorId provided.");
-                return;
-            }
+            if (!actorId) return;
             setLoading(true);
 
             // 1. Fetch Actor Profile
@@ -43,33 +40,20 @@ const ServicesShowcase: React.FC<BlockProps> = ({ data, actorId }) => {
                 setLoading(false);
                 return;
             }
-            console.log("ServicesShowcase: Actor fetched:", actor.ActorName);
-            console.log("Services Enabled:", {
-                voice: actor.service_voiceover,
-                script: actor.service_scriptwriting,
-                video: actor.service_videoediting
-            });
 
-            // 2. Fetch Demos (Individual Tables)
-            const { data: demosData, error: demosErr } = await supabase.from('demos').select('*').eq('actor_id', actorId);
-            const { data: scriptData, error: scriptErr } = await supabase.from('script_demos').select('*').eq('actor_id', actorId);
-            const { data: videoData, error: videoErr } = await supabase.from('video_demos').select('*').eq('actor_id', actorId);
-
-            if (demosErr) console.error("Error fetching audio demos:", demosErr);
-            if (scriptErr) console.error("Error fetching script demos:", scriptErr);
-            if (videoErr) console.error("Error fetching video demos:", videoErr);
-
-            console.log("Raw Audio Demos:", demosData);
-            console.log("Raw Script Demos:", scriptData);
-            console.log("Raw Video Demos:", videoData);
+            // 2. Fetch Demos (Parallel Requests for speed)
+            const [demosRes, scriptRes, videoRes] = await Promise.all([
+                supabase.from('demos').select('*').eq('actor_id', actorId),
+                supabase.from('script_demos').select('*').eq('actor_id', actorId),
+                supabase.from('video_demos').select('*').eq('actor_id', actorId)
+            ]);
 
             const availableServices: ServiceData[] = [];
 
             // --- VOICE OVER MAPPING ---
             if (actor.service_voiceover) {
-                const voDemos = (demosData || []).map((d: any) => ({
+                const voDemos = (demosRes.data || []).map((d: any) => ({
                     demo_type: 'audio' as const,
-                    // Map DB columns to Demo Interface
                     demo_id: d.demo_id || d.id, 
                     demo_title: d.demo_title || d.title,
                     demo_url: d.demo_url || d.url,
@@ -81,7 +65,6 @@ const ServicesShowcase: React.FC<BlockProps> = ({ data, actorId }) => {
                     actor_slug: actor.slug,
                     likes: 0
                 }));
-                console.log("Mapped VO Demos:", voDemos);
                 
                 availableServices.push({
                     id: 'voice_over',
@@ -95,7 +78,7 @@ const ServicesShowcase: React.FC<BlockProps> = ({ data, actorId }) => {
 
             // --- SCRIPTWRITING MAPPING ---
             if (actor.service_scriptwriting) {
-                const scDemos = (scriptData || []).map((d: any) => ({
+                const scDemos = (scriptRes.data || []).map((d: any) => ({
                     demo_type: 'script' as const,
                     demo_id: d.id,      
                     demo_title: d.title, 
@@ -108,7 +91,6 @@ const ServicesShowcase: React.FC<BlockProps> = ({ data, actorId }) => {
                     actor_slug: actor.slug,
                     likes: 0
                 }));
-                console.log("Mapped Script Demos:", scDemos);
 
                 availableServices.push({
                     id: 'scriptwriting',
@@ -122,11 +104,11 @@ const ServicesShowcase: React.FC<BlockProps> = ({ data, actorId }) => {
 
             // --- VIDEO EDITING MAPPING ---
             if (actor.service_videoediting) {
-                const vidDemos = (videoData || []).map((d: any) => ({
+                const vidDemos = (videoRes.data || []).map((d: any) => ({
                     demo_type: 'video' as const,
                     demo_id: d.id,        
                     demo_title: d.title,  
-                    demo_url: d.video_url, // <--- Pay attention to this log
+                    demo_url: d.video_url,
                     demo_content: null,
                     created_at: d.created_at,
                     actor_id: actor.id,
@@ -135,7 +117,6 @@ const ServicesShowcase: React.FC<BlockProps> = ({ data, actorId }) => {
                     actor_slug: actor.slug,
                     likes: 0
                 }));
-                console.log("Mapped Video Demos:", vidDemos);
 
                 availableServices.push({
                     id: 'video_editing',
@@ -147,7 +128,6 @@ const ServicesShowcase: React.FC<BlockProps> = ({ data, actorId }) => {
                 });
             }
 
-            console.log("Final Services List:", availableServices);
             setServices(availableServices);
             setLoading(false);
         };
@@ -165,7 +145,9 @@ const ServicesShowcase: React.FC<BlockProps> = ({ data, actorId }) => {
 
     return (
         <section className="relative py-24 px-4 bg-neutral-950 overflow-hidden min-h-screen">
-        <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 brightness-100 contrast-150 mix-blend-overlay hidden md:block"></div>            
+            {/* FIX 1: Hide heavy noise texture on mobile */}
+            <div className="hidden md:block absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 brightness-100 contrast-150 mix-blend-overlay"></div>
+            
             <div className="container max-w-7xl mx-auto relative z-10">
                 <div className="text-center mb-16 space-y-4">
                     <h2 className="text-4xl md:text-5xl font-bold text-white tracking-tight">
@@ -192,13 +174,15 @@ const ServicesShowcase: React.FC<BlockProps> = ({ data, actorId }) => {
                     </div>
 
                     {services.map(service => (
-                        <TabsContent key={service.id} value={service.id} className="animate-in fade-in slide-in-from-bottom-8 duration-700">
+                        // FIX 2: Added 'will-change-transform' for smoother tab switches
+                        <TabsContent key={service.id} value={service.id} className="animate-in fade-in slide-in-from-bottom-8 duration-700 will-change-transform">
                             
                             {/* Service Info Card */}
                             {data.showRates && (
-                                <div className="relative rounded-3xl overflow-hidden border border-white/10 bg-neutral-900 shadow-2xl mb-20 group">
+                                <div className="relative rounded-[2rem] overflow-hidden border border-white/10 bg-neutral-900 shadow-2xl mb-20 group">
                                     <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/5 via-transparent to-purple-500/5" />
-                                    <service.icon className="absolute -right-12 -bottom-12 w-96 h-96 text-white/5 rotate-[-15deg] pointer-events-none transition-transform duration-700 group-hover:rotate-0" />
+                                    {/* FIX 3: Hide the giant rotating icon on mobile to prevent layout thrashing */}
+                                    <service.icon className="hidden md:block absolute -right-12 -bottom-12 w-96 h-96 text-white/5 rotate-[-15deg] pointer-events-none transition-transform duration-700 group-hover:rotate-0" />
 
                                     <div className="relative z-10 grid grid-cols-1 lg:grid-cols-3 gap-0 lg:gap-8 p-0">
                                         <div className="lg:col-span-2 p-8 md:p-12 space-y-6">
@@ -250,7 +234,7 @@ const ServicesShowcase: React.FC<BlockProps> = ({ data, actorId }) => {
                                                     {service.id === 'scriptwriting' && <ScriptDemoCard demo={demo} />}
                                                 </div>
                                             </div>
-                                        ))}
+                                            ))}
                                         </div>
                                     ) : (
                                         <div className="flex flex-col items-center justify-center py-24 border border-dashed border-white/10 rounded-3xl bg-white/5 text-neutral-500">

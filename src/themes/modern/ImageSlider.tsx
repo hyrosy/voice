@@ -20,12 +20,10 @@ const ImageSlider: React.FC<BlockProps> = ({ data }) => {
 
   if (!data.images || data.images.length === 0) return null;
 
-  // Use 'dvh' for mobile browser support (avoids address bar cutting off content)
   const heightClass = data.height === 'full' ? 'h-[100dvh]' : 
                       data.height === 'medium' ? 'h-[400px] md:h-[500px]' : 
                       'h-[600px] md:h-[700px]';
 
-  // Update state on slide change for the progress bar and background
   useEffect(() => {
     if (!api) return;
 
@@ -50,20 +48,25 @@ const ImageSlider: React.FC<BlockProps> = ({ data }) => {
     <section className={cn("relative w-full overflow-hidden bg-black", heightClass)}>
       
       {/* --- LAYER 1: AMBIENT BACKGROUND --- */}
-      <div className="absolute inset-0 z-0 transition-opacity duration-1000 ease-in-out">
+      {/* FIX 1: Heavy blur hidden on mobile ('hidden md:block'). 
+          Re-rendering this blur (key={current}) on every slide change kills mobile FPS. 
+      */}
+      <div className="hidden md:block absolute inset-0 z-0 transition-opacity duration-1000 ease-in-out">
         <div 
             key={current}
             className="absolute inset-0 bg-cover bg-center blur-3xl scale-110 opacity-50 animate-pulse-slow"
             style={{ backgroundImage: `url(${currentImage.url})` }}
         />
-        {/* Darker overlay on background to ensure the main card pops */}
         <div className="absolute inset-0 bg-black/60" />
       </div>
+
+      {/* Mobile Fallback Background (Simple & Fast) */}
+      <div className="absolute inset-0 bg-neutral-950 md:hidden z-0" />
 
       {/* --- LAYER 2: CAROUSEL CONTENT --- */}
       <div className="relative z-10 h-full flex flex-col justify-center">
         
-        {/* Mobile Header: Simple counter if no title */}
+        {/* Mobile Header */}
         <div className="absolute top-6 right-6 z-20 md:hidden">
             <span className="bg-black/40 backdrop-blur-md text-white/80 px-3 py-1 rounded-full text-xs font-mono border border-white/10">
                 {current} / {count}
@@ -89,27 +92,29 @@ const ImageSlider: React.FC<BlockProps> = ({ data }) => {
           opts={{
             align: "center",
             loop: true,
+            // Embla doesn't use 'cssMode' prop like Swiper, but removing the heavy background
+            // ensures the JS animation runs smoothly at 60fps on mobile.
           }}
         >
           <CarouselContent className="-ml-0 h-full">
             {data.images.map((img: any, index: number) => (
               <CarouselItem key={index} className="pl-0 w-full h-full relative">
                  
-                 {/* Responsive Padding: 
-                    p-2 on mobile (gives a tiny border to see the blur behind).
-                    p-12 on desktop (gives the premium 'floating' look).
-                 */}
                  <div className="w-full h-full flex items-center justify-center p-2 md:p-12 lg:p-16">
                     
-                    <div className="relative w-full h-full overflow-hidden rounded-2xl md:rounded-[2rem] shadow-2xl bg-neutral-900 group">
+                    {/* FIX 2: Removed shadow on mobile container */}
+                    <div className="relative w-full h-full overflow-hidden rounded-2xl md:rounded-[2rem] shadow-none md:shadow-2xl bg-neutral-900 group">
                         <img 
                             src={img.url} 
                             alt={img.caption || `Slide ${index + 1}`} 
-                            className="w-full h-full object-cover transition-transform duration-[3000ms] ease-out group-hover:scale-110"
+                            // FIX 3: Async decoding and GPU hint
+                            decoding="async"
+                            loading={index === 0 ? "eager" : "lazy"}
+                            className="w-full h-full object-cover transition-transform duration-[3000ms] ease-out group-hover:scale-110 will-change-transform"
                         />
                         
-                        {/* Gradient Overlay: Deeper on mobile for text readability */}
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent opacity-90 md:opacity-80" />
+                        {/* Gradient Overlay */}
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent opacity-90 md:opacity-80 pointer-events-none" />
 
                         {/* Caption Box */}
                         <div className="absolute bottom-0 left-0 w-full p-6 md:p-16 flex flex-col justify-end h-full pointer-events-none">
@@ -134,7 +139,6 @@ const ImageSlider: React.FC<BlockProps> = ({ data }) => {
             ))}
           </CarouselContent>
           
-          {/* Controls: Hidden on mobile (swipe is better), visible on Desktop */}
           <div className="absolute bottom-12 right-12 z-30 hidden md:flex gap-4">
             <CarouselPrevious className="static translate-y-0 h-14 w-14 rounded-full bg-white/10 border border-white/20 text-white hover:bg-white hover:text-black backdrop-blur-md transition-all" />
             <CarouselNext className="static translate-y-0 h-14 w-14 rounded-full bg-white/10 border border-white/20 text-white hover:bg-white hover:text-black backdrop-blur-md transition-all" />
@@ -142,7 +146,7 @@ const ImageSlider: React.FC<BlockProps> = ({ data }) => {
 
         </Carousel>
 
-        {/* Progress Bar (Visible on all devices) */}
+        {/* Progress Bar */}
         <div className="absolute bottom-0 left-0 w-full h-1 md:h-1.5 bg-white/10 z-20">
             <div 
                 className="h-full bg-white transition-all duration-500 ease-out box-shadow-[0_0_10px_rgba(255,255,255,0.5)]"

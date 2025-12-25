@@ -3,7 +3,7 @@
 import React from 'react';
 import { BlockProps } from '../types';
 import { Button } from "@/components/ui/button";
-import { Check, Sparkles, ArrowRight } from 'lucide-react';
+import { Check, Sparkles } from 'lucide-react';
 import { cn } from "@/lib/utils";
 import {
   Carousel,
@@ -15,21 +15,20 @@ import {
 
 // --- THE CARD COMPONENT ---
 const PricingCard = ({ plan, index }: { plan: any, index: number }) => {
-    // We assume the middle plan or explicitly marked ones are "Popular"
-    // You can adjust this logic based on your data structure (e.g. plan.isPopular)
     const isPopular = plan.isPopular || plan.name?.toLowerCase().includes('pro') || plan.name?.toLowerCase().includes('popular');
 
     return (
         <div className={cn(
-            "relative group h-full flex flex-col p-8 rounded-3xl transition-all duration-500 border",
+            "relative group h-full flex flex-col p-8 rounded-[2rem] transition-all duration-500 border",
             isPopular 
-                ? "bg-neutral-900/80 border-indigo-500/50 shadow-[0_0_50px_-12px_rgba(99,102,241,0.3)] scale-[1.02] z-10" 
+                // FIX 3: Simplified mobile shadow. No scale on mobile to prevent layout shift issues.
+                ? "bg-neutral-900/80 border-indigo-500/50 shadow-lg md:shadow-[0_0_50px_-12px_rgba(99,102,241,0.3)] md:scale-[1.02] z-10" 
                 : "bg-neutral-900/40 border-white/10 hover:border-white/20 hover:bg-neutral-900/60"
         )}>
             
             {/* Ambient Inner Glow for Popular Plans */}
             {isPopular && (
-                <div className="absolute inset-0 bg-gradient-to-b from-indigo-500/10 to-transparent pointer-events-none rounded-3xl" />
+                <div className="absolute inset-0 bg-gradient-to-b from-indigo-500/10 to-transparent pointer-events-none rounded-[2rem]" />
             )}
 
             {/* Popular Badge */}
@@ -48,8 +47,7 @@ const PricingCard = ({ plan, index }: { plan: any, index: number }) => {
                     <span className="text-5xl md:text-6xl font-bold text-white tracking-tight">
                         {plan.price}
                     </span>
-                    {/* Only show frequency if it's not a one-off price */}
-                    {!plan.price.includes('$') && ( // Simple check, adjust as needed
+                    {!plan.price.includes('$') && ( 
                          <span className="text-neutral-500 text-lg">/project</span>
                     )}
                 </div>
@@ -82,9 +80,9 @@ const PricingCard = ({ plan, index }: { plan: any, index: number }) => {
             <div className="relative z-10 mt-auto">
                 <Button 
                     className={cn(
-                        "w-full h-14 rounded-xl text-lg font-semibold transition-all duration-300 shadow-lg",
+                        "w-full h-14 rounded-xl text-lg font-semibold transition-all duration-300 shadow-none md:shadow-lg",
                         isPopular 
-                            ? "bg-indigo-600 hover:bg-indigo-500 text-white shadow-indigo-500/25" 
+                            ? "bg-indigo-600 hover:bg-indigo-500 text-white md:shadow-indigo-500/25" 
                             : "bg-white text-black hover:bg-neutral-200"
                     )}
                 >
@@ -102,13 +100,12 @@ const Pricing: React.FC<BlockProps> = ({ data }) => {
     <section className="relative py-24 md:py-32 px-4 bg-neutral-950 overflow-hidden">
         
         {/* Background Texture & Lighting */}
+        {/* FIX 1: Hide Noise on Mobile */}
+        <div className="hidden md:block absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 brightness-100 contrast-150 mix-blend-overlay pointer-events-none"></div>
         
-
-[Image of abstract dark gradient background]
-
-        <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 brightness-100 contrast-150 mix-blend-overlay"></div>
-        <div className="absolute bottom-0 left-0 w-[500px] h-[500px] bg-indigo-500/10 blur-[120px] rounded-full pointer-events-none" />
-        <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-purple-500/10 blur-[120px] rounded-full pointer-events-none" />
+        {/* FIX 2: Reduce Blur Radius on Mobile */}
+        <div className="absolute bottom-0 left-0 w-[300px] md:w-[500px] h-[300px] md:h-[500px] bg-indigo-500/10 blur-[60px] md:blur-[120px] rounded-full pointer-events-none" />
+        <div className="absolute top-0 right-0 w-[300px] md:w-[500px] h-[300px] md:h-[500px] bg-purple-500/10 blur-[60px] md:blur-[120px] rounded-full pointer-events-none" />
 
         <div className="container max-w-7xl mx-auto relative z-10">
             
@@ -122,14 +119,14 @@ const Pricing: React.FC<BlockProps> = ({ data }) => {
                 </p>
             </div>
             
-            {/* Carousel Layout */}
+            {/* Layout Logic */}
             {data.layout === 'slider' ? (
                 <div className="px-0 md:px-12">
                     <Carousel 
                         opts={{ align: "start", loop: false }} 
                         className="w-full"
                     >
-                        <CarouselContent className="-ml-4 pb-12"> {/* pb-12 for shadow space */}
+                        <CarouselContent className="-ml-4 pb-12">
                             {data.plans.map((plan: any, i: number) => (
                                 <CarouselItem key={i} className="md:basis-1/2 lg:basis-1/3 pl-4 h-auto">
                                     <PricingCard plan={plan} index={i} />

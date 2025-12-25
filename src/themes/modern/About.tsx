@@ -3,7 +3,7 @@
 import React from 'react';
 import { BlockProps } from '../types';
 import { cn } from "@/lib/utils";
-import { CheckCircle2, ArrowRight } from 'lucide-react'; // Ensure lucide-react is installed
+import { CheckCircle2 } from 'lucide-react';
 
 const About: React.FC<BlockProps> = ({ data }) => {
   const isStacked = data.layout === 'stacked';
@@ -18,12 +18,15 @@ const About: React.FC<BlockProps> = ({ data }) => {
     <section className="relative py-24 md:py-32 px-6 bg-neutral-950 overflow-hidden">
         
         {/* --- Background Texture & Lighting --- */}
-        <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 brightness-100 contrast-150 mix-blend-overlay"></div>
-        <div className="absolute top-0 right-0 w-1/2 h-1/2 bg-indigo-500/10 blur-[120px] rounded-full pointer-events-none" />
-        <div className="absolute bottom-0 left-0 w-1/2 h-1/2 bg-blue-500/10 blur-[120px] rounded-full pointer-events-none" />
+        {/* FIX 1: Hide Noise on Mobile */}
+        <div className="hidden md:block absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 brightness-100 contrast-150 mix-blend-overlay pointer-events-none"></div>
+        
+        {/* FIX 2: Reduced Blur on Mobile to save GPU */}
+        <div className="absolute top-0 right-0 w-1/2 h-1/2 bg-indigo-500/10 blur-[60px] md:blur-[120px] rounded-full pointer-events-none" />
+        <div className="absolute bottom-0 left-0 w-1/2 h-1/2 bg-blue-500/10 blur-[60px] md:blur-[120px] rounded-full pointer-events-none" />
 
         <div className={cn("relative container mx-auto z-10", isStacked ? "max-w-4xl text-center" : "max-w-7xl")}>
-          <div className={cn("grid gap-16 lg:gap-24 items-center", isStacked ? "grid-cols-1" : "grid-cols-1 lg:grid-cols-2")}>
+          <div className={cn("grid gap-12 lg:gap-24 items-center", isStacked ? "grid-cols-1" : "grid-cols-1 lg:grid-cols-2")}>
             
             {/* --- Image Section --- */}
             {data.image && (
@@ -36,17 +39,20 @@ const About: React.FC<BlockProps> = ({ data }) => {
                    )} />
                    
                    <div className={cn(
-                       "relative overflow-hidden bg-neutral-900 border border-white/10 shadow-2xl",
+                       "relative overflow-hidden bg-neutral-900 border border-white/10 shadow-lg md:shadow-2xl", // Reduced shadow
                        isStacked ? "w-64 h-64 md:w-80 md:h-80 rounded-full mx-auto ring-1 ring-white/20 ring-offset-4 ring-offset-black" : "rounded-3xl aspect-[4/5] md:aspect-square lg:aspect-[4/5]"
                    )}>
                       <img 
                           src={data.image} 
                           alt="About" 
+                          // FIX 3: Lazy Load Image
+                          loading="lazy"
+                          decoding="async"
                           className="object-cover w-full h-full transition-transform duration-700 group-hover:scale-105 filter grayscale-[20%] group-hover:grayscale-0" 
                       />
                       
                       {/* Optional Overlay on Image */}
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-60" />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-60 pointer-events-none" />
                    </div>
                 </div>
             )}
@@ -57,7 +63,7 @@ const About: React.FC<BlockProps> = ({ data }) => {
                 <div className="space-y-4">
                     <span className="text-indigo-400 font-mono text-sm tracking-widest uppercase flex items-center gap-2">
                         {isStacked ? null : <span className="w-8 h-px bg-indigo-400"></span>}
-                        {data.label || "Who We Are"} {/* Uses dynamic label */}
+                        {data.label || "Who We Are"}
                     </span>
 
                     <h2 className="text-4xl md:text-5xl lg:text-6xl font-bold text-white tracking-tight leading-[1.1]">
@@ -86,7 +92,8 @@ const About: React.FC<BlockProps> = ({ data }) => {
                 {/* --- DYNAMIC STATS ROW --- */}
                 {data.showStats !== false && stats.length > 0 && (
                     <div className="pt-8 border-t border-white/10 w-full">
-                        <div className="grid grid-cols-3 gap-8">
+                        {/* FIX 4: Stack stats on mobile (grid-cols-1) vs Grid on desktop */}
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 md:gap-8 text-center sm:text-left">
                             {stats.map((stat: any, idx: number) => (
                                 <div key={idx} className="space-y-1">
                                     <h4 className="text-2xl md:text-3xl font-bold text-white">{stat.value}</h4>

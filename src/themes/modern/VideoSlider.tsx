@@ -10,11 +10,10 @@ import {
   CarouselPrevious,
 } from "@/components/ui/carousel";
 import { cn } from "@/lib/utils";
-import { Play } from "lucide-react"; // Assuming you have lucide-react (standard with shadcn)
+import { Play } from "lucide-react"; 
 
 // --- PLAYER FIX ---
 import ReactPlayerOriginal from 'react-player';
-// Cast to 'any' to bypass strict typing issues with specific ReactPlayer versions
 const ReactPlayer = ReactPlayerOriginal as any;
 // ------------------
 
@@ -22,7 +21,7 @@ interface VideoSlide {
   url: string;
   title?: string;
   poster?: string;
-  description?: string; // Added optional description for better UI
+  description?: string; 
 }
 
 const VideoSlider: React.FC<BlockProps> = ({ data }) => {
@@ -39,8 +38,10 @@ const VideoSlider: React.FC<BlockProps> = ({ data }) => {
 
   return (
     <section className="relative w-full py-20 bg-neutral-950 overflow-hidden">
+      
       {/* Ambient Background Glow */}
-      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-full max-w-7xl bg-neutral-900/20 blur-3xl pointer-events-none rounded-full opacity-50" />
+      {/* FIX 1: Hide heavy blur on mobile. This is the #1 performance saver for carousels. */}
+      <div className="hidden md:block absolute top-0 left-1/2 -translate-x-1/2 w-full h-full max-w-7xl bg-neutral-900/20 blur-3xl pointer-events-none rounded-full opacity-50" />
 
       <div className="container relative mx-auto px-4 z-10">
         
@@ -68,23 +69,26 @@ const VideoSlider: React.FC<BlockProps> = ({ data }) => {
                 className="pl-4 basis-full md:basis-[85%] lg:basis-[70%] xl:basis-[60%]"
               >
                 <div className={cn(
-                  "group relative w-full overflow-hidden rounded-3xl border border-white/10 bg-neutral-900 shadow-2xl transition-all duration-300 hover:shadow-primary/10 hover:border-white/20", 
+                  // FIX 2: Simplified border/shadow on mobile to reduce repaint cost during swipe
+                  "group relative w-full overflow-hidden rounded-3xl border border-white/10 bg-neutral-900 shadow-none md:shadow-2xl transition-all duration-300 hover:shadow-primary/10 hover:border-white/20", 
                   heightClass
                 )}>
                   
                   {/* Video Player Wrapper */}
-                  <div className="absolute inset-0 w-full h-full">
+                  <div className="absolute inset-0 w-full h-full bg-black">
                     <ReactPlayer
                       url={vid.url || ''}
                       width="100%"
                       height="100%"
                       controls={true}
                       playing={false}
-                      // Use a high-quality poster or boolean
+                      // Light mode creates a thumbnail image instead of loading the full iframe immediately.
+                      // This is crucial for performance.
                       light={vid.poster ? vid.poster : true}
                       playIcon={
                         // Custom Play Button Styling
-                        <button className="group/play relative flex items-center justify-center h-20 w-20 bg-white/10 backdrop-blur-sm rounded-full border border-white/20 transition-transform duration-300 hover:scale-110 hover:bg-white/20 shadow-lg">
+                        // FIX 3: Added 'will-change-transform' for smoother hover scaling
+                        <button className="group/play relative flex items-center justify-center h-20 w-20 bg-white/10 backdrop-blur-sm rounded-full border border-white/20 transition-transform duration-300 hover:scale-110 hover:bg-white/20 shadow-lg will-change-transform">
                            <Play className="w-8 h-8 text-white fill-white ml-1" />
                         </button>
                       }

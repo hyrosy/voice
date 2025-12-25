@@ -3,8 +3,7 @@
 import React from 'react';
 import { BlockProps } from '../types';
 import { Button } from "@/components/ui/button";
-import { Mail, Instagram, Linkedin, Globe, Twitter, Phone, ArrowUpRight } from 'lucide-react';
-import { cn } from "@/lib/utils";
+import { Mail, Instagram, Linkedin, Globe, Twitter, Phone } from 'lucide-react';
 
 const Contact: React.FC<BlockProps> = ({ data }) => {
   
@@ -25,13 +24,21 @@ const Contact: React.FC<BlockProps> = ({ data }) => {
     <section className="relative py-24 px-4 bg-neutral-950 overflow-hidden flex items-center justify-center min-h-[80vh]">
         
         {/* --- Background Ambient Glow --- */}
-        {/* This creates a subtle light source behind the card */}
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-indigo-500/20 rounded-full blur-[120px] pointer-events-none opacity-40" />
-        <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 brightness-100 contrast-150 mix-blend-overlay"></div>
+        {/* FIX 1: Reduced blur on mobile (80px) vs desktop (120px) to save GPU memory */}
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[300px] md:w-[600px] h-[300px] md:h-[600px] bg-indigo-500/20 rounded-full blur-[80px] md:blur-[120px] pointer-events-none opacity-40" />
+        
+        {/* FIX 2: Hide Noise on Mobile ('hidden md:block') */}
+        <div className="hidden md:block absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 brightness-100 contrast-150 mix-blend-overlay pointer-events-none"></div>
 
         {/* --- The Glass Card --- */}
         <div className="relative w-full max-w-4xl mx-auto z-10">
-            <div className="rounded-[3rem] border border-white/10 bg-neutral-900/50 backdrop-blur-2xl p-8 md:p-16 text-center shadow-2xl relative overflow-hidden">
+            {/* FIX 3: 
+                - Reduced border radius on mobile
+                - Increased background opacity on mobile (900/80) so it blends less
+                - Reduced backdrop blur on mobile
+                - Reduced shadow on mobile
+            */}
+            <div className="rounded-[2rem] md:rounded-[3rem] border border-white/10 bg-neutral-900/80 md:bg-neutral-900/50 backdrop-blur-xl md:backdrop-blur-2xl p-8 md:p-16 text-center shadow-lg md:shadow-2xl relative overflow-hidden">
                 
                 {/* Decorative sheen */}
                 <div className="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-white/30 to-transparent" />
@@ -51,11 +58,15 @@ const Contact: React.FC<BlockProps> = ({ data }) => {
                     {/* Main Actions */}
                     <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4">
                         <Button 
+                            asChild
                             size="lg" 
-                            className="h-16 px-10 rounded-full bg-white text-black hover:bg-neutral-200 text-lg font-medium transition-transform active:scale-95 shadow-[0_0_20px_rgba(255,255,255,0.3)]"
+                            // FIX 4: Removed heavy shadow on mobile
+                            className="h-16 px-10 rounded-full bg-white text-black hover:bg-neutral-200 text-lg font-medium transition-transform active:scale-95 shadow-none md:shadow-[0_0_20px_rgba(255,255,255,0.3)]"
                         >
-                            <Mail className="mr-2 h-5 w-5" />
-                            {data.emailText || "Email Me"}
+                            <a href={`mailto:${data.email || 'hello@example.com'}`}>
+                                <Mail className="mr-2 h-5 w-5" />
+                                {data.emailText || "Email Me"}
+                            </a>
                         </Button>
 
                         {data.showPhone && (

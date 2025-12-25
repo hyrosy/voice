@@ -3,7 +3,7 @@
 import React from 'react';
 import { BlockProps } from '../types';
 import { cn } from "@/lib/utils";
-import { Linkedin, Twitter, ArrowRight } from 'lucide-react'; // Optional: for social links
+import { Linkedin, Twitter, ArrowRight } from 'lucide-react'; 
 
 const Team: React.FC<BlockProps> = ({ data }) => {
   if (!data.members || data.members.length === 0) return null;
@@ -12,9 +12,11 @@ const Team: React.FC<BlockProps> = ({ data }) => {
     <section className="relative py-24 md:py-32 px-4 bg-neutral-950 overflow-hidden">
         
         {/* Background Texture & Ambient Lighting */}
-        <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 brightness-100 contrast-150 mix-blend-overlay"></div>
-        {/* A subtle spotlight in the center */}
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-indigo-500/10 blur-[150px] rounded-full pointer-events-none" />
+        {/* FIX 1: Hide heavy noise on mobile */}
+        <div className="hidden md:block absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 brightness-100 contrast-150 mix-blend-overlay pointer-events-none"></div>
+        
+        {/* FIX 2: Reduce Blur on Mobile */}
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[300px] md:w-[800px] h-[300px] md:h-[800px] bg-indigo-500/10 blur-[80px] md:blur-[150px] rounded-full pointer-events-none" />
 
         <div className="container max-w-7xl mx-auto relative z-10">
             
@@ -38,7 +40,7 @@ const Team: React.FC<BlockProps> = ({ data }) => {
                 {data.members.map((member: any, i: number) => (
                     <div 
                         key={i} 
-                        className="group relative h-[450px] rounded-2xl overflow-hidden border border-white/5 bg-neutral-900 shadow-xl transition-all duration-500 hover:-translate-y-2 hover:shadow-2xl hover:border-white/20"
+                        className="group relative h-[450px] rounded-2xl overflow-hidden border border-white/5 bg-neutral-900 shadow-lg md:shadow-xl transition-all duration-500 hover:-translate-y-2 hover:shadow-2xl hover:border-white/20"
                     >
                         
                         {/* --- IMAGE LAYER --- */}
@@ -47,7 +49,10 @@ const Team: React.FC<BlockProps> = ({ data }) => {
                                 <img 
                                     src={member.image} 
                                     alt={member.name} 
-                                    className="w-full h-full object-cover transition-all duration-700 ease-out filter grayscale group-hover:grayscale-0 group-hover:scale-105" 
+                                    // FIX 3: Lazy loading + GPU Hint for the zoom effect
+                                    loading="lazy"
+                                    decoding="async"
+                                    className="w-full h-full object-cover transition-all duration-700 ease-out filter grayscale group-hover:grayscale-0 group-hover:scale-105 will-change-transform" 
                                 />
                             ) : (
                                 // Fallback gradient if no image
@@ -81,14 +86,6 @@ const Team: React.FC<BlockProps> = ({ data }) => {
                                             {member.bio}
                                         </p>
                                     )}
-                                    
-                                    {/* Mock Social Links (If you have them in data, map them here)
-                                    <div className="flex gap-4 mt-4 pt-4 border-t border-white/10 opacity-0 group-hover:opacity-100 transition-opacity duration-700 delay-200">
-                                        <button className="text-white/60 hover:text-white transition-colors"><Linkedin size={18} /></button>
-                                        <button className="text-white/60 hover:text-white transition-colors"><Twitter size={18} /></button>
-                                        <button className="text-white/60 hover:text-white transition-colors flex items-center text-xs gap-1">Portfolio <ArrowRight size={12}/></button>
-                                    </div>
-                                     */}
                                 </div>
                             </div>
                         </div>
