@@ -103,35 +103,41 @@ button:hover {
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
 }
 
-/* Google Translate Fixes */
+/* --- Google Translate Fixes --- */
+
+/* 1. Hide the banner element completely */
+.goog-te-banner-frame.skiptranslate {
+    display: none !important;
+}
+
 body > .skiptranslate {
-  display: none !important;
+    display: none !important;
 }
-body.translated-ltr, body.translated-rtl {
-  top: 0px !important;
+
+/* 2. FORCE body to stay at the top. 
+   Important: Apply this to 'body' generically, not just when translated. */
+body {
+    top: 0 !important;
+    margin-top: 0 !important;
+    position: static !important; /* Prevents relative positioning shifts */
 }
-#google_translate_element {
-  display: block !important;
-  position: relative;
-  z-index: 1;
+
+/* 3. Ensure HTML doesn't get a margin either */
+html {
+    margin-top: 0 !important;
 }
-.goog-te-combo {
-  @apply bg-slate-700 border border-slate-600 rounded-md p-3 text-sm text-foreground;
-  @apply cursor-pointer font-semibold appearance-none;
-  width: 100%;
-  max-width: 200px;
+
+/* 4. Hide the tooltips and other artifacts */
+.goog-tooltip, 
+.goog-tooltip:hover {
+    display: none !important;
 }
-.goog-logo-link,
-.goog-te-gadget-icon {
-  display: none !important;
-}
-.goog-te-gadget {
-  color: transparent !important;
-  line-height: 0;
-}
-.VIpgJd-ZVi9od-ORhb-OEVmcd,
-.VIpgJd-ZVi9od-l4eHX-hSRGPd {
-  display: none !important;
+
+.goog-text-highlight {
+    background-color: transparent !important;
+    box-shadow: none !important;
+    box-sizing: border-box;
+    position: relative;
 }
 
 /* Audio Player Dark Mode Fix */

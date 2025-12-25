@@ -103,11 +103,14 @@ const Navbar: React.FC = () => {
   // Removed isOpen state, Sheet will manage itself
   
   useEffect(() => {
-    const handleScroll = () => setIsScrolled(window.scrollY > 20);
-    window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, []);
+    const handleScroll = () => setIsScrolled(window.scrollY > 20);
 
+    // 1. Run immediately on mount to set correct initial state
+    handleScroll();
+
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
   // Removed body scroll-lock useEffect, Sheet handles this automatically
 
   return (
