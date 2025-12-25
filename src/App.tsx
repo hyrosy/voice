@@ -79,11 +79,9 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
   const shouldHideNavbar = hideNavbarPaths.some(path => location.pathname.startsWith(path));
   return (
     <>
-      {!shouldHideNavbar && <Navbar />}
-      
-      <main className={`flex-grow ${shouldHideNavbar ? "" : "pt-20"}`}> {/* Adjust pt-20 to match your navbar height */}        {children}
+      {!shouldHideNavbar && <Navbar />}      
+      <main className={`flex-grow ${shouldHideNavbar ? "" : "pt-0"}`}> {/* Adjust pt-20 to match your navbar height */}        {children}
       </main>
-
       {!shouldHideFooter && <Footer />}
     </>
   );
