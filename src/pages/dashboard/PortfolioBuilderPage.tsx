@@ -7,7 +7,11 @@ import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
-import { GripVertical, Eye, EyeOff, Save, ExternalLink, Loader2, Plus, Palette, Layers, Smartphone } from 'lucide-react';
+import { Input } from "@/components/ui/input";
+import { 
+  GripVertical, Eye, EyeOff, Save, ExternalLink, Loader2, Plus, 
+  Palette, Layers, Smartphone, Settings, Globe, Lock, CheckCircle2 
+} from 'lucide-react';
 import { PortfolioSection, DEFAULT_PORTFOLIO_SECTIONS, SectionType } from '../../types/portfolio';
 import SectionEditor from '../../components/dashboard/SectionEditor';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -24,10 +28,35 @@ import {
   SelectTrigger, 
   SelectValue 
 } from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import { THEME_REGISTRY, DEFAULT_THEME } from '../../themes/registry'; 
-import { cn } from "@/lib/utils"; 
+import { cn, hexToHSL } from "@/lib/utils"; 
 
-// --- CONSTANTS ---
+// --- 1. DEFINED CONSTANTS (Fixes the "Number List" Bug) ---
+const AVAILABLE_BLOCKS: { type: SectionType; label: string }[] = [
+  { type: 'header', label: 'Header / Navbar' },
+  { type: 'hero', label: 'Hero Section' },
+  { type: 'about', label: 'About Me' },
+  { type: 'shop', label: 'Shop / Products' }, 
+  { type: 'services_showcase', label: 'Services' },
+  { type: 'gallery', label: 'Gallery' },
+  { type: 'image_slider', label: 'Image Slider' },
+  { type: 'video_slider', label: 'Video Slider' },
+  { type: 'stats', label: 'Statistics' },
+  { type: 'reviews', label: 'Reviews' },
+  { type: 'contact', label: 'Contact Form' },
+  { type: 'team', label: 'Team' },
+  { type: 'pricing', label: 'Pricing' },
+  { type: 'map', label: 'Map' },
+];
+
 const LOCAL_PORTFOLIO_TEMPLATES = [
   {
     id: 'modern',
@@ -39,11 +68,6 @@ const LOCAL_PORTFOLIO_TEMPLATES = [
     name: 'Cinematic Dark',
     description: 'Immersive 3D sliders, dark mode, and high contrast.',
   },
-  {
-    id: 'classic',
-    name: 'Classic Elegant',
-    description: 'Serif fonts, soft colors, timeless look.',
-  }
 ];
 
 const LOCAL_FONT_OPTIONS = [
@@ -66,6 +90,13 @@ const PortfolioPreview = ({ sections, theme }: { sections: PortfolioSection[], t
   const themeId = theme.templateId || 'modern';
   const ActiveTheme = THEME_REGISTRY[themeId] || DEFAULT_THEME;
   const fontClass = theme.font === 'serif' ? 'font-serif' : theme.font === 'mono' ? 'font-mono' : 'font-sans';
+  const activeColorObj = LOCAL_COLOR_PALETTES.find(c => c.id === theme.primaryColor) || LOCAL_COLOR_PALETTES[0];
+  const primaryHSL = hexToHSL(activeColorObj.value);
+
+  const previewStyle = {
+    '--primary': primaryHSL, 
+    '--ring': primaryHSL, 
+  } as React.CSSProperties;
 
   return (
     <div className="border rounded-lg h-full flex flex-col bg-white text-black relative shadow-inner overflow-hidden">
@@ -76,6 +107,7 @@ const PortfolioPreview = ({ sections, theme }: { sections: PortfolioSection[], t
       <div 
         className={cn("flex-grow overflow-y-auto bg-background text-foreground custom-scrollbar", fontClass)}
         data-theme={theme.templateId}
+        style={previewStyle}
       >
         {sections.filter(s => s.isVisible).length === 0 ? (
           <div className="flex h-full items-center justify-center text-muted-foreground p-8 flex-col gap-2">
@@ -98,6 +130,7 @@ const PortfolioPreview = ({ sections, theme }: { sections: PortfolioSection[], t
                 case 'team': return <ActiveTheme.Team key={section.id} data={section.data} />;
                 case 'map': return <ActiveTheme.Map key={section.id} data={section.data} />;
                 case 'pricing': return <ActiveTheme.Pricing key={section.id} data={section.data} />;
+                case 'shop': return <ActiveTheme.Shop key={section.id} data={section.data} />; // Added Shop
                 default: return <div key={section.id} className="p-4 text-center text-red-500 text-xs">Unknown Block: {section.type}</div>;
             }
           })
@@ -115,6 +148,11 @@ const PortfolioBuilderPage = () => {
   const [isPublished, setIsPublished] = useState(false);
   const [editingSection, setEditingSection] = useState<PortfolioSection | null>(null);
 
+  // --- IDENTITY & SETTINGS STATE ---
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [siteIdentity, setSiteIdentity] = useState({ name: '', slug: '' });
+  const [isSavingIdentity, setIsSavingIdentity] = useState(false);
+
   // Theme State
   const [themeConfig, setThemeConfig] = useState({
       templateId: 'modern',
@@ -122,30 +160,46 @@ const PortfolioBuilderPage = () => {
       font: 'sans'
   });
 
-  // 1. Fetch or Init Portfolio
+  // 1. Fetch Portfolio & Identity
   useEffect(() => {
-    const fetchPortfolio = async () => {
+    const fetchData = async () => {
       if (!actorData.id) return;
       
-      const { data, error } = await supabase
+      // A. Fetch Portfolio Config
+      const { data: portfolio } = await supabase
         .from('portfolios')
         .select('*')
         .eq('actor_id', actorData.id)
         .single();
 
-      if (data) {
-        setSections(data.sections as PortfolioSection[]);
-        setIsPublished(data.is_published);
-        if (data.theme_config) {
-            setThemeConfig(data.theme_config);
+      if (portfolio) {
+        setSections(portfolio.sections as PortfolioSection[]);
+        setIsPublished(portfolio.is_published);
+        if (portfolio.theme_config) {
+            setThemeConfig(portfolio.theme_config);
         }
       } else {
         setSections(DEFAULT_PORTFOLIO_SECTIONS);
       }
+
+      // B. Fetch Identity (Name & Slug) for Settings
+      const { data: identity } = await supabase
+        .from('actors')
+        .select('ActorName, slug')
+        .eq('id', actorData.id)
+        .single();
+      
+      if (identity) {
+          setSiteIdentity({
+              name: identity.ActorName || '',
+              slug: identity.slug || ''
+          });
+      }
+
       setIsLoading(false);
     };
 
-    fetchPortfolio();
+    fetchData();
   }, [actorData.id]);
 
   // 2. Handle Reorder
@@ -165,7 +219,7 @@ const PortfolioBuilderPage = () => {
     ));
   };
 
-  // 4. Save Changes
+  // 4. Save Portfolio Content
   const handleSave = async () => {
     setIsSaving(true);
     const { error } = await supabase
@@ -184,6 +238,31 @@ const PortfolioBuilderPage = () => {
     setIsSaving(false);
   };
 
+  // 5. Save Site Settings (Identity)
+  const handleSaveIdentity = async () => {
+      if (!actorData.id) return;
+      setIsSavingIdentity(true);
+      
+      // Simple Slug Cleanup
+      const cleanSlug = siteIdentity.slug.toLowerCase().replace(/[^a-z0-9-]/g, '-');
+
+      const { error } = await supabase
+          .from('actors')
+          .update({
+              ActorName: siteIdentity.name,
+              slug: cleanSlug
+          })
+          .eq('id', actorData.id);
+
+      if (error) {
+          alert("Error saving settings. The URL might be taken.");
+      } else {
+          setSiteIdentity(prev => ({ ...prev, slug: cleanSlug }));
+          setIsSettingsOpen(false);
+      }
+      setIsSavingIdentity(false);
+  };
+
   const handleUpdateSection = (updatedSection: PortfolioSection) => {
     setSections(prev => prev.map(s => s.id === updatedSection.id ? updatedSection : s));
   };
@@ -193,7 +272,10 @@ const PortfolioBuilderPage = () => {
           id: `${type}-${Date.now()}`,
           type: type,
           isVisible: true,
-          data: {} 
+          data: { 
+              // Set default title for easier identification
+              title: AVAILABLE_BLOCKS.find(b => b.type === type)?.label || 'New Section' 
+          } 
       };
       setSections(prev => [...prev, newSection]);
   };
@@ -212,9 +294,6 @@ const PortfolioBuilderPage = () => {
   );
 
   return (
-    // Responsive Container: 
-    // - On Mobile: Natural height with scrolling (min-h-screen)
-    // - On Desktop: Fixed viewport height (h-screen) to use internal scrolling for panels
     <div className="max-w-7xl mx-auto flex flex-col pt-20 px-4 lg:px-8 pb-8 lg:pb-0 lg:h-[calc(100vh-20px)] min-h-screen">
       
       {/* Header / Toolbar */}
@@ -225,6 +304,13 @@ const PortfolioBuilderPage = () => {
         </div>
         
         <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto">
+          
+          {/* SETTINGS BUTTON */}
+          <Button variant="outline" size="sm" onClick={() => setIsSettingsOpen(true)} className="gap-2">
+             <Settings className="w-4 h-4" /> 
+             <span className="hidden sm:inline">Site Settings</span>
+          </Button>
+
           <div className="flex items-center gap-2 px-3 py-2 bg-muted/50 rounded-lg border">
             <span className="text-xs font-medium uppercase text-muted-foreground">Published</span>
             <Switch checked={isPublished} onCheckedChange={setIsPublished} />
@@ -232,18 +318,14 @@ const PortfolioBuilderPage = () => {
 
           <div className="flex items-center gap-2 ml-auto sm:ml-0">
              {isPublished && (
-                // FIX: Removed "hidden sm:flex" so it shows on mobile
-                // added "px-2 sm:px-4" to make it square-ish on mobile but wide on desktop
                 <Button variant="outline" size="sm" asChild className="px-2 sm:px-4">
                    <a 
-                    href={`/pro/${(actorData.ActorName || 'portfolio').toLowerCase().replace(/\s+/g, '-')}`} 
+                    href={`/pro/${siteIdentity.slug || 'portfolio'}`} 
                     target="_blank" 
                     rel="noreferrer"
                     title="View Live Page"
                   >
-                    {/* Icon always shows */}
                     <ExternalLink className="w-4 h-4 sm:mr-2" /> 
-                    {/* Text hidden on mobile, visible on desktop */}
                     <span className="hidden sm:inline">Live</span>
                   </a>
                 </Button>
@@ -264,7 +346,7 @@ const PortfolioBuilderPage = () => {
           
           <Tabs defaultValue="content" className="flex flex-col h-full min-h-0">
               
-              {/* Tabs List: 3 cols on mobile (Preview added), 2 cols on desktop */}
+              {/* Tabs List */}
               <TabsList className="w-full grid grid-cols-3 lg:grid-cols-2 mb-4 shrink-0">
                  <TabsTrigger value="content"><Layers className="w-4 h-4 mr-2 hidden sm:block"/> Content</TabsTrigger>
                  <TabsTrigger value="design"><Palette className="w-4 h-4 mr-2 hidden sm:block"/> Design</TabsTrigger>
@@ -296,7 +378,7 @@ const PortfolioBuilderPage = () => {
                                                     <GripVertical size={22} />
                                                 </div>
                                                 
-                                                <div className="flex-grow">
+                                                <div className="flex-grow min-w-0">
                                                     <p className="font-semibold text-sm capitalize select-none">
                                                         {section.type.replace('_', ' ')}
                                                     </p>
@@ -337,27 +419,25 @@ const PortfolioBuilderPage = () => {
                     </DragDropContext>
                   </div>
 
-                  <div className="pt-4 border-t mt-auto shrink-0 bg-background z-10">
+                  <div className="pt-4 border-t mt-auto shrink-0 z-10">
                       <DropdownMenu>
                           <DropdownMenuTrigger asChild>
-                            <Button variant="outline" className="w-full border-dashed h-12 text-muted-foreground hover:text-primary hover:border-primary/50">
+                            <Button variant="outline" className="w-full border-dashed h-12 text-foreground hover:text-primary hover:border-primary/50">
                                 <Plus className="mr-2 h-5 w-5" /> Add New Section
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent className="w-64 max-h-[300px] overflow-y-auto" align="end">
-                              <DropdownMenuItem onClick={() => handleAddSection('header')}>Header / Navbar</DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => handleAddSection('hero')}>Hero Section</DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => handleAddSection('about')}>About Me</DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => handleAddSection('gallery')}>Image Gallery</DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => handleAddSection('image_slider')}>Image Slider</DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => handleAddSection('video_slider')}>Video Slider</DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => handleAddSection('services_showcase')}>Services Showcase</DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => handleAddSection('contact')}>Contact</DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => handleAddSection('team')}>Team Section</DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => handleAddSection('map')}>Location Map</DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => handleAddSection('pricing')}>Pricing Plans</DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => handleAddSection('stats')}>Statistics</DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => handleAddSection('reviews')}>Client Reviews</DropdownMenuItem>
+                              {/* --- FIX: Using AVAILABLE_BLOCKS instead of Object.keys --- */}
+                              {AVAILABLE_BLOCKS.map((block) => (
+                                  <DropdownMenuItem 
+                                    key={block.type} 
+                                    onClick={() => handleAddSection(block.type)} 
+                                    className="cursor-pointer"
+                                  >
+                                      <Plus className="mr-2 h-4 w-4 opacity-50" /> 
+                                      {block.label}
+                                  </DropdownMenuItem>
+                              ))}
                           </DropdownMenuContent>
                       </DropdownMenu>
                   </div>
@@ -381,8 +461,8 @@ const PortfolioBuilderPage = () => {
                              >
                                 <div className="p-4">
                                    <div className="flex justify-between items-center mb-1">
-                                       <h4 className="font-bold">{t.name}</h4>
-                                       {themeConfig.templateId === t.id && <div className="w-2 h-2 rounded-full bg-primary" />}
+                                      <h4 className="font-bold">{t.name}</h4>
+                                      {themeConfig.templateId === t.id && <div className="w-2 h-2 rounded-full bg-primary" />}
                                    </div>
                                    <p className="text-sm text-muted-foreground">{t.description}</p>
                                 </div>
@@ -405,7 +485,6 @@ const PortfolioBuilderPage = () => {
                                 )}
                                 style={{ backgroundColor: color.value }}
                                 title={color.name}
-                                aria-label={`Select ${color.name}`}
                              />
                           ))}
                        </div>
@@ -441,7 +520,7 @@ const PortfolioBuilderPage = () => {
           </Tabs>
         </div>
 
-        {/* RIGHT COLUMN: Desktop Live Preview (Always Visible on LG screens) */}
+        {/* RIGHT COLUMN: Desktop Live Preview */}
         <div className="lg:col-span-2 hidden lg:block h-full pl-6 border-l min-h-0">
            <PortfolioPreview sections={sections} theme={themeConfig} />
         </div>
@@ -450,15 +529,96 @@ const PortfolioBuilderPage = () => {
 
       {/* --- EDITOR SHEET --- */}
       {editingSection && actorData.id && (
-         <SectionEditor 
-           sections={sections}
-           section={editingSection}
-           isOpen={!!editingSection}
-           onClose={() => setEditingSection(null)}
-           onSave={handleUpdateSection}
-           actorId={actorData.id}
-         />
-       )}
+        <SectionEditor 
+          sections={sections}
+          section={editingSection}
+          isOpen={!!editingSection}
+          onClose={() => setEditingSection(null)}
+          onSave={handleUpdateSection}
+          actorId={actorData.id}
+        />
+      )}
+
+      {/* --- SITE SETTINGS DIALOG --- */}
+      <Dialog open={isSettingsOpen} onOpenChange={setIsSettingsOpen}>
+        <DialogContent className="sm:max-w-[500px]">
+            <DialogHeader>
+                <DialogTitle>Site Settings</DialogTitle>
+                <DialogDescription>
+                    Manage your site identity and domain.
+                </DialogDescription>
+            </DialogHeader>
+
+            <Tabs defaultValue="general" className="w-full mt-2">
+                <TabsList className="grid w-full grid-cols-2">
+                    <TabsTrigger value="general">General</TabsTrigger>
+                    <TabsTrigger value="domains">Domains</TabsTrigger>
+                </TabsList>
+                
+                {/* GENERAL TAB */}
+                <TabsContent value="general" className="space-y-4 py-4">
+                    <div className="space-y-2">
+                        <Label>Site Name (Display Name)</Label>
+                        <Input 
+                            value={siteIdentity.name} 
+                            onChange={(e) => setSiteIdentity(prev => ({...prev, name: e.target.value}))}
+                            placeholder="e.g. Sarah Connor"
+                        />
+                        <p className="text-[11px] text-muted-foreground">Used for browser title and SEO.</p>
+                    </div>
+                    <div className="space-y-2">
+                        <Label>Portfolio URL</Label>
+                        <div className="flex items-center">
+                            <span className="text-sm text-muted-foreground bg-muted h-10 px-3 flex items-center rounded-l-md border border-r-0 border-input shrink-0">
+                                {window.location.host}/pro/
+                            </span>
+                            <Input 
+                                value={siteIdentity.slug} 
+                                onChange={(e) => setSiteIdentity(prev => ({...prev, slug: e.target.value}))}
+                                className="rounded-l-none"
+                                placeholder="username"
+                            />
+                        </div>
+                        <p className="text-[11px] text-muted-foreground">
+                            Changing this will break existing links to your portfolio.
+                        </p>
+                    </div>
+                </TabsContent>
+
+                {/* DOMAINS TAB */}
+                <TabsContent value="domains" className="space-y-4 py-4">
+                    <div className="p-4 border rounded-lg bg-muted/20 flex flex-col items-center text-center gap-3">
+                        <div className="p-3 bg-background rounded-full border shadow-sm">
+                            <Globe className="w-6 h-6 text-primary" />
+                        </div>
+                        <div>
+                            <h4 className="font-semibold">Connect a Custom Domain</h4>
+                            <p className="text-sm text-muted-foreground max-w-xs mx-auto">
+                                Look professional with your own domain (e.g. www.yourname.com).
+                            </p>
+                        </div>
+                        <Button variant="secondary" className="gap-2" disabled>
+                            <Lock className="w-4 h-4" /> Upgrade to Pro
+                        </Button>
+                    </div>
+                    
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground bg-muted p-2 rounded">
+                        <CheckCircle2 className="w-4 h-4 text-green-500" />
+                        <span>Free subdomain active: </span>
+                        <span className="font-mono text-foreground">{siteIdentity.slug}.example.com</span>
+                    </div>
+                </TabsContent>
+            </Tabs>
+
+            <DialogFooter>
+                <Button variant="outline" onClick={() => setIsSettingsOpen(false)}>Cancel</Button>
+                <Button onClick={handleSaveIdentity} disabled={isSavingIdentity}>
+                    {isSavingIdentity && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    Save Changes
+                </Button>
+            </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
     </div>
   );

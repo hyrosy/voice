@@ -10,6 +10,7 @@ import ServicesShowcase from './ServicesShowcase'; // <-- Import
 import Team from './Team';
 import Map from './Map';
 import Pricing from './Pricing';
+import Shop from './Shop';
 
 // Temporary Placeholders
 const Stats = () => <div className="py-20 text-center bg-muted">Stats Section (Coming Soon)</div>;
@@ -29,5 +30,6 @@ export const ModernTheme: PortfolioThemeDefinition = {
   VideoSlider, // <-- Export
   Team,
   Map,
-  Pricing
+  Pricing,
+  Shop
 };

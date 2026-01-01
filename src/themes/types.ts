@@ -24,4 +24,5 @@ export interface PortfolioThemeDefinition {
   Team: React.FC<BlockProps>;
   Map: React.FC<BlockProps>;
   Pricing: React.FC<BlockProps>;
+  Shop: React.FC<BlockProps>;
 }

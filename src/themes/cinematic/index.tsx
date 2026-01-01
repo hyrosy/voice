@@ -1,32 +1,30 @@
 import { PortfolioThemeDefinition } from '../types';
-// Import the new sliders
+
+// --- 1. Import Your Cinematic-Specific Components ---
 import ImageSlider from './ImageSlider';
 import VideoSlider from './VideoSlider';
-import Header from './Header'; // <-- Import
+import Header from './Header';
 
-// Import base components from Modern (or create specific cinematic versions for these too!)
+// --- 2. Import the Base Theme to Borrow From ---
 import { ModernTheme } from '../modern';
 
-const Hero = ModernTheme.Hero; // You should build a Cinematic Hero next!
-const About = ModernTheme.About;
-const Gallery = ModernTheme.Gallery;
-const Services = ModernTheme.Services;
-const Contact = ModernTheme.Contact;
-const Stats = ModernTheme.Stats;
-const Demos = ModernTheme.Demos;
-const Reviews = ModernTheme.Reviews;
-
+// --- 3. Create the Theme Definition ---
 export const CinematicTheme: PortfolioThemeDefinition = {
-  Header, // <-- Export
-  Hero,
-  About,
-  Gallery,
-  Services,
-  Contact,
-  Stats,
-  Demos,
-  Reviews,
-  // Override with the new Cinematic Sliders
+  // A. Use your new Cinematic components
+  Header,       
   ImageSlider,
-  VideoSlider
+  VideoSlider,
+
+  // B. Fallback to Modern for everything else (prevents crashes!)
+  Hero: ModernTheme.Hero,
+  About: ModernTheme.About,
+  Gallery: ModernTheme.Gallery,
+  ServicesShowcase: ModernTheme.ServicesShowcase, // <-- WAS MISSING
+  Contact: ModernTheme.Contact,
+  Stats: ModernTheme.Stats,
+  Reviews: ModernTheme.Reviews,
+  Team: ModernTheme.Team,                         // <-- WAS MISSING
+  Map: ModernTheme.Map,                           // <-- WAS MISSING
+  Pricing: ModernTheme.Pricing,                    // <-- WAS MISSING
+  Shop: ModernTheme.Pricing                    // <-- WAS MISSING
 };

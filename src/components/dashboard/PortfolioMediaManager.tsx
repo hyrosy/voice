@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
   Image as ImageIcon, Music, Video, Link as LinkIcon, 
-  Plus, Loader2, Trash2, FilePlus, Check 
+  Plus, Loader2, Trash2, FilePlus, Play 
 } from 'lucide-react';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger,
@@ -33,7 +33,7 @@ const PortfolioMediaManager: React.FC<PortfolioMediaManagerProps> = ({ actorId, 
   const [uploads, setUploads] = useState<UnifiedMediaItem[]>([]);
   const [demos, setDemos] = useState<UnifiedMediaItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [isImporting, setIsImporting] = useState<string | null>(null); // Track which demo is being imported
+  const [isImporting, setIsImporting] = useState<string | null>(null);
   
   // Upload State
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -42,6 +42,24 @@ const PortfolioMediaManager: React.FC<PortfolioMediaManagerProps> = ({ actorId, 
   const [uploadFile, setUploadFile] = useState<File | null>(null);
   const [uploadUrl, setUploadUrl] = useState('');
   const [uploadTitle, setUploadTitle] = useState('');
+
+  // Helper to extract YouTube ID
+  const getYoutubeId = (url: string) => {
+    if (!url) return null;
+    const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
+    const match = url.match(regExp);
+    return (match && match[2].length === 11) ? match[2] : null;
+  };
+
+  // Helper to get thumbnail
+  const getThumbnail = (item: UnifiedMediaItem) => {
+     if (item.type === 'image') return item.url;
+     if (item.type === 'video') {
+         const ytId = getYoutubeId(item.url);
+         if (ytId) return `https://img.youtube.com/vi/${ytId}/mqdefault.jpg`;
+     }
+     return null; // Fallback to icon
+  };
 
   // 1. Fetch Data
   const fetchData = async () => {
@@ -70,7 +88,6 @@ const PortfolioMediaManager: React.FC<PortfolioMediaManagerProps> = ({ actorId, 
 
     const unifiedDemos: UnifiedMediaItem[] = [];
     
-    // --- FIXED LOGIC ---
     if (audioDemos) {
       audioDemos.forEach((d: any) => unifiedDemos.push({
         id: d.demo_id || d.id,
@@ -89,7 +106,6 @@ const PortfolioMediaManager: React.FC<PortfolioMediaManagerProps> = ({ actorId, 
         source: 'demo'
       }));
     }
-    // -------------------
     
     setDemos(unifiedDemos);
     setLoading(false);
@@ -106,6 +122,7 @@ const PortfolioMediaManager: React.FC<PortfolioMediaManagerProps> = ({ actorId, 
 
     try {
       let finalUrl = uploadUrl;
+      let finalType = uploadType;
 
       if (uploadType !== 'link' && uploadFile) {
         const fileExt = uploadFile.name.split('.').pop();
@@ -117,6 +134,7 @@ const PortfolioMediaManager: React.FC<PortfolioMediaManagerProps> = ({ actorId, 
 
         if (uploadError) throw uploadError;
 
+        // CRITICAL: Ensure we get the Public URL
         const { data: urlData } = supabase.storage
           .from('portfolio-assets')
           .getPublicUrl(filePath);
@@ -124,11 +142,16 @@ const PortfolioMediaManager: React.FC<PortfolioMediaManagerProps> = ({ actorId, 
         finalUrl = urlData.publicUrl;
       }
 
+      // Auto-detect YouTube links pasted as "link" type
+      if (uploadType === 'link' && getYoutubeId(finalUrl)) {
+          finalType = 'video';
+      }
+
       const { data, error } = await supabase
         .from('portfolio_media_items')
         .insert({
           actor_id: actorId,
-          type: uploadType,
+          type: finalType,
           url: finalUrl,
           title: uploadTitle,
         })
@@ -167,12 +190,10 @@ const PortfolioMediaManager: React.FC<PortfolioMediaManagerProps> = ({ actorId, 
     if (!error) fetchData();
   };
 
-  // 4. Handle Import (Copy Demo to Portfolio Library)
+  // 4. Handle Import
   const handleImport = async (demo: UnifiedMediaItem) => {
     setIsImporting(demo.id);
     try {
-      // Check if already exists? (Optional optimization)
-      // For now, we just insert a new reference so they can edit the title for portfolio specifically if they want later
       const { data, error } = await supabase
         .from('portfolio_media_items')
         .insert({
@@ -180,7 +201,7 @@ const PortfolioMediaManager: React.FC<PortfolioMediaManagerProps> = ({ actorId, 
           type: demo.type,
           url: demo.url,
           title: demo.title,
-          original_demo_id: demo.id // Link back
+          original_demo_id: demo.id
         })
         .select()
         .single();
@@ -192,10 +213,10 @@ const PortfolioMediaManager: React.FC<PortfolioMediaManagerProps> = ({ actorId, 
         type: data.type,
         url: data.url,
         title: data.title,
-        source: 'upload' // It is now an 'upload' (portfolio item)
+        source: 'upload'
       });
       
-      fetchData(); // Refresh so it shows up in "My Uploads"
+      fetchData();
     } catch (err) {
       console.error("Import failed", err);
     } finally {
@@ -206,6 +227,7 @@ const PortfolioMediaManager: React.FC<PortfolioMediaManagerProps> = ({ actorId, 
   // Helper to render media preview card
   const MediaCard = ({ item, isDemo = false }: { item: UnifiedMediaItem, isDemo?: boolean }) => {
     const Icon = item.type === 'image' ? ImageIcon : item.type === 'audio' ? Music : item.type === 'video' ? Video : LinkIcon;
+    const thumbnail = getThumbnail(item);
     
     return (
       <div 
@@ -216,8 +238,16 @@ const PortfolioMediaManager: React.FC<PortfolioMediaManagerProps> = ({ actorId, 
         onClick={() => isDemo ? handleImport(item) : onSelect(item)}
       >
         {/* Thumbnail / Preview */}
-        {item.type === 'image' ? (
-          <img src={item.url} alt={item.title} className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105" />
+        {thumbnail ? (
+          <>
+            <img src={thumbnail} alt={item.title} className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105" />
+            {/* Play Icon Overlay for Videos */}
+            {item.type === 'video' && (
+                <div className="absolute inset-0 flex items-center justify-center bg-black/20 group-hover:bg-black/40 transition-colors">
+                    <Play className="w-8 h-8 text-white fill-white opacity-80" />
+                </div>
+            )}
+          </>
         ) : (
           <div className="flex h-full w-full flex-col items-center justify-center bg-muted/30 p-4 text-muted-foreground">
             <Icon className="h-10 w-10 mb-2 opacity-50" />
@@ -239,7 +269,7 @@ const PortfolioMediaManager: React.FC<PortfolioMediaManagerProps> = ({ actorId, 
           </Badge>
         </div>
 
-        {/* Actions (Delete for Uploads, Import Icon for Demos) */}
+        {/* Actions */}
         {!isDemo && (
            <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
              <Button 
@@ -254,9 +284,9 @@ const PortfolioMediaManager: React.FC<PortfolioMediaManagerProps> = ({ actorId, 
         )}
         
         {isDemo && (
-            <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 bg-black/20 transition-opacity">
-                <Badge className="bg-white text-black hover:bg-white/90 pointer-events-none">
-                    <FilePlus className="mr-1 h-3 w-3" /> Add to Portfolio
+            <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 bg-black/40 transition-opacity backdrop-blur-[1px]">
+                <Badge className="bg-white text-black hover:bg-white/90 pointer-events-none shadow-lg">
+                    <FilePlus className="mr-1 h-3 w-3" /> Select
                 </Badge>
             </div>
         )}
@@ -291,13 +321,13 @@ const PortfolioMediaManager: React.FC<PortfolioMediaManagerProps> = ({ actorId, 
               
               <div className="space-y-2">
                 <Label>Title</Label>
-                <Input value={uploadTitle} onChange={(e) => setUploadTitle(e.target.value)} placeholder="e.g., Hero Image" />
+                <Input value={uploadTitle} onChange={(e) => setUploadTitle(e.target.value)} placeholder="e.g., Hero Video" />
               </div>
 
               {uploadType === 'link' ? (
                  <div className="space-y-2">
                     <Label>URL</Label>
-                    <Input value={uploadUrl} onChange={(e) => setUploadUrl(e.target.value)} placeholder="https://..." />
+                    <Input value={uploadUrl} onChange={(e) => setUploadUrl(e.target.value)} placeholder="https://youtube.com/..." />
                  </div>
               ) : (
                  <div className="space-y-2">
@@ -352,7 +382,6 @@ const PortfolioMediaManager: React.FC<PortfolioMediaManagerProps> = ({ actorId, 
                {demos.length === 0 && (
                    <div className="col-span-full flex flex-col items-center justify-center h-40 text-muted-foreground">
                         <p>No demos found in your main library.</p>
-                        <p className="text-xs">Upload demos in the "Demos" tab of your dashboard first.</p>
                     </div>
                )}
              </div>

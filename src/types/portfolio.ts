@@ -1,18 +1,19 @@
 import { LucideIcon } from 'lucide-react';
 
 export type SectionType = 
-  | 'header' // <-- NEW
+  | 'header' 
   | 'hero' 
   | 'about' 
   | 'stats' 
-  | 'services_showcase' // <-- NEW
+  | 'services_showcase' 
   | 'reviews' 
   | 'gallery' 
   | 'contact'
-  | 'image_slider'  // <-- NEW
-  | 'video_slider' // <-- NEW
+  | 'image_slider' 
+  | 'video_slider' 
   | 'team'
   | 'map'
+  | 'shop'    // <--- CONFIRMING THIS IS HERE
   | 'pricing';
 
 export interface PortfolioSection {
@@ -58,10 +59,10 @@ export const DEFAULT_PORTFOLIO_SECTIONS: PortfolioSection[] = [
       headline: "Your Vision, My Voice",
       subheadline: "Professional Creative & Voice Actor",
       backgroundImage: "", 
-      ctaText: "Listen to Demos", // <-- NEW
-      ctaLink: "#demos",        // <-- NEW
-      alignment: "center",      // <-- NEW
-      overlayOpacity: 50        // <-- NEW
+      ctaText: "Listen to Demos", 
+      ctaLink: "#demos", 
+      alignment: "center", 
+      overlayOpacity: 50 
     }
   },
   {
@@ -71,7 +72,7 @@ export const DEFAULT_PORTFOLIO_SECTIONS: PortfolioSection[] = [
     data: {
       showProjects: true,
       showExperience: true,
-      customStats: [] // <-- NEW: Array for manual stats
+      customStats: [] 
     }
   },
 
@@ -84,7 +85,7 @@ export const DEFAULT_PORTFOLIO_SECTIONS: PortfolioSection[] = [
       showRates: true,
       showDemos: true,
       ctaText: "Request a Quote",
-      ctaLink: "#contact" // or open modal
+      ctaLink: "#contact" 
     }
   },
   
@@ -94,22 +95,22 @@ export const DEFAULT_PORTFOLIO_SECTIONS: PortfolioSection[] = [
     isVisible: true,
     data: {
       title: "Portfolio Gallery",
-      gridColumns: 3, // <-- NEW
-      gap: "medium",  // <-- NEW
+      gridColumns: 3, 
+      gap: "medium", 
       images: []
     }
   },
-  // 2. ADD EXAMPLES OF THE NEW SECTIONS (Optional, but good for testing)
+  
   {
     id: 'img-slider-1',
     type: 'image_slider',
     isVisible: true,
     data: {
       title: "Cinematic Journeys",
-      height: "full", // 'full', 'large', 'medium'
+      height: "full", 
       autoplay: true,
-      interval: 5, // seconds
-      images: [] // Array of { url, caption }
+      interval: 5, 
+      images: [] 
     }
   },
   {
@@ -120,9 +121,39 @@ export const DEFAULT_PORTFOLIO_SECTIONS: PortfolioSection[] = [
       title: "Showreel Highlights",
       height: "large",
       autoplay: false,
-      videos: [] // Array of { url, title, poster }
+      videos: [] 
     }
   },
+  
+  // --- NEW: SHOP SECTION DEFAULT ---
+  {
+    id: 'shop-1',
+    type: 'shop',
+    isVisible: true,
+    data: {
+      title: "Digital Shop",
+      subheadline: "Presets, LUTS, and Guides.",
+      variant: "grid", // grid | carousel | spotlight
+      products: [
+        {
+            title: "Cinematic LUT Pack",
+            price: "$29.99",
+            description: "The exact color grading presets I use for my films.",
+            buttonText: "Buy Now",
+            link: "#"
+        },
+        {
+            title: "Actor Resume Template",
+            price: "$9.99",
+            description: "Professional resume layout for casting directors.",
+            buttonText: "Download",
+            link: "#"
+        }
+      ]
+    }
+  },
+  // --------------------------------
+
   {
     id: 'reviews-1',
     type: 'reviews',
@@ -137,12 +168,11 @@ export const DEFAULT_PORTFOLIO_SECTIONS: PortfolioSection[] = [
     type: 'about',
     isVisible: true,
     data: {
-      label: "Who I Am", // <-- NEW
+      label: "Who I Am", 
       title: "About Me",
       layout: "split-right", 
       content: "I am a dedicated professional with over 5 years of experience...",
       image: "", 
-      // --- NEW RICH DATA ---
       showStats: true,
       stats: [
         { label: 'Years Exp.', value: '5+' },
@@ -163,7 +193,7 @@ export const DEFAULT_PORTFOLIO_SECTIONS: PortfolioSection[] = [
       title: "Let's Work Together",
       emailText: "Request a Quote",
       showSocials: true,
-      showPhone: false // <-- NEW
+      showPhone: false 
     }
   },
   
@@ -173,7 +203,7 @@ export const DEFAULT_PORTFOLIO_SECTIONS: PortfolioSection[] = [
     isVisible: true,
     data: {
       title: "Meet The Team",
-      members: [] // { name, role, image, bio }
+      members: [] 
     }
   },
   {
@@ -182,9 +212,8 @@ export const DEFAULT_PORTFOLIO_SECTIONS: PortfolioSection[] = [
     isVisible: true,
     data: {
       title: "Find Us",
-      // Default placeholder embed (Eiffel Tower)
       mapUrl: "https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d2624.9916256937595!2d2.292292615509614!3d48.85837007928757!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x47e66e2964e36e27%3A0x8a1c868dbaf5d4fd!2sEiffel%20Tower!5e0!3m2!1sen!2sus!4v1647551887234!5m2!1sen!2sus",
-      height: "medium" // medium | large
+      height: "medium" 
     }
   },
   {
@@ -193,8 +222,8 @@ export const DEFAULT_PORTFOLIO_SECTIONS: PortfolioSection[] = [
     isVisible: true,
     data: {
       title: "Pricing Plans",
-      layout: "cards", // cards | slider
-      plans: [] // { name, price, features, cta }
+      layout: "cards", 
+      plans: [] 
     }
   }
 ];
