@@ -125,7 +125,7 @@ const Navbar: React.FC = () => {
           
           <Link to="/" className="flex-shrink-0">
             <img 
-              src="https://ucpmarocgo.s3.us-east-1.amazonaws.com/logo-ucp-maroc.png" 
+              src="https://eaebtyjhoogzjhbzdvdy.supabase.co/storage/v1/object/public/Voice/logo%20(4).png" 
               alt="UCP Maroc Logo" 
               className="w-32 md:w-48 transition-transform duration-300 hover:scale-105"
             />
