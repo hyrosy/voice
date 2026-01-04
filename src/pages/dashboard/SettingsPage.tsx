@@ -20,15 +20,15 @@ import { cn } from "@/lib/utils";
 const PLANS = [
     { 
         id: 'pro_monthly', 
-        stripePriceId: 'price_1Q...', // <--- PUT YOUR STRIPE PRICE ID HERE
+        stripePriceId: 'price_1Sluys00hAkAJqU5VCvuFIet', // <--- REAL ID HERE
         name: 'Pro Monthly', 
         cost: 20, 
         duration: 1, 
-        label: 'Billed Monthly' 
+        label: 'Billed Monthly'
     },
     { 
         id: 'pro_yearly', 
-        stripePriceId: 'price_1Q...', // <--- PUT YOUR STRIPE PRICE ID HERE
+        stripePriceId: 'price_1Slv0O00hAkAJqU5SNfM6IdN', // <--- REAL ID HERE
         name: 'Pro Yearly', 
         cost: 200, 
         duration: 12, 
