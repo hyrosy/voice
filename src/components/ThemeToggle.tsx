@@ -9,11 +9,11 @@ const getInitialTheme = (): 'dark' | 'light' => {
   if (typeof window !== 'undefined') {
     // If the user has explicitly set it to light, return light.
     if (localStorage.theme === 'dark') {
-      return 'dark';
+      return 'light';
     }
   }
   // Otherwise, default to dark.
-  return 'dark';
+  return 'light';
 };
 
 const ThemeToggle: React.FC = () => {

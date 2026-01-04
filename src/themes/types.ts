@@ -25,4 +25,6 @@ export interface PortfolioThemeDefinition {
   Map: React.FC<BlockProps>;
   Pricing: React.FC<BlockProps>;
   Shop: React.FC<BlockProps>;
+  LeadForm: React.FC<BlockProps>;
+
 }

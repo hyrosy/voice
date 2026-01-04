@@ -26,5 +26,6 @@ export const CinematicTheme: PortfolioThemeDefinition = {
   Team: ModernTheme.Team,                         // <-- WAS MISSING
   Map: ModernTheme.Map,                           // <-- WAS MISSING
   Pricing: ModernTheme.Pricing,                    // <-- WAS MISSING
-  Shop: ModernTheme.Pricing                    // <-- WAS MISSING
+  Shop: ModernTheme.Pricing,                    // <-- WAS MISSING
+  LeadForm: ModernTheme.LeadForm
 };

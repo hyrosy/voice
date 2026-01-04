@@ -13,7 +13,7 @@ import {
   SelectTrigger, 
   SelectValue 
 } from "@/components/ui/select";
-import { Video, Map, Users, ShoppingBag, DollarSign, Trash2, X, Plus, Image as ImageIcon, Link as LinkIcon } from 'lucide-react';
+import { Video, Map, Users, ShoppingBag, DollarSign, Trash2,FileText, X, Plus, Image as ImageIcon, Link as LinkIcon, MessageCircle, ExternalLink } from 'lucide-react';
 import PortfolioMediaManager, { UnifiedMediaItem } from './PortfolioMediaManager';
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { PortfolioSection } from '../../types/portfolio';
@@ -88,11 +88,28 @@ const SectionEditor: React.FC<SectionEditorProps> = ({ section, isOpen, onClose,
     
 
     } else if (activeMediaField.startsWith('product-image-')) {
+        // OLD SINGLE IMAGE LOGIC (Keep if you want, or replace)
         const index = parseInt(activeMediaField.split('-').pop() || '0');
-        // We use our existing helper logic, just manually doing what updateProduct does
         const currentProducts = [...(formData.products || [])];
         if (currentProducts[index]) {
-            currentProducts[index].image = item.url;
+            currentProducts[index].image = item.url; // Main/Legacy image
+            // Also ensure it's in the images array if empty
+            if (!currentProducts[index].images) currentProducts[index].images = [];
+            if (currentProducts[index].images.length === 0) currentProducts[index].images.push(item.url);
+            
+            updateField('products', currentProducts);
+        }
+    } else if (activeMediaField.startsWith('product-gallery-add-')) {
+        // NEW MULTI-IMAGE LOGIC
+        const index = parseInt(activeMediaField.split('product-gallery-add-')[1]);
+        const currentProducts = [...(formData.products || [])];
+        if (currentProducts[index]) {
+            const currentImages = currentProducts[index].images || [];
+            // Add new image to array
+            currentProducts[index].images = [...currentImages, item.url];
+            // If main image is empty, set this as main
+            if (!currentProducts[index].image) currentProducts[index].image = item.url;
+            
             updateField('products', currentProducts);
         }
     }
@@ -363,6 +380,42 @@ const SectionEditor: React.FC<SectionEditorProps> = ({ section, isOpen, onClose,
   );
 
 
+  case 'lead_form':
+    return (
+        <div className="space-y-6">
+            <div className="space-y-2">
+                <Label>Section Title</Label>
+                <Input 
+                    value={formData.title || ''} 
+                    onChange={e => updateField('title', e.target.value)} 
+                    placeholder="Get in Touch" 
+                />
+            </div>
+            <div className="space-y-2">
+                <Label>Subheadline</Label>
+                <Textarea 
+                    value={formData.subheadline || ''} 
+                    onChange={e => updateField('subheadline', e.target.value)} 
+                    placeholder="Send me a message..." 
+                    rows={2}
+                />
+            </div>
+            <div className="space-y-2">
+                <Label>Button Text</Label>
+                <Input 
+                    value={formData.buttonText || ''} 
+                    onChange={e => updateField('buttonText', e.target.value)} 
+                    placeholder="Send Message" 
+                />
+            </div>
+            
+            <div className="p-4 bg-blue-500/10 border border-blue-500/20 rounded-lg text-xs text-blue-400">
+                <p><strong>Note:</strong> Submissions from this form will appear in your Dashboard under <strong>"Leads & Inbox"</strong>.</p>
+            </div>
+        </div>
+    );
+
+
   // --- SHOP SECTION EDITOR ---
       case 'shop':
         return (
@@ -372,16 +425,6 @@ const SectionEditor: React.FC<SectionEditorProps> = ({ section, isOpen, onClose,
                 <Input value={formData.title || ''} onChange={e => updateField('title', e.target.value)} placeholder="Shop" />
             </div>
             
-            <div className="space-y-2">
-                <Label>Subtitle</Label>
-                <Textarea 
-                    value={formData.subheadline || ''} 
-                    onChange={e => updateField('subheadline', e.target.value)} 
-                    placeholder="Check out my latest digital goods..."
-                    rows={2}
-                />
-            </div>
-
             {/* 1. CONFIGURATION */}
             <div className="grid grid-cols-1 gap-4 p-4 border rounded-lg bg-muted/20">
                 <div className="space-y-2">
@@ -409,37 +452,65 @@ const SectionEditor: React.FC<SectionEditorProps> = ({ section, isOpen, onClose,
                     </Button>
                 </div>
                 
-                <div className="space-y-4">
+                <div className="space-y-6">
                     {(formData.products || []).map((product: any, idx: number) => (
                         <div key={idx} className="border p-4 rounded-lg bg-muted/10 space-y-4 relative group">
                             
-                            {/* Remove Button */}
-                            <Button 
-                                size="icon" 
-                                variant="ghost" 
-                                className="absolute top-2 right-2 text-muted-foreground hover:text-destructive h-8 w-8" 
-                                onClick={() => removeProduct(idx)}
-                            >
-                                <Trash2 className="w-4 h-4" />
-                            </Button>
-
-                            <div className="flex gap-4 items-start">
-                                {/* Image Picker */}
-                                <div 
-                                    className="w-20 h-20 bg-muted rounded-md flex-shrink-0 relative overflow-hidden cursor-pointer border group/img" 
-                                    onClick={() => { setActiveMediaField(`product-image-${idx}`); setIsMediaPickerOpen(true); }}
+                            <div className="absolute top-3 right-3 flex gap-2">
+                                <Button 
+                                    size="icon" 
+                                    variant="ghost" 
+                                    className="text-muted-foreground hover:text-destructive h-8 w-8" 
+                                    onClick={() => removeProduct(idx)}
                                 >
-                                    {product.image ? (
-                                        <img src={product.image} className="w-full h-full object-cover transition-transform group-hover/img:scale-110" alt="prod" />
-                                    ) : (
-                                        <ShoppingBag className="w-8 h-8 text-muted-foreground absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" />
-                                    )}
-                                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover/img:opacity-100 transition-opacity flex items-center justify-center text-[9px] text-white uppercase tracking-wider font-bold">
-                                        Change
+                                    <Trash2 className="w-4 h-4" />
+                                </Button>
+                            </div>
+
+                            {/* BASIC INFO */}
+                            <div className="flex gap-4 items-start">
+                                <div className="space-y-2">
+                                    <Label className="text-xs text-muted-foreground">Product Gallery (First image is featured)</Label>
+                                    
+                                    <div className="flex flex-wrap gap-2">
+                                        {/* Existing Images */}
+                                        {(product.images || (product.image ? [product.image] : [])).map((imgUrl: string, imgIdx: number) => (
+                                            <div key={imgIdx} className="relative group/thumb w-16 h-16 border rounded overflow-hidden">
+                                                <img src={imgUrl} className="w-full h-full object-cover" alt="thumb" />
+                                                
+                                                {/* Remove Image Button */}
+                                                <button
+                                                    className="absolute top-0 right-0 bg-red-500/90 text-white p-1 opacity-0 group-hover/thumb:opacity-100 transition-opacity"
+                                                    onClick={(e) => {
+                                                        e.stopPropagation(); // Stop bubble
+                                                        const newProds = [...(formData.products || [])];
+                                                        const newImages = [...(product.images || [])];
+                                                        newImages.splice(imgIdx, 1);
+                                                        newProds[idx].images = newImages;
+                                                        // Update legacy 'image' field to always be the first one
+                                                        newProds[idx].image = newImages[0] || ''; 
+                                                        updateField('products', newProds);
+                                                    }}
+                                                >
+                                                    <Trash2 size={10} />
+                                                </button>
+                                            </div>
+                                        ))}
+
+                                        {/* Add New Image Button */}
+                                        <div 
+                                            className="w-16 h-16 border border-dashed rounded flex flex-col items-center justify-center cursor-pointer hover:bg-muted/50 text-muted-foreground hover:text-primary transition-colors"
+                                            onClick={() => { 
+                                                setActiveMediaField(`product-gallery-add-${idx}`); 
+                                                setIsMediaPickerOpen(true); 
+                                            }}
+                                        >
+                                            <Plus size={16} />
+                                            <span className="text-[9px] font-semibold mt-1">ADD</span>
+                                        </div>
                                     </div>
                                 </div>
                                 
-                                {/* Info Inputs */}
                                 <div className="flex-grow space-y-2">
                                     <Input 
                                         placeholder="Product Title" 
@@ -449,16 +520,16 @@ const SectionEditor: React.FC<SectionEditorProps> = ({ section, isOpen, onClose,
                                     />
                                     <div className="flex gap-2">
                                         <Input 
-                                            placeholder="Price ($)" 
+                                            placeholder="Price" 
                                             value={product.price} 
                                             onChange={e => updateProduct(idx, 'price', e.target.value)} 
-                                            className="w-1/3"
+                                            className="w-1/2"
                                         />
                                         <Input 
-                                            placeholder="Button Text" 
-                                            value={product.buttonText} 
-                                            onChange={e => updateProduct(idx, 'buttonText', e.target.value)} 
-                                            className="w-2/3"
+                                            placeholder="Stock" 
+                                            value={product.stock} 
+                                            onChange={e => updateProduct(idx, 'stock', e.target.value)} 
+                                            className="w-1/2"
                                         />
                                     </div>
                                 </div>
@@ -472,18 +543,113 @@ const SectionEditor: React.FC<SectionEditorProps> = ({ section, isOpen, onClose,
                                 className="text-sm resize-none"
                             />
 
-                            <div className="space-y-1">
-                                <Label className="text-xs">Checkout Link (Stripe/Gumroad URL)</Label>
-                                <div className="relative">
-                                    <LinkIcon className="absolute left-2.5 top-2.5 h-3 w-3 text-muted-foreground" />
+                            {/* CHECKOUT METHOD SELECTOR */}
+                            <div className="p-3 bg-background border rounded-md space-y-3">
+                                <Label className="text-xs font-bold text-muted-foreground uppercase">Checkout Action</Label>
+                                <Select 
+                                    value={product.actionType || 'whatsapp'} 
+                                    onValueChange={(val) => updateProduct(idx, 'actionType', val)}
+                                >
+                                    <SelectTrigger className="h-9 text-sm">
+                                        <SelectValue placeholder="Select Action" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="whatsapp">
+                                            <div className="flex items-center gap-2"><MessageCircle size={14} className="text-green-500"/> WhatsApp Order</div>
+                                        </SelectItem>
+                                        <SelectItem value="form_order">
+                                            {/* NEW OPTION */}
+                                            <div className="flex items-center gap-2"><FileText size={14} className="text-orange-500"/> Direct Order Form</div>
+                                        </SelectItem>
+                                        <SelectItem value="link">
+                                            <div className="flex items-center gap-2"><ExternalLink size={14} className="text-blue-500"/> External Link</div>
+                                        </SelectItem>
+                                    </SelectContent>
+                                </Select>
+
+                                {/* CONDITIONAL INPUTS */}
+                                {product.actionType === 'link' && (
                                     <Input 
-                                        placeholder="https://..." 
-                                        value={product.link || ''} 
-                                        onChange={e => updateProduct(idx, 'link', e.target.value)} 
-                                        className="pl-8 h-8 text-xs"
+                                        placeholder="https://buy.stripe.com/..." 
+                                        value={product.checkoutUrl || ''} 
+                                        onChange={e => updateProduct(idx, 'checkoutUrl', e.target.value)} 
+                                        className="h-9 text-xs"
                                     />
-                                </div>
+                                )}
+                                
+                                {product.actionType === 'whatsapp' && (
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-sm text-muted-foreground whitespace-nowrap">wa.me/</span>
+                                        <Input 
+                                            placeholder="212600000000" 
+                                            value={product.whatsappNumber || ''} 
+                                            onChange={e => updateProduct(idx, 'whatsappNumber', e.target.value)} 
+                                            className="h-9 text-xs"
+                                        />
+                                    </div>
+                                )}
+
+                                {/* Note: 'form_order' doesn't need extra inputs, just the button label below */}
+
+                                <Input 
+                                    placeholder="Button Label (e.g. Buy Now)" 
+                                    value={product.buttonText} 
+                                    onChange={e => updateProduct(idx, 'buttonText', e.target.value)} 
+                                    className="h-9 text-xs"
+                                />
                             </div>
+
+                            {/* VISUAL VARIANT BUILDER (Only for WhatsApp flow mostly, but useful for display too) */}
+                            <div className="space-y-2">
+                                <div className="flex justify-between items-end">
+                                    <Label className="text-xs">Product Variants</Label>
+                                    <Button 
+                                        size="sm" variant="ghost" className="h-6 text-[10px]"
+                                        onClick={() => {
+                                            const current = product.variants || [];
+                                            updateProduct(idx, 'variants', [...current, { name: 'Size', options: 'S, M, L' }]);
+                                        }}
+                                    >
+                                        <Plus className="w-3 h-3 mr-1" /> Add Option
+                                    </Button>
+                                </div>
+
+                                {(product.variants || []).map((v: any, vIdx: number) => (
+                                    <div key={vIdx} className="flex gap-2 items-center">
+                                        <Input 
+                                            placeholder="Type (Color)" 
+                                            value={v.name} 
+                                            onChange={(e) => {
+                                                const newVars = [...(product.variants || [])];
+                                                newVars[vIdx].name = e.target.value;
+                                                updateProduct(idx, 'variants', newVars);
+                                            }}
+                                            className="w-1/3 h-8 text-xs"
+                                        />
+                                        <Input 
+                                            placeholder="Options (Red, Blue)" 
+                                            value={v.options} 
+                                            onChange={(e) => {
+                                                const newVars = [...(product.variants || [])];
+                                                newVars[vIdx].options = e.target.value;
+                                                updateProduct(idx, 'variants', newVars);
+                                            }}
+                                            className="flex-grow h-8 text-xs"
+                                        />
+                                        <Button 
+                                            variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground"
+                                            onClick={() => {
+                                                 const newVars = [...(product.variants || [])];
+                                                 newVars.splice(vIdx, 1);
+                                                 updateProduct(idx, 'variants', newVars);
+                                            }}
+                                        >
+                                            <Trash2 className="w-3 h-3" />
+                                        </Button>
+                                    </div>
+                                ))}
+                            </div>
+
                         </div>
                     ))}
                 </div>

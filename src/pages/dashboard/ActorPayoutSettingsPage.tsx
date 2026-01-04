@@ -131,7 +131,7 @@ const ActorPayoutSettingsPage = () => {
   };
 
   return (
-    <div className="space-y-6 pt-20">
+    <div className="space-y-6 w-full pt-20">
       {/* 1. Add New Method Card */}
       <Card>
         <CardHeader>

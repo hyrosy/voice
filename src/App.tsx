@@ -53,7 +53,9 @@ import DomainCheckout from './pages/marketplace/DomainCheckout';     // Adjust p
 import DomainThankYouPage from './pages/marketplace/DomainThankYouPage';
 import AdminDomainOrderDetailPage from './pages/AdminDomainOrderDetailPage';
 import DomainOrderPage from './pages/marketplace/DomainOrderPage';
-
+import AnalyticsPage from './pages/dashboard/AnalyticsPage.tsx';
+import OrdersPage from './pages/dashboard/OrdersPage.tsx';
+import LeadsPage from './pages/dashboard/LeadsPage.tsx';
 
 // --- 1. Create a Layout Component to handle conditional Footer ---
 const Layout = ({ children }: { children: React.ReactNode }) => {
@@ -182,6 +184,9 @@ function App() {
             <Route path="earnings" element={<ActorEarningsPage />} />
             <Route path="payout-settings" element={<ActorPayoutSettingsPage />} />
             <Route path="Portfolio" element={<PortfolioBuilderPage />} /> 
+            <Route path="analytics" element={<AnalyticsPage />} />
+            <Route path="Orders" element={<OrdersPage />} />
+            <Route path="leads" element={<LeadsPage />} />
           </Route>
           <Route path="/pro/:slug" element={<PortfolioRenderer />} />
 

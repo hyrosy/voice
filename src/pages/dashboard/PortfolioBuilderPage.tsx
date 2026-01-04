@@ -10,7 +10,8 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { 
   GripVertical, Eye, EyeOff, Save, ExternalLink, Loader2, Plus, 
-  Palette, Layers, Smartphone, Settings, Globe, Lock, CheckCircle2 
+  Palette, Layers, Smartphone, Settings, Globe, Lock, CheckCircle2,
+  Pencil, Check, X // Icons for renaming
 } from 'lucide-react';
 import { PortfolioSection, DEFAULT_PORTFOLIO_SECTIONS, SectionType } from '../../types/portfolio';
 import SectionEditor from '../../components/dashboard/SectionEditor';
@@ -39,7 +40,7 @@ import {
 import { THEME_REGISTRY, DEFAULT_THEME } from '../../themes/registry'; 
 import { cn, hexToHSL } from "@/lib/utils"; 
 
-// --- 1. DEFINED CONSTANTS (Fixes the "Number List" Bug) ---
+// --- 1. AVAILABLE BLOCKS LIST ---
 const AVAILABLE_BLOCKS: { type: SectionType; label: string }[] = [
   { type: 'header', label: 'Header / Navbar' },
   { type: 'hero', label: 'Hero Section' },
@@ -54,7 +55,8 @@ const AVAILABLE_BLOCKS: { type: SectionType; label: string }[] = [
   { type: 'contact', label: 'Contact Form' },
   { type: 'team', label: 'Team' },
   { type: 'pricing', label: 'Pricing' },
-  { type: 'map', label: 'Map' },
+  { type: 'lead_form', label: 'LeadForm' },
+   
 ];
 
 const LOCAL_PORTFOLIO_TEMPLATES = [
@@ -85,7 +87,7 @@ const LOCAL_COLOR_PALETTES = [
   { id: 'slate', name: 'Neutral Slate', value: '#64748b' },
 ];
 
-// --- REAL LIVE PREVIEW COMPONENT ---
+// --- PREVIEW COMPONENT ---
 const PortfolioPreview = ({ sections, theme }: { sections: PortfolioSection[], theme: any }) => {
   const themeId = theme.templateId || 'modern';
   const ActiveTheme = THEME_REGISTRY[themeId] || DEFAULT_THEME;
@@ -99,7 +101,7 @@ const PortfolioPreview = ({ sections, theme }: { sections: PortfolioSection[], t
   } as React.CSSProperties;
 
   return (
-    <div className="border rounded-lg h-full flex flex-col bg-white text-black relative shadow-inner overflow-hidden">
+    <div className="border rounded-lg h-full flex flex-col w-full bg-white text-black relative shadow-inner overflow-hidden">
       <div className="bg-slate-800 text-white text-xs p-2 text-center z-50 flex-shrink-0 font-medium tracking-wide">
         Live Preview • {LOCAL_PORTFOLIO_TEMPLATES.find(t => t.id === themeId)?.name || 'Custom'}
       </div>
@@ -130,7 +132,9 @@ const PortfolioPreview = ({ sections, theme }: { sections: PortfolioSection[], t
                 case 'team': return <ActiveTheme.Team key={section.id} data={section.data} />;
                 case 'map': return <ActiveTheme.Map key={section.id} data={section.data} />;
                 case 'pricing': return <ActiveTheme.Pricing key={section.id} data={section.data} />;
-                case 'shop': return <ActiveTheme.Shop key={section.id} data={section.data} />; // Added Shop
+                case 'shop': return <ActiveTheme.Shop key={section.id} data={section.data} />; 
+                case 'lead_form': return <ActiveTheme.LeadForm key={section.id} data={section.data} />; 
+
                 default: return <div key={section.id} className="p-4 text-center text-red-500 text-xs">Unknown Block: {section.type}</div>;
             }
           })
@@ -147,6 +151,10 @@ const PortfolioBuilderPage = () => {
   const [isSaving, setIsSaving] = useState(false);
   const [isPublished, setIsPublished] = useState(false);
   const [editingSection, setEditingSection] = useState<PortfolioSection | null>(null);
+
+  // --- RENAMING STATE ---
+  const [renamingId, setRenamingId] = useState<string | null>(null);
+  const [tempLabel, setTempLabel] = useState("");
 
   // --- IDENTITY & SETTINGS STATE ---
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
@@ -165,7 +173,6 @@ const PortfolioBuilderPage = () => {
     const fetchData = async () => {
       if (!actorData.id) return;
       
-      // A. Fetch Portfolio Config
       const { data: portfolio } = await supabase
         .from('portfolios')
         .select('*')
@@ -182,7 +189,6 @@ const PortfolioBuilderPage = () => {
         setSections(DEFAULT_PORTFOLIO_SECTIONS);
       }
 
-      // B. Fetch Identity (Name & Slug) for Settings
       const { data: identity } = await supabase
         .from('actors')
         .select('ActorName, slug')
@@ -242,8 +248,6 @@ const PortfolioBuilderPage = () => {
   const handleSaveIdentity = async () => {
       if (!actorData.id) return;
       setIsSavingIdentity(true);
-      
-      // Simple Slug Cleanup
       const cleanSlug = siteIdentity.slug.toLowerCase().replace(/[^a-z0-9-]/g, '-');
 
       const { error } = await supabase
@@ -273,7 +277,6 @@ const PortfolioBuilderPage = () => {
           type: type,
           isVisible: true,
           data: { 
-              // Set default title for easier identification
               title: AVAILABLE_BLOCKS.find(b => b.type === type)?.label || 'New Section' 
           } 
       };
@@ -286,6 +289,49 @@ const PortfolioBuilderPage = () => {
           setSections(prev => prev.filter(s => s.id !== id));
       }
   }
+
+  // --- NEW: RENAMING LOGIC (With Auto-Save) ---
+  const startRenaming = (e: React.MouseEvent, section: PortfolioSection) => {
+      e.stopPropagation();
+      setRenamingId(section.id);
+      setTempLabel(section.data._label || section.type.replace('_', ' '));
+  };
+
+  const cancelRenaming = (e: React.MouseEvent) => {
+      e.stopPropagation();
+      setRenamingId(null);
+  };
+
+  const saveLabel = async (e: React.MouseEvent | React.KeyboardEvent) => {
+      e.stopPropagation();
+      if (!renamingId || !actorData.id) return;
+
+      // 1. Calculate New State
+      const updatedSections = sections.map(s => 
+          s.id === renamingId 
+            ? { ...s, data: { ...s.data, _label: tempLabel } }
+            : s
+      );
+
+      // 2. Update UI Immediately
+      setSections(updatedSections);
+      setRenamingId(null);
+
+      // 3. AUTO-SAVE TO DATABASE (Fixes the refresh issue)
+      setIsSaving(true);
+      const { error } = await supabase
+        .from('portfolios')
+        .upsert({
+          actor_id: actorData.id,
+          sections: updatedSections, // Use the new array!
+          theme_config: themeConfig, 
+          is_published: isPublished,
+          updated_at: new Date().toISOString()
+        }, { onConflict: 'actor_id' });
+        
+      if(error) console.error("Auto-save failed:", error);
+      setIsSaving(false);
+  };
 
   if (isLoading) return (
       <div className="flex items-center justify-center min-h-[50vh]">
@@ -305,7 +351,6 @@ const PortfolioBuilderPage = () => {
         
         <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto">
           
-          {/* SETTINGS BUTTON */}
           <Button variant="outline" size="sm" onClick={() => setIsSettingsOpen(true)} className="gap-2">
              <Settings className="w-4 h-4" /> 
              <span className="hidden sm:inline">Site Settings</span>
@@ -345,8 +390,6 @@ const PortfolioBuilderPage = () => {
         <div className="lg:col-span-1 flex flex-col h-full min-h-0">
           
           <Tabs defaultValue="content" className="flex flex-col h-full min-h-0">
-              
-              {/* Tabs List */}
               <TabsList className="w-full grid grid-cols-3 lg:grid-cols-2 mb-4 shrink-0">
                  <TabsTrigger value="content"><Layers className="w-4 h-4 mr-2 hidden sm:block"/> Content</TabsTrigger>
                  <TabsTrigger value="design"><Palette className="w-4 h-4 mr-2 hidden sm:block"/> Design</TabsTrigger>
@@ -371,25 +414,64 @@ const PortfolioBuilderPage = () => {
                                                 section.isVisible ? 'border-l-primary shadow-sm' : 'border-l-muted opacity-60 bg-muted/20',
                                                 snapshot.isDragging && "shadow-lg scale-105 rotate-1 opacity-90 z-50"
                                             )}
-                                            onClick={() => setEditingSection(section)}
+                                            onClick={() => { if(!renamingId) setEditingSection(section) }}
                                         >
                                             <CardContent className="p-3 sm:p-4 flex items-center gap-3">
                                                 <div {...provided.dragHandleProps} className="cursor-grab active:cursor-grabbing text-muted-foreground/50 hover:text-foreground p-1">
                                                     <GripVertical size={22} />
                                                 </div>
                                                 
-                                                <div className="flex-grow min-w-0">
-                                                    <p className="font-semibold text-sm capitalize select-none">
-                                                        {section.type.replace('_', ' ')}
-                                                    </p>
-                                                    {section.data.title && (
-                                                        <p className="text-xs text-muted-foreground truncate max-w-[150px]">
-                                                            {section.data.title}
-                                                        </p>
-                                                    )}
-                                                </div>
+                                                {/* --- RENAME UI --- */}
+                                                {renamingId === section.id ? (
+                                                    <div className="flex-grow flex items-center gap-2" onClick={e => e.stopPropagation()}>
+                                                        <Input 
+                                                            value={tempLabel}
+                                                            onChange={(e) => setTempLabel(e.target.value)}
+                                                            onKeyDown={(e) => { if(e.key === 'Enter') saveLabel(e); }}
+                                                            autoFocus
+                                                            className="h-8 text-sm"
+                                                        />
+                                                        <Button size="icon" variant="ghost" className="h-8 w-8 text-green-500 hover:bg-green-500/10" onClick={saveLabel}>
+                                                            <Check size={16} />
+                                                        </Button>
+                                                        <Button size="icon" variant="ghost" className="h-8 w-8 text-muted-foreground" onClick={cancelRenaming}>
+                                                            <X size={16} />
+                                                        </Button>
+                                                    </div>
+                                                ) : (
+                                                    <div className="flex-grow min-w-0" onDoubleClick={(e) => startRenaming(e, section)}>
+                                                        <div className="flex items-center gap-2">
+                                                            <p className="font-semibold text-sm capitalize select-none truncate">
+                                                                {section.data._label || section.type.replace('_', ' ')}
+                                                            </p>
+                                                            <button 
+                                                                onClick={(e) => startRenaming(e, section)}
+                                                                className="opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-primary"
+                                                                title="Rename section label"
+                                                            >
+                                                                <Pencil size={12} />
+                                                            </button>
+                                                        </div>
+                                                        {section.data.title && section.data.title !== section.data._label && (
+                                                            <p className="text-xs text-muted-foreground truncate max-w-[150px]">
+                                                                {section.data.title}
+                                                            </p>
+                                                        )}
+                                                    </div>
+                                                )}
 
+                                                {/* Actions */}
                                                 <div className="flex items-center gap-1 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+                                                    {/* Mobile Rename Button */}
+                                                    <Button 
+                                                        variant="ghost" 
+                                                        size="icon" 
+                                                        className="h-8 w-8 text-muted-foreground hover:text-foreground sm:hidden"
+                                                        onClick={(e) => startRenaming(e, section)}
+                                                    >
+                                                        <Pencil size={16} />
+                                                    </Button>
+
                                                     <Button 
                                                         variant="ghost" 
                                                         size="icon" 
@@ -427,7 +509,6 @@ const PortfolioBuilderPage = () => {
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent className="w-64 max-h-[300px] overflow-y-auto" align="end">
-                              {/* --- FIX: Using AVAILABLE_BLOCKS instead of Object.keys --- */}
                               {AVAILABLE_BLOCKS.map((block) => (
                                   <DropdownMenuItem 
                                     key={block.type} 
@@ -555,7 +636,6 @@ const PortfolioBuilderPage = () => {
                     <TabsTrigger value="domains">Domains</TabsTrigger>
                 </TabsList>
                 
-                {/* GENERAL TAB */}
                 <TabsContent value="general" className="space-y-4 py-4">
                     <div className="space-y-2">
                         <Label>Site Name (Display Name)</Label>
@@ -585,7 +665,6 @@ const PortfolioBuilderPage = () => {
                     </div>
                 </TabsContent>
 
-                {/* DOMAINS TAB */}
                 <TabsContent value="domains" className="space-y-4 py-4">
                     <div className="p-4 border rounded-lg bg-muted/20 flex flex-col items-center text-center gap-3">
                         <div className="p-3 bg-background rounded-full border shadow-sm">

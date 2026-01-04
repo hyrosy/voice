@@ -14,7 +14,8 @@ export type SectionType =
   | 'team'
   | 'map'
   | 'shop'    // <--- CONFIRMING THIS IS HERE
-  | 'pricing';
+  | 'pricing'
+  | 'lead_form';
 
 export interface PortfolioSection {
   id: string;
@@ -113,6 +114,7 @@ export const DEFAULT_PORTFOLIO_SECTIONS: PortfolioSection[] = [
       images: [] 
     }
   },
+
   {
     id: 'vid-slider-1',
     type: 'video_slider',
@@ -122,6 +124,18 @@ export const DEFAULT_PORTFOLIO_SECTIONS: PortfolioSection[] = [
       height: "large",
       autoplay: false,
       videos: [] 
+    }
+  },
+
+  {
+    id: 'contact_form', // or generic id
+    type: 'lead_form', // <--- MUST MATCH THE TYPE ABOVE
+    isVisible: true,
+
+    data: {
+      title: 'Get in Touch',
+      subheadline: 'Send me a message for bookings and inquiries.',
+      buttonText: 'Send Message'
     }
   },
   
