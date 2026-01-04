@@ -46,4 +46,4 @@ export const PORTFOLIO_TEMPLATES: PortfolioTemplate[] = [
       { id: 'contact', type: 'contact', isVisible: true, data: { title: "Brand Deals" } },
     ]
   }
-];
+];  
