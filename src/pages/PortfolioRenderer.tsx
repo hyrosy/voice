@@ -5,8 +5,8 @@ import { PortfolioSection } from '../types/portfolio';
 import { cn, hexToHSL } from "@/lib/utils";
 import { Loader2 } from 'lucide-react';
 import { THEME_REGISTRY, DEFAULT_THEME } from '../themes/registry';
-import SEO from '../components/common/SEO'; // <-- IMPORTED
-import { trackEvent } from '../lib/analytics'; // <-- Import the helper
+import SEO from '../components/common/SEO';
+import { trackEvent } from '../lib/analytics';
 
 const COLOR_PALETTES = [
   { id: 'violet', value: '#8b5cf6' },
@@ -52,17 +52,12 @@ const PortfolioRenderer: React.FC<PortfolioRendererProps> = ({ editorData, isPre
   const [portfolio, setPortfolio] = useState<any>(editorData || null);
   const [loading, setLoading] = useState(!editorData);
   const [error, setError] = useState(false);
-  const [actorProfile, setActorProfile] = useState<any>(null); // Store actor data for SEO
+  const [actorProfile, setActorProfile] = useState<any>(null);
 
   // --- ANALYTICS TRACKING ---
   useEffect(() => {
-    // Only track if:
-    // 1. We have loaded the portfolio
-    // 2. We are NOT in preview/editor mode (don't track yourself)
     if (portfolio && !isPreview && portfolio.actor_id) {
-        
-        // Check session storage to prevent duplicate counts on refresh (optional "Unique View" logic)
-        const sessionKey = `viewed_${portfolio.actor_id}_${new Date().toDateString()}`;
+        const sessionKey = `viewed_${portfolio.id}_${new Date().toDateString()}`; // Track by Portfolio ID
         if (!sessionStorage.getItem(sessionKey)) {
             trackEvent(portfolio.actor_id, 'page_view');
             sessionStorage.setItem(sessionKey, 'true');
@@ -79,37 +74,47 @@ const PortfolioRenderer: React.FC<PortfolioRendererProps> = ({ editorData, isPre
   }, [editorData]);
 
   useEffect(() => {
+    // Only fetch if we are NOT in editor mode and we have a slug
     if (!editorData && slug) {
         const fetchPortfolio = async () => {
-            // 1. Fetch Actor first to get ID and SEO details (Name/Headshot)
-            const { data: actorData, error: actorError } = await supabase
-                .from('actors')
-                .select('id, ActorName, HeadshotURL, bio') // Fetch fields needed for SEO
-                .or(`slug.ilike.${slug},ActorName.ilike.${slug}`)
+            console.log("Fetching portfolio for slug:", slug);
+
+            // 1. NEW LOGIC: Fetch Portfolio directly by public_slug
+            // We verify 'is_published' is true
+            const { data: portfolioData, error: portfolioError } = await supabase
+                .from('portfolios')
+                .select('*')
+                .eq('public_slug', slug)
+                .eq('is_published', true)
                 .single();
 
-            if (actorError || !actorData) {
-                console.error("Actor not found:", slug);
+            // 2. Handle Portfolio Not Found (or unpublished)
+            if (portfolioError || !portfolioData) {
+                console.error("Portfolio not found or unpublished:", slug);
+                
+                // OPTIONAL FALLBACK: 
+                // If you want old links (using actor name) to still work, you could try
+                // looking up the actor here. But for clean architecture, it is better 
+                // to stick to the portfolio slug.
                 setError(true);
                 setLoading(false);
                 return;
             }
 
-            setActorProfile(actorData); // Save for SEO usage
+            setPortfolio(portfolioData);
 
-            // 2. Fetch Portfolio
-            const { data: portfolioData, error: portfolioError } = await supabase
-                .from('portfolios')
-                .select('*')
-                .eq('actor_id', actorData.id)
-                .eq('is_published', true)
+            // 3. Fetch Owner (Actor) Data for SEO & Context
+            // We need this because the Portfolio table might not have the headshot/bio
+            const { data: actorData } = await supabase
+                .from('actors')
+                .select('id, ActorName, HeadshotURL, bio')
+                .eq('id', portfolioData.actor_id)
                 .single();
-            
-            if (portfolioError || !portfolioData) {
-                setError(true);
-            } else {
-                setPortfolio(portfolioData);
+
+            if (actorData) {
+                setActorProfile(actorData);
             }
+
             setLoading(false);
         };
         fetchPortfolio();
@@ -132,17 +137,18 @@ const PortfolioRenderer: React.FC<PortfolioRendererProps> = ({ editorData, isPre
   const ActiveTheme = THEME_REGISTRY[themeId] || DEFAULT_THEME;
 
   // --- SEO DATA PREPARATION ---
-  // If in editor/preview mode, use placeholder data or data from props
-  // If live, use the fetched actor profile
-  const seoTitle = isPreview ? "Preview Portfolio" : (actorProfile?.ActorName || "Portfolio");
+  // Use Portfolio-specific SEO if available (site_name), otherwise fallback to Actor Profile
+  const seoTitle = isPreview ? "Preview Portfolio" : (portfolio.site_name || actorProfile?.ActorName || "Portfolio");
   const seoDesc = isPreview 
       ? "Live preview of your portfolio." 
       : (actorProfile?.bio || `Check out the professional portfolio of ${seoTitle}.`);
   const seoImage = isPreview ? "" : (actorProfile?.HeadshotURL || "");
 
+  // Pass activeActorId so components like LeadForm know who to message
+  const activeActorId = portfolio.actor_id;
+
   return (
     <>
-        {/* --- INJECT DYNAMIC SEO --- */}
         {!isPreview && (
             <SEO 
                 title={seoTitle} 
@@ -161,29 +167,21 @@ const PortfolioRenderer: React.FC<PortfolioRendererProps> = ({ editorData, isPre
                     return (
                         <div id={section.id} key={section.id} className={`scroll-mt-20 ${zIndexClass}`}> 
                             {(() => {
-                                switch (section.type) {
-                                    case 'hero': return <ActiveTheme.Hero data={section.data} />;
-                                    case 'about': return <ActiveTheme.About data={section.data} />;
-                                    case 'gallery': return <ActiveTheme.Gallery data={section.data} />;
-                                    case 'services_showcase': return <ActiveTheme.ServicesShowcase data={section.data} actorId={portfolio.actor_id} />;
-                                    case 'contact': return <ActiveTheme.Contact data={section.data} />;
-                                    case 'stats': return <ActiveTheme.Stats data={section.data} />;
-                                    case 'reviews': return <ActiveTheme.Reviews data={section.data} />;
-                                    case 'image_slider': return <ActiveTheme.ImageSlider data={section.data} />;
-                                    case 'video_slider': return <ActiveTheme.VideoSlider data={section.data} />;
-                                    case 'shop': return <ActiveTheme.Shop data={section.data} actorId={portfolio.actor_id} />;                                    case 'header': return (
-                                        <ActiveTheme.Header 
-                                            data={section.data} 
-                                            allSections={sections} 
-                                            isPreview={isPreview} 
-                                        />
-                                    );
-                                    case 'team': return <ActiveTheme.Team data={section.data} />;
-                                    case 'map': return <ActiveTheme.Map data={section.data} />;
-                                    case 'pricing': return <ActiveTheme.Pricing data={section.data} />;
-                                    case 'lead_form': return <ActiveTheme.LeadForm data={section.data} actorId={portfolio.actor_id} />;
-                                    default: return null;
+                                // Dynamic Component Rendering
+                                const Component = (ActiveTheme as any)[section.type === 'lead_form' ? 'LeadForm' : section.type.charAt(0).toUpperCase() + section.type.slice(1).replace(/_([a-z])/g, (g) => g[1].toUpperCase())] 
+                                                || (ActiveTheme as any)[Object.keys(ActiveTheme).find(k => k.toLowerCase() === section.type.replace('_','').toLowerCase()) || ''];
+
+                                if (!Component) return null;
+
+                                // Special props for specific components
+                                if (section.type === 'header') {
+                                    return <Component data={section.data} allSections={sections} isPreview={isPreview} />;
                                 }
+                                if (section.type === 'services_showcase' || section.type === 'shop' || section.type === 'lead_form') {
+                                    return <Component data={section.data} actorId={activeActorId} />;
+                                }
+
+                                return <Component data={section.data} />;
                             })()}
                         </div>
                     );

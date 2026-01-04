@@ -4,6 +4,7 @@ import { PortfolioThemeDefinition } from '../types';
 import ImageSlider from './ImageSlider';
 import VideoSlider from './VideoSlider';
 import Header from './Header';
+import LeadForm from '../modern/LeadForm';
 
 // --- 2. Import the Base Theme to Borrow From ---
 import { ModernTheme } from '../modern';
@@ -14,7 +15,7 @@ export const CinematicTheme: PortfolioThemeDefinition = {
   Header,       
   ImageSlider,
   VideoSlider,
-
+LeadForm,
   // B. Fallback to Modern for everything else (prevents crashes!)
   Hero: ModernTheme.Hero,
   About: ModernTheme.About,
@@ -27,5 +28,4 @@ export const CinematicTheme: PortfolioThemeDefinition = {
   Map: ModernTheme.Map,                           // <-- WAS MISSING
   Pricing: ModernTheme.Pricing,                    // <-- WAS MISSING
   Shop: ModernTheme.Pricing,                    // <-- WAS MISSING
-  LeadForm: ModernTheme.LeadForm
-};
+  };

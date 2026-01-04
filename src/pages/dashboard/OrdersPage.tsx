@@ -133,7 +133,7 @@ const OrdersPage = () => {
 
   return (
     <div className="p-4 md:p-8 space-y-6 w-full max-w-[1600px] mx-auto">
-      <div className="flex flex-col md:flex-row justify-between md:items-center gap-4">
+      <div className="flex flex-col md:flex-row justify-between md:items-center gap-4 pt-20">
         <div>
             <h1 className="text-3xl font-bold tracking-tight">Direct Orders</h1>
             <p className="text-muted-foreground mt-1">Manage sales from your portfolio shop.</p>

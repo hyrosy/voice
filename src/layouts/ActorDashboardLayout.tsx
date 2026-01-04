@@ -83,14 +83,15 @@ const NAV_GROUPS: NavGroup[] = [
       { to: "/dashboard/messages", name: "Inbox", icon: MessageSquare, description: "Client messages" },
       { to: "/dashboard/services", name: "Services", icon: Settings, description: "Manage rates" },
       { to: "/dashboard/demos", name: "Demos", icon: Music, description: "Your audio/video" },
-      { to: "/dashboard/library", name: "Library", icon: AudioLines, description: "Delivered files" },
+      { to: "/dashboard/library", name: "Library", icon: AudioLines, description: "Delivered files" },      
+      { to: "/dashboard/earnings", name: "Earnings", icon: DollarSign, description: "Payouts & History" },
+
     ]
   },
   {
     label: "Account",
     items: [
-      { to: "/dashboard/earnings", name: "Earnings", icon: DollarSign, description: "Payouts & History" },
-      { to: "/dashboard/profile", name: "Profile Settings", icon: User, description: "Login & Info" },
+     { to: "/dashboard/settings", name: "Settings & Sites", icon: Settings }, 
     ]
   }
 ];
@@ -99,6 +100,7 @@ const mobilePrimaryItems = [
   { to: "/dashboard/analytics", name: "Stats", icon: BarChart3 },
   { to: "/dashboard/portfolio", name: "Editor", icon: LayoutTemplate },
   { to: "/dashboard/messages", name: "Inbox", icon: MessageSquare },
+  
 ];
 
 const ActorDashboardLayout = () => {

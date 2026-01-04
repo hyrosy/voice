@@ -382,35 +382,183 @@ const SectionEditor: React.FC<SectionEditorProps> = ({ section, isOpen, onClose,
 
   case 'lead_form':
     return (
-        <div className="space-y-6">
-            <div className="space-y-2">
-                <Label>Section Title</Label>
-                <Input 
-                    value={formData.title || ''} 
-                    onChange={e => updateField('title', e.target.value)} 
-                    placeholder="Get in Touch" 
-                />
+        <div className="space-y-8">
+            {/* 1. BASIC SETTINGS */}
+            <div className="space-y-4">
+                <div className="space-y-2">
+                    <Label>Section Title</Label>
+                    <Input 
+                        value={formData.title || ''} 
+                        onChange={e => updateField('title', e.target.value)} 
+                        placeholder="Get in Touch" 
+                    />
+                </div>
+                <div className="space-y-2">
+                    <Label>Subheadline</Label>
+                    <Textarea 
+                        value={formData.subheadline || ''} 
+                        onChange={e => updateField('subheadline', e.target.value)} 
+                        placeholder="Send me a message..." 
+                        rows={2}
+                    />
+                </div>
+                <div className="space-y-2">
+                    <Label>Button Text</Label>
+                    <Input 
+                        value={formData.buttonText || ''} 
+                        onChange={e => updateField('buttonText', e.target.value)} 
+                        placeholder="Send Message" 
+                    />
+                </div>
             </div>
-            <div className="space-y-2">
-                <Label>Subheadline</Label>
-                <Textarea 
-                    value={formData.subheadline || ''} 
-                    onChange={e => updateField('subheadline', e.target.value)} 
-                    placeholder="Send me a message..." 
-                    rows={2}
-                />
+
+            {/* 2. LAYOUT VARIANT */}
+            <div className="space-y-3 pt-4 border-t">
+                <Label>Layout Style</Label>
+                <Select 
+                    value={formData.variant || 'centered'} 
+                    onValueChange={(val) => updateField('variant', val)}
+                >
+                    <SelectTrigger className="bg-background"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="centered">Centered Box (Standard)</SelectItem>
+                        <SelectItem value="split">Split Screen (Image Left)</SelectItem>
+                        <SelectItem value="minimal">Minimal (No Background)</SelectItem>
+                    </SelectContent>
+                </Select>
+                
+                {formData.variant === 'split' && (
+                    <div className="mt-2">
+                        <Label className="text-xs">Side Image</Label>
+                        <div className="flex gap-2 mt-1">
+                            <Input 
+                                value={formData.image || ''} 
+                                onChange={e => updateField('image', e.target.value)} 
+                                placeholder="https://..." 
+                                className="text-xs"
+                            />
+                            {/* You can add the MediaPicker button here if you have it available in scope */}
+                        </div>
+                    </div>
+                )}
             </div>
-            <div className="space-y-2">
-                <Label>Button Text</Label>
-                <Input 
-                    value={formData.buttonText || ''} 
-                    onChange={e => updateField('buttonText', e.target.value)} 
-                    placeholder="Send Message" 
-                />
-            </div>
-            
-            <div className="p-4 bg-blue-500/10 border border-blue-500/20 rounded-lg text-xs text-blue-400">
-                <p><strong>Note:</strong> Submissions from this form will appear in your Dashboard under <strong>"Leads & Inbox"</strong>.</p>
+
+            {/* 3. FORM FIELDS BUILDER */}
+            <div className="space-y-4 pt-4 border-t">
+                <div className="flex justify-between items-center">
+                    <Label>Form Fields</Label>
+                    <Button size="sm" variant="outline" onClick={() => {
+                        const newField = { 
+                            id: `custom_${Date.now()}`, 
+                            label: 'New Field', 
+                            type: 'text', 
+                            placeholder: '', 
+                            required: false, 
+                            width: 'full' 
+                        };
+                        updateField('fields', [...(formData.fields || []), newField]);
+                    }}>
+                        <Plus className="w-4 h-4 mr-2" /> Add Field
+                    </Button>
+                </div>
+
+                <div className="space-y-3">
+                    {(formData.fields || []).map((field: any, idx: number) => (
+                        <div key={idx} className="border p-3 rounded-lg bg-muted/10 space-y-3 group relative">
+                            {/* Remove Button */}
+                            <button 
+                                onClick={() => {
+                                    const newFields = [...formData.fields];
+                                    newFields.splice(idx, 1);
+                                    updateField('fields', newFields);
+                                }}
+                                className="absolute top-2 right-2 text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity"
+                            >
+                                <Trash2 size={14} />
+                            </button>
+
+                            <div className="grid grid-cols-2 gap-2">
+                                <div className="space-y-1">
+                                    <Label className="text-[10px] text-muted-foreground uppercase">Label</Label>
+                                    <Input 
+                                        value={field.label} 
+                                        onChange={(e) => {
+                                            const newFields = [...formData.fields];
+                                            newFields[idx].label = e.target.value;
+                                            updateField('fields', newFields);
+                                        }}
+                                        className="h-8 text-xs" 
+                                    />
+                                </div>
+                                <div className="space-y-1">
+                                    <Label className="text-[10px] text-muted-foreground uppercase">Type</Label>
+                                    <Select 
+                                        value={field.type} 
+                                        onValueChange={(val) => {
+                                            const newFields = [...formData.fields];
+                                            newFields[idx].type = val;
+                                            updateField('fields', newFields);
+                                        }}
+                                    >
+                                        <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="text">Short Text</SelectItem>
+                                            <SelectItem value="textarea">Long Text</SelectItem>
+                                            <SelectItem value="email">Email</SelectItem>
+                                            <SelectItem value="tel">Phone</SelectItem>
+                                            <SelectItem value="date">Date</SelectItem>
+                                            {/* Future: Select/Dropdown */}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-2">
+                                <div className="space-y-1">
+                                    <Label className="text-[10px] text-muted-foreground uppercase">Placeholder</Label>
+                                    <Input 
+                                        value={field.placeholder || ''} 
+                                        onChange={(e) => {
+                                            const newFields = [...formData.fields];
+                                            newFields[idx].placeholder = e.target.value;
+                                            updateField('fields', newFields);
+                                        }}
+                                        className="h-8 text-xs" 
+                                        placeholder="e.g. Enter name"
+                                    />
+                                </div>
+                                <div className="flex items-end gap-2 pb-1">
+                                    <div className="flex items-center gap-2 border rounded px-2 h-8 w-full bg-background">
+                                        <input 
+                                            type="checkbox" 
+                                            checked={field.required} 
+                                            onChange={(e) => {
+                                                const newFields = [...formData.fields];
+                                                newFields[idx].required = e.target.checked;
+                                                updateField('fields', newFields);
+                                            }}
+                                            className="accent-primary"
+                                        />
+                                        <span className="text-xs">Required</span>
+                                    </div>
+                                    <div className="flex items-center gap-2 border rounded px-2 h-8 w-full bg-background">
+                                        <input 
+                                            type="checkbox" 
+                                            checked={field.width === 'half'} 
+                                            onChange={(e) => {
+                                                const newFields = [...formData.fields];
+                                                newFields[idx].width = e.target.checked ? 'half' : 'full';
+                                                updateField('fields', newFields);
+                                            }}
+                                            className="accent-primary"
+                                        />
+                                        <span className="text-xs">50% Width</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    ))}
+                </div>
             </div>
         </div>
     );

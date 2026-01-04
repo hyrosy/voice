@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../../supabaseClient';
-import { useOutletContext } from 'react-router-dom';
+import { useOutletContext, useSearchParams } from 'react-router-dom';
 import { ActorDashboardContextType } from '../../layouts/ActorDashboardLayout';
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 import { Switch } from "@/components/ui/switch";
@@ -10,8 +10,8 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { 
   GripVertical, Eye, EyeOff, Save, ExternalLink, Loader2, Plus, 
-  Palette, Layers, Smartphone, Settings, Globe, Lock, CheckCircle2,
-  Pencil, Check, X // Icons for renaming
+  Palette, Layers, Smartphone, Settings, Globe, CheckCircle2,
+  Pencil, Check, X 
 } from 'lucide-react';
 import { PortfolioSection, DEFAULT_PORTFOLIO_SECTIONS, SectionType } from '../../types/portfolio';
 import SectionEditor from '../../components/dashboard/SectionEditor';
@@ -56,7 +56,6 @@ const AVAILABLE_BLOCKS: { type: SectionType; label: string }[] = [
   { type: 'team', label: 'Team' },
   { type: 'pricing', label: 'Pricing' },
   { type: 'lead_form', label: 'LeadForm' },
-   
 ];
 
 const LOCAL_PORTFOLIO_TEMPLATES = [
@@ -118,6 +117,11 @@ const PortfolioPreview = ({ sections, theme }: { sections: PortfolioSection[], t
           </div>
         ) : (
           sections.filter(s => s.isVisible).map(section => {
+            const Component = (ActiveTheme as any)[section.type === 'lead_form' ? 'LeadForm' : section.type.charAt(0).toUpperCase() + section.type.slice(1).replace(/_([a-z])/g, (g) => g[1].toUpperCase())] 
+                            || (ActiveTheme as any)[Object.keys(ActiveTheme).find(k => k.toLowerCase() === section.type.replace('_','').toLowerCase()) || ''];
+
+            const FinalComponent = Component || (() => <div className="p-4 text-center text-red-500 text-xs">Missing Component: {section.type}</div>);
+
             switch (section.type) {
                 case 'header': return <ActiveTheme.Header key={section.id} data={section.data} allSections={sections} isPreview={true} />;
                 case 'hero': return <ActiveTheme.Hero key={section.id} data={section.data} />;
@@ -146,6 +150,9 @@ const PortfolioPreview = ({ sections, theme }: { sections: PortfolioSection[], t
 
 const PortfolioBuilderPage = () => {
   const { actorData } = useOutletContext<ActorDashboardContextType>();
+  const [searchParams] = useSearchParams();
+  const [activePortfolioId, setActivePortfolioId] = useState<string | null>(null);
+
   const [sections, setSections] = useState<PortfolioSection[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -158,7 +165,11 @@ const PortfolioBuilderPage = () => {
 
   // --- IDENTITY & SETTINGS STATE ---
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-  const [siteIdentity, setSiteIdentity] = useState({ name: '', slug: '' });
+  const [siteIdentity, setSiteIdentity] = useState({ 
+      name: '', 
+      slug: '', 
+      customDomain: '' 
+  });
   const [isSavingIdentity, setIsSavingIdentity] = useState(false);
 
   // Theme State
@@ -173,40 +184,68 @@ const PortfolioBuilderPage = () => {
     const fetchData = async () => {
       if (!actorData.id) return;
       
-      const { data: portfolio } = await supabase
-        .from('portfolios')
-        .select('*')
-        .eq('actor_id', actorData.id)
-        .single();
-
-      if (portfolio) {
-        setSections(portfolio.sections as PortfolioSection[]);
-        setIsPublished(portfolio.is_published);
-        if (portfolio.theme_config) {
-            setThemeConfig(portfolio.theme_config);
-        }
-      } else {
-        setSections(DEFAULT_PORTFOLIO_SECTIONS);
-      }
-
-      const { data: identity } = await supabase
-        .from('actors')
-        .select('ActorName, slug')
-        .eq('id', actorData.id)
-        .single();
+      const portfolioIdFromUrl = searchParams.get('id');
       
-      if (identity) {
-          setSiteIdentity({
-              name: identity.ActorName || '',
-              slug: identity.slug || ''
-          });
+      // Fetch Identity (Fallback for name/slug if not set in portfolio)
+      const { data: identity } = await supabase
+          .from('actors')
+          .select('ActorName, slug')
+          .eq('id', actorData.id)
+          .single();
+
+      let portfolioData: any = null;
+
+      // LOGIC: Separate the queries to avoid TypeScript return type conflict
+      if (portfolioIdFromUrl) {
+          // A. Specific ID (Multi-site Mode)
+          const { data, error } = await supabase
+              .from('portfolios')
+              .select('*')
+              .eq('id', portfolioIdFromUrl)
+              .single();
+          
+          if (!error) portfolioData = data;
+      } else {
+          // B. Default / Latest (Single-site Fallback)
+          const { data, error } = await supabase
+              .from('portfolios')
+              .select('*')
+              .eq('actor_id', actorData.id)
+              .order('created_at', { ascending: false })
+              .limit(1)
+              .single();
+          
+          if (!error) portfolioData = data;
       }
 
+      if (portfolioData) {
+          setActivePortfolioId(portfolioData.id); // Store the ID we found
+          setSections(portfolioData.sections as PortfolioSection[]);
+          setIsPublished(portfolioData.is_published);
+          if (portfolioData.theme_config) setThemeConfig(portfolioData.theme_config);
+
+          // Load Settings (Prioritize Portfolio, fallback to Actor)
+          setSiteIdentity({
+              name: portfolioData.site_name || identity?.ActorName || '',
+              slug: portfolioData.public_slug || identity?.slug || '',
+              customDomain: portfolioData.custom_domain || '' 
+          });
+      } else {
+          // First time user / No portfolio found
+          setSections(DEFAULT_PORTFOLIO_SECTIONS);
+          if (identity) {
+              setSiteIdentity({ 
+                  name: identity.ActorName || '', 
+                  slug: identity.slug || '',
+                  customDomain: '' 
+              });
+          }
+      }
       setIsLoading(false);
     };
 
     fetchData();
-  }, [actorData.id]);
+  }, [actorData.id, searchParams]); 
 
   // 2. Handle Reorder
   const handleDragEnd = (result: any) => {
@@ -227,41 +266,52 @@ const PortfolioBuilderPage = () => {
 
   // 4. Save Portfolio Content
   const handleSave = async () => {
+    if (!activePortfolioId) return; 
     setIsSaving(true);
+    
     const { error } = await supabase
       .from('portfolios')
-      .upsert({
-        actor_id: actorData.id,
+      .update({
         sections: sections,
         theme_config: themeConfig, 
         is_published: isPublished,
         updated_at: new Date().toISOString()
-      }, { onConflict: 'actor_id' });
+      })
+      .eq('id', activePortfolioId);
 
     if (error) {
       console.error("Error saving portfolio:", error);
+      alert("Failed to save changes.");
     }
     setIsSaving(false);
   };
 
-  // 5. Save Site Settings (Identity)
+  // 5. Save Site Settings
   const handleSaveIdentity = async () => {
-      if (!actorData.id) return;
+      if (!activePortfolioId) return;
       setIsSavingIdentity(true);
+      
       const cleanSlug = siteIdentity.slug.toLowerCase().replace(/[^a-z0-9-]/g, '-');
+      const cleanDomain = siteIdentity.customDomain.trim().replace(/^https?:\/\//, '');
 
       const { error } = await supabase
-          .from('actors')
+          .from('portfolios')
           .update({
-              ActorName: siteIdentity.name,
-              slug: cleanSlug
+              site_name: siteIdentity.name,
+              public_slug: cleanSlug,
+              custom_domain: cleanDomain || null 
           })
-          .eq('id', actorData.id);
+          .eq('id', activePortfolioId);
 
       if (error) {
+          console.error(error);
           alert("Error saving settings. The URL might be taken.");
       } else {
-          setSiteIdentity(prev => ({ ...prev, slug: cleanSlug }));
+          setSiteIdentity(prev => ({ 
+              ...prev, 
+              slug: cleanSlug,
+              customDomain: cleanDomain
+          }));
           setIsSettingsOpen(false);
       }
       setIsSavingIdentity(false);
@@ -304,30 +354,26 @@ const PortfolioBuilderPage = () => {
 
   const saveLabel = async (e: React.MouseEvent | React.KeyboardEvent) => {
       e.stopPropagation();
-      if (!renamingId || !actorData.id) return;
+      if (!renamingId || !activePortfolioId) return;
 
-      // 1. Calculate New State
       const updatedSections = sections.map(s => 
           s.id === renamingId 
             ? { ...s, data: { ...s.data, _label: tempLabel } }
             : s
       );
 
-      // 2. Update UI Immediately
       setSections(updatedSections);
       setRenamingId(null);
 
-      // 3. AUTO-SAVE TO DATABASE (Fixes the refresh issue)
+      // Auto-save specific site
       setIsSaving(true);
       const { error } = await supabase
         .from('portfolios')
-        .upsert({
-          actor_id: actorData.id,
-          sections: updatedSections, // Use the new array!
-          theme_config: themeConfig, 
-          is_published: isPublished,
+        .update({
+          sections: updatedSections,
           updated_at: new Date().toISOString()
-        }, { onConflict: 'actor_id' });
+        })
+        .eq('id', activePortfolioId);
         
       if(error) console.error("Auto-save failed:", error);
       setIsSaving(false);
@@ -346,7 +392,9 @@ const PortfolioBuilderPage = () => {
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4 shrink-0">
         <div>
           <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Portfolio Builder</h1>
-          <p className="text-sm text-muted-foreground">Drag blocks to reorder. Click to edit.</p>
+          <p className="text-sm text-muted-foreground flex items-center gap-2">
+             Editing: <span className="font-semibold text-primary">{siteIdentity.name || 'Untitled Site'}</span>
+          </p>
         </div>
         
         <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto">
@@ -421,7 +469,6 @@ const PortfolioBuilderPage = () => {
                                                     <GripVertical size={22} />
                                                 </div>
                                                 
-                                                {/* --- RENAME UI --- */}
                                                 {renamingId === section.id ? (
                                                     <div className="flex-grow flex items-center gap-2" onClick={e => e.stopPropagation()}>
                                                         <Input 
@@ -460,9 +507,7 @@ const PortfolioBuilderPage = () => {
                                                     </div>
                                                 )}
 
-                                                {/* Actions */}
                                                 <div className="flex items-center gap-1 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
-                                                    {/* Mobile Rename Button */}
                                                     <Button 
                                                         variant="ghost" 
                                                         size="icon" 
@@ -527,7 +572,6 @@ const PortfolioBuilderPage = () => {
               {/* --- TAB 2: DESIGN --- */}
               <TabsContent value="design" className="flex-grow flex flex-col overflow-y-auto overflow-x-hidden mt-0 data-[state=inactive]:hidden custom-scrollbar pb-10">
                   <div className="space-y-6 pr-2">
-                    {/* Template Picker */}
                     <div className="space-y-3">
                        <Label className="text-base">Template Style</Label>
                        <div className="grid grid-cols-1 gap-3">
@@ -552,7 +596,6 @@ const PortfolioBuilderPage = () => {
                        </div>
                     </div>
 
-                    {/* Color Picker */}
                     <div className="space-y-3">
                        <Label className="text-base">Accent Color</Label>
                        <div className="flex flex-wrap gap-4">
@@ -571,7 +614,6 @@ const PortfolioBuilderPage = () => {
                        </div>
                     </div>
 
-                    {/* Font Picker */}
                     <div className="space-y-3">
                        <Label className="text-base">Typography</Label>
                        <Select 
@@ -626,7 +668,7 @@ const PortfolioBuilderPage = () => {
             <DialogHeader>
                 <DialogTitle>Site Settings</DialogTitle>
                 <DialogDescription>
-                    Manage your site identity and domain.
+                    Manage your site identity, URL, and custom domain.
                 </DialogDescription>
             </DialogHeader>
 
@@ -636,15 +678,16 @@ const PortfolioBuilderPage = () => {
                     <TabsTrigger value="domains">Domains</TabsTrigger>
                 </TabsList>
                 
+                {/* GENERAL TAB (Name & Slug) */}
                 <TabsContent value="general" className="space-y-4 py-4">
                     <div className="space-y-2">
-                        <Label>Site Name (Display Name)</Label>
+                        <Label>Site Name</Label>
                         <Input 
                             value={siteIdentity.name} 
                             onChange={(e) => setSiteIdentity(prev => ({...prev, name: e.target.value}))}
-                            placeholder="e.g. Sarah Connor"
+                            placeholder="e.g. My Portfolio"
                         />
-                        <p className="text-[11px] text-muted-foreground">Used for browser title and SEO.</p>
+                        <p className="text-[11px] text-muted-foreground">Appears in the browser tab and SEO results.</p>
                     </div>
                     <div className="space-y-2">
                         <Label>Portfolio URL</Label>
@@ -660,31 +703,42 @@ const PortfolioBuilderPage = () => {
                             />
                         </div>
                         <p className="text-[11px] text-muted-foreground">
-                            Changing this will break existing links to your portfolio.
+                            This is your free permanent URL.
                         </p>
                     </div>
                 </TabsContent>
 
+                {/* DOMAINS TAB (Custom Domain) */}
                 <TabsContent value="domains" className="space-y-4 py-4">
-                    <div className="p-4 border rounded-lg bg-muted/20 flex flex-col items-center text-center gap-3">
-                        <div className="p-3 bg-background rounded-full border shadow-sm">
-                            <Globe className="w-6 h-6 text-primary" />
+                    <div className="space-y-2">
+                        <Label>Custom Domain</Label>
+                        <div className="flex gap-2">
+                            <div className="relative flex-grow">
+                                <Globe className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+                                <Input 
+                                    value={siteIdentity.customDomain} 
+                                    onChange={(e) => setSiteIdentity(prev => ({...prev, customDomain: e.target.value}))}
+                                    className="pl-9"
+                                    placeholder="www.yourname.com" 
+                                />
+                            </div>
                         </div>
-                        <div>
-                            <h4 className="font-semibold">Connect a Custom Domain</h4>
-                            <p className="text-sm text-muted-foreground max-w-xs mx-auto">
-                                Look professional with your own domain (e.g. www.yourname.com).
-                            </p>
-                        </div>
-                        <Button variant="secondary" className="gap-2" disabled>
-                            <Lock className="w-4 h-4" /> Upgrade to Pro
-                        </Button>
+                        <p className="text-[11px] text-muted-foreground">
+                            Enter your domain name. You will need to configure your DNS A-Record to point to our server IP.
+                        </p>
                     </div>
                     
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground bg-muted p-2 rounded">
-                        <CheckCircle2 className="w-4 h-4 text-green-500" />
-                        <span>Free subdomain active: </span>
-                        <span className="font-mono text-foreground">{siteIdentity.slug}.example.com</span>
+                    <div className="bg-muted/30 border rounded-lg p-3 text-xs text-muted-foreground space-y-1">
+                        <div className="flex items-center gap-2">
+                            <CheckCircle2 className="w-3 h-3 text-green-500" />
+                            <span>Free URL: <strong>ucpmaroc.com/pro/{siteIdentity.slug}</strong> (Active)</span>
+                        </div>
+                        {siteIdentity.customDomain && (
+                            <div className="flex items-center gap-2">
+                                <Loader2 className="w-3 h-3 text-yellow-500 animate-spin" />
+                                <span>Custom Domain: <strong>{siteIdentity.customDomain}</strong> (Pending DNS)</span>
+                            </div>
+                        )}
                     </div>
                 </TabsContent>
             </Tabs>

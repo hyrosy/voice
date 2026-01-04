@@ -56,7 +56,7 @@ import DomainOrderPage from './pages/marketplace/DomainOrderPage';
 import AnalyticsPage from './pages/dashboard/AnalyticsPage.tsx';
 import OrdersPage from './pages/dashboard/OrdersPage.tsx';
 import LeadsPage from './pages/dashboard/LeadsPage.tsx';
-
+import SettingsPage from './pages/dashboard/SettingsPage';
 // --- 1. Create a Layout Component to handle conditional Footer ---
 const Layout = ({ children }: { children: React.ReactNode }) => {
   const location = useLocation();
@@ -187,6 +187,7 @@ function App() {
             <Route path="analytics" element={<AnalyticsPage />} />
             <Route path="Orders" element={<OrdersPage />} />
             <Route path="leads" element={<LeadsPage />} />
+            <Route path="settings" element={<SettingsPage />} />
           </Route>
           <Route path="/pro/:slug" element={<PortfolioRenderer />} />
 

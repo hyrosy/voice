@@ -128,14 +128,22 @@ export const DEFAULT_PORTFOLIO_SECTIONS: PortfolioSection[] = [
   },
 
   {
-    id: 'contact_form', // or generic id
-    type: 'lead_form', // <--- MUST MATCH THE TYPE ABOVE
+    id: 'contact_form',
+    type: 'lead_form',
     isVisible: true,
-
     data: {
       title: 'Get in Touch',
       subheadline: 'Send me a message for bookings and inquiries.',
-      buttonText: 'Send Message'
+      buttonText: 'Send Message',
+      variant: 'centered', // 'centered' | 'split' | 'minimal'
+      destinationEmail: '', // Optional: if you want to implement email forwarding later
+      fields: [
+        { id: 'name', label: 'Name', type: 'text', placeholder: 'Your Name', required: true, width: 'half' },
+        { id: 'email', label: 'Email', type: 'email', placeholder: 'your@email.com', required: true, width: 'half' },
+        { id: 'phone', label: 'Phone', type: 'tel', placeholder: '+1 234 567 890', required: false, width: 'full' },
+        { id: 'subject', label: 'Subject', type: 'text', placeholder: 'Booking Inquiry...', required: false, width: 'full' },
+        { id: 'message', label: 'Message', type: 'textarea', placeholder: 'How can I help you?', required: true, width: 'full' }
+      ]
     }
   },
   

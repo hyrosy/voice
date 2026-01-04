@@ -6,8 +6,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { 
-  Loader2, Mail, User, Phone, Calendar, 
-  MessageSquare, CheckCircle2, Archive, Reply, Trash2 
+  Loader2, Mail, User, Phone, 
+  MessageSquare, CheckCircle2, Reply, Trash2, FileText 
 } from 'lucide-react';
 import {
   Table,
@@ -43,6 +43,7 @@ interface Lead {
   message: string;
   status: 'new' | 'contacted' | 'archived';
   source: string;
+  metadata?: Record<string, string>; // <--- ADDED THIS
 }
 
 const LeadsPage = () => {
@@ -80,12 +81,10 @@ const LeadsPage = () => {
   };
 
   const updateStatus = async (leadId: string, newStatus: string) => {
-    // Optimistic Update
     setLeads(prev => prev.map(l => l.id === leadId ? { ...l, status: newStatus as any } : l));
     if (selectedLead && selectedLead.id === leadId) {
         setSelectedLead({ ...selectedLead, status: newStatus as any });
     }
-    
     await supabase.from('leads').update({ status: newStatus }).eq('id', leadId);
   };
 
@@ -102,7 +101,7 @@ const LeadsPage = () => {
 
   return (
     <div className="p-4 md:p-8 space-y-6 w-full max-w-[1600px] mx-auto">
-      <div className="flex flex-col md:flex-row justify-between md:items-center gap-4">
+      <div className="flex flex-col md:flex-row justify-between md:items-center gap-4 pt-20">
         <div>
             <h1 className="text-3xl font-bold tracking-tight">Leads & Inquiries</h1>
             <p className="text-muted-foreground mt-1">Messages from your contact forms.</p>
@@ -215,7 +214,24 @@ const LeadsPage = () => {
                             </Button>
                         </div>
 
-                        {/* 2. MESSAGE BODY */}
+                        {/* --- NEW: CUSTOM FIELDS (METADATA) --- */}
+                        {selectedLead.metadata && Object.keys(selectedLead.metadata).length > 0 && (
+                            <div className="space-y-4">
+                                <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
+                                    <FileText size={14} /> Additional Info
+                                </h3>
+                                <div className="bg-muted/30 p-4 rounded-lg border grid grid-cols-2 gap-4">
+                                    {Object.entries(selectedLead.metadata).map(([key, value]) => (
+                                        <div key={key}>
+                                            <Label className="text-xs text-muted-foreground capitalize">{key}</Label>
+                                            <div className="font-medium text-sm break-words">{value || '-'}</div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
+                        {/* 3. MESSAGE BODY */}
                         <div className="space-y-4">
                             <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
                                 <MessageSquare size={14} /> Message
@@ -225,7 +241,7 @@ const LeadsPage = () => {
                             </div>
                         </div>
 
-                        {/* 3. MANAGEMENT */}
+                        {/* 4. MANAGEMENT */}
                         <div className="space-y-4">
                              <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
                                 <CheckCircle2 size={14} /> Status
