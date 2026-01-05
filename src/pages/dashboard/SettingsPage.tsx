@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Loader2, Globe, User, Plus, ExternalLink, LayoutTemplate, Check, CreditCard, ArrowUpRight, Coins, Gift, Sparkles } from 'lucide-react';
+import { Loader2, Globe, User, Plus, ExternalLink, LayoutTemplate, Check, CreditCard, ArrowUpRight, Coins, Gift, AlertTriangle, CalendarDays, ArrowRightLeft, Clock, Trash2, AlertCircle } from 'lucide-react';
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { PORTFOLIO_TEMPLATES } from '../../lib/templates';
@@ -15,43 +15,71 @@ import { cn } from "@/lib/utils";
 
 // --- CONFIGURATION ---
 
-// 1. NEW PRICING TIERS
 const PLANS = [
     { 
         id: 'starter', 
-        stripePriceId: 'price_STARTER_MONTHLY', // REPLACE ME
+        tier: 1, 
         name: 'Starter', 
-        stripeCost: 2.50, 
-        coinCost: 75, 
-        duration: 1, 
-        features: ['1 Website', 'Standard Support', 'UCP Branding']
+        features: ['1 Website', 'Standard Support', 'UCP Branding'],
+        monthly: {
+            stripePriceId: 'price_1Sluys00hAkAJqU5VCvuFIet',
+            stripeCost: 2.50,
+            coinCost: 125,
+            label: null
+        },
+        yearly: {
+            stripePriceId: 'price_1Sluys00hAkAJqU5VCvuFIet',
+            stripeCost: 28.50,
+            coinCost: 1425,
+            label: '5% OFF'
+        }
     },
     { 
         id: 'pro', 
-        stripePriceId: 'price_PRO_MONTHLY', // REPLACE ME
+        tier: 2, 
         name: 'Pro', 
-        stripeCost: 5.00, 
-        coinCost: 150, 
-        duration: 1, 
         popular: true,
-        features: ['3 Websites', 'Custom Domain', 'No Branding', 'SEO Tools']
+        features: ['3 Websites', 'Custom Domain', 'No Branding', 'SEO Tools'],
+        monthly: {
+            stripePriceId: 'price_1Sluys00hAkAJqU5VCvuFIet',
+            stripeCost: 5.00,
+            coinCost: 250,
+            label: null
+        },
+        yearly: {
+            stripePriceId: 'price_1Sluys00hAkAJqU5VCvuFIet',
+            stripeCost: 54.00,
+            coinCost: 2700,
+            label: '10% OFF'
+        }
     },
     { 
         id: 'agency', 
-        stripePriceId: 'price_AGENCY_MONTHLY', // REPLACE ME
+        tier: 3, 
         name: 'Agency', 
-        stripeCost: 15.00, 
-        coinCost: 450, 
-        duration: 1, 
-        features: ['Unlimited Sites', 'Priority Support', 'White Label', 'API Access']
+        features: ['Unlimited Sites', 'Priority Support', 'White Label', 'API Access'],
+        monthly: {
+            stripePriceId: 'price_1Sluys00hAkAJqU5VCvuFIet',
+            stripeCost: 15.00,
+            coinCost: 750,
+            label: null
+        },
+        yearly: {
+            stripePriceId: 'price_1Sluys00hAkAJqU5VCvuFIet',
+            stripeCost: 153.00,
+            coinCost: 7650,
+            label: '15% OFF'
+        }
     },
 ];
 
-// 2. COIN PACKS (Rate: $1 = 50 Coins)
 const COIN_PACKS = [
     { id: 'handful', name: 'Handful of Coins', coins: 250, cost: 5, bonus: '' },
-    { id: 'bag', name: 'Bag of Coins', coins: 550, cost: 10, bonus: '+50 Free!', popular: true },
-    { id: 'chest', name: 'Chest of Coins', coins: 1200, cost: 20, bonus: '+200 Free!' },
+    { id: 'bag', name: 'Bag of Coins', coins: 550, cost: 10, bonus: '+50 Free! = 1$ Bonus', popular: true },
+    { id: 'chest', name: 'Chest of Coins', coins: 1200, cost: 20, bonus: '+200 Free! = 4$ Bonus' },
+    { id: 'handful', name: 'Handful of Coins', coins: 1500, cost: 26, bonus: '+200 Free! = 4$ Bonus' },
+    { id: 'bag', name: 'Bag of Coins', coins: 3000, cost: 54, bonus: '+300 Free! = 6$ Bonus', popular: true },
+    { id: 'chest', name: 'Chest of Coins', coins: 8000, cost: 153, bonus: '+350 Free! = 7$ Bonus' },
 ];
 
 const SettingsPage = () => {
@@ -72,13 +100,21 @@ const SettingsPage = () => {
   const [isUpgradeOpen, setIsUpgradeOpen] = useState(false); 
   const [selectedPortfolioId, setSelectedPortfolioId] = useState<string | null>(null); 
   
+  // Delete State
+  const [isDeleteOpen, setIsDeleteOpen] = useState(false);
+  const [deleteConfirmationName, setDeleteConfirmationName] = useState("");
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  // Upgrade Modal UI State
+  const [billingInterval, setBillingInterval] = useState<'monthly' | 'yearly'>('monthly');
+
   const [selectedTemplate, setSelectedTemplate] = useState<string>(PORTFOLIO_TEMPLATES[0].id);
   const [newSiteName, setNewSiteName] = useState("");
   const [isCreating, setIsCreating] = useState(false);
   const [processingPlan, setProcessingPlan] = useState<string | null>(null);
   const [isRedirecting, setIsRedirecting] = useState(false); 
   
-  // New Redeem State
+  // Redeem State
   const [redeemCode, setRedeemCode] = useState("");
   const [isRedeeming, setIsRedeeming] = useState(false);
 
@@ -112,16 +148,51 @@ const SettingsPage = () => {
     fetchData();
   }, [actorData.id]);
 
-  // --- ACTIONS ---
+  // --- HELPER: CALCULATE PRORATION ---
+  const calculateProration = (targetPlanId: string) => {
+    if (!selectedPortfolioId || !subscriptions[selectedPortfolioId]) return { cost: 0, isUpgrade: true, unusedValue: 0 };
 
-  const handleUpdateProfile = async () => {
-      if (!actorData?.id) return;
-      setIsSaving(true);
-      const { error } = await supabase.from('actors').update({ ActorName: profile.ActorName, bio: profile.bio }).eq('id', actorData.id);
-      if(error) alert("Error saving profile");
-      else alert("Profile updated!");
-      setIsSaving(false);
-  }
+    const currentSub = subscriptions[selectedPortfolioId];
+    if (currentSub.payment_method === 'stripe') return { cost: 0, isUpgrade: true, unusedValue: 0, isStripe: true };
+
+    const currentPlan = PLANS.find(p => p.id === currentSub.plan_id);
+    const targetPlan = PLANS.find(p => p.id === targetPlanId);
+    
+    if (!currentPlan || !targetPlan) return { cost: 0, isUpgrade: true, unusedValue: 0 };
+
+    const isUpgrade = targetPlan.tier > currentPlan.tier;
+    const isDowngrade = targetPlan.tier < currentPlan.tier;
+    const isSame = targetPlan.tier === currentPlan.tier;
+
+    const now = new Date();
+    const endDate = new Date(currentSub.current_period_end);
+    
+    if (now > endDate) return { cost: targetPlan[billingInterval].coinCost, isUpgrade: true, unusedValue: 0 };
+
+    const totalDuration = new Date(endDate).getTime() - new Date(currentSub.current_period_start).getTime();
+    const remainingDuration = endDate.getTime() - now.getTime();
+    const percentageRemaining = Math.max(0, remainingDuration / totalDuration);
+
+    const originalCost = currentPlan[billingInterval].coinCost; 
+    const unusedValue = Math.floor(originalCost * percentageRemaining);
+
+    let finalCost = targetPlan[billingInterval].coinCost;
+    
+    if (isUpgrade) {
+        finalCost = Math.max(0, finalCost - unusedValue); 
+    }
+
+    return { 
+        cost: finalCost, 
+        originalPrice: targetPlan[billingInterval].coinCost,
+        unusedValue, 
+        isUpgrade,
+        isDowngrade,
+        isSame
+    };
+  };
+
+  // --- ACTIONS ---
 
   const handleCreateSite = async () => {
       if (!newSiteName.trim()) { alert("Please enter a site name"); return; }
@@ -136,7 +207,7 @@ const SettingsPage = () => {
           actor_id: actorData.id,
           site_name: newSiteName,
           public_slug: uniqueSlug,
-          is_published: false,
+          is_published: false, 
           sections: template.sections,
           theme_config: { templateId: 'modern', primaryColor: 'violet', font: 'sans' }
       });
@@ -146,31 +217,103 @@ const SettingsPage = () => {
       setIsCreating(false);
   };
 
-  const handleBuyWithWallet = async (planId: string, cost: number, months: number) => {
+  const handleDeleteSite = async () => {
+    if (!selectedPortfolioId) return;
+    const site = portfolios.find(p => p.id === selectedPortfolioId);
+    
+    if (deleteConfirmationName !== site?.site_name) {
+        alert("Website name does not match. Please type it exactly.");
+        return;
+    }
+
+    setIsDeleting(true);
+    const { error } = await supabase.from('portfolios').delete().eq('id', selectedPortfolioId);
+    
+    if (error) {
+        alert("Failed to delete website: " + error.message);
+    } else {
+        alert("Website deleted successfully.");
+        setIsDeleteOpen(false);
+        setDeleteConfirmationName("");
+        fetchData();
+    }
+    setIsDeleting(false);
+  };
+
+  const handleUpdateProfile = async () => {
+      if (!actorData?.id) return;
+      setIsSaving(true);
+      const { error } = await supabase.from('actors').update({ ActorName: profile.ActorName, bio: profile.bio }).eq('id', actorData.id);
+      if(error) alert("Error saving profile");
+      else alert("Profile updated!");
+      setIsSaving(false);
+  };
+
+  // --- BUY / UPGRADE / DOWNGRADE LOGIC ---
+  const handleBuyWithWallet = async (plan: typeof PLANS[0]) => {
       if (!selectedPortfolioId || !actorData?.id) return;
-      if (walletBalance < cost) {
-          if(confirm(`Not enough Coins! You need ${cost} but have ${walletBalance}.\nGo to Top Up?`)) {
+      
+      const calc = calculateProration(plan.id);
+      const duration = billingInterval === 'monthly' ? 1 : 12;
+
+      // --- LOGIC A: DOWNGRADE ---
+      if (calc.isDowngrade) {
+          const sub = subscriptions[selectedPortfolioId];
+          const endDate = sub ? new Date(sub.current_period_end).toLocaleDateString() : 'cycle end';
+          if (!confirm(`Confirm Downgrade to ${plan.name}?\n\nChanges will take effect at the end of your current cycle (${endDate}).\nNo coins will be charged today.`)) return;
+          
+          setProcessingPlan(plan.id);
+          
+          // FIX: Simply use cancel_at_period_end and use metadata to store the intent
+          const { error } = await supabase.from('subscriptions').update({
+             cancel_at_period_end: true,
+             metadata: { ...sub?.metadata, next_plan_id: plan.id } 
+          }).eq('portfolio_id', selectedPortfolioId);
+          
+          if(error) {
+              alert("Error scheduling downgrade: " + error.message);
+          } else { 
+              alert("Downgrade scheduled! Your plan will switch after " + endDate); 
+              fetchData(); 
+              setIsUpgradeOpen(false); 
+          }
+          setProcessingPlan(null);
+          return;
+      }
+
+      // --- LOGIC B: UPGRADE / NEW PURCHASE ---
+      const costToPay = calc.cost || 0; // Ensure never null
+
+      if (walletBalance < costToPay) {
+          if(confirm(`Not enough Coins! You need ${costToPay} but have ${walletBalance}.\nGo to Top Up?`)) {
               setIsUpgradeOpen(false);
               setIsTopUpOpen(true);
           }
           return;
       }
       
-      if(!confirm(`Spend ${cost} Coins to upgrade?`)) return;
+      let confirmMsg = `Spend ${costToPay} Coins for ${duration} month(s) access?`;
+      if (calc.unusedValue > 0) {
+          confirmMsg = `Upgrade Proration:\nNew Plan: ${calc.originalPrice} coins\nUnused Credit: -${calc.unusedValue} coins\n----------------\nTotal Pay Now: ${costToPay} coins\n\nProceed?`;
+      }
+      
+      if(!confirm(confirmMsg)) return;
 
-      setProcessingPlan(planId);
+      setProcessingPlan(plan.id);
+      
+      // FIX: Changed p_cost to p_amount to fix "null value in column amount" error
       const { data, error } = await supabase.rpc('purchase_subscription_with_wallet', {
           p_actor_id: actorData.id,
           p_portfolio_id: selectedPortfolioId, 
-          p_plan_id: planId,
-          p_cost: cost,
-          p_duration_months: months
+          p_plan_id: plan.id,
+          p_amount: costToPay, // <-- UPDATED THIS PARAMETER NAME
+          p_duration_months: duration
       });
 
       if(error || (data && !data.success)) {
-          alert("Transaction Failed: " + (data?.message || error?.message));
+          alert("Transaction Failed: " + (data?.message || error?.message || "Unknown error"));
       } else {
-          alert("Success! Site upgraded.");
+          alert("Success! Plan activated.");
           fetchData(); 
           setIsUpgradeOpen(false);
       }
@@ -179,12 +322,20 @@ const SettingsPage = () => {
 
   const handleDirectStripe = async (plan: typeof PLANS[0]) => {
       if (!actorData?.id || !selectedPortfolioId) return;
+      const details = plan[billingInterval]; 
+
       setIsRedirecting(true);
       const { data, error } = await supabase.functions.invoke('create-checkout-session', {
           body: {
               mode: 'subscription',
-              priceId: plan.stripePriceId, 
-              metadata: { type: 'subscription', actor_id: actorData.id, portfolio_id: selectedPortfolioId, plan_id: plan.id },
+              priceId: details.stripePriceId, 
+              metadata: { 
+                  type: 'subscription', 
+                  actor_id: actorData.id, 
+                  portfolio_id: selectedPortfolioId, 
+                  plan_id: plan.id,
+                  interval: billingInterval
+              },
               successUrl: window.location.origin + '/dashboard/settings?success=true',
               cancelUrl: window.location.origin + '/dashboard/settings?canceled=true'
           }
@@ -193,15 +344,11 @@ const SettingsPage = () => {
       else window.location.href = data.url;
   };
 
-  // --- STRIPE CUSTOMER PORTAL (Manage existing sub) ---
   const handleManageStripeSub = async () => {
       if (!actorData?.id) return;
       setIsRedirecting(true);
-      // We assume you have a function 'create-portal-session'
       const { data, error } = await supabase.functions.invoke('create-portal-session', {
           body: {
-              // You might need to store stripe_customer_id in your actors table for this to work perfectly
-              // For now, we pass the return URL
               returnUrl: window.location.origin + '/dashboard/settings',
           }
       });
@@ -232,12 +379,10 @@ const SettingsPage = () => {
   const handleRedeemCode = async () => {
       if (!redeemCode.trim() || !actorData?.id) return;
       setIsRedeeming(true);
-      
       const { data, error } = await supabase.rpc('redeem_gift_code', {
           p_actor_id: actorData.id,
           p_code: redeemCode.trim()
       });
-
       if(error || (data && !data.success)) {
           alert("Redeem Failed: " + (data?.message || error?.message));
       } else {
@@ -248,11 +393,18 @@ const SettingsPage = () => {
       setIsRedeeming(false);
   };
 
+  // Helper to open delete dialog
+  const openDeleteDialog = (portfolioId: string) => {
+      setSelectedPortfolioId(portfolioId);
+      setDeleteConfirmationName("");
+      setIsDeleteOpen(true);
+  };
+
   if (loading) return <div className="flex h-96 items-center justify-center"><Loader2 className="animate-spin text-primary" /></div>;
 
   return (
     <div className="p-4 md:p-8 space-y-6 w-full max-w-5xl mx-auto">
-      {/* Header with Wallet Badge */}
+      {/* Header */}
       <div className="flex flex-col md:flex-row justify-between md:items-center gap-4 pt-20">
         <div>
             <h1 className="text-3xl font-bold tracking-tight">Settings & Billing</h1>
@@ -280,6 +432,18 @@ const SettingsPage = () => {
 
         {/* --- TAB 1: WEBSITES --- */}
         <TabsContent value="websites" className="space-y-6">
+            
+            <div className="bg-blue-50 border border-blue-200 text-blue-800 p-4 rounded-lg flex items-start gap-3">
+                <div className="p-2 bg-blue-100 rounded-full"><CalendarDays size={18} /></div>
+                <div>
+                    <h4 className="font-semibold text-sm">Free Trial Policy</h4>
+                    <p className="text-xs mt-1 leading-relaxed">
+                        All new websites start with a <strong>14-day free trial</strong>. 
+                        After 14 days, the website will become inactive unless you upgrade.
+                    </p>
+                </div>
+            </div>
+
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 <button className="border-2 border-dashed border-muted-foreground/20 hover:border-primary/50 hover:bg-muted/10 rounded-xl p-6 flex flex-col items-center justify-center gap-3 transition-all group h-[260px]" onClick={() => setIsCreateOpen(true)}>
                     <div className="p-3 bg-muted rounded-full group-hover:bg-primary/10 group-hover:text-primary transition-colors"><Plus size={24} /></div>
@@ -291,7 +455,6 @@ const SettingsPage = () => {
                     const isPro = sub && sub.status === 'active' && new Date(sub.current_period_end) > new Date();
                     const isStripe = sub?.payment_method === 'stripe';
                     
-                    // Determine Badge Color based on Plan
                     let badgeColor = "bg-primary";
                     if(sub?.plan_id === 'starter') badgeColor = "bg-blue-500";
                     if(sub?.plan_id === 'agency') badgeColor = "bg-purple-600";
@@ -305,7 +468,7 @@ const SettingsPage = () => {
                                         {isPro ? (
                                             <Badge className={cn("border-0 text-white", badgeColor)}>{sub.plan_id.toUpperCase()}</Badge>
                                         ) : (
-                                            <Badge variant="outline">Trial</Badge>
+                                            <Badge variant="outline" className="border-amber-500 text-amber-600 bg-amber-50">Trial</Badge>
                                         )}
                                     </div>
                                     <div className="flex gap-1">
@@ -328,30 +491,49 @@ const SettingsPage = () => {
                                             <span>Method:</span>
                                             <span className="uppercase text-[10px]">{sub.payment_method}</span>
                                         </div>
+                                        {sub.cancel_at_period_end && (
+                                            <div className="text-red-600 font-bold text-[10px] mt-1 text-center bg-red-50 p-1 rounded">
+                                                Cancels at Period End
+                                            </div>
+                                        )}
                                     </div>
                                 ) : (
-                                    <div className="text-xs text-muted-foreground bg-muted/30 p-3 rounded flex items-center justify-between">
-                                        <span>Trial Mode Active</span>
+                                    <div className="text-xs text-amber-800 bg-amber-50/50 border border-amber-100 p-3 rounded">
+                                        <div className="flex items-center gap-2 font-medium mb-1">
+                                            <AlertTriangle size={12} /> 14-Day Trial
+                                        </div>
+                                        <p className="opacity-80">Site goes inactive after trial.</p>
                                     </div>
                                 )}
                             </CardContent>
-                            <CardFooter className="pt-0 grid grid-cols-2 gap-2">
-                                <Button size="sm" variant="outline" asChild>
+                            <CardFooter className="pt-0 flex gap-2">
+                                <Button size="sm" variant="outline" className="flex-1" asChild>
                                     <a href={`/dashboard/portfolio?id=${site.id}`}><LayoutTemplate size={14} className="mr-2"/> Edit</a>
                                 </Button>
+                                
                                 {isPro && isStripe ? (
-                                    <Button size="sm" variant="secondary" onClick={handleManageStripeSub} disabled={isRedirecting}>
+                                    <Button size="sm" variant="secondary" className="flex-1" onClick={handleManageStripeSub} disabled={isRedirecting}>
                                         {isRedirecting ? <Loader2 className="w-3 h-3 animate-spin"/> : "Manage Plan"}
                                     </Button>
                                 ) : (
                                     <Button 
                                         size="sm" 
-                                        className={isPro ? "bg-amber-500 hover:bg-amber-600 text-white" : "bg-primary text-primary-foreground"}
+                                        className={cn("flex-1", isPro ? "bg-amber-500 hover:bg-amber-600 text-white" : "bg-primary text-primary-foreground")}
                                         onClick={() => { setSelectedPortfolioId(site.id); setIsUpgradeOpen(true); }}
                                     >
                                         {isPro ? "Manage Plan" : "Upgrade"}
                                     </Button>
                                 )}
+
+                                {/* Delete Button */}
+                                <Button 
+                                    size="icon" 
+                                    variant="ghost" 
+                                    className="h-9 w-9 text-red-400 hover:text-red-600 hover:bg-red-50"
+                                    onClick={() => openDeleteDialog(site.id)}
+                                >
+                                    <Trash2 size={16} />
+                                </Button>
                             </CardFooter>
                         </Card>
                     );
@@ -361,9 +543,7 @@ const SettingsPage = () => {
 
         <TabsContent value="history">
             <Card>
-                <CardHeader>
-                    <CardTitle>Transactions</CardTitle>
-                </CardHeader>
+                <CardHeader><CardTitle>Transactions</CardTitle></CardHeader>
                 <CardContent className="space-y-4">
                     {transactions.length === 0 ? ( <div className="text-center py-8 text-muted-foreground">No transactions found.</div> ) : (
                         transactions.map(tx => (
@@ -403,20 +583,18 @@ const SettingsPage = () => {
         </TabsContent>
       </Tabs>
 
-      {/* --- MODAL 1: TOP UP (With Redeem) --- */}
+      {/* --- TOP UP MODAL --- */}
       <Dialog open={isTopUpOpen} onOpenChange={setIsTopUpOpen}>
-          <DialogContent className="sm:max-w-[600px]">
+          <DialogContent className="sm:max-w-[850px]">
               <DialogHeader>
                   <DialogTitle className="flex items-center gap-2"><Coins className="text-amber-500"/> Top Up Wallet</DialogTitle>
                   <DialogDescription>Buy coins or redeem a gift code.</DialogDescription>
               </DialogHeader>
-              
               <Tabs defaultValue="packs" className="w-full">
                   <TabsList className="grid w-full grid-cols-2 mb-4">
                       <TabsTrigger value="packs">Buy Coins</TabsTrigger>
                       <TabsTrigger value="redeem">Redeem Code</TabsTrigger>
                   </TabsList>
-
                   <TabsContent value="packs" className="space-y-4">
                       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                           {COIN_PACKS.map(pack => (
@@ -433,7 +611,6 @@ const SettingsPage = () => {
                           ))}
                       </div>
                   </TabsContent>
-
                   <TabsContent value="redeem" className="space-y-4">
                       <div className="bg-muted/30 p-6 rounded-xl border flex flex-col items-center text-center gap-3">
                           <Gift size={32} className="text-primary/50" />
@@ -451,63 +628,148 @@ const SettingsPage = () => {
           </DialogContent>
       </Dialog>
 
-      {/* --- MODAL 2: UPGRADE SITE (Dual Pricing) --- */}
-      <Dialog open={isUpgradeOpen} onOpenChange={setIsUpgradeOpen}>
-          <DialogContent className="sm:max-w-[800px]">
+      {/* --- DELETE CONFIRMATION MODAL --- */}
+      <Dialog open={isDeleteOpen} onOpenChange={setIsDeleteOpen}>
+          <DialogContent className="sm:max-w-md">
               <DialogHeader>
-                  <DialogTitle>Upgrade Plan</DialogTitle>
-                  <DialogDescription>Save big by paying with UCP Coins.</DialogDescription>
+                  <DialogTitle className="text-destructive flex items-center gap-2"><AlertTriangle className="h-5 w-5"/> Delete Website</DialogTitle>
+                  <DialogDescription>
+                      This action cannot be undone. This will permanently delete your website and remove your data from our servers.
+                  </DialogDescription>
+              </DialogHeader>
+              
+              <div className="py-4">
+                  <div className="p-3 bg-destructive/10 border border-destructive/20 rounded-lg mb-4 text-sm text-destructive-foreground">
+                      <p className="font-bold">Warning:</p>
+                      The website <strong>{portfolios.find(p => p.id === selectedPortfolioId)?.site_name}</strong> will be lost forever.
+                  </div>
+                  <Label className="mb-2 block">To confirm, type the website name below:</Label>
+                  <Input 
+                      value={deleteConfirmationName} 
+                      onChange={e => setDeleteConfirmationName(e.target.value)} 
+                      placeholder={portfolios.find(p => p.id === selectedPortfolioId)?.site_name}
+                      className="border-destructive/30 focus-visible:ring-destructive"
+                  />
+              </div>
+
+              <DialogFooter>
+                  <Button variant="outline" onClick={() => setIsDeleteOpen(false)}>Cancel</Button>
+                  <Button variant="destructive" onClick={handleDeleteSite} disabled={isDeleting}>
+                      {isDeleting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} Delete Website
+                  </Button>
+              </DialogFooter>
+          </DialogContent>
+      </Dialog>
+
+      {/* --- UPGRADE MODAL --- */}
+      <Dialog open={isUpgradeOpen} onOpenChange={setIsUpgradeOpen}>
+          <DialogContent className="sm:max-w-[900px]">
+              <DialogHeader>
+                  <DialogTitle>Manage Plan</DialogTitle>
+                  <DialogDescription>Upgrade, downgrade, or extend your website access.</DialogDescription>
               </DialogHeader>
 
+              {/* Billing Toggle */}
+              <div className="flex justify-center mb-4">
+                  <div className="bg-muted p-1 rounded-lg flex gap-1">
+                      <button onClick={() => setBillingInterval('monthly')} className={cn("px-4 py-1.5 rounded-md text-sm font-medium transition-all", billingInterval === 'monthly' ? "bg-white shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground")}>Monthly</button>
+                      <button onClick={() => setBillingInterval('yearly')} className={cn("px-4 py-1.5 rounded-md text-sm font-medium transition-all flex items-center gap-2", billingInterval === 'yearly' ? "bg-white shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground")}>Yearly <span className="text-[10px] bg-green-100 text-green-700 px-1.5 rounded-full font-bold">SAVE UP TO 15%</span></button>
+                  </div>
+              </div>
+
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 py-4">
-                  {PLANS.map(plan => (
-                      <Card key={plan.id} className={cn("relative transition-all border-2 flex flex-col hover:border-primary", processingPlan === plan.id ? "opacity-50" : "")}>
-                          {plan.popular && <div className="absolute top-0 right-0 bg-primary text-primary-foreground text-[10px] px-2 py-1 font-bold rounded-bl">POPULAR</div>}
-                          <CardHeader className="pb-3">
-                              <CardTitle className="text-lg">{plan.name}</CardTitle>
-                              <div className="flex items-baseline gap-1 mt-1">
-                                  <span className="text-2xl font-bold">${plan.stripeCost}</span>
-                                  <span className="text-xs text-muted-foreground">/mo</span>
-                              </div>
-                          </CardHeader>
-                          <CardContent className="flex-grow">
-                              <div className="bg-amber-50 border border-amber-100 p-2 rounded mb-4 text-center">
-                                  <div className="text-xs text-amber-700 font-medium uppercase tracking-wider mb-1">Wallet Price</div>
-                                  <div className="flex items-center justify-center gap-1 text-amber-900 font-bold text-lg">
-                                      <Coins size={16} /> {plan.coinCost} <span className="text-xs font-normal">Coins</span>
+                  {PLANS.map(plan => {
+                      const details = plan[billingInterval];
+                      const proration = calculateProration(plan.id);
+                      const isCurrent = subscriptions[selectedPortfolioId || '']?.plan_id === plan.id;
+
+                      return (
+                          <Card key={plan.id} className={cn("relative transition-all border-2 flex flex-col", isCurrent ? "border-primary bg-primary/5" : "hover:border-primary/50", processingPlan === plan.id ? "opacity-50" : "")}>
+                              {plan.popular && <div className="absolute top-0 right-0 bg-primary text-primary-foreground text-[10px] px-2 py-1 font-bold rounded-bl">POPULAR</div>}
+                              
+                              <CardHeader className="pb-3">
+                                  <CardTitle className="text-lg flex justify-between items-center">
+                                      {plan.name}
+                                      {isCurrent && <Badge className="bg-primary/20 text-primary hover:bg-primary/20">Current</Badge>}
+                                  </CardTitle>
+                                  <div className="flex items-baseline gap-1 mt-1">
+                                      <span className="text-2xl font-bold">${details.stripeCost.toFixed(2)}</span>
+                                      <span className="text-xs text-muted-foreground">/{billingInterval === 'monthly' ? 'mo' : 'yr'}</span>
                                   </div>
-                              </div>
-                              <ul className="space-y-2 text-xs text-muted-foreground">
-                                  {plan.features.map(f => (
-                                      <li key={f} className="flex items-center gap-2"><Check size={12} className="text-green-500"/> {f}</li>
-                                  ))}
-                              </ul>
-                          </CardContent>
-                          <CardFooter className="flex flex-col gap-2 pt-0">
-                              <Button 
-                                  className="w-full bg-amber-500 hover:bg-amber-600 text-white border-0" 
-                                  onClick={() => handleBuyWithWallet(plan.id, plan.coinCost, plan.duration)}
-                                  disabled={!!processingPlan}
-                              >
-                                  {processingPlan === plan.id && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                                  Pay {plan.coinCost} Coins
-                              </Button>
-                              <Button 
-                                  variant="ghost" 
-                                  className="w-full text-xs h-8"
-                                  onClick={() => handleDirectStripe(plan)}
-                                  disabled={isRedirecting}
-                              >
-                                  {isRedirecting ? <Loader2 className="mr-2 h-3 w-3 animate-spin"/> : `Or Pay $${plan.stripeCost} via Card`}
-                              </Button>
-                          </CardFooter>
-                      </Card>
-                  ))}
+                              </CardHeader>
+                              
+                              <CardContent className="flex-grow">
+                                  <div className="bg-amber-50 border border-amber-100 p-2 rounded mb-4 text-center">
+                                      <div className="text-xs text-amber-700 font-medium uppercase tracking-wider mb-1">Wallet Price</div>
+                                      
+                                      {/* DYNAMIC PRICING DISPLAY */}
+                                      {proration.isUpgrade && proration.unusedValue > 0 ? (
+                                           <div className="flex flex-col">
+                                                <span className="text-xs text-muted-foreground line-through decoration-amber-500/50">{details.coinCost} Coins</span>
+                                                <div className="flex items-center justify-center gap-1 text-amber-900 font-bold text-lg">
+                                                    <Coins size={16} /> {proration.cost} <span className="text-xs font-normal">Coins (Prorated)</span>
+                                                </div>
+                                           </div>
+                                      ) : (
+                                          <div className="flex items-center justify-center gap-1 text-amber-900 font-bold text-lg">
+                                              <Coins size={16} /> {details.coinCost} <span className="text-xs font-normal">Coins</span>
+                                          </div>
+                                      )}
+                                  </div>
+
+                                  <ul className="space-y-2 text-xs text-muted-foreground">
+                                      {plan.features.map(f => (
+                                          <li key={f} className="flex items-center gap-2"><Check size={12} className="text-green-500"/> {f}</li>
+                                      ))}
+                                  </ul>
+                              </CardContent>
+
+                              <CardFooter className="flex flex-col gap-2 pt-0">
+                                  {isCurrent ? (
+                                      <Button className="w-full bg-muted text-muted-foreground cursor-not-allowed" disabled>Current Plan</Button>
+                                  ) : proration.isDowngrade ? (
+                                      // DOWNGRADE BUTTON
+                                      <Button 
+                                          className="w-full border-dashed border-2 bg-transparent text-muted-foreground hover:bg-muted" 
+                                          onClick={() => handleBuyWithWallet(plan)}
+                                          disabled={!!processingPlan}
+                                      >
+                                          {processingPlan === plan.id && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                          <Clock size={14} className="mr-2" /> Downgrade Later
+                                      </Button>
+                                  ) : (
+                                      <>
+                                        {/* UPGRADE BUTTON (COINS) */}
+                                        <Button 
+                                            className="w-full bg-amber-500 hover:bg-amber-600 text-white border-0" 
+                                            onClick={() => handleBuyWithWallet(plan)}
+                                            disabled={!!processingPlan}
+                                        >
+                                            {processingPlan === plan.id && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                            <ArrowUpRight size={14} className="mr-2" />
+                                            {proration.unusedValue > 0 ? `Pay ${proration.cost} Coins` : `Upgrade`}
+                                        </Button>
+
+                                        {/* FIXED: STRIPE BUTTON RESTORED */}
+                                        <Button 
+                                            variant="ghost" 
+                                            className="w-full text-xs h-8"
+                                            onClick={() => handleDirectStripe(plan)}
+                                            disabled={isRedirecting}
+                                        >
+                                            {isRedirecting ? <Loader2 className="mr-2 h-3 w-3 animate-spin"/> : `Or Pay $${details.stripeCost.toFixed(2)} via Card`}
+                                        </Button>
+                                      </>
+                                  )}
+                              </CardFooter>
+                          </Card>
+                      );
+                  })}
               </div>
           </DialogContent>
       </Dialog>
       
-      {/* Existing Create Modal code omitted for brevity but should remain */}
+      {/* Create Modal */}
       <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
           <DialogContent className="sm:max-w-[600px] max-h-[80vh] overflow-y-auto">
               <DialogHeader><DialogTitle>Create New Website</DialogTitle><DialogDescription>Choose a starting template.</DialogDescription></DialogHeader>
