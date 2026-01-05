@@ -7,21 +7,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Loader2, Globe, User, Plus, ExternalLink, LayoutTemplate, Check, CreditCard, ArrowUpRight, Coins, Gift, AlertTriangle, CalendarDays, Clock, Trash2, Sparkles, MessageCircle, Star } from 'lucide-react';
+import { Loader2, Globe, User, Plus, ExternalLink, LayoutTemplate, Check, CreditCard, ArrowUpRight, Coins, Gift, AlertTriangle, CalendarDays, Clock, Trash2, Star, Sparkles, Building2, MessageCircle } from 'lucide-react';
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { PORTFOLIO_TEMPLATES } from '../../lib/templates';
 import { cn } from "@/lib/utils";
-import { NotificationContainer, Notification } from '@/components/ui/NotificationToast';
-type PlanDuration = 1 | 3 | 6 | 12;
-// --- CONFIGURATION ---
+import { NotificationContainer, Notification } from '@/components/ui/NotificationToast'; // Update path if needed
 
-// Helper to get pricing easily
-const getPlanDetails = (planId: string, duration: number) => {
-    const plan = PLANS.find(p => p.id === planId);
-    // We cast 'duration' to the specific keys allowed in the pricing object
-    return plan?.pricing[duration as 1 | 3 | 6 | 12];
-};
+// --- CONFIGURATION ---
 
 const PLANS = [
     { 
@@ -29,12 +22,8 @@ const PLANS = [
         tier: 1, 
         name: 'Starter', 
         features: ['1 Website', 'Standard Support', 'UCP Branding'],
-        pricing: {
-            1:  { stripePriceId: 'price_starter_1m', stripeCost: 3.00, coinCost: 150, label: null }, // Increased slightly
-            3:  { stripePriceId: 'price_starter_3m', stripeCost: 8.50, coinCost: 425, label: '5% OFF' },
-            6:  { stripePriceId: 'price_starter_6m', stripeCost: 16.00, coinCost: 800, label: '10% OFF' },
-            12: { stripePriceId: 'price_STARTER_YEARLY', stripeCost: 28.50, coinCost: 1425, label: '20% OFF' }
-        }
+        monthly: { stripePriceId: 'price_1Sluys00hAkAJqU5VCvuFIet', stripeCost: 2.50, coinCost: 125, label: null },
+        yearly: { stripePriceId: 'price_STARTER_YEARLY', stripeCost: 28.50, coinCost: 1425, label: '5% OFF' }
     },
     { 
         id: 'pro', 
@@ -42,24 +31,16 @@ const PLANS = [
         name: 'Pro', 
         popular: true, 
         features: ['3 Websites', 'Custom Domain', 'No Branding', 'SEO Tools'],
-        pricing: {
-            1:  { stripePriceId: 'price_PRO_MONTHLY', stripeCost: 6.00, coinCost: 300, label: null }, // Increased from 250 to 300
-            3:  { stripePriceId: 'price_pro_3m', stripeCost: 17.00, coinCost: 850, label: '5% OFF' },
-            6:  { stripePriceId: 'price_pro_6m', stripeCost: 32.00, coinCost: 1600, label: '10% OFF' },
-            12: { stripePriceId: 'price_PRO_YEARLY', stripeCost: 54.00, coinCost: 2700, label: '25% OFF' }
-        }
+        monthly: { stripePriceId: 'price_PRO_MONTHLY', stripeCost: 5.00, coinCost: 250, label: null },
+        yearly: { stripePriceId: 'price_PRO_YEARLY', stripeCost: 54.00, coinCost: 2700, label: '10% OFF' }
     },
     { 
         id: 'agency', 
         tier: 3, 
         name: 'Agency', 
         features: ['Unlimited Sites', 'Priority Support', 'White Label', 'API Access'],
-        pricing: {
-            1:  { stripePriceId: 'price_AGENCY_MONTHLY', stripeCost: 18.00, coinCost: 900, label: null }, // Increased
-            3:  { stripePriceId: 'price_agency_3m', stripeCost: 51.00, coinCost: 2550, label: '5% OFF' },
-            6:  { stripePriceId: 'price_agency_6m', stripeCost: 95.00, coinCost: 4750, label: '12% OFF' },
-            12: { stripePriceId: 'price_AGENCY_YEARLY', stripeCost: 153.00, coinCost: 7650, label: '30% OFF' }
-        }
+        monthly: { stripePriceId: 'price_AGENCY_MONTHLY', stripeCost: 15.00, coinCost: 750, label: null },
+        yearly: { stripePriceId: 'price_AGENCY_YEARLY', stripeCost: 153.00, coinCost: 7650, label: '15% OFF' }
     },
 ];
 
@@ -96,8 +77,7 @@ const SettingsPage = () => {
   const [isDeleting, setIsDeleting] = useState(false);
 
   // Upgrade Modal UI State
-  // CHANGED: Instead of string 'monthly'|'yearly', we use number of months
-  const [billingDuration, setBillingDuration] = useState<1 | 3 | 6 | 12>(1);
+  const [billingInterval, setBillingInterval] = useState<'monthly' | 'yearly'>('monthly');
 
   const [selectedTemplate, setSelectedTemplate] = useState<string>(PORTFOLIO_TEMPLATES[0].id);
   const [newSiteName, setNewSiteName] = useState("");
@@ -109,8 +89,9 @@ const SettingsPage = () => {
   const [redeemCode, setRedeemCode] = useState("");
   const [isRedeeming, setIsRedeeming] = useState(false);
 
-  // Notification & Confirmation
+  // --- NEW: Notification State ---
   const [notifications, setNotifications] = useState<Notification[]>([]);
+  // --- NEW: Confirmation Dialog State ---
   const [confirmDialog, setConfirmDialog] = useState<{ isOpen: boolean; title: string; message: React.ReactNode; action: () => void; confirmText?: string; isDestructive?: boolean } | null>(null);
 
   const notify = (type: 'success' | 'error' | 'info', title: string, message?: string) => {
@@ -122,6 +103,7 @@ const SettingsPage = () => {
     setNotifications(prev => prev.filter(n => n.id !== id));
   };
   
+  // Helper to open custom confirmation dialog
   const openConfirmation = (title: string, message: React.ReactNode, action: () => void, confirmText = "Confirm", isDestructive = false) => {
       setConfirmDialog({ isOpen: true, title, message, action, confirmText, isDestructive });
   };
@@ -156,7 +138,7 @@ const SettingsPage = () => {
     fetchData();
   }, [actorData.id]);
 
-  // --- FIXED: CALCULATE PRORATION ---
+  // --- HELPER: CALCULATE PRORATION ---
   const calculateProration = (targetPlanId: string) => {
     if (!selectedPortfolioId || !subscriptions[selectedPortfolioId]) return { cost: 0, isUpgrade: true, unusedValue: 0 };
 
@@ -168,52 +150,35 @@ const SettingsPage = () => {
     
     if (!currentPlan || !targetPlan) return { cost: 0, isUpgrade: true, unusedValue: 0 };
 
-    // 1. Calculate how long the CURRENT subscription was for
-    const start = new Date(currentSub.current_period_start).getTime();
-    const end = new Date(currentSub.current_period_end).getTime();
-    const now = new Date().getTime();
+    const isUpgrade = targetPlan.tier > currentPlan.tier;
+    const isDowngrade = targetPlan.tier < currentPlan.tier;
+    const isSame = targetPlan.tier === currentPlan.tier;
+
+    const now = new Date();
+    const endDate = new Date(currentSub.current_period_end);
     
-    // Estimate months duration of the current plan to find original price paid
-    const daysDuration = Math.round((end - start) / (1000 * 60 * 60 * 24));
-    let currentDurationKey = 1;
-    if (daysDuration > 300) currentDurationKey = 12;
-    else if (daysDuration > 150) currentDurationKey = 6;
-    else if (daysDuration > 75) currentDurationKey = 3;
+    if (now > endDate) return { cost: targetPlan[billingInterval].coinCost, isUpgrade: true, unusedValue: 0 };
 
-    // 2. Logic to determine upgrade vs downgrade
-    // We consider it an upgrade if Tier is higher OR same tier but longer duration
-    const isHigherTier = targetPlan.tier > currentPlan.tier;
-    const isSameTier = targetPlan.tier === currentPlan.tier;
-    const isLongerDuration = billingDuration > currentDurationKey;
+    const totalDuration = new Date(endDate).getTime() - new Date(currentSub.current_period_start).getTime();
+    const remainingDuration = endDate.getTime() - now.getTime();
+    const percentageRemaining = Math.max(0, remainingDuration / totalDuration);
 
-    const isUpgrade = isHigherTier || (isSameTier && isLongerDuration);
-    const isDowngrade = !isUpgrade;
+    const originalCost = currentPlan[billingInterval].coinCost; 
+    const unusedValue = Math.floor(originalCost * percentageRemaining);
+
+    let finalCost = targetPlan[billingInterval].coinCost;
     
-    if (now > end) return { cost: targetPlan.pricing[billingDuration].coinCost, isUpgrade: true, unusedValue: 0 };
-
-    // 3. Calculate Unused Value based on what was ACTUALLY paid (Current Plan @ Current Duration)
-    const totalDurationMs = end - start;
-    const remainingDurationMs = end - now;
-    const percentageRemaining = Math.max(0, remainingDurationMs / totalDurationMs);
-
-    // FIX: Look up price based on the duration they HAVE, not the duration they want
-    const originalPaidCost = currentPlan.pricing[currentDurationKey as PlanDuration]?.coinCost || 0;
-    const unusedValue = Math.floor(originalPaidCost * percentageRemaining);
-
-    let finalCost = targetPlan.pricing[billingDuration].coinCost;
-    
-    // Only subtract unused value if upgrading
     if (isUpgrade) {
         finalCost = Math.max(0, finalCost - unusedValue); 
     }
 
     return { 
         cost: finalCost, 
-        originalPrice: targetPlan.pricing[billingDuration].coinCost,
+        originalPrice: targetPlan[billingInterval].coinCost,
         unusedValue, 
         isUpgrade,
         isDowngrade,
-        currentDurationKey // returning this to help UI logic
+        isSame
     };
   };
 
@@ -284,6 +249,7 @@ const SettingsPage = () => {
       if (!selectedPortfolioId || !actorData?.id) return;
       
       const calc = calculateProration(plan.id);
+      const duration = billingInterval === 'monthly' ? 1 : 12;
 
       // LOGIC A: DOWNGRADE
       if (calc.isDowngrade) {
@@ -334,12 +300,12 @@ const SettingsPage = () => {
           return;
       }
       
-      let message = <p className="text-sm text-muted-foreground">Spend <strong>{costToPay} Coins</strong> for <strong>{billingDuration} month(s)</strong> access?</p>;
+      let message = <p className="text-sm text-muted-foreground">Spend <strong>{costToPay} Coins</strong> for <strong>{duration} month(s)</strong> access?</p>;
       
       if (calc.unusedValue > 0) {
           message = (
               <div className="text-sm space-y-2 bg-muted/50 p-3 rounded-md">
-                  <div className="flex justify-between"><span>New Plan Cost ({billingDuration}m):</span><span>{calc.originalPrice}</span></div>
+                  <div className="flex justify-between"><span>New Plan Cost:</span><span>{calc.originalPrice}</span></div>
                   <div className="flex justify-between text-green-600"><span>Unused Credit:</span><span>-{calc.unusedValue}</span></div>
                   <div className="border-t pt-2 mt-2 flex justify-between font-bold"><span>Pay Now:</span><span>{costToPay} Coins</span></div>
               </div>
@@ -357,7 +323,7 @@ const SettingsPage = () => {
                   p_portfolio_id: selectedPortfolioId, 
                   p_plan_id: plan.id,
                   p_amount: costToPay,
-                  p_duration_months: billingDuration // Pass the correct months
+                  p_duration_months: duration
               });
 
               if(error || (data && !data.success)) { 
@@ -375,26 +341,13 @@ const SettingsPage = () => {
 
   const handleDirectStripe = async (plan: typeof PLANS[0]) => {
       if (!actorData?.id || !selectedPortfolioId) return;
-      const details = plan.pricing[billingDuration as PlanDuration];
-      
-      if(!details.stripePriceId) {
-          notify('error', "Unavailable", "This plan duration is not available via card yet.");
-          return;
-      }
-
+      const details = plan[billingInterval]; 
       setIsRedirecting(true);
       const { data, error } = await supabase.functions.invoke('create-checkout-session', {
           body: {
               mode: 'subscription',
               priceId: details.stripePriceId, 
-              metadata: { 
-                  type: 'subscription', 
-                  actor_id: actorData.id, 
-                  portfolio_id: selectedPortfolioId, 
-                  plan_id: plan.id, 
-                  interval: billingDuration === 12 ? 'yearly' : 'monthly',
-                  duration_months: billingDuration 
-              },
+              metadata: { type: 'subscription', actor_id: actorData.id, portfolio_id: selectedPortfolioId, plan_id: plan.id, interval: billingInterval },
               successUrl: window.location.origin + '/dashboard/settings?success=true',
               cancelUrl: window.location.origin + '/dashboard/settings?canceled=true'
           }
@@ -428,12 +381,24 @@ const SettingsPage = () => {
       else window.location.href = data.url;
   };
 
+  // --- WHATSAPP BANK TRANSFER HANDLER ---
   const handleBankTransfer = (pack: typeof COIN_PACKS[0]) => {
       if (!actorData?.ActorName) return;
+      
+      // FIX: Use profile.email or cast to avoid TS error
       const userEmail = profile.email || (actorData as any).email || 'No Email';
-      const message = `Hello, I would like to purchase the "${pack.name}" (${pack.coins} Coins) for $${pack.cost} via Bank Transfer.\n\nMy Details:\nName: ${actorData.ActorName}\nEmail: ${userEmail} (ID: ${actorData.id})\n\nPlease provide the bank details.`;
+
+      const message = `Hello, I would like to purchase the "${pack.name}" (${pack.coins} Coins) for $${pack.cost} via Bank Transfer.
+      
+My Details:
+Name: ${actorData.ActorName}
+Email: ${userEmail} (ID: ${actorData.id})
+
+Please provide the bank details.`;
+
       const encodedMessage = encodeURIComponent(message);
       const whatsappUrl = `https://wa.me/212695121176?text=${encodedMessage}`;
+      
       window.open(whatsappUrl, '_blank');
   };
 
@@ -446,6 +411,7 @@ const SettingsPage = () => {
       setIsRedeeming(false);
   };
 
+  // Helper to open delete dialog
   const openDeleteDialog = (portfolioId: string) => {
       setSelectedPortfolioId(portfolioId);
       setDeleteConfirmationName("");
@@ -457,14 +423,17 @@ const SettingsPage = () => {
   return (
     <div className="p-4 md:p-8 space-y-8 w-full max-w-6xl mx-auto pb-24 relative">
       
+      {/* --- NOTIFICATION CONTAINER --- */}
       <NotificationContainer notifications={notifications} removeNotification={removeNotification} />
 
+      {/* Header - Stretched Balance on Mobile */}
       <div className="flex flex-col md:flex-row justify-between md:items-center gap-6 pt-20">
         <div className="space-y-1">
             <h1 className="text-3xl md:text-4xl font-black tracking-tight text-foreground">Settings & Billing</h1>
             <p className="text-muted-foreground text-lg">Manage your digital presence and assets.</p>
         </div>
         
+        {/* Wallet Badge (Responsive) */}
         <div className="w-full md:w-auto flex items-center justify-between gap-3 bg-gradient-to-r from-amber-100 to-orange-50 p-2 pl-4 rounded-xl border border-amber-200/50 shadow-sm transition-transform hover:scale-[1.02]">
             <div className="flex flex-col items-start mr-2">
                 <span className="text-[10px] text-amber-600/80 uppercase font-bold tracking-widest leading-none mb-1">Balance</span>
@@ -477,6 +446,7 @@ const SettingsPage = () => {
       </div>
 
       <Tabs defaultValue="websites" className="space-y-8">
+        {/* Scrollable Tabs List for Mobile */}
         <div className="w-full overflow-x-auto pb-2 -mb-2">
             <TabsList className="inline-flex w-auto p-1 bg-muted/50 rounded-xl">
                 <TabsTrigger value="websites" className="gap-2 px-6 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:text-foreground"><Globe size={16}/> My Websites</TabsTrigger>
@@ -500,6 +470,7 @@ const SettingsPage = () => {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {/* Create New Card */}
                 <button 
                     className="border-2 border-dashed border-muted-foreground/20 hover:border-primary/50 hover:bg-primary/5 rounded-2xl p-6 flex flex-col items-center justify-center gap-4 transition-all group min-h-[280px]" 
                     onClick={() => setIsCreateOpen(true)}
@@ -561,10 +532,10 @@ const SettingsPage = () => {
                                     </div>
                                 ) : (
                                     <div className="text-sm text-amber-800 bg-amber-50 p-4 rounded-xl border border-amber-100 flex flex-col gap-1">
-                                            <div className="flex items-center gap-2 font-bold text-amber-700">
-                                                <AlertTriangle size={14} /> 14-Day Trial
-                                            </div>
-                                            <p className="opacity-80 text-xs">This site will become inactive when the trial expires.</p>
+                                        <div className="flex items-center gap-2 font-bold text-amber-700">
+                                            <AlertTriangle size={14} /> 14-Day Trial
+                                        </div>
+                                        <p className="opacity-80 text-xs">This site will become inactive when the trial expires.</p>
                                     </div>
                                 )}
                             </CardContent>
@@ -579,7 +550,7 @@ const SettingsPage = () => {
                                         className={cn("w-full font-bold shadow-sm transition-all", isPro ? "bg-amber-500 hover:bg-amber-600 text-white hover:scale-[1.02]" : "bg-primary hover:bg-primary/90 text-primary-foreground hover:scale-[1.02]")}
                                         onClick={() => { setSelectedPortfolioId(site.id); setIsUpgradeOpen(true); }}
                                     >
-                                        {isPro ? "Extend / Upgrade" : "Upgrade Now"}
+                                        {isPro ? "Extend / Manage" : "Upgrade Now"}
                                     </Button>
                                 )}
 
@@ -641,31 +612,33 @@ const SettingsPage = () => {
       </Tabs>
 
       {/* --- CUSTOM CONFIRMATION DIALOG --- */}
-        <Dialog open={!!confirmDialog} onOpenChange={(open) => !open && setConfirmDialog(null)}>
-            <DialogContent className="sm:max-w-md">
-                <DialogHeader>
-                    <DialogTitle>{confirmDialog?.title}</DialogTitle>
-                    <DialogDescription asChild>
-                      <div className="text-sm text-muted-foreground">
-                        {confirmDialog?.message}
-                      </div>
-                    </DialogDescription>
-                </DialogHeader>
-                <DialogFooter>
-                    <Button variant="outline" onClick={() => setConfirmDialog(null)}>Cancel</Button>
-                    <Button variant={confirmDialog?.isDestructive ? "destructive" : "default"} onClick={confirmDialog?.action}>
-                        {confirmDialog?.confirmText || "Confirm"}
-                    </Button>
-                </DialogFooter>
-            </DialogContent>
-        </Dialog>
+<Dialog open={!!confirmDialog} onOpenChange={(open) => !open && setConfirmDialog(null)}>
+    <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+            <DialogTitle>{confirmDialog?.title}</DialogTitle>
+            {/* FIX: Use 'asChild' and wrap in a div instead of using 'component="div"' */}
+            <DialogDescription asChild>
+              <div className="text-sm text-muted-foreground">
+                {confirmDialog?.message}
+              </div>
+            </DialogDescription>
+        </DialogHeader>
+        <DialogFooter>
+            <Button variant="outline" onClick={() => setConfirmDialog(null)}>Cancel</Button>
+            <Button variant={confirmDialog?.isDestructive ? "destructive" : "default"} onClick={confirmDialog?.action}>
+                {confirmDialog?.confirmText || "Confirm"}
+            </Button>
+        </DialogFooter>
+    </DialogContent>
+</Dialog>
 
-      {/* --- TOP UP MODAL (GENSHIN STYLE) --- */}
+      {/* --- TOP UP MODAL (GENSHIN STYLE + BANK TRANSFER) --- */}
       <Dialog open={isTopUpOpen} onOpenChange={setIsTopUpOpen}>
           <DialogContent className="sm:max-w-[950px] p-0 overflow-hidden bg-zinc-50 dark:bg-zinc-900 border-none shadow-2xl rounded-2xl max-h-[90vh]">
               <Tabs defaultValue="packs" className="w-full">
                   
                   <div className="p-4 md:p-8 space-y-6">
+                      {/* HEADER + TABS TRIGGER */}
                       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                           <div className="space-y-1">
                               <DialogTitle className="text-2xl font-black tracking-tight flex items-center gap-2">
@@ -679,9 +652,11 @@ const SettingsPage = () => {
                           </TabsList>
                       </div>
 
+                      {/* CONTENT */}
                       <TabsContent value="packs" className="mt-0">
                           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6 max-h-[55vh] overflow-y-auto pr-2 pb-4 custom-scrollbar">
                               {COIN_PACKS.map(pack => {
+                                  // --- GENSHIN STYLE STYLING LOGIC ---
                                   let bgGradient = "from-slate-800 to-slate-900";
                                   let borderColor = "border-slate-600";
                                   let glowColor = "bg-slate-500/20";
@@ -714,8 +689,10 @@ const SettingsPage = () => {
                                           borderColor,
                                           "bg-gradient-to-br", bgGradient
                                       )}>
+                                          {/* Shine Effect */}
                                           <div className="absolute inset-0 bg-gradient-to-tr from-white/0 via-white/5 to-white/0 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
                                           
+                                          {/* Header: Stars */}
                                           <div className="p-3 flex justify-between items-start relative z-10">
                                               <div className="flex gap-0.5">
                                                   {[...Array(pack.rarity)].map((_, i) => (
@@ -729,6 +706,7 @@ const SettingsPage = () => {
                                               )}
                                           </div>
 
+                                          {/* Icon Center */}
                                           <div className="flex-grow flex flex-col items-center justify-center py-4 relative">
                                               <div className={cn("absolute inset-0 blur-3xl rounded-full", glowColor)} />
                                               <div className="relative z-10 p-4 bg-black/20 rounded-full border border-white/10 backdrop-blur-sm group-hover:scale-110 transition-transform duration-500">
@@ -738,6 +716,7 @@ const SettingsPage = () => {
                                               {pack.bonus && <p className={cn("text-xs font-medium opacity-80 relative z-10", textColor)}>{pack.bonus}</p>}
                                           </div>
 
+                                          {/* Footer: Price & Bank Option */}
                                           <div className="p-4 bg-black/40 backdrop-blur-md border-t border-white/10 relative z-10 space-y-2">
                                               <Button 
                                                   className="w-full bg-white text-black hover:bg-white/90 font-bold h-10 shadow-lg"
@@ -747,6 +726,7 @@ const SettingsPage = () => {
                                                   {isRedirecting ? <Loader2 className="w-4 h-4 animate-spin"/> : `Pay $${pack.cost.toFixed(2)}`}
                                               </Button>
                                               
+                                              {/* Bank Transfer for Packs >= 550 Coins */}
                                               {pack.coins >= 550 && (
                                                   <Button 
                                                       variant="ghost" 
@@ -816,58 +796,38 @@ const SettingsPage = () => {
 
       {/* --- UPGRADE MODAL --- */}
       <Dialog open={isUpgradeOpen} onOpenChange={setIsUpgradeOpen}>
-          <DialogContent className="sm:max-w-[1000px] max-h-[90vh] overflow-y-auto">
+          <DialogContent className="sm:max-w-[900px] max-h-[90vh] overflow-y-auto">
               <DialogHeader>
                   <DialogTitle className="text-2xl font-bold">Manage Plan</DialogTitle>
-                  <DialogDescription>Choose a duration and upgrade to unlock features.</DialogDescription>
+                  <DialogDescription>Upgrade to unlock more features.</DialogDescription>
               </DialogHeader>
 
-              {/* Billing Cycle Selector */}
+              {/* Billing Toggle */}
               <div className="flex justify-center mb-6 mt-2">
-                  <div className="bg-muted p-1 rounded-xl flex gap-1 border">
-                      {[1, 3, 6, 12].map(duration => {
-                          const labels: any = { 1: 'Monthly', 3: '3 Mos', 6: '6 Mos', 12: 'Yearly' };
-                          const isActive = billingDuration === duration;
-                          return (
-                            <button 
-                                key={duration}
-                                onClick={() => setBillingDuration(duration as any)} 
-                                className={cn(
-                                    "px-4 md:px-6 py-2 rounded-lg text-sm font-bold transition-all flex items-center gap-2", 
-                                    isActive ? "bg-white shadow text-foreground" : "text-muted-foreground hover:text-foreground"
-                                )}
-                            >
-                                {labels[duration]}
-                                {duration === 12 && <span className="hidden md:inline-block text-[10px] bg-green-500 text-white px-1.5 py-0.5 rounded-full shadow-sm">SAVE 30%</span>}
-                            </button>
-                          )
-                      })}
+                  <div className="bg-muted p-1.5 rounded-xl flex gap-1 border">
+                      <button onClick={() => setBillingInterval('monthly')} className={cn("px-6 py-2 rounded-lg text-sm font-bold transition-all", billingInterval === 'monthly' ? "bg-white shadow text-foreground" : "text-muted-foreground hover:text-foreground")}>Monthly</button>
+                      <button onClick={() => setBillingInterval('yearly')} className={cn("px-6 py-2 rounded-lg text-sm font-bold transition-all flex items-center gap-2", billingInterval === 'yearly' ? "bg-white shadow text-foreground" : "text-muted-foreground hover:text-foreground")}>Yearly <span className="text-[10px] bg-green-500 text-white px-1.5 py-0.5 rounded-full shadow-sm">SAVE 15%</span></button>
                   </div>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pb-4">
                   {PLANS.map(plan => {
-                      const details = plan.pricing[billingDuration as PlanDuration];
+                      const details = plan[billingInterval];
                       const proration = calculateProration(plan.id);
-                      const isCurrentPlanId = subscriptions[selectedPortfolioId || '']?.plan_id === plan.id;
-                      
-                      // Fix: Only show "Active Plan" if plan ID matches AND duration logic matches 
-                      // (If they have 1 month, but click 12 months, it should not show Active, it should allow upgrade)
-                      const isExactlyCurrent = isCurrentPlanId && billingDuration === proration.currentDurationKey;
+                      const isCurrent = subscriptions[selectedPortfolioId || '']?.plan_id === plan.id;
 
                       return (
-                          <Card key={plan.id} className={cn("relative transition-all border-2 flex flex-col overflow-hidden", isExactlyCurrent ? "border-primary bg-primary/5 shadow-md scale-[1.02]" : "hover:border-primary/50 hover:shadow-sm", processingPlan === plan.id ? "opacity-50" : "")}>
+                          <Card key={plan.id} className={cn("relative transition-all border-2 flex flex-col overflow-hidden", isCurrent ? "border-primary bg-primary/5 shadow-md scale-[1.02]" : "hover:border-primary/50 hover:shadow-sm", processingPlan === plan.id ? "opacity-50" : "")}>
                               {plan.popular && <div className="absolute top-0 right-0 bg-primary text-primary-foreground text-[10px] px-3 py-1 font-bold rounded-bl-xl shadow-sm">POPULAR</div>}
                               
                               <CardHeader className="pb-4">
                                   <CardTitle className="text-xl font-bold flex justify-between items-center">
                                       {plan.name}
-                                      {isExactlyCurrent && <Badge className="bg-primary/20 text-primary hover:bg-primary/20 pointer-events-none">Active</Badge>}
+                                      {isCurrent && <Badge className="bg-primary/20 text-primary hover:bg-primary/20 pointer-events-none">Current</Badge>}
                                   </CardTitle>
                                   <div className="flex items-baseline gap-1 mt-2">
                                       <span className="text-3xl font-black">${details.stripeCost.toFixed(2)}</span>
-                                      <span className="text-sm text-muted-foreground font-medium"> total</span>
-                                      {details.label && <span className="ml-2 text-xs font-bold text-green-600 bg-green-100 px-2 py-0.5 rounded-full">{details.label}</span>}
+                                      <span className="text-sm text-muted-foreground font-medium">/{billingInterval === 'monthly' ? 'mo' : 'yr'}</span>
                                   </div>
                               </CardHeader>
                               
@@ -899,8 +859,8 @@ const SettingsPage = () => {
                               </CardContent>
 
                               <CardFooter className="flex flex-col gap-3 pt-2">
-                                  {isExactlyCurrent ? (
-                                      <Button className="w-full bg-muted text-muted-foreground cursor-not-allowed font-bold" disabled>Current Plan</Button>
+                                  {isCurrent ? (
+                                      <Button className="w-full bg-muted text-muted-foreground cursor-not-allowed font-bold" disabled>Active Plan</Button>
                                   ) : proration.isDowngrade ? (
                                       <Button 
                                           className="w-full border-dashed border-2 bg-transparent text-muted-foreground hover:bg-muted hover:text-foreground font-semibold" 
@@ -912,23 +872,23 @@ const SettingsPage = () => {
                                       </Button>
                                   ) : (
                                       <>
-                                          <Button 
-                                              className="w-full bg-amber-500 hover:bg-amber-600 text-white border-0 font-bold shadow-sm hover:shadow-md transition-all" 
-                                              onClick={() => handleBuyWithWallet(plan)}
-                                              disabled={!!processingPlan}
-                                          >
-                                              {processingPlan === plan.id ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles size={16} className="mr-2 fill-white/20" />}
-                                              {proration.unusedValue > 0 ? `Pay ${proration.cost} Coins` : `Upgrade with Coins`}
-                                          </Button>
+                                        <Button 
+                                            className="w-full bg-amber-500 hover:bg-amber-600 text-white border-0 font-bold shadow-sm hover:shadow-md transition-all" 
+                                            onClick={() => handleBuyWithWallet(plan)}
+                                            disabled={!!processingPlan}
+                                        >
+                                            {processingPlan === plan.id ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles size={16} className="mr-2 fill-white/20" />}
+                                            {proration.unusedValue > 0 ? `Pay ${proration.cost} Coins` : `Upgrade with Coins`}
+                                        </Button>
 
-                                          <Button 
-                                              variant="ghost" 
-                                              className="w-full text-xs h-9 text-muted-foreground hover:text-foreground"
-                                              onClick={() => handleDirectStripe(plan)}
-                                              disabled={isRedirecting}
-                                          >
-                                              {isRedirecting ? <Loader2 className="mr-2 h-3 w-3 animate-spin"/> : `Or Pay $${details.stripeCost.toFixed(2)} via Card`}
-                                          </Button>
+                                        <Button 
+                                            variant="ghost" 
+                                            className="w-full text-xs h-9 text-muted-foreground hover:text-foreground"
+                                            onClick={() => handleDirectStripe(plan)}
+                                            disabled={isRedirecting}
+                                        >
+                                            {isRedirecting ? <Loader2 className="mr-2 h-3 w-3 animate-spin"/> : `Or Pay $${details.stripeCost.toFixed(2)} via Card`}
+                                        </Button>
                                       </>
                                   )}
                               </CardFooter>
