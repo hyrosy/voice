@@ -254,22 +254,31 @@ const PortfolioBuilderPage = () => {
 
   const handleAddDomain = async () => {
     if(!siteIdentity.customDomain) return;
+    
+    const cleanDomain = siteIdentity.customDomain
+        .replace(/^https?:\/\//, '')
+        .replace(/\/$/, '')
+        .toLowerCase();
+
     setIsCheckingDomain(true);
     
-    // 1. Call our Edge Function
     const { data, error } = await supabase.functions.invoke('manage-domains', {
         body: { 
             action: 'add', 
-            domain: siteIdentity.customDomain,
+            domain: cleanDomain, 
             portfolioId: activePortfolioId 
         }
     });
 
-    if(error || data.error) {
-        alert("Error adding domain: " + (error?.message || data?.error));
+    // 1. IMPROVED ERROR HANDLING
+    if(error || (data && data.error)) {
+        console.error("Domain Error:", error || data);
+        // Show the actual text from Vercel (e.g., "Domain is already in use")
+        alert(`Could not add domain:\n${data?.error || error?.message}`);
     } else {
-        setActiveDomain(siteIdentity.customDomain);
-        checkDomainStatus(siteIdentity.customDomain);
+        setSiteIdentity(prev => ({...prev, customDomain: cleanDomain}));
+        setActiveDomain(cleanDomain);
+        checkDomainStatus(cleanDomain);
     }
     setIsCheckingDomain(false);
 };
@@ -785,7 +794,6 @@ const handleRemoveDomain = async () => {
                 <TabsContent value="domains" className="space-y-4 py-4">
                   <div className="space-y-4">
                       
-                      {/* Header / Lock Status */}
                       <div className="flex justify-between items-center">
                           <Label>Custom Domain</Label>
                           {!limits.canConnectDomain && (
@@ -795,7 +803,6 @@ const handleRemoveDomain = async () => {
                           )}
                       </div>
 
-                      {/* Input Area */}
                       {!activeDomain ? (
                           <div className="flex gap-2">
                               <div className="relative flex-grow">
@@ -816,11 +823,11 @@ const handleRemoveDomain = async () => {
                               </Button>
                           </div>
                       ) : (
-                          // Active Domain View
                           <div className="bg-muted/30 border rounded-xl p-4 space-y-4">
                               <div className="flex items-center justify-between">
                                   <div className="flex items-center gap-2">
-                                      {domainStatus?.verified ? (
+                                      {/* ONLY Show Green Check if Verified AND Configured */}
+                                      {(domainStatus?.verified && domainStatus?.configured) ? (
                                           <CheckCircle2 className="text-green-500 h-5 w-5" />
                                       ) : (
                                           <Loader2 className="text-amber-500 h-5 w-5 animate-spin" />
@@ -832,67 +839,81 @@ const handleRemoveDomain = async () => {
                                   </Button>
                               </div>
 
-                              {/* DNS Instructions */}
-                                {/* DNS Instructions */}
-                              {!domainStatus?.verified && (
+                              {/* LOGIC FIX: Show Instructions if EITHER is false */}
+                              {(!domainStatus?.verified || !domainStatus?.configured) && (
                                   <div className="space-y-3 text-sm">
-                                          <div className="p-3 bg-background border rounded-lg space-y-3">
+                                      <div className="p-3 bg-background border rounded-lg space-y-3">
                                           <div className="flex items-start gap-2">
                                               <div className="p-1 bg-blue-100 text-blue-600 rounded mt-0.5"><Zap size={12} fill="currentColor"/></div>
                                               <div className="space-y-1">
                                                   <p className="font-semibold text-xs uppercase text-muted-foreground">Configuration Required</p>
+                                                  
+                                                  {/* Detailed Status Text */}
+                                                  {!domainStatus?.verified ? (
+                                                      <p className="text-amber-600 font-bold text-xs">Domain Ownership Not Verified</p>
+                                                  ) : (
+                                                      <p className="text-amber-600 font-bold text-xs">
+                                                          Ownership Verified • <span className="underline">Waiting for DNS Record</span>
+                                                      </p>
+                                                  )}
+
                                                   <p className="text-muted-foreground text-xs">
-                                                      Log in to your domain provider (GoDaddy, Namecheap, etc) and add these <strong>2 records</strong>:
+                                                      Log in to your domain provider and add these <strong>2 records</strong>:
                                                   </p>
                                               </div>
                                           </div>
                                           
-                                          {/* Record 1: A Record */}
+                                          {/* A Record */}
                                           <div className="grid grid-cols-[0.5fr_1fr_2fr] gap-2 font-mono text-xs items-center bg-muted/50 p-2 rounded">
-                                              <div className="font-bold">Type</div>
-                                              <div className="font-bold">Name</div>
-                                              <div className="font-bold text-right">Value</div>
-                                              
-                                              <div className="bg-white border px-1.5 py-0.5 rounded text-center">A</div>
+                                              <div className="bg-white border px-1.5 py-0.5 rounded text-center font-bold">A</div>
                                               <div className="text-muted-foreground">@</div>
-                                              <div className="text-right select-all cursor-pointer" onClick={() => navigator.clipboard.writeText('76.76.21.21')}>
+                                              <div className="text-right select-all cursor-pointer font-medium" onClick={() => navigator.clipboard.writeText('76.76.21.21')}>
                                                   76.76.21.21
                                               </div>
                                           </div>
 
-                                          {/* Record 2: CNAME */}
+                                          {/* CNAME Record */}
                                           <div className="grid grid-cols-[0.5fr_1fr_2fr] gap-2 font-mono text-xs items-center bg-muted/50 p-2 rounded">
-                                              <div className="bg-white border px-1.5 py-0.5 rounded text-center">CNAME</div>
+                                              <div className="bg-white border px-1.5 py-0.5 rounded text-center font-bold">CNAME</div>
                                               <div className="text-muted-foreground">www</div>
-                                              <div className="text-right select-all cursor-pointer" onClick={() => navigator.clipboard.writeText('cname.vercel-dns.com')}>
+                                              <div className="text-right select-all cursor-pointer font-medium" onClick={() => navigator.clipboard.writeText('cname.vercel-dns.com')}>
                                                   cname.vercel-dns.com
                                               </div>
                                           </div>
-                                          </div>
-                                          
-                                          <Button 
-                                              size="sm" 
-                                              variant="outline" 
-                                              className="w-full gap-2"
-                                              onClick={() => checkDomainStatus(activeDomain)}
-                                              disabled={isCheckingDomain}
-                                          >
-                                              {isCheckingDomain ? <Loader2 className="h-3 w-3 animate-spin"/> : <RefreshCw className="h-3 w-3"/>}
-                                              Verify Connection
-                                          </Button>
+                                      </div>
+                                      
+                                      <Button 
+                                          size="sm" 
+                                          variant="outline" 
+                                          className="w-full gap-2"
+                                          onClick={() => checkDomainStatus(activeDomain)}
+                                          disabled={isCheckingDomain}
+                                      >
+                                          {isCheckingDomain ? <Loader2 className="h-3 w-3 animate-spin"/> : <RefreshCw className="h-3 w-3"/>}
+                                          Refresh Status
+                                      </Button>
+                                      
+                                      <p className="text-[10px] text-center text-muted-foreground">
+                                          DNS updates can take 5 minutes to 24 hours to propagate.
+                                      </p>
                                   </div>
                               )}
 
-                              {domainStatus?.verified && (
-                                  <div className="flex items-center gap-2 text-sm text-green-600 bg-green-500/10 p-2 rounded-lg">
-                                      <CheckCircle2 size={14} /> 
-                                      <span>Domain Active & SSL Secured</span>
+                              {/* Success View */}
+                              {domainStatus?.verified && domainStatus?.configured && (
+                                  <div className="flex flex-col gap-2">
+                                      <div className="flex items-center gap-2 text-sm text-green-600 bg-green-500/10 p-3 rounded-lg border border-green-500/20">
+                                          <CheckCircle2 size={16} /> 
+                                          <span className="font-medium">Domain Active & SSL Secured</span>
+                                      </div>
+                                      <p className="text-[11px] text-muted-foreground px-1">
+                                          Your site is live at <a href={`https://${activeDomain}`} target="_blank" rel="noreferrer" className="underline font-bold text-primary">https://{activeDomain}</a>
+                                      </p>
                                   </div>
                               )}
                           </div>
                       )}
 
-                      {/* Upgrade Prompt */}
                       {!limits.canConnectDomain && (
                           <Button 
                               variant="outline" 
