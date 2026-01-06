@@ -4,10 +4,12 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label"; 
-import { ShoppingBag, Eye, Minus, Plus, MessageCircle, ArrowRight, ChevronLeft, MapPin, Phone, User, ExternalLink, ChevronRight, FileText, CheckCircle2, Loader2 } from 'lucide-react';
+import { ShoppingBag, Eye, Minus, Plus, MessageCircle, ArrowRight, ChevronLeft, MapPin, Phone, User, ExternalLink, ChevronRight as ChevronRightIcon, FileText, CheckCircle2, Loader2 } from 'lucide-react';
 import { cn } from "@/lib/utils";
 import { ProductDetailModal, Product } from './components/ProductDetailModal';
 import { supabase } from '@/supabaseClient'; 
+// 1. Import Analytics
+import { trackEvent } from '../../lib/analytics';
 
 // --- HELPER: Parse Variants String ---
 const parseVariants = (raw: string) => {
@@ -17,14 +19,13 @@ const parseVariants = (raw: string) => {
         if (!name || !opts) return null;
         return {
             name: name.trim(),
-            options: opts.trim() // Keep as string to match Editor format
+            options: opts.trim() 
         };
     }).filter(Boolean);
 };
 
 // --- COMPONENT: EMBEDDED SPOTLIGHT CHECKOUT ---
-const SpotlightCheckout = ({ product, actorId }: { product: any, actorId?: string }) => {
-    // STATE
+const SpotlightCheckout = ({ product, actorId, portfolioId }: { product: any, actorId?: string, portfolioId?: string }) => {
     const [step, setStep] = useState<'details' | 'form' | 'success'>('details');
     const [quantity, setQuantity] = useState(1);
     const [selectedVariants, setSelectedVariants] = useState<Record<string, string>>({});
@@ -34,17 +35,18 @@ const SpotlightCheckout = ({ product, actorId }: { product: any, actorId?: strin
 
     const images = product.images?.length ? product.images : (product.image ? [product.image] : []);
     
-    // LOGIC: Use 'whatsapp' as default if not set
     const actionType = product.actionType || 'whatsapp';
     const variants = product.variants || parseVariants(product.variantsRaw);
 
-    // --- GALLERY NAVIGATION ---
     const nextImage = () => setActiveImgIndex(prev => (prev + 1) % images.length);
     const prevImage = () => setActiveImgIndex(prev => (prev - 1 + images.length) % images.length);
 
     const handleMainAction = () => {
         // A. IF DIRECT LINK
         if (actionType === 'link') {
+            // 2. Track Click
+            if (actorId) trackEvent(actorId, 'shop_click', { product_name: product.title, portfolio_id: portfolioId });
+            
             const url = product.checkoutUrl || '#';
             window.open(url, '_blank');
             return;
@@ -69,24 +71,14 @@ const SpotlightCheckout = ({ product, actorId }: { product: any, actorId?: strin
 
         // A. WhatsApp Logic
         if (actionType === 'whatsapp') {
+            // 3. Track WhatsApp
+            if (actorId) trackEvent(actorId, 'whatsapp_click', { product_name: product.title, portfolio_id: portfolioId });
+
             const variantText = Object.entries(selectedVariants)
                 .map(([key, val]) => `${key}: ${val}`)
                 .join(', ');
 
-            const message = `
-*NEW ORDER* 🛍️
-------------------
-*Product:* ${product.title}
-*Price:* ${product.price}
-*Qty:* ${quantity}
-${variantText ? `*Options:* ${variantText}` : ''}
-
-*CUSTOMER DETAILS* 👤
-*Name:* ${clientInfo.name}
-*Phone:* ${clientInfo.phone}
-*Address:* ${clientInfo.address}
-------------------
-Please confirm my order!`.trim();
+            const message = `*NEW ORDER* 🛍️\n------------------\n*Product:* ${product.title}\n*Price:* ${product.price}\n*Qty:* ${quantity}\n${variantText ? `*Options:* ${variantText}` : ''}\n\n*CUSTOMER DETAILS* 👤\n*Name:* ${clientInfo.name}\n*Phone:* ${clientInfo.phone}\n*Address:* ${clientInfo.address}\n------------------\nPlease confirm my order!`;
 
             const number = product.whatsappNumber ? product.whatsappNumber.replace(/[^0-9]/g, '') : '1234567890';
             window.open(`https://wa.me/${number}?text=${encodeURIComponent(message)}`, '_blank');
@@ -103,6 +95,7 @@ Please confirm my order!`.trim();
             
             const { error } = await supabase.from('pro_orders').insert({
                 actor_id: actorId,
+                portfolio_id: portfolioId, 
                 customer_name: clientInfo.name,
                 customer_phone: clientInfo.phone,
                 customer_address: clientInfo.address,
@@ -132,7 +125,7 @@ Please confirm my order!`.trim();
                 </div>
                 <h3 className="text-3xl font-bold text-white mb-2">Order Received!</h3>
                 <p className="text-neutral-400 max-w-md mx-auto mb-8">
-                    Thank you, {clientInfo.name}. We have received your order for <strong>{product.title}</strong> and will contact you shortly at {clientInfo.phone}.
+                    Thank you, {clientInfo.name}. We have received your order for <strong>{product.title}</strong>.
                 </p>
                 <Button onClick={() => setStep('details')} variant="outline" className="border-white/10 hover:bg-white/5">Back to Shop</Button>
             </div>
@@ -141,7 +134,6 @@ Please confirm my order!`.trim();
 
     return (
         <div className="bg-neutral-900/30 border border-white/10 rounded-2xl overflow-hidden md:grid md:grid-cols-2 min-h-[500px]">
-            
             {/* LEFT: IMAGE & GALLERY */}
             <div className="bg-black/50 relative flex flex-col h-[400px] md:h-auto group/gallery">
                  <div className="flex-grow relative overflow-hidden">
@@ -151,7 +143,7 @@ Please confirm my order!`.trim();
                             {images.length > 1 && (
                                 <>
                                     <button onClick={prevImage} className="absolute left-4 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/80 text-white p-2 rounded-full opacity-0 group-hover/gallery:opacity-100 transition-opacity z-20"><ChevronLeft size={20} /></button>
-                                    <button onClick={nextImage} className="absolute right-4 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/80 text-white p-2 rounded-full opacity-0 group-hover/gallery:opacity-100 transition-opacity z-20"><ChevronRight size={20} /></button>
+                                    <button onClick={nextImage} className="absolute right-4 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/80 text-white p-2 rounded-full opacity-0 group-hover/gallery:opacity-100 transition-opacity z-20"><ChevronRightIcon size={20} /></button>
                                 </>
                             )}
                         </>
@@ -170,7 +162,6 @@ Please confirm my order!`.trim();
             
             {/* RIGHT: INTERACTIVE AREA */}
             <div className="p-8 md:p-12 flex flex-col justify-center h-full relative">
-                
                 {step === 'details' && (
                     <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
                         <div>
@@ -180,12 +171,10 @@ Please confirm my order!`.trim();
                         </div>
                         <p className="text-lg text-neutral-300 leading-relaxed line-clamp-3 md:line-clamp-none">{product.description}</p>
                         
-                        {/* Variant Selectors - SAFE STRING HANDLING ADDED HERE */}
                         {actionType !== 'link' && variants.map((v: any) => (
                             <div key={v.name} className="space-y-2">
                                 <span className="text-xs uppercase text-neutral-500 tracking-wider font-bold">{v.name}</span>
                                 <div className="flex flex-wrap gap-2">
-                                    {/* FIX: Ensure we handle both Array and String options */}
                                     {(Array.isArray(v.options) ? v.options : (v.options || '').split(',')).map((opt: string) => {
                                         const val = opt.trim();
                                         if(!val) return null;
@@ -244,14 +233,10 @@ Please confirm my order!`.trim();
 };
 
 // --- MAIN SHOP COMPONENT ---
-const Shop: React.FC<BlockProps & { actorId?: string }> = ({ data, actorId }) => {
+const Shop: React.FC<BlockProps & { actorId?: string; portfolioId?: string }> = ({ data, actorId, portfolioId }) => {
     const products = data.products || [];
     const variant = data.variant || 'grid';
     const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
-    const scrollContainerRef = useRef<HTMLDivElement>(null);
-
-    const scrollLeft = () => scrollContainerRef.current?.scrollBy({ left: -320, behavior: 'smooth' });
-    const scrollRight = () => scrollContainerRef.current?.scrollBy({ left: 320, behavior: 'smooth' });
 
     if (products.length === 0 && !data.title) return null;
 
@@ -280,7 +265,7 @@ const Shop: React.FC<BlockProps & { actorId?: string }> = ({ data, actorId }) =>
                 {variant === 'spotlight' && products[0] && (
                     <div>
                          <div className="mb-12 text-center"><h2 className="text-3xl font-bold text-white">{data.title}</h2></div>
-                         <SpotlightCheckout product={products[0]} actorId={actorId} />
+                         <SpotlightCheckout product={products[0]} actorId={actorId} portfolioId={portfolioId} />
                     </div>
                 )}
 
@@ -299,6 +284,7 @@ const Shop: React.FC<BlockProps & { actorId?: string }> = ({ data, actorId }) =>
             <ProductDetailModal 
                 product={selectedProduct} 
                 actorId={actorId}
+                portfolioId={portfolioId}
                 isOpen={!!selectedProduct} 
                 onClose={() => setSelectedProduct(null)} 
             />

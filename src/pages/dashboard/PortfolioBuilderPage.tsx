@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../../supabaseClient';
-import { useOutletContext, useSearchParams } from 'react-router-dom';
+import { useOutletContext, useSearchParams, useNavigate } from 'react-router-dom'; // Import useNavigate
 import { ActorDashboardContextType } from '../../layouts/ActorDashboardLayout';
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 import { Switch } from "@/components/ui/switch";
@@ -11,7 +11,7 @@ import { Input } from "@/components/ui/input";
 import { 
   GripVertical, Eye, EyeOff, Save, ExternalLink, Loader2, Plus, 
   Palette, Layers, Smartphone, Settings, Globe, CheckCircle2,
-  Pencil, Check, X 
+  Pencil, Check, X, Lock // Import Lock Icon
 } from 'lucide-react';
 import { PortfolioSection, DEFAULT_PORTFOLIO_SECTIONS, SectionType } from '../../types/portfolio';
 import SectionEditor from '../../components/dashboard/SectionEditor';
@@ -39,13 +39,16 @@ import {
 } from "@/components/ui/dialog";
 import { THEME_REGISTRY, DEFAULT_THEME } from '../../themes/registry'; 
 import { cn, hexToHSL } from "@/lib/utils"; 
+// 1. IMPORT SUBSCRIPTION HOOK
+import { useSubscription } from '../../context/SubscriptionContext';
 
-// --- 1. AVAILABLE BLOCKS LIST ---
-const AVAILABLE_BLOCKS: { type: SectionType; label: string }[] = [
+// --- AVAILABLE BLOCKS LIST ---
+// Added 'module' requirement to blocks
+const AVAILABLE_BLOCKS: { type: SectionType; label: string; module?: 'shop' | 'appointments' }[] = [
   { type: 'header', label: 'Header / Navbar' },
   { type: 'hero', label: 'Hero Section' },
   { type: 'about', label: 'About Me' },
-  { type: 'shop', label: 'Shop / Products' }, 
+  { type: 'shop', label: 'Shop / Products', module: 'shop' }, // Requires Shop Module
   { type: 'services_showcase', label: 'Services' },
   { type: 'gallery', label: 'Gallery' },
   { type: 'image_slider', label: 'Image Slider' },
@@ -150,6 +153,11 @@ const PortfolioPreview = ({ sections, theme }: { sections: PortfolioSection[], t
 
 const PortfolioBuilderPage = () => {
   const { actorData } = useOutletContext<ActorDashboardContextType>();
+  
+  // 2. GET SUBSCRIPTION LIMITS
+  const { limits, isLoading: isSubLoading } = useSubscription();
+  const navigate = useNavigate();
+
   const [searchParams] = useSearchParams();
   const [activePortfolioId, setActivePortfolioId] = useState<string | null>(null);
 
@@ -179,14 +187,12 @@ const PortfolioBuilderPage = () => {
       font: 'sans'
   });
 
-  // 1. Fetch Portfolio & Identity
   useEffect(() => {
     const fetchData = async () => {
       if (!actorData.id) return;
       
       const portfolioIdFromUrl = searchParams.get('id');
       
-      // Fetch Identity (Fallback for name/slug if not set in portfolio)
       const { data: identity } = await supabase
           .from('actors')
           .select('ActorName, slug')
@@ -195,9 +201,7 @@ const PortfolioBuilderPage = () => {
 
       let portfolioData: any = null;
 
-      // LOGIC: Separate the queries to avoid TypeScript return type conflict
       if (portfolioIdFromUrl) {
-          // A. Specific ID (Multi-site Mode)
           const { data, error } = await supabase
               .from('portfolios')
               .select('*')
@@ -206,7 +210,6 @@ const PortfolioBuilderPage = () => {
           
           if (!error) portfolioData = data;
       } else {
-          // B. Default / Latest (Single-site Fallback)
           const { data, error } = await supabase
               .from('portfolios')
               .select('*')
@@ -219,19 +222,17 @@ const PortfolioBuilderPage = () => {
       }
 
       if (portfolioData) {
-          setActivePortfolioId(portfolioData.id); // Store the ID we found
+          setActivePortfolioId(portfolioData.id); 
           setSections(portfolioData.sections as PortfolioSection[]);
           setIsPublished(portfolioData.is_published);
           if (portfolioData.theme_config) setThemeConfig(portfolioData.theme_config);
 
-          // Load Settings (Prioritize Portfolio, fallback to Actor)
           setSiteIdentity({
               name: portfolioData.site_name || identity?.ActorName || '',
               slug: portfolioData.public_slug || identity?.slug || '',
               customDomain: portfolioData.custom_domain || '' 
           });
       } else {
-          // First time user / No portfolio found
           setSections(DEFAULT_PORTFOLIO_SECTIONS);
           if (identity) {
               setSiteIdentity({ 
@@ -247,7 +248,6 @@ const PortfolioBuilderPage = () => {
     fetchData();
   }, [actorData.id, searchParams]); 
 
-  // 2. Handle Reorder
   const handleDragEnd = (result: any) => {
     if (!result.destination) return;
     const items = Array.from(sections);
@@ -256,7 +256,6 @@ const PortfolioBuilderPage = () => {
     setSections(items);
   };
 
-  // 3. Handle Toggle Visibility
   const toggleSectionVisibility = (e: React.MouseEvent, id: string) => {
     e.stopPropagation(); 
     setSections(prev => prev.map(s => 
@@ -264,7 +263,6 @@ const PortfolioBuilderPage = () => {
     ));
   };
 
-  // 4. Save Portfolio Content
   const handleSave = async () => {
     if (!activePortfolioId) return; 
     setIsSaving(true);
@@ -286,9 +284,16 @@ const PortfolioBuilderPage = () => {
     setIsSaving(false);
   };
 
-  // 5. Save Site Settings
+  // 3. ENFORCE DOMAIN LIMITS ON SAVE
   const handleSaveIdentity = async () => {
       if (!activePortfolioId) return;
+      
+      // Safety Check (Backend will also reject, but good for UI)
+      if (siteIdentity.customDomain && !limits.canConnectDomain) {
+          alert("Please upgrade to Pro to connect a custom domain.");
+          return;
+      }
+
       setIsSavingIdentity(true);
       
       const cleanSlug = siteIdentity.slug.toLowerCase().replace(/[^a-z0-9-]/g, '-');
@@ -322,6 +327,12 @@ const PortfolioBuilderPage = () => {
   };
 
   const handleAddSection = (type: SectionType) => {
+      // 4. ENFORCE BLOCK COUNT LIMITS
+      if (sections.length >= limits.maxBlocksPerSite) {
+          alert(`Plan Limit Reached! You can only add ${limits.maxBlocksPerSite} sections on this plan.`);
+          return;
+      }
+
       const newSection: PortfolioSection = {
           id: `${type}-${Date.now()}`,
           type: type,
@@ -340,7 +351,6 @@ const PortfolioBuilderPage = () => {
       }
   }
 
-  // --- NEW: RENAMING LOGIC (With Auto-Save) ---
   const startRenaming = (e: React.MouseEvent, section: PortfolioSection) => {
       e.stopPropagation();
       setRenamingId(section.id);
@@ -365,7 +375,6 @@ const PortfolioBuilderPage = () => {
       setSections(updatedSections);
       setRenamingId(null);
 
-      // Auto-save specific site
       setIsSaving(true);
       const { error } = await supabase
         .from('portfolios')
@@ -379,7 +388,7 @@ const PortfolioBuilderPage = () => {
       setIsSaving(false);
   };
 
-  if (isLoading) return (
+  if (isLoading || isSubLoading) return (
       <div className="flex items-center justify-center min-h-[50vh]">
           <Loader2 className="w-8 h-8 animate-spin text-primary" />
       </div>
@@ -447,6 +456,15 @@ const PortfolioBuilderPage = () => {
               {/* --- TAB 1: CONTENT --- */}
               <TabsContent value="content" className="flex-grow flex flex-col overflow-hidden mt-0 data-[state=inactive]:hidden">
                   <div className="flex-grow overflow-y-auto pr-2 pb-4 min-h-[400px] lg:min-h-0 custom-scrollbar">
+                    
+                    {/* PLAN USAGE INDICATOR */}
+                    <div className="mb-4 px-1 flex justify-between items-center text-xs text-muted-foreground">
+                        <span>Sections used: {sections.length} / {limits.maxBlocksPerSite}</span>
+                        {sections.length >= limits.maxBlocksPerSite && (
+                            <span className="text-amber-600 font-bold">Limit Reached</span>
+                        )}
+                    </div>
+
                     <DragDropContext onDragEnd={handleDragEnd}>
                         <Droppable droppableId="sections">
                         {(provided) => (
@@ -554,16 +572,23 @@ const PortfolioBuilderPage = () => {
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent className="w-64 max-h-[300px] overflow-y-auto" align="end">
-                              {AVAILABLE_BLOCKS.map((block) => (
-                                  <DropdownMenuItem 
-                                    key={block.type} 
-                                    onClick={() => handleAddSection(block.type)} 
-                                    className="cursor-pointer"
-                                  >
-                                      <Plus className="mr-2 h-4 w-4 opacity-50" /> 
-                                      {block.label}
-                                  </DropdownMenuItem>
-                              ))}
+                              {AVAILABLE_BLOCKS.map((block) => {
+                                  // 5. CHECK IF BLOCK IS LOCKED
+                                  const isLocked = block.module && !limits.modules[block.module];
+                                  
+                                  return (
+                                      <DropdownMenuItem 
+                                        key={block.type} 
+                                        disabled={isLocked}
+                                        onClick={() => !isLocked && handleAddSection(block.type)} 
+                                        className={cn("cursor-pointer", isLocked && "opacity-50 cursor-not-allowed")}
+                                      >
+                                          <Plus className="mr-2 h-4 w-4 opacity-50" /> 
+                                          {block.label}
+                                          {isLocked && <Lock className="ml-auto h-3 w-3 text-amber-500" />}
+                                      </DropdownMenuItem>
+                                  )
+                              })}
                           </DropdownMenuContent>
                       </DropdownMenu>
                   </div>
@@ -711,7 +736,15 @@ const PortfolioBuilderPage = () => {
                 {/* DOMAINS TAB (Custom Domain) */}
                 <TabsContent value="domains" className="space-y-4 py-4">
                     <div className="space-y-2">
-                        <Label>Custom Domain</Label>
+                        <div className="flex justify-between">
+                            <Label>Custom Domain</Label>
+                            {/* 6. VISUAL LOCK FOR DOMAIN */}
+                            {!limits.canConnectDomain && (
+                                <span className="text-[10px] bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full font-bold flex items-center gap-1">
+                                    <Lock size={10} /> Pro Feature
+                                </span>
+                            )}
+                        </div>
                         <div className="flex gap-2">
                             <div className="relative flex-grow">
                                 <Globe className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
@@ -719,13 +752,25 @@ const PortfolioBuilderPage = () => {
                                     value={siteIdentity.customDomain} 
                                     onChange={(e) => setSiteIdentity(prev => ({...prev, customDomain: e.target.value}))}
                                     className="pl-9"
-                                    placeholder="www.yourname.com" 
+                                    placeholder={limits.canConnectDomain ? "www.yourname.com" : "Upgrade to connect domain"}
+                                    disabled={!limits.canConnectDomain} // DISABLE INPUT
                                 />
                             </div>
                         </div>
                         <p className="text-[11px] text-muted-foreground">
                             Enter your domain name. You will need to configure your DNS A-Record to point to our server IP.
                         </p>
+                        
+                        {!limits.canConnectDomain && (
+                            <Button 
+                                variant="outline" 
+                                size="sm" 
+                                className="w-full border-amber-200 bg-amber-50 hover:bg-amber-100 text-amber-700"
+                                onClick={() => navigate('/dashboard/settings')}
+                            >
+                                Upgrade Plan
+                            </Button>
+                        )}
                     </div>
                     
                     <div className="bg-muted/30 border rounded-lg p-3 text-xs text-muted-foreground space-y-1">
@@ -733,7 +778,7 @@ const PortfolioBuilderPage = () => {
                             <CheckCircle2 className="w-3 h-3 text-green-500" />
                             <span>Free URL: <strong>ucpmaroc.com/pro/{siteIdentity.slug}</strong> (Active)</span>
                         </div>
-                        {siteIdentity.customDomain && (
+                        {siteIdentity.customDomain && limits.canConnectDomain && (
                             <div className="flex items-center gap-2">
                                 <Loader2 className="w-3 h-3 text-yellow-500 animate-spin" />
                                 <span>Custom Domain: <strong>{siteIdentity.customDomain}</strong> (Pending DNS)</span>

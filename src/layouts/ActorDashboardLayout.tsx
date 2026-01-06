@@ -32,7 +32,7 @@ import {
   SheetClose
 } from "@/components/ui/sheet";
 import { Card, CardContent } from "@/components/ui/card";
-
+import { SubscriptionProvider } from '../context/SubscriptionContext';
 
 // 2. EXPORT THE CONTEXT TYPE (This fixes your error)
 export interface ActorDashboardContextType {
@@ -160,7 +160,7 @@ const ActorDashboardLayout = () => {
 
   return (
     <div className="min-h-screen bg-muted/40 text-foreground flex">
-      
+      <SubscriptionProvider actorId={actorData.id}>
       {/* --- Desktop Sidebar --- */}
       <aside className="hidden md:flex flex-col w-64 border-r bg-background pt-8 pb-4 h-screen fixed left-0 top-0 overflow-y-auto custom-scrollbar">
         
@@ -315,6 +315,7 @@ const ActorDashboardLayout = () => {
           </SheetContent>
         </Sheet>
       </nav>
+      </SubscriptionProvider>
     </div>
   );
 };

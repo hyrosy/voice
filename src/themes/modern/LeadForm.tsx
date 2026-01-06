@@ -19,7 +19,7 @@ const getFieldIcon = (type: string) => {
     }
 };
 
-const LeadForm: React.FC<BlockProps & { actorId?: string }> = ({ data, actorId }) => {
+const LeadForm: React.FC<BlockProps & { actorId?: string; portfolioId?: string }> = ({ data, actorId, portfolioId }) => {
     const [isLoading, setIsLoading] = useState(false);
     const [isSent, setIsSent] = useState(false);
     
@@ -48,6 +48,7 @@ const LeadForm: React.FC<BlockProps & { actorId?: string }> = ({ data, actorId }
         // We look for specific IDs: 'name', 'email', 'phone', 'subject', 'message'
         const dbPayload: any = {
             actor_id: actorId,
+            portfolio_id: portfolioId, // <--- ADD THIS LINE
             source: 'portfolio_form',
             name: formState['name'] || 'Anonymous',
             email: formState['email'] || 'no-email@provided.com',

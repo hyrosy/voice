@@ -5,10 +5,26 @@ import { ActorDashboardContextType } from '@/layouts/ActorDashboardLayout';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Loader2, Eye, MousePointerClick, TrendingUp, Users, ShoppingBag } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
+import SiteFilter from '../../components/dashboard/SiteFilter';
+
+// Simple Badge Helper
+const Badge = ({ children, variant, className }: any) => (
+    <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-muted ${className}`}>{children}</span>
+);
+const MessageCircleIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-green-500"><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/></svg>;
 
 const AnalyticsPage = () => {
   const { actorData } = useOutletContext<ActorDashboardContextType>();
   const [loading, setLoading] = useState(true);
+  
+  // Filter State
+  const [sites, setSites] = useState<any[]>([]);
+  const [selectedSiteId, setSelectedSiteId] = useState<string>('all');
+
+  // Raw Data (Fetched Once)
+  const [allEvents, setAllEvents] = useState<any[]>([]);
+
+  // Computed Stats (Derived from Filter)
   const [stats, setStats] = useState({
     totalViews: 0,
     totalClicks: 0,
@@ -17,50 +33,82 @@ const AnalyticsPage = () => {
   });
 
   useEffect(() => {
-    const fetchAnalytics = async () => {
+    const fetchData = async () => {
       if (!actorData.id) return;
-
       setLoading(true);
 
-      // 1. Get Total Views (All time)
-      const { count: viewCount } = await supabase
-        .from('analytics_events')
-        .select('*', { count: 'exact', head: true })
-        .eq('actor_id', actorData.id)
-        .eq('event_type', 'page_view');
+      // 1. Fetch Sites for Filter
+      const { data: mySites } = await supabase
+        .from('portfolios')
+        .select('id, site_name')
+        .eq('actor_id', actorData.id);
+      if(mySites) setSites(mySites);
 
-      // 2. Get Shop Clicks (All time)
-      const { count: clickCount } = await supabase
-        .from('analytics_events')
-        .select('*', { count: 'exact', head: true })
-        .eq('actor_id', actorData.id)
-        .neq('event_type', 'page_view'); // Anything not a view is an interaction
+      // 2. Fetch ALL Analytics Events (Last 30 days)
+      // We fetch all and filter locally for speed and flexibility
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
-      // 3. Get Daily Trend (Using the RPC function we created)
-      const { data: trendData } = await supabase
-        .rpc('get_daily_views', { target_actor_id: actorData.id });
-
-      // 4. Get Recent Activity Logs (Last 5)
-      const { data: recentLogs } = await supabase
+      const { data: events } = await supabase
         .from('analytics_events')
         .select('*')
         .eq('actor_id', actorData.id)
-        .neq('event_type', 'page_view') // Only show interactions
-        .order('created_at', { ascending: false })
-        .limit(5);
+        .gte('created_at', thirtyDaysAgo.toISOString())
+        .order('created_at', { ascending: false });
 
-      setStats({
-        totalViews: viewCount || 0,
-        totalClicks: clickCount || 0,
-        viewsTrend: trendData || [],
-        recentEvents: recentLogs || []
-      });
-
+      if (events) {
+          setAllEvents(events);
+      }
       setLoading(false);
     };
 
-    fetchAnalytics();
+    fetchData();
   }, [actorData.id]);
+
+  // Recalculate when Filter or Data changes
+  useEffect(() => {
+      if(loading) return;
+
+      // 1. Filter Events
+      const filtered = selectedSiteId === 'all' 
+        ? allEvents 
+        : allEvents.filter(e => e.portfolio_id === selectedSiteId);
+
+      // 2. Compute KPI Totals
+      const views = filtered.filter(e => e.event_type === 'page_view');
+      const clicks = filtered.filter(e => e.event_type !== 'page_view');
+
+      // 3. Compute Chart Data (Group by Date)
+      const dailyMap = new Map<string, number>();
+      
+      // Initialize last 30 days with 0
+      for(let i=29; i>=0; i--) {
+          const d = new Date();
+          d.setDate(d.getDate() - i);
+          dailyMap.set(d.toISOString().split('T')[0], 0);
+      }
+
+      views.forEach(v => {
+          const dateKey = v.created_at.split('T')[0];
+          if(dailyMap.has(dateKey)) {
+              dailyMap.set(dateKey, (dailyMap.get(dateKey) || 0) + 1);
+          }
+      });
+
+      const trendData = Array.from(dailyMap.entries()).map(([date, count]) => ({
+          date,
+          view_count: count
+      }));
+
+      // 4. Update State
+      setStats({
+          totalViews: views.length,
+          totalClicks: clicks.length,
+          viewsTrend: trendData,
+          recentEvents: clicks.slice(0, 10) // Show last 10 interactions
+      });
+
+  }, [selectedSiteId, allEvents, loading]);
 
   if (loading) return <div className="flex h-96 items-center justify-center"><Loader2 className="animate-spin text-primary" /></div>;
 
@@ -68,11 +116,14 @@ const AnalyticsPage = () => {
     <div className="p-4 md:p-8 space-y-8 w-full max-w-7xl mx-auto ">
       
       {/* Header */}
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight pt-20">Overview</h1>
-        <p className="text-muted-foreground mt-1">
-          Track your portfolio performance and shop engagement.
-        </p>
+      <div className="flex flex-col md:flex-row justify-between md:items-center gap-4 pt-20">
+        <div>
+            <h1 className="text-3xl font-bold tracking-tight">Overview</h1>
+            <p className="text-muted-foreground mt-1">
+            Track your portfolio performance and shop engagement.
+            </p>
+        </div>
+        <SiteFilter sites={sites} selectedSiteId={selectedSiteId} onChange={setSelectedSiteId} />
       </div>
 
       {/* KPI Cards */}
@@ -84,7 +135,7 @@ const AnalyticsPage = () => {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{stats.totalViews}</div>
-            <p className="text-xs text-muted-foreground">+ from last month</p>
+            <p className="text-xs text-muted-foreground">Last 30 Days</p>
           </CardContent>
         </Card>
 
@@ -119,10 +170,10 @@ const AnalyticsPage = () => {
           {/* Main Chart */}
           <Card className="lg:col-span-2">
             <CardHeader>
-                <CardTitle>Traffic Overview (Last 30 Days)</CardTitle>
+                <CardTitle>Traffic Overview</CardTitle>
             </CardHeader>
             <CardContent className="h-[300px]">
-                {stats.viewsTrend.length > 0 ? (
+                {stats.viewsTrend.some(d => d.view_count > 0) ? (
                     <ResponsiveContainer width="100%" height="100%">
                         <BarChart data={stats.viewsTrend}>
                             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#333" opacity={0.2} />
@@ -131,11 +182,13 @@ const AnalyticsPage = () => {
                                 tickFormatter={(val) => new Date(val).toLocaleDateString('en-US', { day: '2-digit', month: 'short' })} 
                                 stroke="#888888" 
                                 fontSize={12} 
+                                minTickGap={30}
                             />
                             <YAxis stroke="#888888" fontSize={12} />
                             <Tooltip 
                                 contentStyle={{ backgroundColor: '#1f2937', border: 'none', borderRadius: '8px', color: '#fff' }}
                                 cursor={{ fill: 'rgba(255,255,255,0.05)' }}
+                                labelFormatter={(val) => new Date(val).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
                             />
                             <Bar dataKey="view_count" fill="#8b5cf6" radius={[4, 4, 0, 0]} />
                         </BarChart>
@@ -186,11 +239,5 @@ const AnalyticsPage = () => {
     </div>
   );
 };
-
-// Simple Icon Helper
-const Badge = ({ children, variant, className }: any) => (
-    <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-muted ${className}`}>{children}</span>
-);
-const MessageCircleIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-green-500"><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/></svg>;
 
 export default AnalyticsPage;

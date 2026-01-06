@@ -7,58 +7,61 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Loader2, Globe, User, Plus, ExternalLink, LayoutTemplate, Check, CreditCard, ArrowUpRight, Coins, Gift, AlertTriangle, CalendarDays, Clock, Trash2, Sparkles, MessageCircle, Star } from 'lucide-react';
+import { Loader2, Globe, User, Plus, ExternalLink, LayoutTemplate, Check, CreditCard, ArrowUpRight, Coins, Gift, AlertTriangle, CalendarDays, Clock, Trash2, Sparkles, MessageCircle, Star, ShoppingCart, Zap, Box } from 'lucide-react';
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { PORTFOLIO_TEMPLATES } from '../../lib/templates';
 import { cn } from "@/lib/utils";
 import { NotificationContainer, Notification } from '@/components/ui/NotificationToast';
+// 1. IMPORT THE CONTEXT
+import { useSubscription } from '../../context/SubscriptionContext';
+
 type PlanDuration = 1 | 3 | 6 | 12;
+
 // --- CONFIGURATION ---
 
-// Helper to get pricing easily
-const getPlanDetails = (planId: string, duration: number) => {
-    const plan = PLANS.find(p => p.id === planId);
-    // We cast 'duration' to the specific keys allowed in the pricing object
-    return plan?.pricing[duration as 1 | 3 | 6 | 12];
-};
+const SLOT_COST = 500; // Cost in coins to buy 1 extra site slot
 
+// 2. RENAMED PLANS (Starter / eCommerce / Pro)
 const PLANS = [
     { 
         id: 'starter', 
         tier: 1, 
         name: 'Starter', 
-        features: ['1 Website', 'Standard Support', 'UCP Branding'],
+        description: 'Perfect for personal portfolios.',
+        features: ['100MB Storage', 'Standard Support', 'UCP Branding'],
         pricing: {
-            1:  { stripePriceId: 'price_starter_1m', stripeCost: 3.00, coinCost: 150, label: null }, // Increased slightly
-            3:  { stripePriceId: 'price_starter_3m', stripeCost: 8.50, coinCost: 425, label: '5% OFF' },
-            6:  { stripePriceId: 'price_starter_6m', stripeCost: 16.00, coinCost: 800, label: '10% OFF' },
-            12: { stripePriceId: 'price_STARTER_YEARLY', stripeCost: 28.50, coinCost: 1425, label: '20% OFF' }
+            1:  { stripePriceId: 'price_starter_1m', stripeCost: 3.00, coinCost: 150, label: null },
+            3:  { stripePriceId: 'price_starter_3m', stripeCost: 8.55, coinCost: 425, label: '5% OFF' },
+            6:  { stripePriceId: 'price_starter_6m', stripeCost: 16.20, coinCost: 800, label: '10% OFF' },
+            12: { stripePriceId: 'price_STARTER_YEARLY', stripeCost: 30.00, coinCost: 1500, label: '17% OFF' }
         }
     },
     { 
-        id: 'pro', 
+        id: 'ecommerce', // Was 'pro'
         tier: 2, 
-        name: 'Pro', 
+        name: 'eCommerce', 
         popular: true, 
-        features: ['3 Websites', 'Custom Domain', 'No Branding', 'SEO Tools'],
+        description: 'For selling digital products.',
+        features: ['500MB Storage', 'Custom Domain', 'Online Shop', 'Leads Dashboard'],
         pricing: {
-            1:  { stripePriceId: 'price_PRO_MONTHLY', stripeCost: 6.00, coinCost: 300, label: null }, // Increased from 250 to 300
-            3:  { stripePriceId: 'price_pro_3m', stripeCost: 17.00, coinCost: 850, label: '5% OFF' },
-            6:  { stripePriceId: 'price_pro_6m', stripeCost: 32.00, coinCost: 1600, label: '10% OFF' },
-            12: { stripePriceId: 'price_PRO_YEARLY', stripeCost: 54.00, coinCost: 2700, label: '25% OFF' }
+            1:  { stripePriceId: 'price_ECOMMERCE_1M', stripeCost: 9.00, coinCost: 450, label: null },
+            3:  { stripePriceId: 'price_ECOMMERCE_3M', stripeCost: 25.00, coinCost: 1250, label: '5% OFF' },
+            6:  { stripePriceId: 'price_ECOMMERCE_6M', stripeCost: 48.00, coinCost: 2400, label: '11% OFF' },
+            12: { stripePriceId: 'price_ECOMMERCE_1Y', stripeCost: 90.00, coinCost: 4500, label: '17% OFF' }
         }
     },
     { 
-        id: 'agency', 
+        id: 'pro', // Was 'agency'
         tier: 3, 
-        name: 'Agency', 
-        features: ['Unlimited Sites', 'Priority Support', 'White Label', 'API Access'],
+        name: 'Pro', 
+        description: 'Ultimate power and storage.',
+        features: ['2GB Storage', 'Priority Support', 'Bookings / Appointments', 'White Label'],
         pricing: {
-            1:  { stripePriceId: 'price_AGENCY_MONTHLY', stripeCost: 18.00, coinCost: 900, label: null }, // Increased
-            3:  { stripePriceId: 'price_agency_3m', stripeCost: 51.00, coinCost: 2550, label: '5% OFF' },
-            6:  { stripePriceId: 'price_agency_6m', stripeCost: 95.00, coinCost: 4750, label: '12% OFF' },
-            12: { stripePriceId: 'price_AGENCY_YEARLY', stripeCost: 153.00, coinCost: 7650, label: '30% OFF' }
+            1:  { stripePriceId: 'price_PRO_1M', stripeCost: 19.00, coinCost: 950, label: null },
+            3:  { stripePriceId: 'price_PRO_3M', stripeCost: 54.00, coinCost: 2700, label: '5% OFF' },
+            6:  { stripePriceId: 'price_PRO_6M', stripeCost: 102.00, coinCost: 5100, label: '10% OFF' },
+            12: { stripePriceId: 'price_PRO_1Y', stripeCost: 190.00, coinCost: 9500, label: '25% OFF' }
         }
     },
 ];
@@ -74,6 +77,10 @@ const COIN_PACKS = [
 
 const SettingsPage = () => {
   const { actorData } = useOutletContext<ActorDashboardContextType>();
+  
+  // 3. USE CONTEXT
+  const { plan: currentPlanId, siteSlots, refreshSubscription, isLoading: isSubLoading } = useSubscription();
+
   const [loading, setLoading] = useState(true);
   
   // Data State
@@ -96,8 +103,7 @@ const SettingsPage = () => {
   const [isDeleting, setIsDeleting] = useState(false);
 
   // Upgrade Modal UI State
-  // CHANGED: Instead of string 'monthly'|'yearly', we use number of months
-  const [billingDuration, setBillingDuration] = useState<1 | 3 | 6 | 12>(1);
+  const [billingDuration, setBillingDuration] = useState<PlanDuration>(1);
 
   const [selectedTemplate, setSelectedTemplate] = useState<string>(PORTFOLIO_TEMPLATES[0].id);
   const [newSiteName, setNewSiteName] = useState("");
@@ -156,53 +162,47 @@ const SettingsPage = () => {
     fetchData();
   }, [actorData.id]);
 
-  // --- FIXED: CALCULATE PRORATION ---
+  // --- SAFE PRORATION LOGIC ---
   const calculateProration = (targetPlanId: string) => {
-    if (!selectedPortfolioId || !subscriptions[selectedPortfolioId]) return { cost: 0, isUpgrade: true, unusedValue: 0 };
+    if (!selectedPortfolioId || !subscriptions[selectedPortfolioId]) return { cost: 0, isUpgrade: true, unusedValue: 0, activeDuration: 0 };
 
     const currentSub = subscriptions[selectedPortfolioId];
-    if (currentSub.payment_method === 'stripe') return { cost: 0, isUpgrade: true, unusedValue: 0, isStripe: true };
+    if (currentSub.payment_method === 'stripe') return { cost: 0, isUpgrade: true, unusedValue: 0, isStripe: true, activeDuration: 0 };
 
     const currentPlan = PLANS.find(p => p.id === currentSub.plan_id);
     const targetPlan = PLANS.find(p => p.id === targetPlanId);
     
-    if (!currentPlan || !targetPlan) return { cost: 0, isUpgrade: true, unusedValue: 0 };
+    if (!currentPlan || !targetPlan) return { cost: 0, isUpgrade: true, unusedValue: 0, activeDuration: 0 };
 
-    // 1. Calculate how long the CURRENT subscription was for
     const start = new Date(currentSub.current_period_start).getTime();
     const end = new Date(currentSub.current_period_end).getTime();
     const now = new Date().getTime();
     
-    // Estimate months duration of the current plan to find original price paid
     const daysDuration = Math.round((end - start) / (1000 * 60 * 60 * 24));
-    let currentDurationKey = 1;
-    if (daysDuration > 300) currentDurationKey = 12;
-    else if (daysDuration > 150) currentDurationKey = 6;
-    else if (daysDuration > 75) currentDurationKey = 3;
+    
+    let activeDuration: PlanDuration = 1;
+    if (daysDuration > 300) activeDuration = 12;
+    else if (daysDuration > 150) activeDuration = 6;
+    else if (daysDuration > 75) activeDuration = 3;
 
-    // 2. Logic to determine upgrade vs downgrade
-    // We consider it an upgrade if Tier is higher OR same tier but longer duration
     const isHigherTier = targetPlan.tier > currentPlan.tier;
     const isSameTier = targetPlan.tier === currentPlan.tier;
-    const isLongerDuration = billingDuration > currentDurationKey;
+    const isLongerDuration = billingDuration > activeDuration;
 
     const isUpgrade = isHigherTier || (isSameTier && isLongerDuration);
-    const isDowngrade = !isUpgrade;
+    const isDowngrade = !isUpgrade && !(isSameTier && billingDuration === activeDuration);
     
-    if (now > end) return { cost: targetPlan.pricing[billingDuration].coinCost, isUpgrade: true, unusedValue: 0 };
+    if (now > end) return { cost: targetPlan.pricing[billingDuration].coinCost, isUpgrade: true, unusedValue: 0, activeDuration };
 
-    // 3. Calculate Unused Value based on what was ACTUALLY paid (Current Plan @ Current Duration)
     const totalDurationMs = end - start;
     const remainingDurationMs = end - now;
     const percentageRemaining = Math.max(0, remainingDurationMs / totalDurationMs);
 
-    // FIX: Look up price based on the duration they HAVE, not the duration they want
-    const originalPaidCost = currentPlan.pricing[currentDurationKey as PlanDuration]?.coinCost || 0;
+    const originalPaidCost = currentPlan.pricing[activeDuration]?.coinCost || 0; 
     const unusedValue = Math.floor(originalPaidCost * percentageRemaining);
 
     let finalCost = targetPlan.pricing[billingDuration].coinCost;
     
-    // Only subtract unused value if upgrading
     if (isUpgrade) {
         finalCost = Math.max(0, finalCost - unusedValue); 
     }
@@ -213,15 +213,62 @@ const SettingsPage = () => {
         unusedValue, 
         isUpgrade,
         isDowngrade,
-        currentDurationKey // returning this to help UI logic
+        activeDuration
     };
   };
 
   // --- ACTIONS ---
 
+  // 4. NEW: HANDLE BUY SLOT
+  const handleBuySlot = () => {
+      if (walletBalance < SLOT_COST) {
+          openConfirmation(
+              "Insufficient Balance",
+              <p>You need <strong>{SLOT_COST} Coins</strong> to buy a slot. You have {walletBalance}.</p>,
+              () => { setConfirmDialog(null); setIsTopUpOpen(true); },
+              "Top Up Now"
+          );
+          return;
+      }
+
+      openConfirmation(
+          "Buy Portfolio Slot",
+          <div className="space-y-2">
+              <p>Purchase <strong>1 Additional Website Slot</strong> for <strong>{SLOT_COST} Coins</strong>?</p>
+              <p className="text-xs text-muted-foreground">This is a one-time purchase. You will own this slot forever.</p>
+          </div>,
+          async () => {
+              setConfirmDialog(null);
+              // Call the RPC function we created
+              const { data, error } = await supabase.rpc('buy_portfolio_slot', { 
+                  p_actor_id: actorData.id, 
+                  p_cost: SLOT_COST 
+              });
+
+              if (error || (data && !data.success)) {
+                  notify('error', "Purchase Failed", data?.message || error?.message);
+              } else {
+                  notify('success', "Slot Purchased", "You can now create another website.");
+                  // Refresh EVERYTHING
+                  await refreshSubscription();
+                  await fetchData();
+              }
+          },
+          "Pay 500 Coins"
+      );
+  };
+
   const handleCreateSite = async () => {
       if (!newSiteName.trim()) { notify('error', "Missing Name", "Please enter a site name"); return; }
       if (!actorData?.id) return;
+
+      // 5. CHECK SLOTS BEFORE CREATING
+      if (siteSlots.remaining <= 0) {
+          notify('error', "No Slots Available", "You have used all your portfolio slots.");
+          // Optionally auto-trigger the buy flow here
+          handleBuySlot();
+          return;
+      }
 
       setIsCreating(true);
       const template = PORTFOLIO_TEMPLATES.find(t => t.id === selectedTemplate) || PORTFOLIO_TEMPLATES[0];
@@ -242,7 +289,8 @@ const SettingsPage = () => {
           notify('success', "Website Created", `Your new site "${newSiteName}" is ready.`); 
           setIsCreateOpen(false); 
           setNewSiteName(""); 
-          fetchData(); 
+          fetchData();
+          refreshSubscription(); // Update usage count
       }
       setIsCreating(false);
   };
@@ -266,6 +314,7 @@ const SettingsPage = () => {
         setIsDeleteOpen(false);
         setDeleteConfirmationName("");
         fetchData();
+        refreshSubscription(); // Release slot
     }
     setIsDeleting(false);
   };
@@ -308,6 +357,7 @@ const SettingsPage = () => {
                   } else { 
                       notify('success', "Downgrade Scheduled", `Your plan will switch to ${plan.name} after ${endDate}`);
                       fetchData(); 
+                      refreshSubscription();
                       setIsUpgradeOpen(false); 
                   }
                   setProcessingPlan(null);
@@ -357,7 +407,7 @@ const SettingsPage = () => {
                   p_portfolio_id: selectedPortfolioId, 
                   p_plan_id: plan.id,
                   p_amount: costToPay,
-                  p_duration_months: billingDuration // Pass the correct months
+                  p_duration_months: billingDuration
               });
 
               if(error || (data && !data.success)) { 
@@ -365,6 +415,7 @@ const SettingsPage = () => {
               } else { 
                   notify('success', "Plan Activated!", `You have successfully subscribed to ${plan.name}.`);
                   fetchData(); 
+                  refreshSubscription();
                   setIsUpgradeOpen(false); 
               }
               setProcessingPlan(null);
@@ -375,7 +426,7 @@ const SettingsPage = () => {
 
   const handleDirectStripe = async (plan: typeof PLANS[0]) => {
       if (!actorData?.id || !selectedPortfolioId) return;
-      const details = plan.pricing[billingDuration as PlanDuration];
+      const details = plan.pricing[billingDuration as PlanDuration]; 
       
       if(!details.stripePriceId) {
           notify('error', "Unavailable", "This plan duration is not available via card yet.");
@@ -459,20 +510,45 @@ const SettingsPage = () => {
       
       <NotificationContainer notifications={notifications} removeNotification={removeNotification} />
 
+      {/* --- HEADER --- */}
       <div className="flex flex-col md:flex-row justify-between md:items-center gap-6 pt-20">
         <div className="space-y-1">
             <h1 className="text-3xl md:text-4xl font-black tracking-tight text-foreground">Settings & Billing</h1>
-            <p className="text-muted-foreground text-lg">Manage your digital presence and assets.</p>
+            <p className="text-muted-foreground text-lg">Manage your digital presence.</p>
         </div>
         
-        <div className="w-full md:w-auto flex items-center justify-between gap-3 bg-gradient-to-r from-amber-100 to-orange-50 p-2 pl-4 rounded-xl border border-amber-200/50 shadow-sm transition-transform hover:scale-[1.02]">
-            <div className="flex flex-col items-start mr-2">
-                <span className="text-[10px] text-amber-600/80 uppercase font-bold tracking-widest leading-none mb-1">Balance</span>
-                <span className="text-2xl font-black text-amber-600 leading-none">{walletBalance.toLocaleString()} <span className="text-sm font-bold text-amber-600/60">Coins</span></span>
+        {/* --- 6. NEW HEADER ACTIONS (SLOTS + WALLET) --- */}
+        <div className="flex flex-wrap items-center gap-3">
+            
+            {/* SITE SLOTS BADGE */}
+            <div className="flex items-center gap-3 bg-background p-2 pl-4 rounded-xl border shadow-sm h-[60px]">
+                <div className="flex flex-col items-start mr-1">
+                    <span className="text-[10px] text-muted-foreground uppercase font-bold tracking-widest leading-none mb-1">Slots</span>
+                    <span className="text-lg font-black leading-none">
+                        {isSubLoading ? '...' : `${siteSlots.used}/${siteSlots.total}`}
+                    </span>
+                </div>
+                <Button 
+                    size="sm" 
+                    variant="outline" 
+                    className="h-9 px-3 border-dashed border-2 hover:border-primary/50 hover:bg-primary/5 hover:text-primary"
+                    onClick={handleBuySlot}
+                    title="Buy more slots"
+                >
+                    <Plus size={16} />
+                </Button>
             </div>
-            <Button size="sm" onClick={() => setIsTopUpOpen(true)} className="rounded-lg bg-amber-500 hover:bg-amber-600 text-white shadow-md border-2 border-white/20 h-10 px-5 font-bold">
-                <Plus size={18} className="mr-1" /> Top Up
-            </Button>
+
+            {/* WALLET BADGE */}
+            <div className="flex items-center justify-between gap-3 bg-gradient-to-r from-amber-100 to-orange-50 p-2 pl-4 rounded-xl border border-amber-200/50 shadow-sm h-[60px]">
+                <div className="flex flex-col items-start mr-2">
+                    <span className="text-[10px] text-amber-600/80 uppercase font-bold tracking-widest leading-none mb-1">Balance</span>
+                    <span className="text-xl font-black text-amber-600 leading-none">{walletBalance.toLocaleString()} <span className="text-xs font-bold text-amber-600/60">Coins</span></span>
+                </div>
+                <Button size="sm" onClick={() => setIsTopUpOpen(true)} className="rounded-lg bg-amber-500 hover:bg-amber-600 text-white shadow-md border-2 border-white/20 h-10 px-4 font-bold">
+                    <Plus size={18} className="mr-1" /> Top Up
+                </Button>
+            </div>
         </div>
       </div>
 
@@ -488,39 +564,57 @@ const SettingsPage = () => {
         {/* --- TAB 1: WEBSITES --- */}
         <TabsContent value="websites" className="space-y-6 animate-in slide-in-from-bottom-2 duration-500">
             
-            <div className="bg-blue-50/50 border border-blue-100 text-blue-900 p-4 rounded-xl flex items-start gap-4 shadow-sm">
-                <div className="p-2.5 bg-blue-100 rounded-lg text-blue-600"><CalendarDays size={20} /></div>
-                <div>
-                    <h4 className="font-bold text-sm mb-1">Free Trial Policy</h4>
-                    <p className="text-sm opacity-90 leading-relaxed max-w-2xl">
-                        All new websites start with a <strong>14-day free trial</strong>. 
-                        After 14 days, the website will become inactive unless you upgrade.
-                    </p>
-                </div>
-            </div>
-
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                
+                {/* 7. CREATE NEW CARD (Smart Check) */}
                 <button 
-                    className="border-2 border-dashed border-muted-foreground/20 hover:border-primary/50 hover:bg-primary/5 rounded-2xl p-6 flex flex-col items-center justify-center gap-4 transition-all group min-h-[280px]" 
-                    onClick={() => setIsCreateOpen(true)}
+                    className={cn(
+                        "border-2 border-dashed rounded-2xl p-6 flex flex-col items-center justify-center gap-4 transition-all group min-h-[280px]",
+                        siteSlots.remaining > 0 
+                            ? "border-muted-foreground/20 hover:border-primary/50 hover:bg-primary/5" 
+                            : "border-muted/50 opacity-75 cursor-not-allowed hover:bg-muted/10"
+                    )}
+                    onClick={() => {
+                        if(siteSlots.remaining > 0) setIsCreateOpen(true);
+                        else {
+                            // Prompt to buy slot if clicked
+                            handleBuySlot();
+                        }
+                    }}
                 >
-                    <div className="w-16 h-16 rounded-full bg-muted group-hover:bg-background flex items-center justify-center shadow-sm group-hover:shadow-md transition-all group-hover:scale-110">
-                        <Plus size={32} className="text-muted-foreground group-hover:text-primary" />
+                    <div className={cn(
+                        "w-16 h-16 rounded-full flex items-center justify-center shadow-sm transition-all",
+                        siteSlots.remaining > 0 ? "bg-muted group-hover:bg-background group-hover:scale-110" : "bg-muted text-muted-foreground"
+                    )}>
+                        {siteSlots.remaining > 0 ? <Plus size={32} className="text-muted-foreground group-hover:text-primary" /> : <Box size={32}/>}
                     </div>
                     <div className="text-center">
-                        <span className="block font-bold text-lg text-foreground mb-1">Create New Website</span>
-                        <span className="text-sm text-muted-foreground">Start from a template</span>
+                        <span className="block font-bold text-lg text-foreground mb-1">
+                            {siteSlots.remaining > 0 ? "Create New Website" : "No Slots Available"}
+                        </span>
+                        <span className="text-sm text-muted-foreground">
+                            {siteSlots.remaining > 0 
+                                ? `${siteSlots.remaining} slot${siteSlots.remaining > 1 ? 's' : ''} remaining` 
+                                : "Buy a slot to create more"
+                            }
+                        </span>
+                        {siteSlots.remaining <= 0 && (
+                            <Button variant="link" className="mt-2 h-auto p-0 text-primary">Buy Slot (+500 Coins)</Button>
+                        )}
                     </div>
                 </button>
 
                 {portfolios.map((site) => {
                     const sub = subscriptions[site.id];
+                    // Logic updated: Plan names are lower case in DB, match with PLANS const
+                    const currentPlanObj = PLANS.find(p => p.id === sub?.plan_id) || PLANS[0];
                     const isPro = sub && sub.status === 'active' && new Date(sub.current_period_end) > new Date();
                     const isStripe = sub?.payment_method === 'stripe';
                     
                     let badgeColor = "bg-primary";
                     if(sub?.plan_id === 'starter') badgeColor = "bg-blue-500";
-                    if(sub?.plan_id === 'agency') badgeColor = "bg-purple-600";
+                    if(sub?.plan_id === 'ecommerce') badgeColor = "bg-indigo-600";
+                    if(sub?.plan_id === 'pro') badgeColor = "bg-purple-600";
 
                     return (
                         <Card key={site.id} className="group overflow-hidden hover:shadow-lg transition-all border-muted/60 hover:border-primary/30 min-h-[280px] flex flex-col relative rounded-2xl">
@@ -529,7 +623,9 @@ const SettingsPage = () => {
                                     <div className="flex gap-2">
                                         <Badge variant={site.is_published ? "default" : "secondary"} className="rounded-md px-2">{site.is_published ? "Live" : "Draft"}</Badge>
                                         {isPro ? (
-                                            <Badge className={cn("border-0 text-white rounded-md shadow-sm", badgeColor)}>{sub.plan_id.toUpperCase()}</Badge>
+                                            <Badge className={cn("border-0 text-white rounded-md shadow-sm", badgeColor)}>
+                                                {currentPlanObj.name}
+                                            </Badge>
                                         ) : (
                                             <Badge variant="outline" className="border-amber-500 text-amber-600 bg-amber-50 rounded-md">Trial</Badge>
                                         )}
@@ -823,22 +919,23 @@ const SettingsPage = () => {
               </DialogHeader>
 
               {/* Billing Cycle Selector */}
-              <div className="flex justify-center mb-6 mt-2">
+              <div className="flex justify-center mb-6 mt-2 overflow-x-auto">
                   <div className="bg-muted p-1 rounded-xl flex gap-1 border">
                       {[1, 3, 6, 12].map(duration => {
                           const labels: any = { 1: 'Monthly', 3: '3 Mos', 6: '6 Mos', 12: 'Yearly' };
+                          const discountLabels: any = { 3: '5% OFF', 6: '10% OFF', 12: '25% OFF' }; 
                           const isActive = billingDuration === duration;
                           return (
                             <button 
                                 key={duration}
-                                onClick={() => setBillingDuration(duration as any)} 
+                                onClick={() => setBillingDuration(duration as PlanDuration)} 
                                 className={cn(
-                                    "px-4 md:px-6 py-2 rounded-lg text-sm font-bold transition-all flex items-center gap-2", 
+                                    "px-4 md:px-6 py-2 rounded-lg text-xs md:text-sm font-bold transition-all flex items-center gap-2 whitespace-nowrap", 
                                     isActive ? "bg-white shadow text-foreground" : "text-muted-foreground hover:text-foreground"
                                 )}
                             >
                                 {labels[duration]}
-                                {duration === 12 && <span className="hidden md:inline-block text-[10px] bg-green-500 text-white px-1.5 py-0.5 rounded-full shadow-sm">SAVE 30%</span>}
+                                {duration > 1 && <span className="text-[9px] bg-green-500 text-white px-1.5 py-0.5 rounded-full shadow-sm">{discountLabels[duration]}</span>}
                             </button>
                           )
                       })}
@@ -849,11 +946,11 @@ const SettingsPage = () => {
                   {PLANS.map(plan => {
                       const details = plan.pricing[billingDuration as PlanDuration];
                       const proration = calculateProration(plan.id);
+                      
                       const isCurrentPlanId = subscriptions[selectedPortfolioId || '']?.plan_id === plan.id;
                       
-                      // Fix: Only show "Active Plan" if plan ID matches AND duration logic matches 
-                      // (If they have 1 month, but click 12 months, it should not show Active, it should allow upgrade)
-                      const isExactlyCurrent = isCurrentPlanId && billingDuration === proration.currentDurationKey;
+                      // Safety Check: Are they exactly on this plan AND this duration?
+                      const isExactlyCurrent = isCurrentPlanId && billingDuration === proration.activeDuration;
 
                       return (
                           <Card key={plan.id} className={cn("relative transition-all border-2 flex flex-col overflow-hidden", isExactlyCurrent ? "border-primary bg-primary/5 shadow-md scale-[1.02]" : "hover:border-primary/50 hover:shadow-sm", processingPlan === plan.id ? "opacity-50" : "")}>
@@ -866,9 +963,10 @@ const SettingsPage = () => {
                                   </CardTitle>
                                   <div className="flex items-baseline gap-1 mt-2">
                                       <span className="text-3xl font-black">${details.stripeCost.toFixed(2)}</span>
-                                      <span className="text-sm text-muted-foreground font-medium"> total</span>
+                                      <span className="text-sm text-muted-foreground font-medium">/{billingDuration === 12 ? 'yr' : 'mo'}</span>
                                       {details.label && <span className="ml-2 text-xs font-bold text-green-600 bg-green-100 px-2 py-0.5 rounded-full">{details.label}</span>}
                                   </div>
+                                  <p className="text-xs text-muted-foreground mt-2 min-h-[32px]">{plan.description}</p>
                               </CardHeader>
                               
                               <CardContent className="flex-grow space-y-6">

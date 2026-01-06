@@ -13,6 +13,7 @@ export const trackEvent = async (
     // 2. Fire and Forget (Don't await, just send)
     supabase.from('analytics_events').insert({
       actor_id: actorId,
+      portfolio_id: metadata.portfolio_id || null, // <--- THE FIX: Send to dedicated column
       event_type: eventType,
       page_path: window.location.pathname,
       metadata: {

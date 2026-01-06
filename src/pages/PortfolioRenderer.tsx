@@ -57,9 +57,10 @@ const PortfolioRenderer: React.FC<PortfolioRendererProps> = ({ editorData, isPre
   // --- ANALYTICS TRACKING ---
   useEffect(() => {
     if (portfolio && !isPreview && portfolio.actor_id) {
-        const sessionKey = `viewed_${portfolio.id}_${new Date().toDateString()}`; // Track by Portfolio ID
+        const sessionKey = `viewed_${portfolio.id}_${new Date().toDateString()}`;
         if (!sessionStorage.getItem(sessionKey)) {
-            trackEvent(portfolio.actor_id, 'page_view');
+            // Pass portfolio_id in metadata object (3rd arg)
+            trackEvent(portfolio.actor_id, 'page_view', { portfolio_id: portfolio.id });
             sessionStorage.setItem(sessionKey, 'true');
         }
     }
@@ -178,7 +179,7 @@ const PortfolioRenderer: React.FC<PortfolioRendererProps> = ({ editorData, isPre
                                     return <Component data={section.data} allSections={sections} isPreview={isPreview} />;
                                 }
                                 if (section.type === 'services_showcase' || section.type === 'shop' || section.type === 'lead_form') {
-                                    return <Component data={section.data} actorId={activeActorId} />;
+                                    return <Component data={section.data} actorId={activeActorId} portfolioId={portfolio.id} />;
                                 }
 
                                 return <Component data={section.data} />;

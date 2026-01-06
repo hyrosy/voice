@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Minus, Plus, ShoppingBag, ArrowRight, MessageCircle, X, ChevronLeft, ExternalLink, User, Phone, MapPin, Loader2, FileText, CheckCircle2 } from 'lucide-react';
 import { cn } from "@/lib/utils";
 import { trackEvent } from '../../../lib/analytics'; 
-import { supabase } from '@/supabaseClient'; // NEW IMPORT
+import { supabase } from '@/supabaseClient'; 
 
 interface ProductVariant {
     name: string; 
@@ -22,7 +22,7 @@ export interface Product {
     image?: string;
     images?: string[]; 
     variants?: ProductVariant[];
-    actionType?: 'whatsapp' | 'link' | 'form_order'; // UPDATED
+    actionType?: 'whatsapp' | 'link' | 'form_order';
     checkoutUrl?: string;
     whatsappNumber?: string;
     buttonText?: string;
@@ -31,19 +31,19 @@ export interface Product {
 
 interface ProductDetailModalProps {
     product: Product | null;
-    actorId?: string; // NEW PROP
+    actorId?: string; 
+    portfolioId?: string; // <--- 1. NEW PROP
     isOpen: boolean;
     onClose: () => void;
 }
 
-export const ProductDetailModal = ({ product, actorId, isOpen, onClose }: ProductDetailModalProps) => {
-    // UPDATED STATE TYPE
+export const ProductDetailModal = ({ product, actorId, portfolioId, isOpen, onClose }: ProductDetailModalProps) => {
     const [step, setStep] = useState<'details' | 'form' | 'success'>('details');
     const [quantity, setQuantity] = useState(1);
     const [selectedVariants, setSelectedVariants] = useState<Record<string, string>>({});
     const [clientInfo, setClientInfo] = useState({ name: '', address: '', phone: '' });
     const [activeImgIndex, setActiveImgIndex] = useState(0);
-    const [isSubmitting, setIsSubmitting] = useState(false); // NEW STATE
+    const [isSubmitting, setIsSubmitting] = useState(false);
 
     if (!product) return null;
 
@@ -55,14 +55,21 @@ export const ProductDetailModal = ({ product, actorId, isOpen, onClose }: Produc
     const actionType = product.actionType || 'whatsapp';
 
     const handleMainAction = () => {
+        // A. External Link
         if (actionType === 'link') {
             const url = product.checkoutUrl || '#';
-            trackEvent(product.actor_id, 'shop_click', { product_name: product.title, url: product.checkoutUrl });
+            // 2. Track Click with Portfolio ID
+            trackEvent(product.actor_id, 'shop_click', { 
+                product_name: product.title, 
+                url: product.checkoutUrl,
+                portfolio_id: portfolioId 
+            });
             window.open(url, '_blank');
             onClose();
             return;
         }
 
+        // Validate Variants
         if (variants.length > 0) {
              const missing = variants.find(v => !selectedVariants[v.name]);
              if (missing) {
@@ -73,41 +80,31 @@ export const ProductDetailModal = ({ product, actorId, isOpen, onClose }: Produc
         setStep('form');
     };
 
-    // RENAMED & UPDATED FUNCTION
     const handleConfirmOrder = async () => {
         if (!clientInfo.name || !clientInfo.phone) {
             alert("Please provide your name and phone number.");
             return;
         }
 
-        // 1. WhatsApp Flow (Existing)
+        // B. WhatsApp Flow
         if (actionType === 'whatsapp') {
+            // 3. Track WhatsApp with Portfolio ID
+            trackEvent(product.actor_id, 'whatsapp_click', { 
+                product_name: product.title,
+                portfolio_id: portfolioId 
+            });
+
             const variantText = Object.entries(selectedVariants).map(([key, val]) => `${key}: ${val}`).join(', ');
             
-            const message = `
-*NEW ORDER REQUEST* 🛍️
-------------------
-*Product:* ${product.title}
-*Price:* ${product.price}
-*Qty:* ${quantity}
-${variantText ? `*Options:* ${variantText}` : ''}
-
-*CUSTOMER DETAILS* 👤
-*Name:* ${clientInfo.name}
-*Phone:* ${clientInfo.phone}
-*Address:* ${clientInfo.address}
-------------------
-Please confirm this order!`.trim();
+            const message = `*NEW ORDER REQUEST* 🛍️\n------------------\n*Product:* ${product.title}\n*Price:* ${product.price}\n*Qty:* ${quantity}\n${variantText ? `*Options:* ${variantText}` : ''}\n\n*CUSTOMER DETAILS* 👤\n*Name:* ${clientInfo.name}\n*Phone:* ${clientInfo.phone}\n*Address:* ${clientInfo.address}\n------------------\nPlease confirm this order!`;
 
             const number = product.whatsappNumber ? product.whatsappNumber.replace(/[^0-9]/g, '') : '1234567890'; 
-            
-            trackEvent(product.actor_id, 'whatsapp_click', { product_name: product.title });
             window.open(`https://wa.me/${number}?text=${encodeURIComponent(message)}`, '_blank');
             onClose();
             return;
         }
 
-        // 2. Direct Database Order Flow (NEW)
+        // C. Direct Database Order Flow
         if (actionType === 'form_order') {
             if (!actorId) {
                 alert("Configuration Error: Missing Merchant ID");
@@ -118,6 +115,7 @@ Please confirm this order!`.trim();
             
             const { error } = await supabase.from('pro_orders').insert({
                 actor_id: actorId,
+                portfolio_id: portfolioId, // <--- 4. SAVE PORTFOLIO ID
                 customer_name: clientInfo.name,
                 customer_phone: clientInfo.phone,
                 customer_address: clientInfo.address,
@@ -134,8 +132,13 @@ Please confirm this order!`.trim();
                 console.error("Order Error:", error);
                 alert("There was an issue saving your order. Please try again.");
             } else {
-                trackEvent(product.actor_id, 'shop_click', { product_name: product.title, type: 'direct_order' });
-                setStep('success'); // Move to success view
+                // 5. Track Success Event
+                trackEvent(product.actor_id, 'shop_click', { 
+                    product_name: product.title, 
+                    type: 'direct_order',
+                    portfolio_id: portfolioId
+                });
+                setStep('success'); 
             }
         }
     };
@@ -182,7 +185,7 @@ Please confirm this order!`.trim();
                 <div className="w-full md:w-1/2 p-6 md:p-8 flex flex-col h-full overflow-y-auto relative">
                     <button onClick={handleClose} className="absolute top-4 right-4 text-neutral-500 hover:text-white hidden md:block"><X size={24} /></button>
 
-                    {/* --- STEP 3: SUCCESS VIEW (NEW) --- */}
+                    {/* --- STEP 3: SUCCESS VIEW --- */}
                     {step === 'success' && (
                         <div className="flex flex-col items-center justify-center h-full text-center space-y-6 animate-in fade-in zoom-in duration-300">
                              <div className="w-20 h-20 bg-green-500/20 text-green-500 rounded-full flex items-center justify-center">
@@ -229,7 +232,7 @@ Please confirm this order!`.trim();
                                 </div>
                             ))}
 
-                            {/* Quantity Selector - Show for both Form types */}
+                            {/* Quantity Selector */}
                             {actionType !== 'link' && (
                                 <div className="space-y-2 pt-2">
                                     <Label className="text-xs uppercase tracking-wider text-neutral-500">Quantity</Label>
@@ -251,7 +254,7 @@ Please confirm this order!`.trim();
                         </div>
                     )}
 
-                    {/* --- STEP 2: FORM (WhatsApp & Direct Order) --- */}
+                    {/* --- STEP 2: FORM --- */}
                     {step === 'form' && (
                         <div className="space-y-6 flex-grow flex flex-col animate-in slide-in-from-right-4 duration-300">
                             <div className="flex items-center gap-2 mb-2">
@@ -303,7 +306,7 @@ Please confirm this order!`.trim();
                                     ) : (
                                         actionType === 'whatsapp' ? <MessageCircle className="mr-2 w-5 h-5" /> : <FileText className="mr-2 w-5 h-5" />
                                     )}
-                                    {isSubmitting ? 'Processing...' : (actionType === 'whatsapp' ? 'Send via WhatsApp' : 'Confirm Order')}
+                                    {isSubmitting ? 'Processing...' : (actionType === 'whatsapp' ? 'Confirm via WhatsApp' : 'Confirm Order')}
                                 </Button>
                             </div>
                         </div>
