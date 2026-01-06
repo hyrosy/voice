@@ -506,7 +506,7 @@ const SettingsPage = () => {
   if (loading) return <div className="flex h-96 items-center justify-center"><Loader2 className="animate-spin text-primary" /></div>;
 
   return (
-    <div className="p-4 md:p-8 space-y-8 w-full max-w-6xl mx-auto pb-24 relative">
+    <div className="px-3 py-4 md:p-8 space-y-8 w-full max-w-6xl mx-auto pb-24 relative">
       
       <NotificationContainer notifications={notifications} removeNotification={removeNotification} />
 
@@ -553,7 +553,7 @@ const SettingsPage = () => {
       </div>
 
       <Tabs defaultValue="websites" className="space-y-8">
-        <div className="w-full overflow-x-auto pb-2 -mb-2">
+        <div className="w-full overflow-x-auto pb-2 -mb-2 no-scrollbar">
             <TabsList className="inline-flex w-auto p-1 bg-muted/50 rounded-xl">
                 <TabsTrigger value="websites" className="gap-2 px-6 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:text-foreground"><Globe size={16}/> My Websites</TabsTrigger>
                 <TabsTrigger value="history" className="gap-2 px-6 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:text-foreground"><CreditCard size={16}/> Billing History</TabsTrigger>

@@ -11,7 +11,7 @@ import { Input } from "@/components/ui/input";
 import { 
   GripVertical, Eye, EyeOff, Save, ExternalLink, Loader2, Plus, 
   Palette, Layers, Smartphone, Settings, Globe, CheckCircle2,
-  Pencil, Check, X, Lock // Import Lock Icon
+  Pencil, Check, X, Lock, RefreshCw, Zap // Import Lock Icon
 } from 'lucide-react';
 import { PortfolioSection, DEFAULT_PORTFOLIO_SECTIONS, SectionType } from '../../types/portfolio';
 import SectionEditor from '../../components/dashboard/SectionEditor';
@@ -171,6 +171,7 @@ const PortfolioBuilderPage = () => {
   const [renamingId, setRenamingId] = useState<string | null>(null);
   const [tempLabel, setTempLabel] = useState("");
 
+  
   // --- IDENTITY & SETTINGS STATE ---
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [siteIdentity, setSiteIdentity] = useState({ 
@@ -179,6 +180,9 @@ const PortfolioBuilderPage = () => {
       customDomain: '' 
   });
   const [isSavingIdentity, setIsSavingIdentity] = useState(false);
+  const [domainStatus, setDomainStatus] = useState<any>(null);
+  const [isCheckingDomain, setIsCheckingDomain] = useState(false);
+  const [activeDomain, setActiveDomain] = useState(siteIdentity.customDomain); // To track added domain
 
   // Theme State
   const [themeConfig, setThemeConfig] = useState({
@@ -247,6 +251,50 @@ const PortfolioBuilderPage = () => {
 
     fetchData();
   }, [actorData.id, searchParams]); 
+
+  const handleAddDomain = async () => {
+    if(!siteIdentity.customDomain) return;
+    setIsCheckingDomain(true);
+    
+    // 1. Call our Edge Function
+    const { data, error } = await supabase.functions.invoke('manage-domains', {
+        body: { 
+            action: 'add', 
+            domain: siteIdentity.customDomain,
+            portfolioId: activePortfolioId 
+        }
+    });
+
+    if(error || data.error) {
+        alert("Error adding domain: " + (error?.message || data?.error));
+    } else {
+        setActiveDomain(siteIdentity.customDomain);
+        checkDomainStatus(siteIdentity.customDomain);
+    }
+    setIsCheckingDomain(false);
+};
+
+const checkDomainStatus = async (domain: string) => {
+    setIsCheckingDomain(true);
+    const { data } = await supabase.functions.invoke('manage-domains', {
+        body: { action: 'check', domain }
+    });
+    
+    if(data) setDomainStatus(data);
+    setIsCheckingDomain(false);
+};
+
+const handleRemoveDomain = async () => {
+    if(!confirm("Remove this custom domain?")) return;
+    setIsCheckingDomain(true);
+    await supabase.functions.invoke('manage-domains', {
+        body: { action: 'remove', domain: activeDomain, portfolioId: activePortfolioId }
+    });
+    setActiveDomain('');
+    setSiteIdentity(prev => ({...prev, customDomain: ''}));
+    setDomainStatus(null);
+    setIsCheckingDomain(false);
+};
 
   const handleDragEnd = (result: any) => {
     if (!result.destination) return;
@@ -735,57 +783,128 @@ const PortfolioBuilderPage = () => {
 
                 {/* DOMAINS TAB (Custom Domain) */}
                 <TabsContent value="domains" className="space-y-4 py-4">
-                    <div className="space-y-2">
-                        <div className="flex justify-between">
-                            <Label>Custom Domain</Label>
-                            {/* 6. VISUAL LOCK FOR DOMAIN */}
-                            {!limits.canConnectDomain && (
-                                <span className="text-[10px] bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full font-bold flex items-center gap-1">
-                                    <Lock size={10} /> Pro Feature
-                                </span>
-                            )}
-                        </div>
-                        <div className="flex gap-2">
-                            <div className="relative flex-grow">
-                                <Globe className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-                                <Input 
-                                    value={siteIdentity.customDomain} 
-                                    onChange={(e) => setSiteIdentity(prev => ({...prev, customDomain: e.target.value}))}
-                                    className="pl-9"
-                                    placeholder={limits.canConnectDomain ? "www.yourname.com" : "Upgrade to connect domain"}
-                                    disabled={!limits.canConnectDomain} // DISABLE INPUT
-                                />
-                            </div>
-                        </div>
-                        <p className="text-[11px] text-muted-foreground">
-                            Enter your domain name. You will need to configure your DNS A-Record to point to our server IP.
-                        </p>
-                        
-                        {!limits.canConnectDomain && (
-                            <Button 
-                                variant="outline" 
-                                size="sm" 
-                                className="w-full border-amber-200 bg-amber-50 hover:bg-amber-100 text-amber-700"
-                                onClick={() => navigate('/dashboard/settings')}
-                            >
-                                Upgrade Plan
-                            </Button>
-                        )}
-                    </div>
-                    
-                    <div className="bg-muted/30 border rounded-lg p-3 text-xs text-muted-foreground space-y-1">
-                        <div className="flex items-center gap-2">
-                            <CheckCircle2 className="w-3 h-3 text-green-500" />
-                            <span>Free URL: <strong>ucpmaroc.com/pro/{siteIdentity.slug}</strong> (Active)</span>
-                        </div>
-                        {siteIdentity.customDomain && limits.canConnectDomain && (
-                            <div className="flex items-center gap-2">
-                                <Loader2 className="w-3 h-3 text-yellow-500 animate-spin" />
-                                <span>Custom Domain: <strong>{siteIdentity.customDomain}</strong> (Pending DNS)</span>
-                            </div>
-                        )}
-                    </div>
-                </TabsContent>
+                  <div className="space-y-4">
+                      
+                      {/* Header / Lock Status */}
+                      <div className="flex justify-between items-center">
+                          <Label>Custom Domain</Label>
+                          {!limits.canConnectDomain && (
+                              <span className="text-[10px] bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full font-bold flex items-center gap-1">
+                                  <Lock size={10} /> Pro Feature
+                              </span>
+                          )}
+                      </div>
+
+                      {/* Input Area */}
+                      {!activeDomain ? (
+                          <div className="flex gap-2">
+                              <div className="relative flex-grow">
+                                  <Globe className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+                                  <Input 
+                                      value={siteIdentity.customDomain} 
+                                      onChange={(e) => setSiteIdentity(prev => ({...prev, customDomain: e.target.value}))}
+                                      className="pl-9"
+                                      placeholder={limits.canConnectDomain ? "example.com" : "Upgrade to connect"}
+                                      disabled={!limits.canConnectDomain}
+                                  />
+                              </div>
+                              <Button 
+                                  onClick={handleAddDomain} 
+                                  disabled={!siteIdentity.customDomain || isCheckingDomain || !limits.canConnectDomain}
+                              >
+                                  {isCheckingDomain ? <Loader2 className="animate-spin h-4 w-4"/> : "Connect"}
+                              </Button>
+                          </div>
+                      ) : (
+                          // Active Domain View
+                          <div className="bg-muted/30 border rounded-xl p-4 space-y-4">
+                              <div className="flex items-center justify-between">
+                                  <div className="flex items-center gap-2">
+                                      {domainStatus?.verified ? (
+                                          <CheckCircle2 className="text-green-500 h-5 w-5" />
+                                      ) : (
+                                          <Loader2 className="text-amber-500 h-5 w-5 animate-spin" />
+                                      )}
+                                      <span className="font-bold text-lg">{activeDomain}</span>
+                                  </div>
+                                  <Button variant="ghost" size="sm" className="text-red-500 hover:text-red-600 h-8" onClick={handleRemoveDomain}>
+                                      Disconnect
+                                  </Button>
+                              </div>
+
+                              {/* DNS Instructions */}
+                                {/* DNS Instructions */}
+                              {!domainStatus?.verified && (
+                                  <div className="space-y-3 text-sm">
+                                          <div className="p-3 bg-background border rounded-lg space-y-3">
+                                          <div className="flex items-start gap-2">
+                                              <div className="p-1 bg-blue-100 text-blue-600 rounded mt-0.5"><Zap size={12} fill="currentColor"/></div>
+                                              <div className="space-y-1">
+                                                  <p className="font-semibold text-xs uppercase text-muted-foreground">Configuration Required</p>
+                                                  <p className="text-muted-foreground text-xs">
+                                                      Log in to your domain provider (GoDaddy, Namecheap, etc) and add these <strong>2 records</strong>:
+                                                  </p>
+                                              </div>
+                                          </div>
+                                          
+                                          {/* Record 1: A Record */}
+                                          <div className="grid grid-cols-[0.5fr_1fr_2fr] gap-2 font-mono text-xs items-center bg-muted/50 p-2 rounded">
+                                              <div className="font-bold">Type</div>
+                                              <div className="font-bold">Name</div>
+                                              <div className="font-bold text-right">Value</div>
+                                              
+                                              <div className="bg-white border px-1.5 py-0.5 rounded text-center">A</div>
+                                              <div className="text-muted-foreground">@</div>
+                                              <div className="text-right select-all cursor-pointer" onClick={() => navigator.clipboard.writeText('76.76.21.21')}>
+                                                  76.76.21.21
+                                              </div>
+                                          </div>
+
+                                          {/* Record 2: CNAME */}
+                                          <div className="grid grid-cols-[0.5fr_1fr_2fr] gap-2 font-mono text-xs items-center bg-muted/50 p-2 rounded">
+                                              <div className="bg-white border px-1.5 py-0.5 rounded text-center">CNAME</div>
+                                              <div className="text-muted-foreground">www</div>
+                                              <div className="text-right select-all cursor-pointer" onClick={() => navigator.clipboard.writeText('cname.vercel-dns.com')}>
+                                                  cname.vercel-dns.com
+                                              </div>
+                                          </div>
+                                          </div>
+                                          
+                                          <Button 
+                                              size="sm" 
+                                              variant="outline" 
+                                              className="w-full gap-2"
+                                              onClick={() => checkDomainStatus(activeDomain)}
+                                              disabled={isCheckingDomain}
+                                          >
+                                              {isCheckingDomain ? <Loader2 className="h-3 w-3 animate-spin"/> : <RefreshCw className="h-3 w-3"/>}
+                                              Verify Connection
+                                          </Button>
+                                  </div>
+                              )}
+
+                              {domainStatus?.verified && (
+                                  <div className="flex items-center gap-2 text-sm text-green-600 bg-green-500/10 p-2 rounded-lg">
+                                      <CheckCircle2 size={14} /> 
+                                      <span>Domain Active & SSL Secured</span>
+                                  </div>
+                              )}
+                          </div>
+                      )}
+
+                      {/* Upgrade Prompt */}
+                      {!limits.canConnectDomain && (
+                          <Button 
+                              variant="outline" 
+                              size="sm" 
+                              className="w-full border-amber-200 bg-amber-50 hover:bg-amber-100 text-amber-700 mt-2"
+                              onClick={() => navigate('/dashboard/settings')}
+                          >
+                              Upgrade Plan to Connect Domain
+                          </Button>
+                      )}
+                  </div>
+              </TabsContent>
             </Tabs>
 
             <DialogFooter>
