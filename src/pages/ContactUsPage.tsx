@@ -67,7 +67,7 @@ const ContactUsPage = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-background text-white flex items-center justify-center pt-20">
+    <div className="min-h-screen bg-background text-foreground flex items-center justify-center pt-20">
       <div className="container mx-auto px-4 py-16 md:py-24">
         
         {/* Main Grid Layout */}
@@ -93,7 +93,7 @@ const ContactUsPage = () => {
                     <info.icon className="w-5 h-5 text-purple-400" />
                   </div>
                   <div>
-                    <h3 className="font-semibold text-white">{info.title}</h3>
+                    <h3 className="font-semibold text-foreground">{info.title}</h3>
                     <p className="text-muted-foreground text-sm">{info.description}</p>
                   </div>
                 </div>
@@ -103,7 +103,7 @@ const ContactUsPage = () => {
 
           {/* Right Column - Form */}
           <div className="bg-card p-8 rounded-2xl border border">
-             <h2 className="text-2xl font-bold mb-6 text-white">Send a Message</h2>
+             <h2 className="text-2xl font-bold mb-6 text-foreground">Send a Message</h2>
              <form onSubmit={handleFormSubmit} className="space-y-5">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                     <div>
@@ -124,7 +124,7 @@ const ContactUsPage = () => {
                     <textarea name="message" id="message" rows={4} value={formState.message} onChange={handleInputChange} required className="w-full p-3 bg-slate-700 border border-slate-600 rounded-md focus:ring-purple-500 focus:border-purple-500"></textarea>
                 </div>
                 <div>
-                    <button type="submit" disabled={status === 'Sending...'} className="w-full group flex items-center justify-center gap-2 py-3 px-6 bg-gradient-to-r from-purple-600 to-pink-600 text-white font-bold rounded-full hover:shadow-lg hover:shadow-purple-500/30 hover:scale-105 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed">
+                    <button type="submit" disabled={status === 'Sending...'} className="w-full group flex items-center justify-center gap-2 py-3 px-6 bg-gradient-to-r from-purple-600 to-pink-600 text-foreground font-bold rounded-full hover:shadow-lg hover:shadow-purple-500/30 hover:scale-105 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed">
                         {status === 'Sending...' ? 'Sending...' : 'Send Message'}
                         <Send className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
                     </button>

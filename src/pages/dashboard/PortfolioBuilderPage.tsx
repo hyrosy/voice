@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react'; // Added useCallback
 import { supabase } from '../../supabaseClient';
-import { useOutletContext, useSearchParams, useNavigate } from 'react-router-dom'; // Import useNavigate
+import { useOutletContext, useSearchParams, useNavigate } from 'react-router-dom';
 import { ActorDashboardContextType } from '../../layouts/ActorDashboardLayout';
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 import { Switch } from "@/components/ui/switch";
@@ -11,7 +11,13 @@ import { Input } from "@/components/ui/input";
 import { 
   GripVertical, Eye, EyeOff, Save, ExternalLink, Loader2, Plus, 
   Palette, Layers, Smartphone, Settings, Globe, CheckCircle2,
-  Pencil, Check, X, Lock, RefreshCw, Zap // Import Lock Icon
+  Pencil, Check, X, Lock, RefreshCw, Zap,
+  Circle,
+  LayoutTemplate,
+  PaintBucket,
+  Square,
+  Type,
+  Component as ComponentIcon // Correctly aliased
 } from 'lucide-react';
 import { PortfolioSection, DEFAULT_PORTFOLIO_SECTIONS, SectionType } from '../../types/portfolio';
 import SectionEditor from '../../components/dashboard/SectionEditor';
@@ -39,16 +45,17 @@ import {
 } from "@/components/ui/dialog";
 import { THEME_REGISTRY, DEFAULT_THEME } from '../../themes/registry'; 
 import { cn, hexToHSL } from "@/lib/utils"; 
-// 1. IMPORT SUBSCRIPTION HOOK
 import { useSubscription } from '../../context/SubscriptionContext';
+import { Slider } from "@/components/ui/slider"; // Correct import for Shadcn Slider
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"; // Correct import for Shadcn ToggleGroup
+import { PORTFOLIO_TEMPLATES } from '../../lib/templates'; // Use the imported templates
 
 // --- AVAILABLE BLOCKS LIST ---
-// Added 'module' requirement to blocks
 const AVAILABLE_BLOCKS: { type: SectionType; label: string; module?: 'shop' | 'appointments' }[] = [
   { type: 'header', label: 'Header / Navbar' },
   { type: 'hero', label: 'Hero Section' },
   { type: 'about', label: 'About Me' },
-  { type: 'shop', label: 'Shop / Products', module: 'shop' }, // Requires Shop Module
+  { type: 'shop', label: 'Shop / Products', module: 'shop' },
   { type: 'services_showcase', label: 'Services' },
   { type: 'gallery', label: 'Gallery' },
   { type: 'image_slider', label: 'Image Slider' },
@@ -59,19 +66,6 @@ const AVAILABLE_BLOCKS: { type: SectionType; label: string; module?: 'shop' | 'a
   { type: 'team', label: 'Team' },
   { type: 'pricing', label: 'Pricing' },
   { type: 'lead_form', label: 'LeadForm' },
-];
-
-const LOCAL_PORTFOLIO_TEMPLATES = [
-  {
-    id: 'modern',
-    name: 'Modern Minimal',
-    description: 'Clean lines, ample whitespace, professional feel.',
-  },
-  {
-    id: 'cinematic', 
-    name: 'Cinematic Dark',
-    description: 'Immersive 3D sliders, dark mode, and high contrast.',
-  },
 ];
 
 const LOCAL_FONT_OPTIONS = [
@@ -89,6 +83,23 @@ const LOCAL_COLOR_PALETTES = [
   { id: 'slate', name: 'Neutral Slate', value: '#64748b' },
 ];
 
+const VISUAL_THEMES = [
+    {
+        id: 'modern',
+        name: 'Modern Minimal',
+        description: 'Clean whitespace, classic layout, focus on typography.',
+        previewColor: '#f3f4f6' // Light grey
+    },
+    {
+        id: 'cinematic',
+        name: 'Cinematic Dark',
+        description: 'Immersive dark mode, full-screen media, dramatic transitions.',
+        previewColor: '#1e293b' // Dark slate
+    },
+    // Future Marketplace Themes will appear here:
+    // { id: 'cyberpunk-v1', name: 'Cyberpunk', author: 'DevUser123' ... }
+];
+
 // --- PREVIEW COMPONENT ---
 const PortfolioPreview = ({ sections, theme }: { sections: PortfolioSection[], theme: any }) => {
   const themeId = theme.templateId || 'modern';
@@ -97,20 +108,26 @@ const PortfolioPreview = ({ sections, theme }: { sections: PortfolioSection[], t
   const activeColorObj = LOCAL_COLOR_PALETTES.find(c => c.id === theme.primaryColor) || LOCAL_COLOR_PALETTES[0];
   const primaryHSL = hexToHSL(activeColorObj.value);
 
+  // Calculate Radius CSS value (0.0 to 1.0 -> 0px to 2rem)
+  const radiusVal = theme?.radius !== undefined ? theme.radius : 0.5;
+  const radiusCSS = `${radiusVal * 2}rem`; 
+
   const previewStyle = {
     '--primary': primaryHSL, 
     '--ring': primaryHSL, 
+    '--radius': radiusCSS, // Inject radius for preview
   } as React.CSSProperties;
 
   return (
     <div className="border rounded-lg h-full flex flex-col w-full bg-white text-black relative shadow-inner overflow-hidden">
       <div className="bg-slate-800 text-white text-xs p-2 text-center z-50 flex-shrink-0 font-medium tracking-wide">
-        Live Preview • {LOCAL_PORTFOLIO_TEMPLATES.find(t => t.id === themeId)?.name || 'Custom'}
+        Live Preview • {PORTFOLIO_TEMPLATES.find(t => t.id === themeId)?.name || 'Custom'}
       </div>
 
       <div 
         className={cn("flex-grow overflow-y-auto bg-background text-foreground custom-scrollbar", fontClass)}
         data-theme={theme.templateId}
+        data-btn-style={theme.buttonStyle || 'solid'} // Inject button style
         style={previewStyle}
       >
         {sections.filter(s => s.isVisible).length === 0 ? (
@@ -123,27 +140,18 @@ const PortfolioPreview = ({ sections, theme }: { sections: PortfolioSection[], t
             const Component = (ActiveTheme as any)[section.type === 'lead_form' ? 'LeadForm' : section.type.charAt(0).toUpperCase() + section.type.slice(1).replace(/_([a-z])/g, (g) => g[1].toUpperCase())] 
                             || (ActiveTheme as any)[Object.keys(ActiveTheme).find(k => k.toLowerCase() === section.type.replace('_','').toLowerCase()) || ''];
 
-            const FinalComponent = Component || (() => <div className="p-4 text-center text-red-500 text-xs">Missing Component: {section.type}</div>);
+            if (!Component) return <div key={section.id} className="p-4 text-center text-red-500 text-xs">Missing Component: {section.type}</div>;
 
-            switch (section.type) {
-                case 'header': return <ActiveTheme.Header key={section.id} data={section.data} allSections={sections} isPreview={true} />;
-                case 'hero': return <ActiveTheme.Hero key={section.id} data={section.data} />;
-                case 'about': return <ActiveTheme.About key={section.id} data={section.data} />;
-                case 'gallery': return <ActiveTheme.Gallery key={section.id} data={section.data} />;
-                case 'image_slider': return <ActiveTheme.ImageSlider key={section.id} data={section.data} />;
-                case 'video_slider': return <ActiveTheme.VideoSlider key={section.id} data={section.data} />;
-                case 'services_showcase': return <ActiveTheme.ServicesShowcase key={section.id} data={section.data} />;
-                case 'contact': return <ActiveTheme.Contact key={section.id} data={section.data} />;
-                case 'stats': return <ActiveTheme.Stats key={section.id} data={section.data} />;
-                case 'reviews': return <ActiveTheme.Reviews key={section.id} data={section.data} />;
-                case 'team': return <ActiveTheme.Team key={section.id} data={section.data} />;
-                case 'map': return <ActiveTheme.Map key={section.id} data={section.data} />;
-                case 'pricing': return <ActiveTheme.Pricing key={section.id} data={section.data} />;
-                case 'shop': return <ActiveTheme.Shop key={section.id} data={section.data} />; 
-                case 'lead_form': return <ActiveTheme.LeadForm key={section.id} data={section.data} />; 
+            // Mock props for preview
+            const mockProps = {
+                data: section.data,
+                allSections: sections,
+                isPreview: true,
+                actorId: 'preview-actor-id',
+                portfolioId: 'preview-portfolio-id'
+            };
 
-                default: return <div key={section.id} className="p-4 text-center text-red-500 text-xs">Unknown Block: {section.type}</div>;
-            }
+            return <Component key={section.id} {...mockProps} />;
           })
         )}
       </div>
@@ -153,104 +161,144 @@ const PortfolioPreview = ({ sections, theme }: { sections: PortfolioSection[], t
 
 const PortfolioBuilderPage = () => {
   const { actorData } = useOutletContext<ActorDashboardContextType>();
-  
-  // 2. GET SUBSCRIPTION LIMITS
   const { limits, isLoading: isSubLoading } = useSubscription();
   const navigate = useNavigate();
-
   const [searchParams] = useSearchParams();
-  const [activePortfolioId, setActivePortfolioId] = useState<string | null>(null);
+  const activePortfolioIdParam = searchParams.get('id');
 
+  const [activePortfolioId, setActivePortfolioId] = useState<string | null>(activePortfolioIdParam);
+  const [siteList, setSiteList] = useState<any[]>([]);
   const [sections, setSections] = useState<PortfolioSection[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [isPublished, setIsPublished] = useState(false);
   const [editingSection, setEditingSection] = useState<PortfolioSection | null>(null);
 
-  // --- RENAMING STATE ---
+  // Renaming State
   const [renamingId, setRenamingId] = useState<string | null>(null);
   const [tempLabel, setTempLabel] = useState("");
 
-  
-  // --- IDENTITY & SETTINGS STATE ---
+  // Create Site State
+  const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [isCreating, setIsCreating] = useState(false);
+  const [newSiteName, setNewSiteName] = useState("");
+  const [selectedTemplate, setSelectedTemplate] = useState<string>(PORTFOLIO_TEMPLATES[0].id);
+
+  // Identity & Settings State
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-  const [siteIdentity, setSiteIdentity] = useState({ 
-      name: '', 
-      slug: '', 
-      customDomain: '' 
-  });
+  const [siteIdentity, setSiteIdentity] = useState({ name: '', slug: '', customDomain: '' });
   const [isSavingIdentity, setIsSavingIdentity] = useState(false);
   const [domainStatus, setDomainStatus] = useState<any>(null);
   const [isCheckingDomain, setIsCheckingDomain] = useState(false);
-  const [activeDomain, setActiveDomain] = useState(siteIdentity.customDomain); // To track added domain
+  const [activeDomain, setActiveDomain] = useState("");
 
   // Theme State
   const [themeConfig, setThemeConfig] = useState({
       templateId: 'modern',
       primaryColor: 'violet',
-      font: 'sans'
+      font: 'sans',
+      radius: 0.5,
+      buttonStyle: 'solid'
   });
 
-  useEffect(() => {
-    const fetchData = async () => {
-      if (!actorData.id) return;
-      
-      const portfolioIdFromUrl = searchParams.get('id');
-      
-      const { data: identity } = await supabase
-          .from('actors')
-          .select('ActorName, slug')
-          .eq('id', actorData.id)
-          .single();
+  // --- DATA FETCHING ---
 
-      let portfolioData: any = null;
-
-      if (portfolioIdFromUrl) {
-          const { data, error } = await supabase
-              .from('portfolios')
-              .select('*')
-              .eq('id', portfolioIdFromUrl)
-              .single();
+  const fetchSiteList = useCallback(async () => {
+      if (!actorData?.id) return;
+      const { data } = await supabase
+          .from('portfolios')
+          .select('id, site_name')
+          .eq('actor_id', actorData.id)
+          .order('created_at', { ascending: false });
           
-          if (!error) portfolioData = data;
+      if (data) setSiteList(data);
+  }, [actorData?.id]);
+
+  const fetchPortfolioData = useCallback(async (portfolioId: string | null) => {
+    setIsLoading(true);
+    try {
+      let data = null;
+      let error = null;
+
+      if (portfolioId) {
+         const response = await supabase
+            .from('portfolios')
+            .select('*')
+            .eq('id', portfolioId)
+            .single();
+         data = response.data;
+         error = response.error;
       } else {
-          const { data, error } = await supabase
-              .from('portfolios')
-              .select('*')
-              .eq('actor_id', actorData.id)
-              .order('created_at', { ascending: false })
-              .limit(1)
-              .single();
-          
-          if (!error) portfolioData = data;
+         // Fallback: Get most recent
+         const response = await supabase
+            .from('portfolios')
+            .select('*')
+            .eq('actor_id', actorData.id)
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .single();
+         data = response.data;
+         error = response.error;
       }
 
-      if (portfolioData) {
-          setActivePortfolioId(portfolioData.id); 
-          setSections(portfolioData.sections as PortfolioSection[]);
-          setIsPublished(portfolioData.is_published);
-          if (portfolioData.theme_config) setThemeConfig(portfolioData.theme_config);
+      if (error && error.code !== 'PGRST116') throw error; // Ignore "no rows" error for fallback
 
-          setSiteIdentity({
-              name: portfolioData.site_name || identity?.ActorName || '',
-              slug: portfolioData.public_slug || identity?.slug || '',
-              customDomain: portfolioData.custom_domain || '' 
-          });
+      if (data) {
+        setActivePortfolioId(data.id);
+        setSections(data.sections || []);
+        setIsPublished(data.is_published);
+        
+        // Merge theme config safely
+        setThemeConfig({
+            ...data.theme_config,
+            radius: data.theme_config?.radius ?? 0.5,
+            buttonStyle: data.theme_config?.buttonStyle ?? 'solid'
+        });
+
+        setSiteIdentity({
+            name: data.site_name,
+            slug: data.public_slug,
+            customDomain: data.custom_domain || ''
+        });
+
+        if(data.custom_domain) {
+            setActiveDomain(data.custom_domain);
+            checkDomainStatus(data.custom_domain); // Check status on load
+        } else {
+            setActiveDomain("");
+            setDomainStatus(null);
+        }
       } else {
-          setSections(DEFAULT_PORTFOLIO_SECTIONS);
-          if (identity) {
-              setSiteIdentity({ 
-                  name: identity.ActorName || '', 
-                  slug: identity.slug || '',
-                  customDomain: '' 
-              });
-          }
+        // No portfolio found at all
+        setSections(DEFAULT_PORTFOLIO_SECTIONS);
       }
+    } catch (error) {
+      console.error('Error fetching portfolio:', error);
+    } finally {
       setIsLoading(false);
-    };
+    }
+  }, [actorData.id]);
 
-    fetchData();
-  }, [actorData.id, searchParams]); 
+  // Initial Load
+  useEffect(() => {
+    if (actorData.id) {
+        fetchSiteList();
+        fetchPortfolioData(activePortfolioIdParam);
+    }
+  }, [actorData.id, activePortfolioIdParam, fetchSiteList, fetchPortfolioData]);
+
+
+  // --- DOMAIN LOGIC ---
+
+  const checkDomainStatus = async (domain: string) => {
+    setIsCheckingDomain(true);
+    const { data } = await supabase.functions.invoke('manage-domains', {
+        body: { action: 'check', domain }
+    });
+    
+    if(data) setDomainStatus(data);
+    setIsCheckingDomain(false);
+  };
 
   const handleAddDomain = async () => {
     if(!siteIdentity.customDomain) return;
@@ -270,10 +318,8 @@ const PortfolioBuilderPage = () => {
         }
     });
 
-    // 1. IMPROVED ERROR HANDLING
     if(error || (data && data.error)) {
         console.error("Domain Error:", error || data);
-        // Show the actual text from Vercel (e.g., "Domain is already in use")
         alert(`Could not add domain:\n${data?.error || error?.message}`);
     } else {
         setSiteIdentity(prev => ({...prev, customDomain: cleanDomain}));
@@ -281,19 +327,9 @@ const PortfolioBuilderPage = () => {
         checkDomainStatus(cleanDomain);
     }
     setIsCheckingDomain(false);
-};
+  };
 
-const checkDomainStatus = async (domain: string) => {
-    setIsCheckingDomain(true);
-    const { data } = await supabase.functions.invoke('manage-domains', {
-        body: { action: 'check', domain }
-    });
-    
-    if(data) setDomainStatus(data);
-    setIsCheckingDomain(false);
-};
-
-const handleRemoveDomain = async () => {
+  const handleRemoveDomain = async () => {
     if(!confirm("Remove this custom domain?")) return;
     setIsCheckingDomain(true);
     await supabase.functions.invoke('manage-domains', {
@@ -303,7 +339,9 @@ const handleRemoveDomain = async () => {
     setSiteIdentity(prev => ({...prev, customDomain: ''}));
     setDomainStatus(null);
     setIsCheckingDomain(false);
-};
+  };
+
+  // --- ACTIONS ---
 
   const handleDragEnd = (result: any) => {
     if (!result.destination) return;
@@ -341,11 +379,66 @@ const handleRemoveDomain = async () => {
     setIsSaving(false);
   };
 
-  // 3. ENFORCE DOMAIN LIMITS ON SAVE
+  const handleSwitchSite = (val: string) => {
+    if (val === 'new') {
+        setIsCreateOpen(true); 
+    } else {
+        navigate(`/dashboard/portfolio?id=${val}`);
+    }
+  };
+
+  const handleCreateSite = async () => {
+    if (!newSiteName.trim()) { 
+        alert("Please enter a site name"); 
+        return; 
+    }
+    
+    // --- FIX: Add Safety Check ---
+    if (!limits || !limits.siteSlots) {
+        alert("Subscription data is still loading. Please try again in a moment.");
+        return;
+    }
+
+    if (limits.siteSlots.remaining <= 0) {
+        alert("You have used all your portfolio slots. Please upgrade or buy more slots in Settings.");
+        setIsCreateOpen(false);
+        return;
+    }
+
+    setIsCreating(true);
+      
+      try {
+          const template = PORTFOLIO_TEMPLATES.find(t => t.id === selectedTemplate) || PORTFOLIO_TEMPLATES[0];
+          const baseSlug = newSiteName.toLowerCase().replace(/[^a-z0-9]/g, '-');
+          const uniqueSlug = `${baseSlug}-${Date.now().toString().slice(-4)}`;
+
+          const { data, error } = await supabase.from('portfolios').insert({
+              actor_id: actorData.id,
+              site_name: newSiteName,
+              public_slug: uniqueSlug,
+              is_published: false, 
+              sections: template.sections,
+              theme_config: { templateId: 'modern', primaryColor: 'violet', font: 'sans', radius: 0.5, buttonStyle: 'solid' }
+          }).select().single();
+
+          if (error) throw error;
+
+          setIsCreateOpen(false);
+          setNewSiteName("");
+          await fetchSiteList(); 
+          navigate(`/dashboard/portfolio?id=${data.id}`);
+
+      } catch (error: any) {
+          console.error("Creation failed:", error);
+          alert("Failed to create site: " + error.message);
+      } finally {
+          setIsCreating(false);
+      }
+  };
+
   const handleSaveIdentity = async () => {
       if (!activePortfolioId) return;
       
-      // Safety Check (Backend will also reject, but good for UI)
       if (siteIdentity.customDomain && !limits.canConnectDomain) {
           alert("Please upgrade to Pro to connect a custom domain.");
           return;
@@ -375,6 +468,7 @@ const handleRemoveDomain = async () => {
               customDomain: cleanDomain
           }));
           setIsSettingsOpen(false);
+          if(cleanDomain) checkDomainStatus(cleanDomain);
       }
       setIsSavingIdentity(false);
   };
@@ -384,7 +478,6 @@ const handleRemoveDomain = async () => {
   };
 
   const handleAddSection = (type: SectionType) => {
-      // 4. ENFORCE BLOCK COUNT LIMITS
       if (sections.length >= limits.maxBlocksPerSite) {
           alert(`Plan Limit Reached! You can only add ${limits.maxBlocksPerSite} sections on this plan.`);
           return;
@@ -408,6 +501,7 @@ const handleRemoveDomain = async () => {
       }
   }
 
+  // Renaming Helpers
   const startRenaming = (e: React.MouseEvent, section: PortfolioSection) => {
       e.stopPropagation();
       setRenamingId(section.id);
@@ -456,11 +550,26 @@ const handleRemoveDomain = async () => {
       
       {/* Header / Toolbar */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4 shrink-0">
-        <div>
-          <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Portfolio Builder</h1>
-          <p className="text-sm text-muted-foreground flex items-center gap-2">
-             Editing: <span className="font-semibold text-primary">{siteIdentity.name || 'Untitled Site'}</span>
-          </p>
+        <div className="flex flex-col gap-1">
+            <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Editing Site</span>
+            
+            <Select value={activePortfolioId || ''} onValueChange={handleSwitchSite}>
+                <SelectTrigger className="h-9 border-0 p-0 shadow-none text-2xl md:text-3xl font-bold tracking-tight bg-transparent focus:ring-0 w-auto min-w-[200px] justify-start gap-2">
+                    <SelectValue placeholder="Select Site">
+                        {siteList.find(s => s.id === activePortfolioId)?.site_name || siteIdentity.name || "Untitled Site"}
+                    </SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                    {siteList.map(site => (
+                        <SelectItem key={site.id} value={site.id} className="font-medium cursor-pointer">
+                            {site.site_name || "Untitled Site"}
+                        </SelectItem>
+                    ))}
+                    <SelectItem value="new" className="text-muted-foreground italic border-t mt-1 pt-2">
+                        + Create New Site...
+                    </SelectItem>
+                </SelectContent>
+            </Select>
         </div>
         
         <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto">
@@ -652,70 +761,142 @@ const handleRemoveDomain = async () => {
               </TabsContent>
 
               {/* --- TAB 2: DESIGN --- */}
-              <TabsContent value="design" className="flex-grow flex flex-col overflow-y-auto overflow-x-hidden mt-0 data-[state=inactive]:hidden custom-scrollbar pb-10">
-                  <div className="space-y-6 pr-2">
-                    <div className="space-y-3">
-                       <Label className="text-base">Template Style</Label>
-                       <div className="grid grid-cols-1 gap-3">
-                          {LOCAL_PORTFOLIO_TEMPLATES.map(t => (
-                             <Card 
-                               key={t.id} 
-                               className={cn(
-                                   "cursor-pointer border-2 transition-all hover:shadow-md relative overflow-hidden",
-                                   themeConfig.templateId === t.id ? 'border-primary bg-primary/5' : 'border-transparent hover:border-muted'
-                               )}
-                               onClick={() => setThemeConfig({...themeConfig, templateId: t.id})}
-                             >
-                                <div className="p-4">
-                                   <div className="flex justify-between items-center mb-1">
-                                      <h4 className="font-bold">{t.name}</h4>
-                                      {themeConfig.templateId === t.id && <div className="w-2 h-2 rounded-full bg-primary" />}
-                                   </div>
-                                   <p className="text-sm text-muted-foreground">{t.description}</p>
+              {/* TAB 2: DESIGN (Smart Engine) */}
+                <TabsContent value="design" className="flex-grow flex flex-col overflow-y-auto overflow-x-hidden mt-0 data-[state=inactive]:hidden custom-scrollbar pb-20">
+                    <div className="space-y-8 pr-2 p-4">
+                        
+                        <div className="space-y-3">
+                            <div className="flex items-center gap-2 text-sm font-bold text-muted-foreground uppercase tracking-wider">
+                                <LayoutTemplate size={14} /> Active Theme
+                            </div>
+                            
+                            <div className="grid grid-cols-1 gap-3">
+                                {VISUAL_THEMES.map(theme => (
+                                    <div 
+                                        key={theme.id} 
+                                        className={cn(
+                                            "cursor-pointer border-2 rounded-xl p-3 transition-all hover:border-primary/50 flex items-center gap-4 relative overflow-hidden",
+                                            themeConfig.templateId === theme.id ? 'border-primary bg-primary/5' : 'border-muted bg-card'
+                                        )}
+                                        onClick={() => setThemeConfig({...themeConfig, templateId: theme.id})}
+                                    >
+                                        {/* Theme Preview Swatch */}
+                                        <div 
+                                            className="w-12 h-12 rounded-lg border shadow-sm shrink-0" 
+                                            style={{ backgroundColor: theme.previewColor }} 
+                                        />
+                                        
+                                        <div className="flex-grow min-w-0">
+                                            <div className="flex justify-between items-center mb-1">
+                                                <h4 className="font-bold text-sm truncate">{theme.name}</h4>
+                                                {themeConfig.templateId === theme.id && (
+                                                    <div className="text-primary bg-primary/10 p-1 rounded-full">
+                                                        <CheckCircle2 size={14} />
+                                                    </div>
+                                                )}
+                                            </div>
+                                            <p className="text-xs text-muted-foreground line-clamp-2 leading-tight">
+                                                {theme.description}
+                                            </p>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                            
+                            <div className="bg-blue-50 text-blue-700 text-[10px] p-2 rounded border border-blue-100 mt-2">
+                                <strong>Marketplace Note:</strong> Changing the theme updates the layout and behavior of every section without losing your content.
+                            </div>
+                        </div>
+
+                        {/* B. Brand Color */}
+                        <div className="space-y-3">
+                            <div className="flex items-center gap-2 text-sm font-bold text-muted-foreground uppercase tracking-wider">
+                                <PaintBucket size={14} /> Brand Color
+                            </div>
+                            <div className="flex flex-wrap gap-3">
+                                {LOCAL_COLOR_PALETTES.map(color => (
+                                    <button
+                                        key={color.id}
+                                        onClick={() => setThemeConfig({...themeConfig, primaryColor: color.id})}
+                                        className={cn(
+                                            "w-8 h-8 rounded-full transition-all ring-offset-2 ring-offset-background hover:scale-110", 
+                                            themeConfig.primaryColor === color.id ? 'ring-2 ring-primary scale-110 shadow-md' : 'opacity-80 hover:opacity-100'
+                                        )}
+                                        style={{ backgroundColor: color.value }}
+                                        title={color.name}
+                                    />
+                                ))}
+                            </div>
+                        </div>
+
+                        {/* C. Typography */}
+                        <div className="space-y-3">
+                            <div className="flex items-center gap-2 text-sm font-bold text-muted-foreground uppercase tracking-wider">
+                                <Type size={14} /> Typography
+                            </div>
+                            <Select 
+                                value={themeConfig.font} 
+                                onValueChange={(val) => setThemeConfig({...themeConfig, font: val})}
+                            >
+                                <SelectTrigger className="h-10 bg-card">
+                                    <SelectValue placeholder="Select a font" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {LOCAL_FONT_OPTIONS.map(font => (
+                                        <SelectItem key={font.id} value={font.id}>
+                                            <span className={font.value}>{font.name}</span>
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+
+                        {/* D. Interface Styling (NEW) */}
+                        <div className="space-y-4 pt-4 border-t border-dashed">
+                            <div className="flex items-center gap-2 text-sm font-bold text-muted-foreground uppercase tracking-wider">
+                                <ComponentIcon size={14} /> Interface
+                            </div>
+                            
+                            {/* Radius Slider */}
+                            <div className="space-y-3 bg-card p-3 rounded-xl border">
+                                <div className="flex justify-between text-xs font-medium">
+                                    <span className="flex items-center gap-1"><Square size={12}/> Sharp</span>
+                                    <span className="flex items-center gap-1"><Circle size={12}/> Round</span>
                                 </div>
-                             </Card>
-                          ))}
-                       </div>
-                    </div>
+                                <Slider 
+                                    defaultValue={[0.5]} 
+                                    max={1} 
+                                    step={0.1} 
+                                    value={[themeConfig.radius !== undefined ? themeConfig.radius : 0.5]} 
+                                    onValueChange={(val) => setThemeConfig({...themeConfig, radius: val[0]})}
+                                    className="py-1"
+                                />
+                            </div>
 
-                    <div className="space-y-3">
-                       <Label className="text-base">Accent Color</Label>
-                       <div className="flex flex-wrap gap-4">
-                          {LOCAL_COLOR_PALETTES.map(color => (
-                             <button
-                                key={color.id}
-                                onClick={() => setThemeConfig({...themeConfig, primaryColor: color.id})}
-                                className={cn(
-                                  "w-10 h-10 rounded-full transition-all ring-offset-2 ring-offset-background hover:scale-110 border border-black/10 shadow-sm", 
-                                  themeConfig.primaryColor === color.id ? 'ring-2 ring-primary scale-110' : ''
-                                )}
-                                style={{ backgroundColor: color.value }}
-                                title={color.name}
-                             />
-                          ))}
-                       </div>
-                    </div>
+                            {/* Button Style Toggle */}
+                            <div className="space-y-2">
+                                <Label className="text-xs text-muted-foreground">Button Style</Label>
+                                <ToggleGroup 
+                                    type="single" 
+                                    value={themeConfig.buttonStyle || 'solid'} 
+                                    onValueChange={(val) => val && setThemeConfig({...themeConfig, buttonStyle: val})}
+                                    className="justify-start gap-3"
+                                >
+                                    <ToggleGroupItem value="solid" className="border px-4 py-2 h-auto data-[state=on]:bg-primary data-[state=on]:text-white">
+                                        Solid
+                                    </ToggleGroupItem>
+                                    <ToggleGroupItem value="outline" className="border px-4 py-2 h-auto data-[state=on]:border-primary data-[state=on]:text-primary">
+                                        Outline
+                                    </ToggleGroupItem>
+                                    <ToggleGroupItem value="shadow" className="border px-4 py-2 h-auto shadow-md data-[state=on]:ring-2 ring-primary">
+                                        Retro
+                                    </ToggleGroupItem>
+                                </ToggleGroup>
+                            </div>
+                        </div>
 
-                    <div className="space-y-3">
-                       <Label className="text-base">Typography</Label>
-                       <Select 
-                           value={themeConfig.font} 
-                           onValueChange={(val) => setThemeConfig({...themeConfig, font: val})}
-                       >
-                           <SelectTrigger className="h-12">
-                             <SelectValue placeholder="Select a font" />
-                           </SelectTrigger>
-                           <SelectContent>
-                             {LOCAL_FONT_OPTIONS.map(font => (
-                               <SelectItem key={font.id} value={font.id}>
-                                 <span className={font.value}>{font.name}</span>
-                               </SelectItem>
-                             ))}
-                           </SelectContent>
-                       </Select>
                     </div>
-                  </div>
-              </TabsContent>
+                </TabsContent>
 
               {/* --- TAB 3: PREVIEW (MOBILE ONLY) --- */}
               <TabsContent value="preview" className="lg:hidden flex-grow flex flex-col mt-0 h-[600px] border rounded-lg overflow-hidden bg-background shadow-lg data-[state=inactive]:hidden">
@@ -936,6 +1117,59 @@ const handleRemoveDomain = async () => {
                 </Button>
             </DialogFooter>
         </DialogContent>
+      </Dialog>
+      {/* --- CREATE NEW SITE DIALOG --- */}
+      <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
+          <DialogContent className="sm:max-w-[600px]">
+              <DialogHeader>
+                  <DialogTitle>Create New Website</DialogTitle>
+                  <DialogDescription>Choose a starting template for your new portfolio.</DialogDescription>
+              </DialogHeader>
+              
+              <div className="space-y-6 py-4">
+                  <div className="space-y-2">
+                      <Label>Website Name</Label>
+                      <Input 
+                          placeholder="e.g. Acting Portfolio 2024" 
+                          value={newSiteName} 
+                          onChange={(e) => setNewSiteName(e.target.value)} 
+                      />
+                  </div>
+                  
+                  <div className="space-y-3">
+                      <Label>Select Template</Label>
+                      <div className="grid grid-cols-2 gap-3">
+                          {PORTFOLIO_TEMPLATES.map((template) => (
+                              <div 
+                                  key={template.id} 
+                                  onClick={() => setSelectedTemplate(template.id)} 
+                                  className={cn(
+                                      "cursor-pointer border-2 rounded-xl p-4 transition-all hover:border-primary/50 relative bg-muted/20", 
+                                      selectedTemplate === template.id ? "border-primary bg-primary/5" : "border-muted"
+                                  )}
+                              >
+                                  {selectedTemplate === template.id && (
+                                      <div className="absolute top-2 right-2 text-primary bg-background rounded-full"><CheckCircle2 size={16} /></div>
+                                  )}
+                                  <h4 className="font-bold text-sm">{template.name}</h4>
+                                  <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{template.description}</p>
+                              </div>
+                          ))}
+                      </div>
+                  </div>
+              </div>
+
+              <DialogFooter>
+                  <Button variant="outline" onClick={() => setIsCreateOpen(false)}>Cancel</Button>
+                  <Button 
+                      onClick={handleCreateSite} 
+                      disabled={isCreating || isSubLoading || !limits} // <--- Add these checks
+                  >
+                      {isCreating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} 
+                      {isSubLoading ? "Loading Plan..." : "Create Website"}
+                  </Button>
+              </DialogFooter>
+          </DialogContent>
       </Dialog>
 
     </div>

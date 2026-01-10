@@ -7,62 +7,40 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Loader2, Globe, User, Plus, ExternalLink, LayoutTemplate, Check, CreditCard, ArrowUpRight, Coins, Gift, AlertTriangle, CalendarDays, Clock, Trash2, Sparkles, MessageCircle, Star, ShoppingCart, Zap, Box } from 'lucide-react';
+import { Loader2, Globe, User, Plus, ExternalLink, LayoutTemplate, Check, CreditCard, ArrowUpRight, Coins, Gift, AlertTriangle, CalendarDays, Clock, Trash2, Star, Sparkles, Building2, MessageCircle } from 'lucide-react';
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { PORTFOLIO_TEMPLATES } from '../../lib/templates';
 import { cn } from "@/lib/utils";
-import { NotificationContainer, Notification } from '@/components/ui/NotificationToast';
-// 1. IMPORT THE CONTEXT
-import { useSubscription } from '../../context/SubscriptionContext';
-
-type PlanDuration = 1 | 3 | 6 | 12;
+import { NotificationContainer, Notification } from '@/components/ui/NotificationToast'; // Update path if needed
 
 // --- CONFIGURATION ---
 
-const SLOT_COST = 500; // Cost in coins to buy 1 extra site slot
-
-// 2. RENAMED PLANS (Starter / eCommerce / Pro)
 const PLANS = [
     { 
         id: 'starter', 
         tier: 1, 
         name: 'Starter', 
-        description: 'Perfect for personal portfolios.',
-        features: ['100MB Storage', 'Standard Support', 'UCP Branding'],
-        pricing: {
-            1:  { stripePriceId: 'price_starter_1m', stripeCost: 3.00, coinCost: 150, label: null },
-            3:  { stripePriceId: 'price_starter_3m', stripeCost: 8.55, coinCost: 425, label: '5% OFF' },
-            6:  { stripePriceId: 'price_starter_6m', stripeCost: 16.20, coinCost: 800, label: '10% OFF' },
-            12: { stripePriceId: 'price_STARTER_YEARLY', stripeCost: 30.00, coinCost: 1500, label: '17% OFF' }
-        }
+        features: ['1 Website', 'Standard Support', 'UCP Branding'],
+        monthly: { stripePriceId: 'price_1Sluys00hAkAJqU5VCvuFIet', stripeCost: 2.50, coinCost: 125, label: null },
+        yearly: { stripePriceId: 'price_STARTER_YEARLY', stripeCost: 28.50, coinCost: 1425, label: '5% OFF' }
     },
     { 
-        id: 'ecommerce', // Was 'pro'
+        id: 'pro', 
         tier: 2, 
-        name: 'eCommerce', 
+        name: 'Pro', 
         popular: true, 
-        description: 'For selling digital products.',
-        features: ['500MB Storage', 'Custom Domain', 'Online Shop', 'Leads Dashboard'],
-        pricing: {
-            1:  { stripePriceId: 'price_ECOMMERCE_1M', stripeCost: 9.00, coinCost: 450, label: null },
-            3:  { stripePriceId: 'price_ECOMMERCE_3M', stripeCost: 25.00, coinCost: 1250, label: '5% OFF' },
-            6:  { stripePriceId: 'price_ECOMMERCE_6M', stripeCost: 48.00, coinCost: 2400, label: '11% OFF' },
-            12: { stripePriceId: 'price_ECOMMERCE_1Y', stripeCost: 90.00, coinCost: 4500, label: '17% OFF' }
-        }
+        features: ['3 Websites', 'Custom Domain', 'No Branding', 'SEO Tools'],
+        monthly: { stripePriceId: 'price_PRO_MONTHLY', stripeCost: 5.00, coinCost: 250, label: null },
+        yearly: { stripePriceId: 'price_PRO_YEARLY', stripeCost: 54.00, coinCost: 2700, label: '10% OFF' }
     },
     { 
-        id: 'pro', // Was 'agency'
+        id: 'agency', 
         tier: 3, 
-        name: 'Pro', 
-        description: 'Ultimate power and storage.',
-        features: ['2GB Storage', 'Priority Support', 'Bookings / Appointments', 'White Label'],
-        pricing: {
-            1:  { stripePriceId: 'price_PRO_1M', stripeCost: 19.00, coinCost: 950, label: null },
-            3:  { stripePriceId: 'price_PRO_3M', stripeCost: 54.00, coinCost: 2700, label: '5% OFF' },
-            6:  { stripePriceId: 'price_PRO_6M', stripeCost: 102.00, coinCost: 5100, label: '10% OFF' },
-            12: { stripePriceId: 'price_PRO_1Y', stripeCost: 190.00, coinCost: 9500, label: '25% OFF' }
-        }
+        name: 'Agency', 
+        features: ['Unlimited Sites', 'Priority Support', 'White Label', 'API Access'],
+        monthly: { stripePriceId: 'price_AGENCY_MONTHLY', stripeCost: 15.00, coinCost: 750, label: null },
+        yearly: { stripePriceId: 'price_AGENCY_YEARLY', stripeCost: 153.00, coinCost: 7650, label: '15% OFF' }
     },
 ];
 
@@ -77,10 +55,6 @@ const COIN_PACKS = [
 
 const SettingsPage = () => {
   const { actorData } = useOutletContext<ActorDashboardContextType>();
-  
-  // 3. USE CONTEXT
-  const { plan: currentPlanId, siteSlots, refreshSubscription, isLoading: isSubLoading } = useSubscription();
-
   const [loading, setLoading] = useState(true);
   
   // Data State
@@ -103,7 +77,7 @@ const SettingsPage = () => {
   const [isDeleting, setIsDeleting] = useState(false);
 
   // Upgrade Modal UI State
-  const [billingDuration, setBillingDuration] = useState<PlanDuration>(1);
+  const [billingInterval, setBillingInterval] = useState<'monthly' | 'yearly'>('monthly');
 
   const [selectedTemplate, setSelectedTemplate] = useState<string>(PORTFOLIO_TEMPLATES[0].id);
   const [newSiteName, setNewSiteName] = useState("");
@@ -115,8 +89,9 @@ const SettingsPage = () => {
   const [redeemCode, setRedeemCode] = useState("");
   const [isRedeeming, setIsRedeeming] = useState(false);
 
-  // Notification & Confirmation
+  // --- NEW: Notification State ---
   const [notifications, setNotifications] = useState<Notification[]>([]);
+  // --- NEW: Confirmation Dialog State ---
   const [confirmDialog, setConfirmDialog] = useState<{ isOpen: boolean; title: string; message: React.ReactNode; action: () => void; confirmText?: string; isDestructive?: boolean } | null>(null);
 
   const notify = (type: 'success' | 'error' | 'info', title: string, message?: string) => {
@@ -128,6 +103,7 @@ const SettingsPage = () => {
     setNotifications(prev => prev.filter(n => n.id !== id));
   };
   
+  // Helper to open custom confirmation dialog
   const openConfirmation = (title: string, message: React.ReactNode, action: () => void, confirmText = "Confirm", isDestructive = false) => {
       setConfirmDialog({ isOpen: true, title, message, action, confirmText, isDestructive });
   };
@@ -162,46 +138,35 @@ const SettingsPage = () => {
     fetchData();
   }, [actorData.id]);
 
-  // --- SAFE PRORATION LOGIC ---
+  // --- HELPER: CALCULATE PRORATION ---
   const calculateProration = (targetPlanId: string) => {
-    if (!selectedPortfolioId || !subscriptions[selectedPortfolioId]) return { cost: 0, isUpgrade: true, unusedValue: 0, activeDuration: 0 };
+    if (!selectedPortfolioId || !subscriptions[selectedPortfolioId]) return { cost: 0, isUpgrade: true, unusedValue: 0 };
 
     const currentSub = subscriptions[selectedPortfolioId];
-    if (currentSub.payment_method === 'stripe') return { cost: 0, isUpgrade: true, unusedValue: 0, isStripe: true, activeDuration: 0 };
+    if (currentSub.payment_method === 'stripe') return { cost: 0, isUpgrade: true, unusedValue: 0, isStripe: true };
 
     const currentPlan = PLANS.find(p => p.id === currentSub.plan_id);
     const targetPlan = PLANS.find(p => p.id === targetPlanId);
     
-    if (!currentPlan || !targetPlan) return { cost: 0, isUpgrade: true, unusedValue: 0, activeDuration: 0 };
+    if (!currentPlan || !targetPlan) return { cost: 0, isUpgrade: true, unusedValue: 0 };
 
-    const start = new Date(currentSub.current_period_start).getTime();
-    const end = new Date(currentSub.current_period_end).getTime();
-    const now = new Date().getTime();
+    const isUpgrade = targetPlan.tier > currentPlan.tier;
+    const isDowngrade = targetPlan.tier < currentPlan.tier;
+    const isSame = targetPlan.tier === currentPlan.tier;
+
+    const now = new Date();
+    const endDate = new Date(currentSub.current_period_end);
     
-    const daysDuration = Math.round((end - start) / (1000 * 60 * 60 * 24));
-    
-    let activeDuration: PlanDuration = 1;
-    if (daysDuration > 300) activeDuration = 12;
-    else if (daysDuration > 150) activeDuration = 6;
-    else if (daysDuration > 75) activeDuration = 3;
+    if (now > endDate) return { cost: targetPlan[billingInterval].coinCost, isUpgrade: true, unusedValue: 0 };
 
-    const isHigherTier = targetPlan.tier > currentPlan.tier;
-    const isSameTier = targetPlan.tier === currentPlan.tier;
-    const isLongerDuration = billingDuration > activeDuration;
+    const totalDuration = new Date(endDate).getTime() - new Date(currentSub.current_period_start).getTime();
+    const remainingDuration = endDate.getTime() - now.getTime();
+    const percentageRemaining = Math.max(0, remainingDuration / totalDuration);
 
-    const isUpgrade = isHigherTier || (isSameTier && isLongerDuration);
-    const isDowngrade = !isUpgrade && !(isSameTier && billingDuration === activeDuration);
-    
-    if (now > end) return { cost: targetPlan.pricing[billingDuration].coinCost, isUpgrade: true, unusedValue: 0, activeDuration };
+    const originalCost = currentPlan[billingInterval].coinCost; 
+    const unusedValue = Math.floor(originalCost * percentageRemaining);
 
-    const totalDurationMs = end - start;
-    const remainingDurationMs = end - now;
-    const percentageRemaining = Math.max(0, remainingDurationMs / totalDurationMs);
-
-    const originalPaidCost = currentPlan.pricing[activeDuration]?.coinCost || 0; 
-    const unusedValue = Math.floor(originalPaidCost * percentageRemaining);
-
-    let finalCost = targetPlan.pricing[billingDuration].coinCost;
+    let finalCost = targetPlan[billingInterval].coinCost;
     
     if (isUpgrade) {
         finalCost = Math.max(0, finalCost - unusedValue); 
@@ -209,66 +174,19 @@ const SettingsPage = () => {
 
     return { 
         cost: finalCost, 
-        originalPrice: targetPlan.pricing[billingDuration].coinCost,
+        originalPrice: targetPlan[billingInterval].coinCost,
         unusedValue, 
         isUpgrade,
         isDowngrade,
-        activeDuration
+        isSame
     };
   };
 
   // --- ACTIONS ---
 
-  // 4. NEW: HANDLE BUY SLOT
-  const handleBuySlot = () => {
-      if (walletBalance < SLOT_COST) {
-          openConfirmation(
-              "Insufficient Balance",
-              <p>You need <strong>{SLOT_COST} Coins</strong> to buy a slot. You have {walletBalance}.</p>,
-              () => { setConfirmDialog(null); setIsTopUpOpen(true); },
-              "Top Up Now"
-          );
-          return;
-      }
-
-      openConfirmation(
-          "Buy Portfolio Slot",
-          <div className="space-y-2">
-              <p>Purchase <strong>1 Additional Website Slot</strong> for <strong>{SLOT_COST} Coins</strong>?</p>
-              <p className="text-xs text-muted-foreground">This is a one-time purchase. You will own this slot forever.</p>
-          </div>,
-          async () => {
-              setConfirmDialog(null);
-              // Call the RPC function we created
-              const { data, error } = await supabase.rpc('buy_portfolio_slot', { 
-                  p_actor_id: actorData.id, 
-                  p_cost: SLOT_COST 
-              });
-
-              if (error || (data && !data.success)) {
-                  notify('error', "Purchase Failed", data?.message || error?.message);
-              } else {
-                  notify('success', "Slot Purchased", "You can now create another website.");
-                  // Refresh EVERYTHING
-                  await refreshSubscription();
-                  await fetchData();
-              }
-          },
-          "Pay 500 Coins"
-      );
-  };
-
   const handleCreateSite = async () => {
       if (!newSiteName.trim()) { notify('error', "Missing Name", "Please enter a site name"); return; }
       if (!actorData?.id) return;
-
-      // 5. CHECK SLOTS BEFORE CREATING
-      if (siteSlots.remaining <= 0) {
-          notify('error', "No Slots Available", "You have used all your portfolio slots.");
-          // Optionally auto-trigger the buy flow here
-          handleBuySlot();
-          return;
-      }
 
       setIsCreating(true);
       const template = PORTFOLIO_TEMPLATES.find(t => t.id === selectedTemplate) || PORTFOLIO_TEMPLATES[0];
@@ -289,8 +207,7 @@ const SettingsPage = () => {
           notify('success', "Website Created", `Your new site "${newSiteName}" is ready.`); 
           setIsCreateOpen(false); 
           setNewSiteName(""); 
-          fetchData();
-          refreshSubscription(); // Update usage count
+          fetchData(); 
       }
       setIsCreating(false);
   };
@@ -314,7 +231,6 @@ const SettingsPage = () => {
         setIsDeleteOpen(false);
         setDeleteConfirmationName("");
         fetchData();
-        refreshSubscription(); // Release slot
     }
     setIsDeleting(false);
   };
@@ -333,6 +249,7 @@ const SettingsPage = () => {
       if (!selectedPortfolioId || !actorData?.id) return;
       
       const calc = calculateProration(plan.id);
+      const duration = billingInterval === 'monthly' ? 1 : 12;
 
       // LOGIC A: DOWNGRADE
       if (calc.isDowngrade) {
@@ -357,7 +274,6 @@ const SettingsPage = () => {
                   } else { 
                       notify('success', "Downgrade Scheduled", `Your plan will switch to ${plan.name} after ${endDate}`);
                       fetchData(); 
-                      refreshSubscription();
                       setIsUpgradeOpen(false); 
                   }
                   setProcessingPlan(null);
@@ -384,12 +300,12 @@ const SettingsPage = () => {
           return;
       }
       
-      let message = <p className="text-sm text-muted-foreground">Spend <strong>{costToPay} Coins</strong> for <strong>{billingDuration} month(s)</strong> access?</p>;
+      let message = <p className="text-sm text-muted-foreground">Spend <strong>{costToPay} Coins</strong> for <strong>{duration} month(s)</strong> access?</p>;
       
       if (calc.unusedValue > 0) {
           message = (
               <div className="text-sm space-y-2 bg-muted/50 p-3 rounded-md">
-                  <div className="flex justify-between"><span>New Plan Cost ({billingDuration}m):</span><span>{calc.originalPrice}</span></div>
+                  <div className="flex justify-between"><span>New Plan Cost:</span><span>{calc.originalPrice}</span></div>
                   <div className="flex justify-between text-green-600"><span>Unused Credit:</span><span>-{calc.unusedValue}</span></div>
                   <div className="border-t pt-2 mt-2 flex justify-between font-bold"><span>Pay Now:</span><span>{costToPay} Coins</span></div>
               </div>
@@ -407,7 +323,7 @@ const SettingsPage = () => {
                   p_portfolio_id: selectedPortfolioId, 
                   p_plan_id: plan.id,
                   p_amount: costToPay,
-                  p_duration_months: billingDuration
+                  p_duration_months: duration
               });
 
               if(error || (data && !data.success)) { 
@@ -415,7 +331,6 @@ const SettingsPage = () => {
               } else { 
                   notify('success', "Plan Activated!", `You have successfully subscribed to ${plan.name}.`);
                   fetchData(); 
-                  refreshSubscription();
                   setIsUpgradeOpen(false); 
               }
               setProcessingPlan(null);
@@ -426,26 +341,13 @@ const SettingsPage = () => {
 
   const handleDirectStripe = async (plan: typeof PLANS[0]) => {
       if (!actorData?.id || !selectedPortfolioId) return;
-      const details = plan.pricing[billingDuration as PlanDuration]; 
-      
-      if(!details.stripePriceId) {
-          notify('error', "Unavailable", "This plan duration is not available via card yet.");
-          return;
-      }
-
+      const details = plan[billingInterval]; 
       setIsRedirecting(true);
       const { data, error } = await supabase.functions.invoke('create-checkout-session', {
           body: {
               mode: 'subscription',
               priceId: details.stripePriceId, 
-              metadata: { 
-                  type: 'subscription', 
-                  actor_id: actorData.id, 
-                  portfolio_id: selectedPortfolioId, 
-                  plan_id: plan.id, 
-                  interval: billingDuration === 12 ? 'yearly' : 'monthly',
-                  duration_months: billingDuration 
-              },
+              metadata: { type: 'subscription', actor_id: actorData.id, portfolio_id: selectedPortfolioId, plan_id: plan.id, interval: billingInterval },
               successUrl: window.location.origin + '/dashboard/settings?success=true',
               cancelUrl: window.location.origin + '/dashboard/settings?canceled=true'
           }
@@ -479,12 +381,24 @@ const SettingsPage = () => {
       else window.location.href = data.url;
   };
 
+  // --- WHATSAPP BANK TRANSFER HANDLER ---
   const handleBankTransfer = (pack: typeof COIN_PACKS[0]) => {
       if (!actorData?.ActorName) return;
+      
+      // FIX: Use profile.email or cast to avoid TS error
       const userEmail = profile.email || (actorData as any).email || 'No Email';
-      const message = `Hello, I would like to purchase the "${pack.name}" (${pack.coins} Coins) for $${pack.cost} via Bank Transfer.\n\nMy Details:\nName: ${actorData.ActorName}\nEmail: ${userEmail} (ID: ${actorData.id})\n\nPlease provide the bank details.`;
+
+      const message = `Hello, I would like to purchase the "${pack.name}" (${pack.coins} Coins) for $${pack.cost} via Bank Transfer.
+      
+My Details:
+Name: ${actorData.ActorName}
+Email: ${userEmail} (ID: ${actorData.id})
+
+Please provide the bank details.`;
+
       const encodedMessage = encodeURIComponent(message);
       const whatsappUrl = `https://wa.me/212695121176?text=${encodedMessage}`;
+      
       window.open(whatsappUrl, '_blank');
   };
 
@@ -497,6 +411,7 @@ const SettingsPage = () => {
       setIsRedeeming(false);
   };
 
+  // Helper to open delete dialog
   const openDeleteDialog = (portfolioId: string) => {
       setSelectedPortfolioId(portfolioId);
       setDeleteConfirmationName("");
@@ -506,54 +421,33 @@ const SettingsPage = () => {
   if (loading) return <div className="flex h-96 items-center justify-center"><Loader2 className="animate-spin text-primary" /></div>;
 
   return (
-    <div className="px-3 py-4 md:p-8 space-y-8 w-full max-w-6xl mx-auto pb-24 relative">
+    <div className="p-4 md:p-8 space-y-8 w-full max-w-6xl mx-auto pb-24 relative">
       
+      {/* --- NOTIFICATION CONTAINER --- */}
       <NotificationContainer notifications={notifications} removeNotification={removeNotification} />
 
-      {/* --- HEADER --- */}
+      {/* Header - Stretched Balance on Mobile */}
       <div className="flex flex-col md:flex-row justify-between md:items-center gap-6 pt-20">
         <div className="space-y-1">
             <h1 className="text-3xl md:text-4xl font-black tracking-tight text-foreground">Settings & Billing</h1>
-            <p className="text-muted-foreground text-lg">Manage your digital presence.</p>
+            <p className="text-muted-foreground text-lg">Manage your digital presence and assets.</p>
         </div>
         
-        {/* --- 6. NEW HEADER ACTIONS (SLOTS + WALLET) --- */}
-        <div className="flex flex-wrap items-center gap-3">
-            
-            {/* SITE SLOTS BADGE */}
-            <div className="flex items-center gap-3 bg-background p-2 pl-4 rounded-xl border shadow-sm h-[60px]">
-                <div className="flex flex-col items-start mr-1">
-                    <span className="text-[10px] text-muted-foreground uppercase font-bold tracking-widest leading-none mb-1">Slots</span>
-                    <span className="text-lg font-black leading-none">
-                        {isSubLoading ? '...' : `${siteSlots.used}/${siteSlots.total}`}
-                    </span>
-                </div>
-                <Button 
-                    size="sm" 
-                    variant="outline" 
-                    className="h-9 px-3 border-dashed border-2 hover:border-primary/50 hover:bg-primary/5 hover:text-primary"
-                    onClick={handleBuySlot}
-                    title="Buy more slots"
-                >
-                    <Plus size={16} />
-                </Button>
+        {/* Wallet Badge (Responsive) */}
+        <div className="w-full md:w-auto flex items-center justify-between gap-3 bg-gradient-to-r from-amber-100 to-orange-50 p-2 pl-4 rounded-xl border border-amber-200/50 shadow-sm transition-transform hover:scale-[1.02]">
+            <div className="flex flex-col items-start mr-2">
+                <span className="text-[10px] text-amber-600/80 uppercase font-bold tracking-widest leading-none mb-1">Balance</span>
+                <span className="text-2xl font-black text-amber-600 leading-none">{walletBalance.toLocaleString()} <span className="text-sm font-bold text-amber-600/60">Coins</span></span>
             </div>
-
-            {/* WALLET BADGE */}
-            <div className="flex items-center justify-between gap-3 bg-gradient-to-r from-amber-100 to-orange-50 p-2 pl-4 rounded-xl border border-amber-200/50 shadow-sm h-[60px]">
-                <div className="flex flex-col items-start mr-2">
-                    <span className="text-[10px] text-amber-600/80 uppercase font-bold tracking-widest leading-none mb-1">Balance</span>
-                    <span className="text-xl font-black text-amber-600 leading-none">{walletBalance.toLocaleString()} <span className="text-xs font-bold text-amber-600/60">Coins</span></span>
-                </div>
-                <Button size="sm" onClick={() => setIsTopUpOpen(true)} className="rounded-lg bg-amber-500 hover:bg-amber-600 text-white shadow-md border-2 border-white/20 h-10 px-4 font-bold">
-                    <Plus size={18} className="mr-1" /> Top Up
-                </Button>
-            </div>
+            <Button size="sm" onClick={() => setIsTopUpOpen(true)} className="rounded-lg bg-amber-500 hover:bg-amber-600 text-white shadow-md border-2 border-white/20 h-10 px-5 font-bold">
+                <Plus size={18} className="mr-1" /> Top Up
+            </Button>
         </div>
       </div>
 
       <Tabs defaultValue="websites" className="space-y-8">
-        <div className="w-full overflow-x-auto pb-2 -mb-2 no-scrollbar">
+        {/* Scrollable Tabs List for Mobile */}
+        <div className="w-full overflow-x-auto pb-2 -mb-2">
             <TabsList className="inline-flex w-auto p-1 bg-muted/50 rounded-xl">
                 <TabsTrigger value="websites" className="gap-2 px-6 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:text-foreground"><Globe size={16}/> My Websites</TabsTrigger>
                 <TabsTrigger value="history" className="gap-2 px-6 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:text-foreground"><CreditCard size={16}/> Billing History</TabsTrigger>
@@ -564,57 +458,40 @@ const SettingsPage = () => {
         {/* --- TAB 1: WEBSITES --- */}
         <TabsContent value="websites" className="space-y-6 animate-in slide-in-from-bottom-2 duration-500">
             
+            <div className="bg-blue-50/50 border border-blue-100 text-blue-900 p-4 rounded-xl flex items-start gap-4 shadow-sm">
+                <div className="p-2.5 bg-blue-100 rounded-lg text-blue-600"><CalendarDays size={20} /></div>
+                <div>
+                    <h4 className="font-bold text-sm mb-1">Free Trial Policy</h4>
+                    <p className="text-sm opacity-90 leading-relaxed max-w-2xl">
+                        All new websites start with a <strong>14-day free trial</strong>. 
+                        After 14 days, the website will become inactive unless you upgrade.
+                    </p>
+                </div>
+            </div>
+
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                
-                {/* 7. CREATE NEW CARD (Smart Check) */}
+                {/* Create New Card */}
                 <button 
-                    className={cn(
-                        "border-2 border-dashed rounded-2xl p-6 flex flex-col items-center justify-center gap-4 transition-all group min-h-[280px]",
-                        siteSlots.remaining > 0 
-                            ? "border-muted-foreground/20 hover:border-primary/50 hover:bg-primary/5" 
-                            : "border-muted/50 opacity-75 cursor-not-allowed hover:bg-muted/10"
-                    )}
-                    onClick={() => {
-                        if(siteSlots.remaining > 0) setIsCreateOpen(true);
-                        else {
-                            // Prompt to buy slot if clicked
-                            handleBuySlot();
-                        }
-                    }}
+                    className="border-2 border-dashed border-muted-foreground/20 hover:border-primary/50 hover:bg-primary/5 rounded-2xl p-6 flex flex-col items-center justify-center gap-4 transition-all group min-h-[280px]" 
+                    onClick={() => setIsCreateOpen(true)}
                 >
-                    <div className={cn(
-                        "w-16 h-16 rounded-full flex items-center justify-center shadow-sm transition-all",
-                        siteSlots.remaining > 0 ? "bg-muted group-hover:bg-background group-hover:scale-110" : "bg-muted text-muted-foreground"
-                    )}>
-                        {siteSlots.remaining > 0 ? <Plus size={32} className="text-muted-foreground group-hover:text-primary" /> : <Box size={32}/>}
+                    <div className="w-16 h-16 rounded-full bg-muted group-hover:bg-background flex items-center justify-center shadow-sm group-hover:shadow-md transition-all group-hover:scale-110">
+                        <Plus size={32} className="text-muted-foreground group-hover:text-primary" />
                     </div>
                     <div className="text-center">
-                        <span className="block font-bold text-lg text-foreground mb-1">
-                            {siteSlots.remaining > 0 ? "Create New Website" : "No Slots Available"}
-                        </span>
-                        <span className="text-sm text-muted-foreground">
-                            {siteSlots.remaining > 0 
-                                ? `${siteSlots.remaining} slot${siteSlots.remaining > 1 ? 's' : ''} remaining` 
-                                : "Buy a slot to create more"
-                            }
-                        </span>
-                        {siteSlots.remaining <= 0 && (
-                            <Button variant="link" className="mt-2 h-auto p-0 text-primary">Buy Slot (+500 Coins)</Button>
-                        )}
+                        <span className="block font-bold text-lg text-foreground mb-1">Create New Website</span>
+                        <span className="text-sm text-muted-foreground">Start from a template</span>
                     </div>
                 </button>
 
                 {portfolios.map((site) => {
                     const sub = subscriptions[site.id];
-                    // Logic updated: Plan names are lower case in DB, match with PLANS const
-                    const currentPlanObj = PLANS.find(p => p.id === sub?.plan_id) || PLANS[0];
                     const isPro = sub && sub.status === 'active' && new Date(sub.current_period_end) > new Date();
                     const isStripe = sub?.payment_method === 'stripe';
                     
                     let badgeColor = "bg-primary";
                     if(sub?.plan_id === 'starter') badgeColor = "bg-blue-500";
-                    if(sub?.plan_id === 'ecommerce') badgeColor = "bg-indigo-600";
-                    if(sub?.plan_id === 'pro') badgeColor = "bg-purple-600";
+                    if(sub?.plan_id === 'agency') badgeColor = "bg-purple-600";
 
                     return (
                         <Card key={site.id} className="group overflow-hidden hover:shadow-lg transition-all border-muted/60 hover:border-primary/30 min-h-[280px] flex flex-col relative rounded-2xl">
@@ -623,9 +500,7 @@ const SettingsPage = () => {
                                     <div className="flex gap-2">
                                         <Badge variant={site.is_published ? "default" : "secondary"} className="rounded-md px-2">{site.is_published ? "Live" : "Draft"}</Badge>
                                         {isPro ? (
-                                            <Badge className={cn("border-0 text-white rounded-md shadow-sm", badgeColor)}>
-                                                {currentPlanObj.name}
-                                            </Badge>
+                                            <Badge className={cn("border-0 text-white rounded-md shadow-sm", badgeColor)}>{sub.plan_id.toUpperCase()}</Badge>
                                         ) : (
                                             <Badge variant="outline" className="border-amber-500 text-amber-600 bg-amber-50 rounded-md">Trial</Badge>
                                         )}
@@ -657,10 +532,10 @@ const SettingsPage = () => {
                                     </div>
                                 ) : (
                                     <div className="text-sm text-amber-800 bg-amber-50 p-4 rounded-xl border border-amber-100 flex flex-col gap-1">
-                                            <div className="flex items-center gap-2 font-bold text-amber-700">
-                                                <AlertTriangle size={14} /> 14-Day Trial
-                                            </div>
-                                            <p className="opacity-80 text-xs">This site will become inactive when the trial expires.</p>
+                                        <div className="flex items-center gap-2 font-bold text-amber-700">
+                                            <AlertTriangle size={14} /> 14-Day Trial
+                                        </div>
+                                        <p className="opacity-80 text-xs">This site will become inactive when the trial expires.</p>
                                     </div>
                                 )}
                             </CardContent>
@@ -675,7 +550,7 @@ const SettingsPage = () => {
                                         className={cn("w-full font-bold shadow-sm transition-all", isPro ? "bg-amber-500 hover:bg-amber-600 text-white hover:scale-[1.02]" : "bg-primary hover:bg-primary/90 text-primary-foreground hover:scale-[1.02]")}
                                         onClick={() => { setSelectedPortfolioId(site.id); setIsUpgradeOpen(true); }}
                                     >
-                                        {isPro ? "Extend / Upgrade" : "Upgrade Now"}
+                                        {isPro ? "Extend / Manage" : "Upgrade Now"}
                                     </Button>
                                 )}
 
@@ -737,31 +612,33 @@ const SettingsPage = () => {
       </Tabs>
 
       {/* --- CUSTOM CONFIRMATION DIALOG --- */}
-        <Dialog open={!!confirmDialog} onOpenChange={(open) => !open && setConfirmDialog(null)}>
-            <DialogContent className="sm:max-w-md">
-                <DialogHeader>
-                    <DialogTitle>{confirmDialog?.title}</DialogTitle>
-                    <DialogDescription asChild>
-                      <div className="text-sm text-muted-foreground">
-                        {confirmDialog?.message}
-                      </div>
-                    </DialogDescription>
-                </DialogHeader>
-                <DialogFooter>
-                    <Button variant="outline" onClick={() => setConfirmDialog(null)}>Cancel</Button>
-                    <Button variant={confirmDialog?.isDestructive ? "destructive" : "default"} onClick={confirmDialog?.action}>
-                        {confirmDialog?.confirmText || "Confirm"}
-                    </Button>
-                </DialogFooter>
-            </DialogContent>
-        </Dialog>
+<Dialog open={!!confirmDialog} onOpenChange={(open) => !open && setConfirmDialog(null)}>
+    <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+            <DialogTitle>{confirmDialog?.title}</DialogTitle>
+            {/* FIX: Use 'asChild' and wrap in a div instead of using 'component="div"' */}
+            <DialogDescription asChild>
+              <div className="text-sm text-muted-foreground">
+                {confirmDialog?.message}
+              </div>
+            </DialogDescription>
+        </DialogHeader>
+        <DialogFooter>
+            <Button variant="outline" onClick={() => setConfirmDialog(null)}>Cancel</Button>
+            <Button variant={confirmDialog?.isDestructive ? "destructive" : "default"} onClick={confirmDialog?.action}>
+                {confirmDialog?.confirmText || "Confirm"}
+            </Button>
+        </DialogFooter>
+    </DialogContent>
+</Dialog>
 
-      {/* --- TOP UP MODAL (GENSHIN STYLE) --- */}
+      {/* --- TOP UP MODAL (GENSHIN STYLE + BANK TRANSFER) --- */}
       <Dialog open={isTopUpOpen} onOpenChange={setIsTopUpOpen}>
           <DialogContent className="sm:max-w-[950px] p-0 overflow-hidden bg-zinc-50 dark:bg-zinc-900 border-none shadow-2xl rounded-2xl max-h-[90vh]">
               <Tabs defaultValue="packs" className="w-full">
                   
                   <div className="p-4 md:p-8 space-y-6">
+                      {/* HEADER + TABS TRIGGER */}
                       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                           <div className="space-y-1">
                               <DialogTitle className="text-2xl font-black tracking-tight flex items-center gap-2">
@@ -775,9 +652,11 @@ const SettingsPage = () => {
                           </TabsList>
                       </div>
 
+                      {/* CONTENT */}
                       <TabsContent value="packs" className="mt-0">
                           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6 max-h-[55vh] overflow-y-auto pr-2 pb-4 custom-scrollbar">
                               {COIN_PACKS.map(pack => {
+                                  // --- GENSHIN STYLE STYLING LOGIC ---
                                   let bgGradient = "from-slate-800 to-slate-900";
                                   let borderColor = "border-slate-600";
                                   let glowColor = "bg-slate-500/20";
@@ -810,8 +689,10 @@ const SettingsPage = () => {
                                           borderColor,
                                           "bg-gradient-to-br", bgGradient
                                       )}>
+                                          {/* Shine Effect */}
                                           <div className="absolute inset-0 bg-gradient-to-tr from-white/0 via-white/5 to-white/0 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
                                           
+                                          {/* Header: Stars */}
                                           <div className="p-3 flex justify-between items-start relative z-10">
                                               <div className="flex gap-0.5">
                                                   {[...Array(pack.rarity)].map((_, i) => (
@@ -825,6 +706,7 @@ const SettingsPage = () => {
                                               )}
                                           </div>
 
+                                          {/* Icon Center */}
                                           <div className="flex-grow flex flex-col items-center justify-center py-4 relative">
                                               <div className={cn("absolute inset-0 blur-3xl rounded-full", glowColor)} />
                                               <div className="relative z-10 p-4 bg-black/20 rounded-full border border-white/10 backdrop-blur-sm group-hover:scale-110 transition-transform duration-500">
@@ -834,6 +716,7 @@ const SettingsPage = () => {
                                               {pack.bonus && <p className={cn("text-xs font-medium opacity-80 relative z-10", textColor)}>{pack.bonus}</p>}
                                           </div>
 
+                                          {/* Footer: Price & Bank Option */}
                                           <div className="p-4 bg-black/40 backdrop-blur-md border-t border-white/10 relative z-10 space-y-2">
                                               <Button 
                                                   className="w-full bg-white text-black hover:bg-white/90 font-bold h-10 shadow-lg"
@@ -843,6 +726,7 @@ const SettingsPage = () => {
                                                   {isRedirecting ? <Loader2 className="w-4 h-4 animate-spin"/> : `Pay $${pack.cost.toFixed(2)}`}
                                               </Button>
                                               
+                                              {/* Bank Transfer for Packs >= 550 Coins */}
                                               {pack.coins >= 550 && (
                                                   <Button 
                                                       variant="ghost" 
@@ -912,61 +796,39 @@ const SettingsPage = () => {
 
       {/* --- UPGRADE MODAL --- */}
       <Dialog open={isUpgradeOpen} onOpenChange={setIsUpgradeOpen}>
-          <DialogContent className="sm:max-w-[1000px] max-h-[90vh] overflow-y-auto">
+          <DialogContent className="sm:max-w-[900px] max-h-[90vh] overflow-y-auto">
               <DialogHeader>
                   <DialogTitle className="text-2xl font-bold">Manage Plan</DialogTitle>
-                  <DialogDescription>Choose a duration and upgrade to unlock features.</DialogDescription>
+                  <DialogDescription>Upgrade to unlock more features.</DialogDescription>
               </DialogHeader>
 
-              {/* Billing Cycle Selector */}
-              <div className="flex justify-center mb-6 mt-2 overflow-x-auto">
-                  <div className="bg-muted p-1 rounded-xl flex gap-1 border">
-                      {[1, 3, 6, 12].map(duration => {
-                          const labels: any = { 1: 'Monthly', 3: '3 Mos', 6: '6 Mos', 12: 'Yearly' };
-                          const discountLabels: any = { 3: '5% OFF', 6: '10% OFF', 12: '25% OFF' }; 
-                          const isActive = billingDuration === duration;
-                          return (
-                            <button 
-                                key={duration}
-                                onClick={() => setBillingDuration(duration as PlanDuration)} 
-                                className={cn(
-                                    "px-4 md:px-6 py-2 rounded-lg text-xs md:text-sm font-bold transition-all flex items-center gap-2 whitespace-nowrap", 
-                                    isActive ? "bg-white shadow text-foreground" : "text-muted-foreground hover:text-foreground"
-                                )}
-                            >
-                                {labels[duration]}
-                                {duration > 1 && <span className="text-[9px] bg-green-500 text-white px-1.5 py-0.5 rounded-full shadow-sm">{discountLabels[duration]}</span>}
-                            </button>
-                          )
-                      })}
+              {/* Billing Toggle */}
+              <div className="flex justify-center mb-6 mt-2">
+                  <div className="bg-muted p-1.5 rounded-xl flex gap-1 border">
+                      <button onClick={() => setBillingInterval('monthly')} className={cn("px-6 py-2 rounded-lg text-sm font-bold transition-all", billingInterval === 'monthly' ? "bg-white shadow text-foreground" : "text-muted-foreground hover:text-foreground")}>Monthly</button>
+                      <button onClick={() => setBillingInterval('yearly')} className={cn("px-6 py-2 rounded-lg text-sm font-bold transition-all flex items-center gap-2", billingInterval === 'yearly' ? "bg-white shadow text-foreground" : "text-muted-foreground hover:text-foreground")}>Yearly <span className="text-[10px] bg-green-500 text-white px-1.5 py-0.5 rounded-full shadow-sm">SAVE 15%</span></button>
                   </div>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pb-4">
                   {PLANS.map(plan => {
-                      const details = plan.pricing[billingDuration as PlanDuration];
+                      const details = plan[billingInterval];
                       const proration = calculateProration(plan.id);
-                      
-                      const isCurrentPlanId = subscriptions[selectedPortfolioId || '']?.plan_id === plan.id;
-                      
-                      // Safety Check: Are they exactly on this plan AND this duration?
-                      const isExactlyCurrent = isCurrentPlanId && billingDuration === proration.activeDuration;
+                      const isCurrent = subscriptions[selectedPortfolioId || '']?.plan_id === plan.id;
 
                       return (
-                          <Card key={plan.id} className={cn("relative transition-all border-2 flex flex-col overflow-hidden", isExactlyCurrent ? "border-primary bg-primary/5 shadow-md scale-[1.02]" : "hover:border-primary/50 hover:shadow-sm", processingPlan === plan.id ? "opacity-50" : "")}>
+                          <Card key={plan.id} className={cn("relative transition-all border-2 flex flex-col overflow-hidden", isCurrent ? "border-primary bg-primary/5 shadow-md scale-[1.02]" : "hover:border-primary/50 hover:shadow-sm", processingPlan === plan.id ? "opacity-50" : "")}>
                               {plan.popular && <div className="absolute top-0 right-0 bg-primary text-primary-foreground text-[10px] px-3 py-1 font-bold rounded-bl-xl shadow-sm">POPULAR</div>}
                               
                               <CardHeader className="pb-4">
                                   <CardTitle className="text-xl font-bold flex justify-between items-center">
                                       {plan.name}
-                                      {isExactlyCurrent && <Badge className="bg-primary/20 text-primary hover:bg-primary/20 pointer-events-none">Active</Badge>}
+                                      {isCurrent && <Badge className="bg-primary/20 text-primary hover:bg-primary/20 pointer-events-none">Current</Badge>}
                                   </CardTitle>
                                   <div className="flex items-baseline gap-1 mt-2">
                                       <span className="text-3xl font-black">${details.stripeCost.toFixed(2)}</span>
-                                      <span className="text-sm text-muted-foreground font-medium">/{billingDuration === 12 ? 'yr' : 'mo'}</span>
-                                      {details.label && <span className="ml-2 text-xs font-bold text-green-600 bg-green-100 px-2 py-0.5 rounded-full">{details.label}</span>}
+                                      <span className="text-sm text-muted-foreground font-medium">/{billingInterval === 'monthly' ? 'mo' : 'yr'}</span>
                                   </div>
-                                  <p className="text-xs text-muted-foreground mt-2 min-h-[32px]">{plan.description}</p>
                               </CardHeader>
                               
                               <CardContent className="flex-grow space-y-6">
@@ -997,8 +859,8 @@ const SettingsPage = () => {
                               </CardContent>
 
                               <CardFooter className="flex flex-col gap-3 pt-2">
-                                  {isExactlyCurrent ? (
-                                      <Button className="w-full bg-muted text-muted-foreground cursor-not-allowed font-bold" disabled>Current Plan</Button>
+                                  {isCurrent ? (
+                                      <Button className="w-full bg-muted text-muted-foreground cursor-not-allowed font-bold" disabled>Active Plan</Button>
                                   ) : proration.isDowngrade ? (
                                       <Button 
                                           className="w-full border-dashed border-2 bg-transparent text-muted-foreground hover:bg-muted hover:text-foreground font-semibold" 
@@ -1010,23 +872,23 @@ const SettingsPage = () => {
                                       </Button>
                                   ) : (
                                       <>
-                                          <Button 
-                                              className="w-full bg-amber-500 hover:bg-amber-600 text-white border-0 font-bold shadow-sm hover:shadow-md transition-all" 
-                                              onClick={() => handleBuyWithWallet(plan)}
-                                              disabled={!!processingPlan}
-                                          >
-                                              {processingPlan === plan.id ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles size={16} className="mr-2 fill-white/20" />}
-                                              {proration.unusedValue > 0 ? `Pay ${proration.cost} Coins` : `Upgrade with Coins`}
-                                          </Button>
+                                        <Button 
+                                            className="w-full bg-amber-500 hover:bg-amber-600 text-white border-0 font-bold shadow-sm hover:shadow-md transition-all" 
+                                            onClick={() => handleBuyWithWallet(plan)}
+                                            disabled={!!processingPlan}
+                                        >
+                                            {processingPlan === plan.id ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles size={16} className="mr-2 fill-white/20" />}
+                                            {proration.unusedValue > 0 ? `Pay ${proration.cost} Coins` : `Upgrade with Coins`}
+                                        </Button>
 
-                                          <Button 
-                                              variant="ghost" 
-                                              className="w-full text-xs h-9 text-muted-foreground hover:text-foreground"
-                                              onClick={() => handleDirectStripe(plan)}
-                                              disabled={isRedirecting}
-                                          >
-                                              {isRedirecting ? <Loader2 className="mr-2 h-3 w-3 animate-spin"/> : `Or Pay $${details.stripeCost.toFixed(2)} via Card`}
-                                          </Button>
+                                        <Button 
+                                            variant="ghost" 
+                                            className="w-full text-xs h-9 text-muted-foreground hover:text-foreground"
+                                            onClick={() => handleDirectStripe(plan)}
+                                            disabled={isRedirecting}
+                                        >
+                                            {isRedirecting ? <Loader2 className="mr-2 h-3 w-3 animate-spin"/> : `Or Pay $${details.stripeCost.toFixed(2)} via Card`}
+                                        </Button>
                                       </>
                                   )}
                               </CardFooter>

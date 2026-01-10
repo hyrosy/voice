@@ -4,6 +4,7 @@ export type PlanTier = 'starter' | 'ecommerce' | 'pro';
 
 // 1. Define the shape of the features explicitly
 export interface PlanFeatures {
+  siteSlots: any;
   maxBlocksPerSite: number;
   canConnectDomain: boolean;
   // This is the fix: Allow specific array OR 'all'
@@ -24,14 +25,15 @@ export const PLAN_LIMITS: Record<PlanTier, { label: string; features: PlanFeatur
     features: {
       maxBlocksPerSite: 8,
       canConnectDomain: false,
-      allowedThemes: ['modern', 'minimal'], 
+      allowedThemes: ['modern', 'minimal'],
       allowedSectionTypes: ['header', 'hero', 'about', 'gallery', 'contact', 'footer'],
-      modules: { 
-        shop: false, 
-        appointments: false, 
-        orders_leads: false 
+      modules: {
+        shop: false,
+        appointments: false,
+        orders_leads: false
       },
-      storageLimitMB: 100
+      storageLimitMB: 100,
+      siteSlots: undefined
     }
   },
   ecommerce: {
@@ -40,13 +42,14 @@ export const PLAN_LIMITS: Record<PlanTier, { label: string; features: PlanFeatur
       maxBlocksPerSite: 20,
       canConnectDomain: true,
       allowedThemes: ['modern', 'minimal', 'storefront', 'showcase'],
-      allowedSectionTypes: ['header', 'hero', 'about', 'gallery', 'contact', 'footer', 'shop', 'reviews'], 
-      modules: { 
-        shop: true, 
-        appointments: false, 
-        orders_leads: true 
+      allowedSectionTypes: ['header', 'hero', 'about', 'gallery', 'contact', 'footer', 'shop', 'reviews'],
+      modules: {
+        shop: true,
+        appointments: false,
+        orders_leads: true
       },
-      storageLimitMB: 500
+      storageLimitMB: 500,
+      siteSlots: undefined
     }
   },
   pro: { 
@@ -55,13 +58,14 @@ export const PLAN_LIMITS: Record<PlanTier, { label: string; features: PlanFeatur
       maxBlocksPerSite: 999,
       canConnectDomain: true,
       allowedThemes: 'all', // Now valid because of the interface
-      allowedSectionTypes: 'all', 
-      modules: { 
-        shop: true, 
-        appointments: true, 
-        orders_leads: true 
+      allowedSectionTypes: 'all',
+      modules: {
+        shop: true,
+        appointments: true,
+        orders_leads: true
       },
-      storageLimitMB: 2000
+      storageLimitMB: 2000,
+      siteSlots: undefined
     }
   }
 };

@@ -19,7 +19,9 @@ import {
   Globe,
   Briefcase,
   Package,
-  Mail
+  Mail,
+  Sparkles,
+  Lock
 } from 'lucide-react';
 import { cn } from "@/lib/utils";
 import { Separator } from '@/components/ui/separator';
@@ -158,163 +160,213 @@ const ActorDashboardLayout = () => {
     return <div className="min-h-screen bg-background text-foreground flex items-center justify-center">Loading Dashboard...</div>;
   }
 
-  return (
-    <div className="min-h-screen bg-muted/40 text-foreground flex">
-      <SubscriptionProvider actorId={actorData.id}>
-      {/* --- Desktop Sidebar --- */}
-      <aside className="hidden md:flex flex-col w-64 border-r bg-background pt-8 pb-4 h-screen fixed left-0 top-0 overflow-y-auto custom-scrollbar">
-        
-        {/* User Header */}
-        <div className="flex flex-col items-center text-center px-4 mb-6 pt-12">
-          <Avatar className="w-16 h-16 mb-3 border-2 border-muted">
-            <AvatarImage src={actorData.HeadshotURL} alt={actorData.ActorName} />
-            <AvatarFallback>{actorData.ActorName?.charAt(0) || 'U'}</AvatarFallback>
-          </Avatar>
-          <h2 className="font-bold text-base truncate w-full">{actorData.ActorName}</h2>
-          <p className="text-xs text-muted-foreground uppercase tracking-wider mt-1">
-             {actorData.is_p2p_enabled ? 'Pro Actor' : 'Creative'}
-          </p>
-        </div>
-        
-        {/* Nav Groups */}
-        <nav className="flex-grow px-3 space-y-6">
-          {NAV_GROUPS.map((group, idx) => {
-             // Hide if P2P only and user is not P2P
-             if (group.p2pOnly && !actorData.is_p2p_enabled) return null;
+  const getNavLinkClass = ({ isActive }: { isActive: boolean }) => cn(
+    "group flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all duration-200 outline-none select-none",
+    "hover:bg-muted/50 active:scale-[0.98]", // Tactile feel
+    isActive 
+      ? "bg-primary/10 text-primary hover:bg-primary/15" 
+      : "text-muted-foreground hover:text-foreground"
+  );
 
+  return (
+    <div className="min-h-screen bg-zinc-50/50 dark:bg-zinc-950 text-foreground flex antialiased">
+      <SubscriptionProvider actorId={actorData.id}>
+      
+      {/* --- DESKTOP SIDEBAR (Glassy & Floating Feel) --- */}
+      <aside className="pt-14 hidden md:flex flex-col w-[280px] h-screen fixed left-0 top-0 border-r border-border/40 bg-background/80 backdrop-blur-xl z-40">
+        
+        {/* Profile Card Section */}
+        <div className="p-6 pb-2 pt-8">
+            <div className="flex items-center gap-3 p-3 rounded-xl border border-border/50 bg-card/50 shadow-sm transition-colors hover:bg-card">
+                <Avatar className="h-10 w-10 border border-border">
+                    <AvatarImage src={actorData.HeadshotURL} alt={actorData.ActorName} className="object-cover"/>
+                    <AvatarFallback className="text-xs bg-primary/10 text-primary">{actorData.ActorName?.slice(0,2).toUpperCase()}</AvatarFallback>
+                </Avatar>
+                <div className="flex-1 min-w-0">
+                    <h2 className="text-sm font-semibold truncate leading-none mb-1">{actorData.ActorName}</h2>
+                    <div className="flex items-center gap-1.5">
+                        <span className={cn("h-1.5 w-1.5 rounded-full animate-pulse", actorData.is_p2p_enabled ? "bg-emerald-500" : "bg-amber-500")} />
+                        <span className="text-[10px] text-muted-foreground uppercase tracking-wider font-medium">
+                            {actorData.is_p2p_enabled ? 'Pro Actor' : 'Creative'}
+                        </span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        {/* Scrollable Nav Area */}
+        <nav className="flex-1 overflow-y-auto px-4 py-4 space-y-8 custom-scrollbar">
+          {NAV_GROUPS.map((group, idx) => {
+             if (group.p2pOnly && !actorData.is_p2p_enabled) return null;
+             
              return (
-               <div key={idx}>
-                  <h3 className="px-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
-                    {group.label}
-                  </h3>
-                  <div className="space-y-1">
-                    {group.items.map((item) => (
-                        <NavLink
-                          key={item.name}
-                          to={item.to}
-                          end={item.to === '/dashboard'} // Precise match for root
-                          className={({ isActive }) =>
-                            cn(
-                              buttonVariants({ variant: isActive ? "secondary" : "ghost" }),
-                              "w-full justify-start gap-3 h-10 px-4",
-                              isActive && "bg-secondary text-primary font-medium"
-                            )
-                          }
-                        >
-                          <item.icon className={cn("h-4 w-4", item.name === 'Overview' ? 'text-blue-500' : '')} />
-                          <span>{item.name}</span>
-                        </NavLink>
-                    ))}
-                  </div>
+               <div key={idx} className="space-y-1">
+                 <h3 className="px-3 text-[11px] font-bold text-muted-foreground/70 uppercase tracking-widest mb-2 select-none">
+                   {group.label}
+                 </h3>
+                 <div className="space-y-0.5">
+                   {group.items.map((item) => (
+                     <NavLink
+                       key={item.name}
+                       to={item.to}
+                       end={item.to === '/dashboard'}
+                       className={getNavLinkClass}
+                     >
+                       <item.icon className={cn("h-4 w-4 transition-colors", item.name === 'Overview' ? 'text-blue-500' : 'group-hover:text-foreground')} />
+                       <span>{item.name}</span>
+                       {/* Subtle chevron for active state adds premium feel */}
+                       <NavLink to={item.to} end={item.to === '/dashboard'} className={({isActive}) => cn("ml-auto opacity-0 transition-opacity", isActive && "opacity-100")}>
+                            <ChevronRight size={14} className="text-primary/50" />
+                       </NavLink>
+                     </NavLink>
+                   ))}
+                 </div>
                </div>
              );
           })}
 
-          {/* Upsell Card */}
+          {/* Premium Upsell Card (Styled) */}
           {!actorData.is_p2p_enabled && (
-             <div className="mx-2 mt-4 p-4 bg-indigo-500/10 border border-indigo-500/20 rounded-lg">
-                <h4 className="font-semibold text-sm mb-1 text-indigo-400">Actor Mode</h4>
-                <p className="text-xs text-muted-foreground mb-3 leading-tight">
-                    Enable casting features to find jobs.
+             <div className="relative overflow-hidden rounded-xl border border-indigo-500/30 bg-gradient-to-br from-indigo-500/5 via-purple-500/5 to-background p-4 mt-6 group cursor-pointer hover:border-indigo-500/50 transition-all" onClick={handleEnableP2P}>
+                <div className="absolute top-0 right-0 p-2 opacity-10 group-hover:opacity-20 transition-opacity">
+                    <Sparkles size={48} />
+                </div>
+                <div className="flex items-center gap-2 mb-1 text-indigo-600 dark:text-indigo-400">
+                    <Lock size={12} />
+                    <h4 className="font-bold text-xs tracking-wide uppercase">Unlock Pro</h4>
+                </div>
+                <p className="text-xs text-muted-foreground mb-3 font-medium">
+                    Enable casting features & get hired directly.
                 </p>
-                <Button 
-                    size="sm" 
-                    className="w-full text-xs h-8 bg-indigo-600 hover:bg-indigo-500 text-white"
-                    onClick={handleEnableP2P}
-                >
-                    Enable
+                <Button size="sm" className="w-full h-8 text-xs font-semibold bg-indigo-600 hover:bg-indigo-500 shadow-sm shadow-indigo-500/20">
+                    Enable Now
                 </Button>
              </div>
           )}
         </nav>
-        
-        <div className="px-4 mt-6">
-          <Button variant="ghost" onClick={handleLogout} className="w-full justify-start text-muted-foreground hover:text-destructive">
-            <LogOut className="mr-2 h-4 w-4" /> Log Out
+
+        {/* Footer */}
+        <div className="p-4 border-t border-border/40">
+          <Button variant="ghost" onClick={handleLogout} className="w-full justify-start text-muted-foreground hover:text-destructive hover:bg-destructive/5 h-9 px-3">
+            <LogOut className="mr-2 h-4 w-4" /> 
+            <span className="text-sm">Log Out</span>
           </Button>
         </div>
       </aside>
 
-      {/* --- Main Content Area (Offset for fixed sidebar) --- */}
-      <main className={`
-        flex-1 md:ml-64 min-h-screen flex flex-col
-        ${isMessagesPage ? 'pb-20 md:pb-0' : 'pb-24 md:pb-8'} 
-      `}>
+      {/* --- MAIN CONTENT --- */}
+      <main className={cn(
+        "flex-1 md:ml-[280px] min-h-screen flex flex-col transition-all duration-300",
+        "bg-zinc-50/50 dark:bg-black", // Subtle background contrast
+        isMessagesPage ? 'pb-[88px] md:pb-0' : 'pb-[96px] md:pb-8' // Exact padding for nav + safe area
+      )}>
         <Outlet context={{ actorData, role: 'actor' }} />
       </main>
 
-      {/* --- Mobile Bottom Nav (Simplified) --- */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-background border-t border-border flex justify-around items-center h-16 px-2 z-50 pb-safe">
-        {mobilePrimaryItems.map((item) => (
-          <NavLink
-            key={item.name}
-            to={item.to}
-            className={({ isActive }) =>
-              cn(
-                "flex flex-col items-center justify-center w-full h-full space-y-1",
-                isActive ? 'text-primary' : 'text-muted-foreground'
-              )
-            }
-          >
-            <item.icon className="h-5 w-5" />
-            <span className="text-[10px] font-medium">{item.name}</span>
-          </NavLink>
-        ))}
+      {/* --- MOBILE BOTTOM NAV (iOS Style Island) --- */}
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50">
+        {/* Gradient fade to integrate with content */}
+        <div className="absolute bottom-0 w-full h-24 bg-gradient-to-t from-background to-transparent pointer-events-none" />
+        
+        <div className="bg-background/80 backdrop-blur-xl border-t border-border/60 pb-safe pt-1">
+            <div className="flex justify-around items-center h-16 px-1">
+                {mobilePrimaryItems.map((item) => (
+                    <NavLink
+                        key={item.name}
+                        to={item.to}
+                        className={({ isActive }) => cn(
+                            "group flex flex-col items-center justify-center w-full h-full space-y-1 relative active:scale-90 transition-transform duration-200",
+                            isActive ? 'text-primary' : 'text-muted-foreground'
+                        )}
+                    >
+                        {({ isActive }) => (
+                            <>
+                                {/* Active Indicator Line at top */}
+                                {isActive && <span className="absolute -top-1 w-8 h-1 rounded-b-full bg-primary shadow-[0_0_10px_rgba(0,0,0,0.2)] shadow-primary/50" />}
+                                
+                                <div className={cn("p-1.5 rounded-xl transition-colors", isActive ? "bg-primary/10" : "group-hover:bg-muted")}>
+                                    <item.icon className={cn("h-5 w-5", isActive && "fill-current")} strokeWidth={isActive ? 2.5 : 2} />
+                                </div>
+                                <span className="text-[10px] font-semibold tracking-tight">{item.name}</span>
+                            </>
+                        )}
+                    </NavLink>
+                ))}
 
-        {/* Mobile Full Menu */}
-        <Sheet>
-          <SheetTrigger asChild>
-            <button className="flex flex-col items-center justify-center w-full h-full space-y-1 text-muted-foreground">
-              <Menu className="h-5 w-5" />
-              <span className="text-[10px] font-medium">Menu</span>
-            </button>
-          </SheetTrigger>
-          <SheetContent side="right" className="w-[300px] sm:w-[400px] overflow-y-auto">
-            <SheetHeader className="text-left mb-6">
-              <SheetTitle>Menu</SheetTitle>
-            </SheetHeader>
-            
-            <div className="space-y-6">
-                {NAV_GROUPS.map((group, idx) => {
-                    if (group.p2pOnly && !actorData.is_p2p_enabled) return null;
-                    return (
-                        <div key={idx}>
-                            <h4 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-3">
-                                {group.label}
-                            </h4>
-                            <div className="space-y-2">
-                                {group.items.map((item) => (
-                                    <SheetClose asChild key={item.name}>
-                                        <Link 
-                                            to={item.to}
-                                            className="flex items-center gap-3 p-2 hover:bg-muted rounded-md transition-colors"
-                                        >
-                                            <div className="p-2 bg-primary/10 text-primary rounded-md">
-                                                <item.icon className="h-4 w-4" />
-                                            </div>
-                                            <div>
-                                                <div className="font-medium text-sm">{item.name}</div>
-                                                <div className="text-xs text-muted-foreground">{item.description}</div>
-                                            </div>
-                                        </Link>
-                                    </SheetClose>
-                                ))}
-                            </div>
+                {/* Mobile Menu Trigger */}
+                <Sheet>
+                    <SheetTrigger asChild>
+                    <button className="flex flex-col items-center justify-center w-full h-full space-y-1 text-muted-foreground active:scale-90 transition-transform">
+                        <div className="p-1.5 rounded-xl hover:bg-muted">
+                            <Menu className="h-5 w-5" />
                         </div>
-                    )
-                })}
-                
-                <Separator />
-                
-                <SheetClose asChild>
-                    <Button variant="destructive" onClick={handleLogout} className="w-full">
-                        <LogOut className="mr-2 h-4 w-4" /> Log Out
-                    </Button>
-                </SheetClose>
+                        <span className="text-[10px] font-semibold tracking-tight">Menu</span>
+                    </button>
+                    </SheetTrigger>
+                    
+                    {/* FULL SCREEN MOBILE MENU (Immersive) */}
+                    <SheetContent side="right" className="w-full sm:w-[400px] border-l border-border/40 p-0 flex flex-col bg-background/95 backdrop-blur-2xl">
+                        <SheetHeader className="px-6 pt-8 pb-4 text-left border-b border-border/40">
+                            <SheetTitle className="text-2xl font-bold">Menu</SheetTitle>
+                        </SheetHeader>
+                        
+                        <div className="flex-1 overflow-y-auto px-4 py-6 space-y-8">
+                            {/* Profile Snippet in Menu */}
+                            <div className="flex items-center gap-4 px-2">
+                                <Avatar className="h-12 w-12 border-2 border-primary/20">
+                                    <AvatarImage src={actorData.HeadshotURL} className="object-cover" />
+                                    <AvatarFallback>U</AvatarFallback>
+                                </Avatar>
+                                <div>
+                                    <p className="font-bold text-lg">{actorData.ActorName}</p>
+                                    <p className="text-xs text-muted-foreground">Managed Account</p>
+                                </div>
+                            </div>
+
+                            {NAV_GROUPS.map((group, idx) => {
+                                if (group.p2pOnly && !actorData.is_p2p_enabled) return null;
+                                return (
+                                    <div key={idx}>
+                                        <h4 className="px-2 text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">
+                                            {group.label}
+                                        </h4>
+                                        <div className="grid gap-1">
+                                            {group.items.map((item) => (
+                                                <SheetClose asChild key={item.name}>
+                                                    <Link 
+                                                        to={item.to}
+                                                        className="flex items-center gap-4 p-3 rounded-2xl hover:bg-muted/50 active:bg-muted transition-all"
+                                                    >
+                                                        <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center text-primary">
+                                                            <item.icon className="h-5 w-5" />
+                                                        </div>
+                                                        <div className="flex-1">
+                                                            <div className="font-semibold text-base">{item.name}</div>
+                                                            <div className="text-xs text-muted-foreground line-clamp-1">{item.description || "View section"}</div>
+                                                        </div>
+                                                        <ChevronRight size={16} className="text-muted-foreground/50" />
+                                                    </Link>
+                                                </SheetClose>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )
+                            })}
+                        </div>
+                        
+                        <div className="p-6 border-t border-border/40 bg-muted/20">
+                            <SheetClose asChild>
+                                <Button variant="destructive" size="lg" onClick={handleLogout} className="w-full font-bold shadow-lg shadow-destructive/20">
+                                    Log Out
+                                </Button>
+                            </SheetClose>
+                        </div>
+                    </SheetContent>
+                </Sheet>
             </div>
-          </SheetContent>
-        </Sheet>
+        </div>
       </nav>
+      
       </SubscriptionProvider>
     </div>
   );

@@ -3,7 +3,7 @@ import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-route
 import emailjs from '@emailjs/browser';
 import Navbar from './components/Navbar'; // Import Navbar
 import Footer from './components/Footer'; // Import Footer
-import HomePage from './pages/HomePage';
+//import HomePage from './pages/HomePage';
 //import OptInPage from './pages/OptInPage';
 //import ThankYouPage from './pages/ThankYouPage';
 import PortfolioPage from './pages/PortfolioPage';
@@ -46,7 +46,7 @@ import ActorEarningsPage from './pages/dashboard/ActorEarningsPage'; // <-- 1. I
 import AdminPayoutsPage from './pages/AdminPayoutsPage'; // <-- 1. Import the new page
 import ActorPayoutSettingsPage from './pages/dashboard/ActorPayoutSettingsPage'; // <-- 1. Import the new page
 import PortfolioBuilderPage from './pages/dashboard/PortfolioBuilderPage.tsx';
-import PortfolioRenderer from './pages/PortfolioRenderer'; // <-- Import it
+//import PortfolioRenderer from './pages/PortfolioRenderer'; // <-- Import it
 import AdminDomainListPage from './pages/AdminDomainListPage';
 import DomainMarketplace from './pages/marketplace/DomainMarketplace'; // Adjust path
 import DomainCheckout from './pages/marketplace/DomainCheckout';     // Adjust path
@@ -57,6 +57,36 @@ import AnalyticsPage from './pages/dashboard/AnalyticsPage.tsx';
 import OrdersPage from './pages/dashboard/OrdersPage.tsx';
 import LeadsPage from './pages/dashboard/LeadsPage.tsx';
 import SettingsPage from './pages/dashboard/SettingsPage';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { Suspense, lazy } from 'react';
+const HomePage = lazy(() => import('./pages/HomePage'));
+const PortfolioRenderer = lazy(() => import('./pages/PortfolioRenderer'));
+
+const MAIN_DOMAINS = ['ucpmaroc.com', 'www.ucpmaroc.com', 'localhost', '127.0.0.1'];
+
+const DomainAwareHome = () => {
+  const currentHostname = window.location.hostname;
+  const isMainApp = MAIN_DOMAINS.some(domain => currentHostname.includes(domain));
+
+  if (!isMainApp) {
+    // Only now does the browser download the PortfolioRenderer code
+    return <PortfolioRenderer customDomain={currentHostname} />;
+  }
+
+  // Only now does the browser download the HomePage code
+  return <HomePage />;
+};
+
+// Create a client
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 1000 * 60 * 5, // Data stays "fresh" for 5 minutes (no refetching)
+      retry: 1, // Only retry failed requests once
+    },
+  },
+});
+
 // --- 1. Create a Layout Component to handle conditional Footer ---
 const Layout = ({ children }: { children: React.ReactNode }) => {
   const location = useLocation();
@@ -125,6 +155,7 @@ function App() {
   // --- END OF AUTH LISTENER useEffect --
 
   return (
+    <QueryClientProvider client={queryClient}>
     <Router>
       <ScrollToTop />
       <main className="flex-grow">
@@ -145,7 +176,7 @@ function App() {
         <Route path="/cinema-portfolio" element={<CinematoGraphyPage />} />
 
 {/* end of temporary disabled routes*/}
-        <Route path="/" element={<HomePage />} />
+        <Route path="/" element={<DomainAwareHome />} />
         <Route path="/my-favorites" element={<FavoriteActorsPage />} /> {/* <-- 2. Add this new route */}
         <Route path="/Voiceover" element={<VoiceOverLandingPage />} />
         <Route path="/actor/:actorName" element={<ActorProfilePage />} />
@@ -195,6 +226,7 @@ function App() {
       </Layout>
       </main>
     </Router>
+    </QueryClientProvider>
   );
 }
 

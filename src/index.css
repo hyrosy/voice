@@ -147,3 +147,33 @@ html {
 .dark .bg-primary audio {
   filter: invert(1) hue-rotate(180deg) brightness(1.2);
 }
+
+@layer utilities {
+  /* 1. Dynamic Radius Logic */
+  /* This forces all Shadcn/Tailwind components to use the variable we inject */
+  .rounded-lg, .rounded-md, .rounded-xl, .rounded-2xl, .rounded-3xl, .rounded-full {
+    border-radius: var(--radius) !important;
+  }
+  
+  /* 2. Button Style: OUTLINE */
+  [data-btn-style="outline"] .bg-primary:not(:hover) {
+    background-color: transparent !important;
+    border: 2px solid hsl(var(--primary)) !important;
+    color: hsl(var(--primary)) !important;
+  }
+  [data-btn-style="outline"] .bg-primary:hover {
+    background-color: hsl(var(--primary)) !important;
+    color: hsl(var(--primary-foreground)) !important;
+  }
+
+  /* 3. Button Style: SHADOW (Retro) */
+  [data-btn-style="shadow"] .bg-primary {
+    border: 2px solid black !important;
+    box-shadow: 4px 4px 0px 0px rgba(0,0,0,0.8);
+    transition: all 0.1s ease;
+  }
+  [data-btn-style="shadow"] .bg-primary:active {
+    transform: translate(2px, 2px);
+    box-shadow: 2px 2px 0px 0px rgba(0,0,0,0.8);
+  }
+}
