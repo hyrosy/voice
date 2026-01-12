@@ -7,6 +7,9 @@ export interface BlockProps {
   actorId?: string; // Some blocks (like Services) might need the ID to fetch more data
   allSections?: any[]; // <-- NEW: Pass all sections so Header can read them
   isPreview?: boolean; // <-- Add this prop
+  id: string;
+  isVisible: boolean;
+  settings: Record<string, any>;
 }
 
 // The contract: Every theme MUST export these components

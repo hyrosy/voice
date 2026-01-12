@@ -59,9 +59,11 @@ import LeadsPage from './pages/dashboard/LeadsPage.tsx';
 import SettingsPage from './pages/dashboard/SettingsPage';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Suspense, lazy } from 'react';
+import { Loader2 } from 'lucide-react'; // Added for the loading spinner
 const HomePage = lazy(() => import('./pages/HomePage'));
 const PortfolioRenderer = lazy(() => import('./pages/PortfolioRenderer'));
 
+// Define main domains globally
 const MAIN_DOMAINS = ['ucpmaroc.com', 'www.ucpmaroc.com', 'localhost', '127.0.0.1'];
 
 const DomainAwareHome = () => {
@@ -69,52 +71,55 @@ const DomainAwareHome = () => {
   const isMainApp = MAIN_DOMAINS.some(domain => currentHostname.includes(domain));
 
   if (!isMainApp) {
-    // Only now does the browser download the PortfolioRenderer code
+    // It is a custom domain -> Load Portfolio Renderer
     return <PortfolioRenderer customDomain={currentHostname} />;
   }
 
-  // Only now does the browser download the HomePage code
+  // It is the main site -> Load Home Page
   return <HomePage />;
 };
 
-// Create a client
+// Create a React Query client
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      staleTime: 1000 * 60 * 5, // Data stays "fresh" for 5 minutes (no refetching)
-      retry: 1, // Only retry failed requests once
+      staleTime: 1000 * 60 * 5, // Data stays "fresh" for 5 minutes
+      retry: 1, 
     },
   },
 });
 
-// --- 1. Create a Layout Component to handle conditional Footer ---
+// --- UPDATED LAYOUT COMPONENT ---
 const Layout = ({ children }: { children: React.ReactNode }) => {
   const location = useLocation();
   
-  // Pages where we want to HIDE the footer for a full-screen "App" feel
+  // 1. Check if we are on a custom domain (e.g. rajaalemnari.com)
+  const currentHostname = window.location.hostname;
+  const isCustomDomain = !MAIN_DOMAINS.some(domain => currentHostname.includes(domain));
+
+  // 2. Define paths where footer/navbar should hide on the MAIN site
   const hideFooterPaths = [
     '/dashboard', 
     '/messages', 
     '/client-dashboard',
     '/admin',
-    '/pro', // <-- ADD THIS LINE
-    // Add auth pages if you want them clean too:
-    // '/actor-login', '/client-auth', '/actor-signup' 
+    '/pro', 
   ];
 
   const hideNavbarPaths = [
     '/pro', 
-    // You can add others here if you want, e.g. '/login', '/register'
   ];
 
-  const shouldHideFooter = hideFooterPaths.some(path => location.pathname.startsWith(path));
-  const shouldHideNavbar = hideNavbarPaths.some(path => location.pathname.startsWith(path));
+  // 3. Logic: Hide if it's a Custom Domain OR if the path matches the list
+  const shouldHideFooter = isCustomDomain || hideFooterPaths.some(path => location.pathname.startsWith(path));
+  const shouldHideNavbar = isCustomDomain || hideNavbarPaths.some(path => location.pathname.startsWith(path));
+
   return (
     <>
       {!shouldHideNavbar && <Navbar />}      
 
       <main className={`flex-grow ${shouldHideNavbar ? "" : "pt-0"}`}>
-                {children}
+        {children}
       </main>
 
       {!shouldHideFooter && <Footer />}
@@ -125,107 +130,92 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
 function App() {
   
   useEffect(() => {
-    // Initialize EmailJS with your Public Key
     emailjs.init('LOZrhOD88Fa4aQQlz');
   }, []);
 
-  // --- ADD THIS useEffect FOR AUTH LISTENER ---
   useEffect(() => {
-    // Listen for changes in authentication state
     const { data: authListener } = supabase.auth.onAuthStateChange(
       (event, session) => {
-        console.log('Supabase Auth Event:', event, session); // Log events for debugging
-
-        // This listener automatically handles session updates.
-        // When the user clicks the verification link and lands back on your site
-        // (even if emailRedirectTo is set), this listener will detect the updated
-        // session information containing the now-verified user.
-
-        // You could add logic here if needed, like redirecting based on session status,
-        // but often just letting components re-render based on supabase.auth.getUser()
-        // is sufficient.
+        console.log('Supabase Auth Event:', event, session); 
       }
     );
-
-    // Cleanup function to unsubscribe when the App component unmounts
     return () => {
       authListener?.subscription.unsubscribe();
     };
-  }, []); // Empty dependency array ensures this runs only once on mount
-  // --- END OF AUTH LISTENER useEffect --
+  }, []);
 
   return (
     <QueryClientProvider client={queryClient}>
-    <Router>
-      <ScrollToTop />
-      <main className="flex-grow">
-        
-        <Layout>
-        <Routes>
-{/* start of temporary disabled routes
-        <Route path="/members" element={<MembersPage />} /> {/* Add route for Members Page */}
-        <Route path="/privacy-policy" element={<PrivacyPolicyPage/>}/>
-        <Route path="/terms-of-service" element={<TermsofService/>}/>
-        <Route path="/terms-of-conditions" element={<TermsandConditions/>}/>
-        <Route path="/contact" element={<ContactUsPage />} /> {/* Add route for Contact Us */}
-{/*    <Route path="/opt-in/:planId" element={<OptInPage />} />
-        <Route path="/thank-you" element={<ThankYouPage />} />
-        <Route path="/software-development" element={<SoftwareServicesPage />} />
-        <Route path="/digital-marketing" element={<MarketingServices />} />
-        <Route path="/customized-package" element={<CustomizedPackages />} />
-        <Route path="/cinema-portfolio" element={<CinematoGraphyPage />} />
+      <Router>
+        <ScrollToTop />
+        <main className="flex-grow">
+          <Layout>
+            {/* Added Suspense Wrapper for Lazy Loading */}
+            <Suspense fallback={<div className="h-screen flex items-center justify-center"><Loader2 className="animate-spin w-10 h-10 text-primary" /></div>}>
+              <Routes>
+                {/* Public Routes */}
+                <Route path="/" element={<DomainAwareHome />} />
+                <Route path="/my-favorites" element={<FavoriteActorsPage />} /> 
+                <Route path="/Voiceover" element={<VoiceOverLandingPage />} />
+                <Route path="/portfolio" element={<PortfolioPage />} />
+                <Route path="/privacy-policy" element={<PrivacyPolicyPage/>}/>
+                <Route path="/terms-of-service" element={<TermsofService/>}/>
+                <Route path="/terms-of-conditions" element={<TermsandConditions/>}/>
+                <Route path="/contact" element={<ContactUsPage />} /> 
+                <Route path="/pro/:slug" element={<PortfolioRenderer />} />
 
-{/* end of temporary disabled routes*/}
-        <Route path="/" element={<DomainAwareHome />} />
-        <Route path="/my-favorites" element={<FavoriteActorsPage />} /> {/* <-- 2. Add this new route */}
-        <Route path="/Voiceover" element={<VoiceOverLandingPage />} />
-        <Route path="/actor/:actorName" element={<ActorProfilePage />} />
-        <Route path="/dashboard" element={<ActorDashboardPage />} />
-        <Route path="/order/:orderId" element={<ClientOrderPage />} />
-        <Route path="/admin" element={<AdminDashboardPage />} />
-        <Route path="/client-auth" element={<ClientAuthPage />} />
-        <Route path="/client-dashboard" element={<ClientDashboardPage />} />
-        <Route path="/actor-login" element={<ActorLoginPage />} />
-        <Route path="/actor-signup" element={<ActorSignUpPage />} />
-        <Route path="/my-shortlist" element={<MyShortlistPage />} />
-        <Route path="/messages" element={<MessagesPage />} />
-        <Route path="/messages/:conversationId" element={<MessagesPage />} />
-        <Route path="/admin/order/:orderId" element={<AdminOrderDetailPage />} /> {/* <-- Add this route */}
-        <Route path="/admin/actors" element={<AdminActorListPage />} />   {/* <-- Add Actor route */}
-        <Route path="/admin/clients" element={<AdminClientListPage />} />  {/* <-- Add Client route */}
-        <Route path="/admin/domains" element={<AdminDomainListPage />} />
-        <Route path="/marketplace/order/:id/thank-you" element={<DomainThankYouPage />} />
-        <Route path="/admin/domains/order/:id" element={<AdminDomainOrderDetailPage />} />
-        <Route path="/marketplace/order/:id/status" element={<DomainOrderPage />} />
-        <Route path="/marketplace/domains" element={<DomainMarketplace />} />
-        <Route path="/marketplace/domains/:id/checkout" element={<DomainCheckout />} />
-        <Route path="/create-profile" element={<CreateProfilePromptPage />} /> {/* <-- Add new route */}
-        <Route path="/portfolio" element={<PortfolioPage />} />
-        <Route path="/admin/payouts" element={<AdminPayoutsPage />} />
-        {/* --- END NEW ROUTES --- */}
-        {/* --- NEW Actor Dashboard Layout --- */}
-          <Route path="/dashboard" element={<ActorDashboardLayout />}>
-            <Route index element={<DashboardOrders />} /> {/* /dashboard */}
-            <Route path="profile" element={<DashboardProfile />} /> {/* /dashboard/profile */}
-            <Route path="messages" element={<MessagesPage />} />
-            <Route path="messages/:conversationId" element={<MessagesPage />} />
-            <Route path="services" element={<DashboardServices />} /> {/* /dashboard/services */}
-            <Route path="demos" element={<DashboardDemos />} /> {/* /dashboard/demos */}
-            <Route path="library" element={<DashboardLibrary />} /> {/* /dashboard/library */}
-            <Route path="earnings" element={<ActorEarningsPage />} />
-            <Route path="payout-settings" element={<ActorPayoutSettingsPage />} />
-            <Route path="Portfolio" element={<PortfolioBuilderPage />} /> 
-            <Route path="analytics" element={<AnalyticsPage />} />
-            <Route path="Orders" element={<OrdersPage />} />
-            <Route path="leads" element={<LeadsPage />} />
-            <Route path="settings" element={<SettingsPage />} />
-          </Route>
-          <Route path="/pro/:slug" element={<PortfolioRenderer />} />
+                {/* Actor/User Routes */}
+                <Route path="/actor/:actorName" element={<ActorProfilePage />} />
+                <Route path="/dashboard" element={<ActorDashboardPage />} />
+                <Route path="/order/:orderId" element={<ClientOrderPage />} />
+                <Route path="/actor-login" element={<ActorLoginPage />} />
+                <Route path="/actor-signup" element={<ActorSignUpPage />} />
+                <Route path="/my-shortlist" element={<MyShortlistPage />} />
+                <Route path="/messages" element={<MessagesPage />} />
+                <Route path="/messages/:conversationId" element={<MessagesPage />} />
+                <Route path="/create-profile" element={<CreateProfilePromptPage />} /> 
 
-      </Routes>
-      </Layout>
-      </main>
-    </Router>
+                {/* Client Routes */}
+                <Route path="/client-auth" element={<ClientAuthPage />} />
+                <Route path="/client-dashboard" element={<ClientDashboardPage />} />
+
+                {/* Admin Routes */}
+                <Route path="/admin" element={<AdminDashboardPage />} />
+                <Route path="/admin/order/:orderId" element={<AdminOrderDetailPage />} /> 
+                <Route path="/admin/actors" element={<AdminActorListPage />} />   
+                <Route path="/admin/clients" element={<AdminClientListPage />} />  
+                <Route path="/admin/domains" element={<AdminDomainListPage />} />
+                <Route path="/admin/domains/order/:id" element={<AdminDomainOrderDetailPage />} />
+                <Route path="/admin/payouts" element={<AdminPayoutsPage />} />
+
+                {/* Marketplace Routes */}
+                <Route path="/marketplace/domains" element={<DomainMarketplace />} />
+                <Route path="/marketplace/domains/:id/checkout" element={<DomainCheckout />} />
+                <Route path="/marketplace/order/:id/thank-you" element={<DomainThankYouPage />} />
+                <Route path="/marketplace/order/:id/status" element={<DomainOrderPage />} />
+                
+                {/* Dashboard Layout Routes */}
+                <Route path="/dashboard" element={<ActorDashboardLayout />}>
+                  <Route index element={<DashboardOrders />} /> 
+                  <Route path="profile" element={<DashboardProfile />} /> 
+                  <Route path="messages" element={<MessagesPage />} />
+                  <Route path="messages/:conversationId" element={<MessagesPage />} />
+                  <Route path="services" element={<DashboardServices />} /> 
+                  <Route path="demos" element={<DashboardDemos />} /> 
+                  <Route path="library" element={<DashboardLibrary />} /> 
+                  <Route path="earnings" element={<ActorEarningsPage />} />
+                  <Route path="payout-settings" element={<ActorPayoutSettingsPage />} />
+                  <Route path="Portfolio" element={<PortfolioBuilderPage />} /> 
+                  <Route path="analytics" element={<AnalyticsPage />} />
+                  <Route path="Orders" element={<OrdersPage />} />
+                  <Route path="leads" element={<LeadsPage />} />
+                  <Route path="settings" element={<SettingsPage />} />
+                </Route>
+              </Routes>
+            </Suspense>
+          </Layout>
+        </main>
+      </Router>
     </QueryClientProvider>
   );
 }

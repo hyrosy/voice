@@ -96,6 +96,12 @@ const VISUAL_THEMES = [
         description: 'Immersive dark mode, full-screen media, dramatic transitions.',
         previewColor: '#1e293b' // Dark slate
     },
+    {
+    id: 'cupertino', // <--- This MUST match the key in registry.ts
+    name: 'Cupertino',
+    description: 'Apple-inspired. Bento grids, glassmorphism, and fluid motion.',
+    previewColor: '#3b82f6' // Blue
+    },
     // Future Marketplace Themes will appear here:
     // { id: 'cyberpunk-v1', name: 'Cyberpunk', author: 'DevUser123' ... }
 ];
@@ -144,12 +150,15 @@ const PortfolioPreview = ({ sections, theme }: { sections: PortfolioSection[], t
 
             // Mock props for preview
             const mockProps = {
-                data: section.data,
-                allSections: sections,
-                isPreview: true,
-                actorId: 'preview-actor-id',
-                portfolioId: 'preview-portfolio-id'
-            };
+            data: section.data,
+            settings: section.settings || {}, // <--- PASS SETTINGS!
+            id: section.id,                   // <--- PASS ID!
+            isVisible: section.isVisible,     // <--- PASS VISIBILITY!
+            allSections: sections,
+            isPreview: true,
+            actorId: 'preview-actor-id',
+            portfolioId: 'preview-portfolio-id'
+        };
 
             return <Component key={section.id} {...mockProps} />;
           })
@@ -922,7 +931,8 @@ const PortfolioBuilderPage = () => {
           onClose={() => setEditingSection(null)}
           onSave={handleUpdateSection}
           actorId={actorData.id}
-        />
+          themeId={themeConfig.templateId || 'modern'}
+                  />
       )}
 
       {/* --- SITE SETTINGS DIALOG --- */}

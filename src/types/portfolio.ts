@@ -22,6 +22,7 @@ export interface PortfolioSection {
   type: SectionType;
   isVisible: boolean;
   data: Record<string, any>; 
+  settings?: Record<string, any>; // Theme Design Settings (Zone B)
 }
 
 export interface PortfolioConfig {

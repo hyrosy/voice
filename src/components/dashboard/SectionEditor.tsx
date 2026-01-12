@@ -17,6 +17,8 @@ import { Video, Map, Users, ShoppingBag, DollarSign, Trash2,FileText, X, Plus, I
 import PortfolioMediaManager, { UnifiedMediaItem } from './PortfolioMediaManager';
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { PortfolioSection } from '../../types/portfolio';
+import { THEME_REGISTRY } from '../../themes/registry';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"; // <--- You need this component
 
 interface SectionEditorProps {
   section: PortfolioSection | null;
@@ -25,28 +27,42 @@ interface SectionEditorProps {
   onClose: () => void;
   onSave: (updatedSection: PortfolioSection) => void;
   actorId: string;
+  themeId?: string; // <--- Pass the active theme ID so we know which schema to load
 }
 
-const SectionEditor: React.FC<SectionEditorProps> = ({ section, isOpen, onClose, onSave, actorId, sections }) => {
-  const [formData, setFormData] = useState<Record<string, any>>({});
+const SectionEditor: React.FC<SectionEditorProps> = ({ section, isOpen, onClose, onSave, actorId, sections, themeId = 'modern' }) => {
+const [formData, setFormData] = useState<Record<string, any>>({});
+  const [settingsData, setSettingsData] = useState<Record<string, any>>({}); // Zone B Data
   const [isMediaPickerOpen, setIsMediaPickerOpen] = useState(false);
-  const [activeMediaField, setActiveMediaField] = useState<string>(''); 
+  const [activeMediaField, setActiveMediaField] = useState<string>('');
 
   useEffect(() => {
     if (section) {
-      setFormData(JSON.parse(JSON.stringify(section.data))); 
+      // Zone A: Core Data
+      setFormData(JSON.parse(JSON.stringify(section.data || {}))); 
+      // Zone B: Theme Settings (or empty object if none)
+      setSettingsData(JSON.parse(JSON.stringify(section.settings || {})));
     }
   }, [section]);
 
   if (!section) return null;
 
   const handleSave = () => {
-    onSave({ ...section, data: formData });
+    onSave({ 
+        ...section, 
+        data: formData,      // Save Core Data
+        settings: settingsData // Save Theme Settings
+    });
     onClose();
   };
 
   const updateField = (key: string, value: any) => {
     setFormData(prev => ({ ...prev, [key]: value }));
+  };
+
+  // --- HELPER: UPDATE THEME SETTINGS (Zone B) ---
+  const updateSetting = (key: string, value: any) => {
+    setSettingsData(prev => ({ ...prev, [key]: value }));
   };
 
   const handleMediaSelect = (item: UnifiedMediaItem) => {
@@ -78,9 +94,16 @@ const SectionEditor: React.FC<SectionEditorProps> = ({ section, isOpen, onClose,
       const currentList = formData.images || [];
       updateField('images', [...currentList, { url: item.url, type: item.type }]);
     
-    // 6. Generic Single Images (Hero, About, etc.)
-    } else if (activeMediaField === 'backgroundImage' || activeMediaField === 'image') {
-      updateField(activeMediaField, item.url);
+    // 6. Generic Single Images
+    } else if (activeMediaField === 'backgroundImage') {
+    // If we are editing the Header, background image is usually a Design Setting
+    if (section.type === 'header') {
+        updateSetting('backgroundImage', item.url); 
+    } else {
+        updateField('backgroundImage', item.url);
+    }
+    } else if (activeMediaField === 'image') {
+    updateField('image', item.url);
 
     // 7. Generic Video URL (Hero Video)
     } else if (activeMediaField === 'videoUrl') {
@@ -224,6 +247,127 @@ const SectionEditor: React.FC<SectionEditorProps> = ({ section, isOpen, onClose,
       const current = [...(formData.products || [])];
       current.splice(idx, 1);
       updateField('products', current);
+  };
+
+  // =========================================================
+  // DYNAMIC FORM BUILDER (The Magic Part)
+  // =========================================================
+  const renderThemeSettings = () => {
+    // 1. Find the active theme component
+    const ActiveTheme = THEME_REGISTRY[themeId];
+    if (!ActiveTheme) return <p>Theme not found.</p>;
+
+    // 2. Find the component for this section type (e.g., Header)
+    // We assume your Registry maps keys like 'header', 'bio', etc.
+    // If your registry uses Capitalized keys (Header), match that.
+    const ComponentKey = section.type.charAt(0).toUpperCase() + section.type.slice(1).replace(/_([a-z])/g, (g) => g[1].toUpperCase());
+    const SectionComponent = (ActiveTheme as any)[ComponentKey] || (ActiveTheme as any)['Header']; // Fallback
+
+    // 3. Get the Schema
+    const schema = (SectionComponent as any)?.schema || [];
+
+    if (schema.length === 0) {
+        return (
+            <div className="p-8 text-center text-muted-foreground bg-muted/10 rounded-lg">
+                <p>This section has no design settings for the current theme.</p>
+            </div>
+        );
+    }
+
+    // 4. Render Fields based on Schema
+    return (
+        <div className="space-y-6 animate-in fade-in">
+            {schema.map((field: any) => (
+                <div key={field.id} className="space-y-3 p-4 border rounded-lg bg-muted/20">
+                    <div className="flex items-center justify-between">
+                        <Label htmlFor={field.id} className="text-base font-medium">
+                            {field.label}
+                        </Label>
+                        {/* Optional: Show current value for debugging */}
+                        {/* <span className="text-xs text-muted-foreground">{settingsData[field.id]}</span> */}
+                    </div>
+
+                    {/* RENDER INPUT BASED ON TYPE */}
+                    
+                    {/* TOGGLE */}
+                    {field.type === 'toggle' && (
+                        <Switch 
+                            id={field.id}
+                            checked={settingsData[field.id] !== undefined ? settingsData[field.id] : field.defaultValue}
+                            onCheckedChange={(val) => updateSetting(field.id, val)}
+                        />
+                    )}
+
+                    {/* SELECT / DROPDOWN */}
+                    {field.type === 'select' && (
+                        <Select 
+                            value={settingsData[field.id] || field.defaultValue} 
+                            onValueChange={(val) => updateSetting(field.id, val)}
+                        >
+                            <SelectTrigger className="bg-background"><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                                {field.options.map((opt: string) => (
+                                    <SelectItem key={opt} value={opt}>
+                                        {opt.charAt(0).toUpperCase() + opt.slice(1)}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    )}
+
+                    {/* SLIDER */}
+                    {field.type === 'slider' && (
+                        <div className="pt-2">
+                             <Slider 
+                                value={[settingsData[field.id] || field.defaultValue]} 
+                                min={field.min || 0}
+                                max={field.max || 100}
+                                step={field.step || 1}
+                                onValueChange={([val]) => updateSetting(field.id, val)}
+                            />
+                            <div className="flex justify-between mt-1">
+                                <span className="text-xs text-muted-foreground">{field.min}</span>
+                                <span className="text-xs font-medium">{settingsData[field.id] || field.defaultValue}</span>
+                                <span className="text-xs text-muted-foreground">{field.max}</span>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* COLOR PICKER (Simple Text Input for now) */}
+                    {field.type === 'color' && (
+                        <div className="flex gap-2">
+                            <Input 
+                                type="color" 
+                                className="w-12 h-10 p-1 cursor-pointer"
+                                value={settingsData[field.id] || field.defaultValue}
+                                onChange={(e) => updateSetting(field.id, e.target.value)}
+                            />
+                            <Input 
+                                value={settingsData[field.id] || field.defaultValue}
+                                onChange={(e) => updateSetting(field.id, e.target.value)}
+                            />
+                        </div>
+                    )}
+                     
+                     {/* IMAGE UPLOAD (Using your Media Picker) */}
+                     {field.type === 'image' && (
+                        <div className="flex gap-2">
+                             {settingsData[field.id] && (
+                                <img src={settingsData[field.id]} className="h-10 w-10 rounded object-cover border" alt="preview" />
+                             )}
+                             <Button variant="outline" size="sm" onClick={() => {
+                                 setActiveMediaField(field.id); // Set the active field to this setting ID
+                                 setIsMediaPickerOpen(true);
+                             }}>
+                                <ImageIcon className="w-4 h-4 mr-2" /> Select Image
+                             </Button>
+                        </div>
+                     )}
+
+                </div>
+            ))}
+        </div>
+    );
   };
 
 
@@ -2116,7 +2260,24 @@ case 'hero':
             <SheetTitle>Edit {section.type.charAt(0).toUpperCase() + section.type.slice(1)} Section</SheetTitle>
           </SheetHeader>
 
-          {renderFields()}
+          {/* --- THE FIX: WRAP EDITORS IN TABS --- */}
+          <Tabs defaultValue="content" className="w-full">
+            <TabsList className="grid w-full grid-cols-2 mb-4">
+              <TabsTrigger value="content">Content</TabsTrigger>
+              <TabsTrigger value="design">Design</TabsTrigger>
+            </TabsList>
+
+            {/* TAB 1: CORE CONTENT (Your existing hardcoded fields) */}
+            <TabsContent value="content" className="space-y-4">
+               {renderFields()}
+            </TabsContent>
+
+            {/* TAB 2: THEME SETTINGS (The new dynamic schema) */}
+            <TabsContent value="design" className="space-y-4">
+               {renderThemeSettings()}
+            </TabsContent>
+          </Tabs>
+          {/* ------------------------------------- */}
 
           <SheetFooter className="mt-8">
             <Button variant="outline" onClick={onClose}>Cancel</Button>
