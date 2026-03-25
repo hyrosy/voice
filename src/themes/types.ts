@@ -1,9 +1,9 @@
-import React from 'react';
+import React from "react";
 
 // The shape of the data passed to each block
 // (This matches your 'PortfolioSection' data structure)
 export interface BlockProps {
-  data: any; 
+  data: any;
   actorId?: string; // Some blocks (like Services) might need the ID to fetch more data
   allSections?: any[]; // <-- NEW: Pass all sections so Header can read them
   isPreview?: boolean; // <-- Add this prop
@@ -29,5 +29,5 @@ export interface PortfolioThemeDefinition {
   Pricing: React.FC<BlockProps>;
   Shop: React.FC<BlockProps>;
   LeadForm: React.FC<BlockProps>;
-
+  DynamicStore: React.FC<BlockProps>;
 }
