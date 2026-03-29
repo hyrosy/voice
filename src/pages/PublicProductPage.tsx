@@ -20,7 +20,6 @@ const MAIN_DOMAINS = [
 ];
 
 export default function PublicProductPage() {
-  // App.tsx uses :slug for the pro route
   const { slug, productSlug } = useParams<{
     slug?: string;
     productSlug: string;
@@ -32,7 +31,10 @@ export default function PublicProductPage() {
 
   const [product, setProduct] = useState<any>(null);
   const [theme, setTheme] = useState<string>("modern");
-  const [resolvedUsername, setResolvedUsername] = useState<string>("");
+
+  // ✅ Tracks the correct store URL prefix
+  const [resolvedPublicSlug, setResolvedPublicSlug] = useState<string>("");
+
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -63,52 +65,37 @@ export default function PublicProductPage() {
       );
 
       let currentActorId = null;
+      let currentPortfolioId = null; // <-- NEW: Track this for store separation
       let currentTheme = "modern";
-      let currentUsername = slug || "";
+      let currentPublicSlug = slug || "";
 
-      // 1. ENVIRONMENT-AWARE ACTOR LOOKUP (FIXED SCHEMA)
+      // 1. ENVIRONMENT-AWARE ACTOR LOOKUP (FIXED 406 CRASH)
       if (isCustomDomain) {
-        // Fetch by custom domain from portfolios table
         const { data: portData } = await supabase
           .from("portfolios")
-          .select("actor_id, theme_config")
+          .select("id, actor_id, theme_config, public_slug")
           .eq("custom_domain", currentHostname)
-          .single();
+          .maybeSingle(); // <-- PREVENTS 406 ERROR
 
         if (portData) {
+          currentPortfolioId = portData.id;
           currentActorId = portData.actor_id;
           currentTheme = portData.theme_config?.templateId || "modern";
-
-          // Get the slug from the actors table for cart/checkout routing
-          const { data: actor } = await supabase
-            .from("actors")
-            .select("slug")
-            .eq("id", currentActorId)
-            .single();
-          if (actor) currentUsername = actor.slug;
+          if (portData.public_slug) currentPublicSlug = portData.public_slug;
         }
       } else if (slug) {
-        // Fetch actor by slug from the URL
-        const { data: actorData } = await supabase
-          .from("actors")
-          .select("id, slug")
-          .eq("slug", slug)
-          .single();
+        // ✅ CORRECT LOOKUP: Query PORTFOLIOS using public_slug!
+        const { data: portData } = await supabase
+          .from("portfolios")
+          .select("id, actor_id, theme_config, public_slug")
+          .eq("public_slug", slug)
+          .maybeSingle(); // <-- PREVENTS 406 ERROR
 
-        if (actorData) {
-          currentActorId = actorData.id;
-          currentUsername = actorData.slug;
-
-          // Now fetch their theme from the portfolios table
-          const { data: portData } = await supabase
-            .from("portfolios")
-            .select("theme_config")
-            .eq("actor_id", currentActorId)
-            .single();
-
-          if (portData && portData.theme_config) {
-            currentTheme = portData.theme_config.templateId || "modern";
-          }
+        if (portData) {
+          currentPortfolioId = portData.id;
+          currentActorId = portData.actor_id;
+          currentTheme = portData.theme_config?.templateId || "modern";
+          currentPublicSlug = portData.public_slug;
         }
       }
 
@@ -119,16 +106,26 @@ export default function PublicProductPage() {
       }
 
       setTheme(currentTheme);
-      setResolvedUsername(currentUsername);
+      setResolvedPublicSlug(currentPublicSlug);
 
-      // 2. FETCH EXACT PRODUCT
-      const { data: productData, error: productError } = await supabase
+      // 2. FETCH EXACT PRODUCT (WITH STORE SEPARATION LOGIC)
+      let productQuery = supabase
         .from("pro_products")
         .select(`*, pro_collections(title, slug)`)
         .eq("actor_id", currentActorId)
         .eq("slug", productSlug)
-        .eq("status", "active")
-        .single();
+        .eq("status", "active");
+
+      // ✅ SMART FILTER: Ensure product belongs to this specific store OR is global!
+      if (currentPortfolioId) {
+        productQuery = productQuery.or(
+          `portfolio_id.eq.${currentPortfolioId},portfolio_id.is.null`
+        );
+      }
+
+      // Use maybeSingle to prevent crashes if a user tries to view a Store B product on Store A's site
+      const { data: productData, error: productError } =
+        await productQuery.maybeSingle();
 
       if (productError || !productData) {
         setError("Product not found.");
@@ -151,7 +148,6 @@ export default function PublicProductPage() {
     fetchProductAndTheme();
   }, [slug, productSlug]);
 
-  // Calculate dynamic price based on base price + selected variant modifiers
   const currentPrice = product
     ? product.price +
       Object.values(selectedVariants).reduce(
@@ -183,7 +179,6 @@ export default function PublicProductPage() {
       return;
     }
 
-    // For WhatsApp or Form Order
     setStep("form");
   };
 
@@ -262,17 +257,15 @@ export default function PublicProductPage() {
     );
   }
 
-  // Helper to check environment
   function isCustomDomain() {
     return !MAIN_DOMAINS.some((domain) =>
       window.location.hostname.includes(domain)
     );
   }
 
-  // Package all the state and handlers into a single object to pass to the Presenter
   const layoutProps = {
     product,
-    username: isCustomDomain() ? "" : `pro/${resolvedUsername}`,
+    username: isCustomDomain() ? "" : `pro/${resolvedPublicSlug}`,
     currentPrice,
     quantity,
     setQuantity,
@@ -289,7 +282,6 @@ export default function PublicProductPage() {
     handleConfirmOrder,
   };
 
-  // ROUTER: Inject the exact layout based on the actor's active theme
   return (
     <>
       <CartDrawerContainer theme={theme} username={layoutProps.username} />

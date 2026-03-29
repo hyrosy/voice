@@ -18,12 +18,11 @@ const MAIN_DOMAINS = [
 ];
 
 export default function PublicShopPage() {
-  // App.tsx uses :slug for the pro route!
   const { slug } = useParams<{ slug?: string }>();
   const navigate = useNavigate();
 
   const [theme, setTheme] = useState<string>("modern");
-  const [resolvedUsername, setResolvedUsername] = useState<string>("");
+  const [resolvedPublicSlug, setResolvedPublicSlug] = useState<string>("");
   const [products, setProducts] = useState<any[]>([]);
   const [collections, setCollections] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -43,52 +42,38 @@ export default function PublicShopPage() {
       );
 
       let currentActorId = null;
+      let currentPortfolioId = null; // <-- NEW: We need this to filter the products
       let currentTheme = "modern";
-      let currentUsername = slug || "";
+      let currentPublicSlug = slug || "";
 
-      // 1. ENVIRONMENT-AWARE ACTOR LOOKUP (FIXED SCHEMA)
+      // 1. ENVIRONMENT-AWARE ACTOR LOOKUP (FIXED 406 CRASH)
       if (isCustomDomain) {
         // Fetch by custom domain from portfolios
         const { data: portData } = await supabase
           .from("portfolios")
-          .select("actor_id, theme_config")
+          .select("id, actor_id, theme_config, public_slug")
           .eq("custom_domain", currentHostname)
-          .single();
+          .maybeSingle(); // <-- PREVENTS 406 ERROR
 
         if (portData) {
+          currentPortfolioId = portData.id;
           currentActorId = portData.actor_id;
           currentTheme = portData.theme_config?.templateId || "modern";
-
-          // Get the slug for cart/checkout routing
-          const { data: actor } = await supabase
-            .from("actors")
-            .select("slug")
-            .eq("id", currentActorId)
-            .single();
-          if (actor) currentUsername = actor.slug;
+          if (portData.public_slug) currentPublicSlug = portData.public_slug;
         }
       } else if (slug) {
-        // Fetch actor by slug from the URL
-        const { data: actorData } = await supabase
-          .from("actors")
-          .select("id, slug")
-          .eq("slug", slug)
-          .single();
+        // ✅ CORRECT LOOKUP: Query PORTFOLIOS using public_slug!
+        const { data: portData } = await supabase
+          .from("portfolios")
+          .select("id, actor_id, theme_config, public_slug")
+          .eq("public_slug", slug)
+          .maybeSingle(); // <-- PREVENTS 406 ERROR
 
-        if (actorData) {
-          currentActorId = actorData.id;
-          currentUsername = actorData.slug;
-
-          // Now fetch their theme from the portfolios table
-          const { data: portData } = await supabase
-            .from("portfolios")
-            .select("theme_config")
-            .eq("actor_id", currentActorId)
-            .single();
-
-          if (portData && portData.theme_config) {
-            currentTheme = portData.theme_config.templateId || "modern";
-          }
+        if (portData) {
+          currentPortfolioId = portData.id;
+          currentActorId = portData.actor_id;
+          currentTheme = portData.theme_config?.templateId || "modern";
+          currentPublicSlug = portData.public_slug;
         }
       }
 
@@ -99,16 +84,25 @@ export default function PublicShopPage() {
       }
 
       setTheme(currentTheme);
-      setResolvedUsername(currentUsername);
+      setResolvedPublicSlug(currentPublicSlug);
 
-      // 2. Fetch Products and Collections in parallel using the correct Actor ID
+      // 2. Fetch Products & Collections (WITH STORE SEPARATION LOGIC)
+      let productsQuery = supabase
+        .from("pro_products")
+        .select(`*, pro_collections(title, slug)`)
+        .eq("actor_id", currentActorId)
+        .eq("status", "active")
+        .order("created_at", { ascending: false });
+
+      // ✅ SMART FILTER: Only fetch products assigned to this specific store OR global (null) products!
+      if (currentPortfolioId) {
+        productsQuery = productsQuery.or(
+          `portfolio_id.eq.${currentPortfolioId},portfolio_id.is.null`
+        );
+      }
+
       const [productsRes, collectionsRes] = await Promise.all([
-        supabase
-          .from("pro_products")
-          .select(`*, pro_collections(title, slug)`)
-          .eq("actor_id", currentActorId)
-          .eq("status", "active")
-          .order("created_at", { ascending: false }),
+        productsQuery,
         supabase
           .from("pro_collections")
           .select("*")
@@ -162,7 +156,7 @@ export default function PublicShopPage() {
   }
 
   const layoutProps = {
-    username: isCustomDomain() ? "" : `pro/${resolvedUsername}`,
+    username: isCustomDomain() ? "" : `pro/${resolvedPublicSlug}`,
     products,
     collections,
     activeCollection,
@@ -176,8 +170,6 @@ export default function PublicShopPage() {
   return (
     <>
       <CartDrawerContainer theme={theme} username={layoutProps.username} />
-
-      {/* Default to Modern layout */}
       <ModernShopLayout {...layoutProps} />
     </>
   );
