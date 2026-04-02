@@ -1,11 +1,14 @@
 import React, { useState, useEffect } from "react";
 import { BlockProps } from "../types";
 import { Button } from "@/components/ui/button";
-import { Menu, X, ArrowRight, ShoppingBag } from "lucide-react"; // <-- Added ShoppingBag
+import { Menu, X, ArrowRight, ShoppingBag } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useCartStore } from "@/store/useCartStore";
+// 🚀 1. IMPORT INLINE EDIT
+import { InlineEdit } from "../../components/dashboard/InlineEdit";
 
-const Header: React.FC<BlockProps> = ({ data, allSections, isPreview }) => {
+// 🚀 2. GRAB id AND isPreview FROM PROPS
+const Header: React.FC<any> = ({ data, allSections, isPreview, id }) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
 
@@ -19,8 +22,8 @@ const Header: React.FC<BlockProps> = ({ data, allSections, isPreview }) => {
 
   // --- MENU GENERATION ---
   const menuItems = sections
-    .filter((s) => s.isVisible && s.type !== "header")
-    .map((s) => {
+    .filter((s: any) => s.isVisible && s.type !== "header")
+    .map((s: any) => {
       const config = data.menuConfig?.[s.id] || {};
       const isAuto = data.autoMenu !== false;
       const isVisible = isAuto ? !!s.data.title : config.visible !== false;
@@ -44,8 +47,11 @@ const Header: React.FC<BlockProps> = ({ data, allSections, isPreview }) => {
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
-  const scrollToSection = (id: string) => {
-    const element = document.getElementById(id);
+  const scrollToSection = (sectionId: string) => {
+    // 🚀 SAFE SCROLL: Don't jump around inside the builder canvas
+    if (isPreview) return;
+
+    const element = document.getElementById(sectionId);
     if (element) {
       const y = element.getBoundingClientRect().top + window.pageYOffset - 80;
       window.scrollTo({ top: y, behavior: "smooth" });
@@ -77,7 +83,13 @@ const Header: React.FC<BlockProps> = ({ data, allSections, isPreview }) => {
   const Logo = () => (
     <div
       className="flex items-center gap-3 cursor-pointer group"
-      onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+      onClick={(e) => {
+        if (isPreview) {
+          e.preventDefault();
+          return;
+        }
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      }}
     >
       {data.logoImage ? (
         <img
@@ -89,9 +101,15 @@ const Header: React.FC<BlockProps> = ({ data, allSections, isPreview }) => {
           }
         />
       ) : (
-        <span className="text-xl md:text-2xl font-bold tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-white to-white/60">
-          {data.logoText || "BRAND."}
-        </span>
+        // 🚀 3. INLINE EDITABLE LOGO TEXT
+        <InlineEdit
+          tagName="span"
+          className="text-xl md:text-2xl font-bold tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-white to-white/60 block"
+          text={data.logoText || "BRAND."}
+          sectionId={id}
+          fieldKey="logoText"
+          isPreview={isPreview}
+        />
       )}
     </div>
   );
@@ -117,14 +135,30 @@ const Header: React.FC<BlockProps> = ({ data, allSections, isPreview }) => {
         asChild
         className="rounded-full bg-white text-black hover:bg-neutral-200 px-6 font-semibold h-10 hidden md:flex"
       >
-        <a href={data.ctaLink || "#contact"}>{data.ctaText}</a>
+        <a
+          href={data.ctaLink || "#contact"}
+          onClick={(e) => isPreview && e.preventDefault()}
+        >
+          {/* 🚀 4. INLINE EDITABLE CTA BUTTON */}
+          <InlineEdit
+            tagName="span"
+            text={data.ctaText}
+            sectionId={id}
+            fieldKey="ctaText"
+            isPreview={isPreview}
+          />
+        </a>
       </Button>
     );
 
-  // NEW: Reusable Cart Button
+  // 🚀 5. FIX: Removed direct mapping of synthetic event to Zustand action
   const CartButton = () => (
     <button
-      onClick={openCart}
+      onClick={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        openCart(); // Now called safely without arguments!
+      }}
       className="relative p-2 text-white/70 hover:text-white transition-colors"
       aria-label="Open cart"
     >
@@ -262,8 +296,19 @@ const Header: React.FC<BlockProps> = ({ data, allSections, isPreview }) => {
                 className="w-full rounded-full bg-white text-black hover:bg-neutral-200 text-lg h-14"
                 asChild
               >
-                <a href={data.ctaLink || "#contact"}>
-                  {data.ctaText} <ArrowRight className="ml-2 w-5 h-5" />
+                <a
+                  href={data.ctaLink || "#contact"}
+                  onClick={(e) => isPreview && e.preventDefault()}
+                >
+                  {/* 🚀 6. INLINE EDITABLE CTA BUTTON (MOBILE) */}
+                  <InlineEdit
+                    tagName="span"
+                    text={data.ctaText}
+                    sectionId={id}
+                    fieldKey="ctaText"
+                    isPreview={isPreview}
+                  />
+                  <ArrowRight className="ml-2 w-5 h-5 inline-block" />
                 </a>
               </Button>
             </div>

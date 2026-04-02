@@ -8,11 +8,14 @@ import {
   ChevronRight,
   Eye,
   ShoppingCart,
+  Store,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useCartStore } from "@/store/useCartStore";
+// 🚀 1. IMPORT INLINE EDIT
+import { InlineEdit } from "../../components/dashboard/InlineEdit";
 
 const MAIN_DOMAINS = [
   "ucpmaroc.com",
@@ -45,23 +48,28 @@ const ProductCard = ({
     let basePath =
       location.pathname === "/" ? "" : location.pathname.replace(/\/$/, "");
 
-    // If the block is placed on the homepage (/pro/alhamdulilah), ensure we append /product properly
     if (basePath.split("/").length === 3 && basePath.startsWith("/pro/")) {
       // do nothing, basePath is perfect
     } else if (basePath.includes("/shop")) {
-      basePath = basePath.replace("/shop", ""); // Clean up if placed on shop page
+      basePath = basePath.replace("/shop", "");
     }
     return `${basePath}/product/${product.slug || product.id}`;
   };
 
-  const handleCardClick = () => {
-    if (isPreview) return alert("Links are disabled in preview mode.");
+  const handleCardClick = (e: React.MouseEvent) => {
+    if (isPreview) {
+      e.preventDefault();
+      return;
+    }
     navigate(getProductUrl());
   };
 
   const handleQuickAction = (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (isPreview) return alert("Actions disabled in preview mode.");
+    if (isPreview) {
+      e.preventDefault();
+      return;
+    }
 
     if (isExternal) {
       window.open(product.checkout_url, "_blank");
@@ -80,10 +88,10 @@ const ProductCard = ({
 
   return (
     <div
-      className="group relative bg-card border border-border rounded-xl overflow-hidden hover:border-primary/50 hover:shadow-md transition-all duration-300 flex flex-col h-full cursor-pointer"
+      className="group relative bg-neutral-900/50 border border-white/10 rounded-xl overflow-hidden hover:border-primary/50 transition-all duration-300 flex flex-col h-full cursor-pointer"
       onClick={handleCardClick}
     >
-      <div className="relative aspect-[4/3] overflow-hidden bg-muted">
+      <div className="relative aspect-[4/3] overflow-hidden bg-black/50">
         {product.images?.[0] || product.image ? (
           <img
             src={product.images?.[0] || product.image}
@@ -91,23 +99,23 @@ const ProductCard = ({
             className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
           />
         ) : (
-          <div className="flex items-center justify-center h-full text-muted-foreground/50">
+          <div className="flex items-center justify-center h-full text-neutral-700">
             <ShoppingBag size={48} />
           </div>
         )}
         <div className="absolute top-3 right-3">
           <Badge
             variant="secondary"
-            className="bg-background/80 backdrop-blur-md text-foreground border-border font-bold text-sm shadow-sm"
+            className="bg-black/70 backdrop-blur-md text-white border-white/10 font-bold text-sm shadow-sm"
           >
             ${product.price.toFixed(2)}
           </Badge>
         </div>
 
         {/* Hover Overlay with Quick Action Button */}
-        <div className="absolute inset-0 bg-background/20 backdrop-blur-[2px] opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center pointer-events-none">
+        <div className="absolute inset-0 bg-black/40 backdrop-blur-[2px] opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center pointer-events-none">
           <Button
-            variant="default"
+            variant="secondary"
             className="gap-2 shadow-xl pointer-events-auto"
             onClick={handleQuickAction}
           >
@@ -128,10 +136,10 @@ const ProductCard = ({
         </div>
       </div>
       <div className="p-5 flex flex-col flex-grow">
-        <h3 className="text-lg font-bold mb-1 text-foreground leading-tight line-clamp-1">
+        <h3 className="text-lg font-bold mb-1 text-white leading-tight line-clamp-1">
           {product.title}
         </h3>
-        <p className="text-sm text-muted-foreground line-clamp-2 flex-grow">
+        <p className="text-sm text-neutral-400 line-clamp-2 flex-grow">
           {product.description}
         </p>
       </div>
@@ -169,8 +177,11 @@ const SpotlightLayout = ({
     return `${basePath}/product/${product.slug || product.id}`;
   };
 
-  const handleAction = () => {
-    if (isPreview) return alert("Links are disabled in preview mode.");
+  const handleAction = (e: React.MouseEvent) => {
+    if (isPreview) {
+      e.preventDefault();
+      return;
+    }
 
     if (isExternal) {
       window.open(product.checkout_url, "_blank");
@@ -188,11 +199,12 @@ const SpotlightLayout = ({
   };
 
   return (
-    <div className="bg-card border border-border rounded-2xl overflow-hidden md:grid md:grid-cols-2 min-h-[450px] shadow-sm">
+    <div className="bg-neutral-900/30 border border-white/10 rounded-2xl overflow-hidden md:grid md:grid-cols-2 min-h-[450px] shadow-sm">
       <div
-        className="bg-muted relative flex flex-col h-[300px] md:h-auto group/gallery cursor-pointer"
-        onClick={() => {
-          if (!isPreview) navigate(getProductUrl());
+        className="bg-black/50 relative flex flex-col h-[300px] md:h-auto group/gallery cursor-pointer"
+        onClick={(e) => {
+          if (isPreview) e.preventDefault();
+          else navigate(getProductUrl());
         }}
       >
         <div className="flex-grow relative overflow-hidden">
@@ -212,7 +224,7 @@ const SpotlightLayout = ({
                         (prev) => (prev - 1 + images.length) % images.length
                       );
                     }}
-                    className="absolute left-4 top-1/2 -translate-y-1/2 bg-background/50 hover:bg-background/80 text-foreground p-2 rounded-full opacity-0 group-hover/gallery:opacity-100 transition-opacity z-20 shadow-sm"
+                    className="absolute left-4 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/80 text-white p-2 rounded-full opacity-0 group-hover/gallery:opacity-100 transition-opacity z-20 shadow-sm"
                   >
                     <ChevronLeft size={20} />
                   </button>
@@ -221,7 +233,7 @@ const SpotlightLayout = ({
                       e.stopPropagation();
                       setActiveImg((prev) => (prev + 1) % images.length);
                     }}
-                    className="absolute right-4 top-1/2 -translate-y-1/2 bg-background/50 hover:bg-background/80 text-foreground p-2 rounded-full opacity-0 group-hover/gallery:opacity-100 transition-opacity z-20 shadow-sm"
+                    className="absolute right-4 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/80 text-white p-2 rounded-full opacity-0 group-hover/gallery:opacity-100 transition-opacity z-20 shadow-sm"
                   >
                     <ChevronRight size={20} />
                   </button>
@@ -229,24 +241,24 @@ const SpotlightLayout = ({
               )}
             </>
           ) : (
-            <div className="flex items-center justify-center h-full text-muted-foreground/50">
+            <div className="flex items-center justify-center h-full text-neutral-600">
               <ShoppingBag size={64} />
             </div>
           )}
         </div>
       </div>
 
-      <div className="p-8 md:p-12 flex flex-col justify-center h-full">
+      <div className="p-8 md:p-12 flex flex-col justify-center h-full relative">
         <Badge className="bg-primary/10 text-primary hover:bg-primary/20 w-max mb-4 shadow-none">
           Featured Product
         </Badge>
-        <h3 className="text-3xl md:text-4xl font-bold text-foreground leading-tight mb-2">
+        <h3 className="text-3xl md:text-4xl font-bold text-white leading-tight mb-2">
           {product.title}
         </h3>
         <p className="text-2xl text-primary font-bold mb-6">
           ${product.price.toFixed(2)}
         </p>
-        <p className="text-muted-foreground leading-relaxed mb-8 text-lg line-clamp-4">
+        <p className="text-neutral-400 leading-relaxed mb-8 text-lg line-clamp-4">
           {product.description}
         </p>
 
@@ -267,7 +279,8 @@ const SpotlightLayout = ({
 };
 
 // --- MAIN DYNAMIC STORE COMPONENT ---
-export const DynamicStore = ({ data, actorId, isPreview }: any) => {
+// 🚀 2. GRAB id AND isPreview FROM PROPS
+export const DynamicStore = ({ data, actorId, isPreview, id }: any) => {
   const [products, setProducts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -279,7 +292,6 @@ export const DynamicStore = ({ data, actorId, isPreview }: any) => {
       let currentActorId = actorId;
       let currentPortfolioId = null;
 
-      // 1. Get Actor ID if not explicitly provided
       if (!currentActorId || currentActorId === "preview-actor-id") {
         const {
           data: { user },
@@ -299,7 +311,6 @@ export const DynamicStore = ({ data, actorId, isPreview }: any) => {
         return;
       }
 
-      // 2. ENVIRONMENT-AWARE PORTFOLIO LOOKUP (For Store Separation)
       const currentHostname = window.location.hostname;
       const isCustomDomain = !MAIN_DOMAINS.some((domain) =>
         currentHostname.includes(domain)
@@ -313,7 +324,6 @@ export const DynamicStore = ({ data, actorId, isPreview }: any) => {
           .maybeSingle();
         if (portData) currentPortfolioId = portData.id;
       } else {
-        // If on main domain, parse the URL to find the public_slug
         const pathParts = window.location.pathname.split("/");
         const proIndex = pathParts.indexOf("pro");
 
@@ -326,7 +336,6 @@ export const DynamicStore = ({ data, actorId, isPreview }: any) => {
             .maybeSingle();
           if (portData) currentPortfolioId = portData.id;
         } else {
-          // Fallback for previews inside the site builder (grab the first portfolio)
           const { data: portData } = await supabase
             .from("portfolios")
             .select("id")
@@ -337,14 +346,12 @@ export const DynamicStore = ({ data, actorId, isPreview }: any) => {
         }
       }
 
-      // 3. FETCH PRODUCTS (With Portfolio ID Separation)
       let query = supabase
         .from("pro_products")
         .select("*")
         .eq("actor_id", currentActorId)
         .eq("status", "active");
 
-      // SMART FILTER: Only fetch products assigned to this portfolio OR global (null)
       if (currentPortfolioId) {
         query = query.or(
           `portfolio_id.eq.${currentPortfolioId},portfolio_id.is.null`
@@ -367,20 +374,39 @@ export const DynamicStore = ({ data, actorId, isPreview }: any) => {
     fetchStoreData();
   }, [actorId, JSON.stringify(selectedIds), data.maxProductsToShow]);
 
+  // 🚀 3. Hide completely on Live site if empty. Let it render in Preview mode!
+  const hasProducts = products.length > 0;
+  if (!loading && !hasProducts && !isPreview) return null;
+
   return (
     <section
-      className="py-20 px-4 md:px-8 relative overflow-hidden bg-background text-foreground"
+      className="py-24 px-4 md:px-8 relative overflow-hidden bg-neutral-950 text-white"
       id="store"
     >
+      {/* Background Atmosphere */}
+      <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 brightness-100 contrast-150 mix-blend-overlay pointer-events-none"></div>
+      <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-primary/5 blur-[120px] rounded-full pointer-events-none" />
+
       <div className="max-w-7xl mx-auto relative z-10">
+        {/* 🚀 4. INLINE EDITABLE HEADERS */}
         {variant !== "spotlight" && (
           <div className="text-center max-w-3xl mx-auto mb-16 space-y-4">
-            <h2 className="text-4xl md:text-5xl font-bold tracking-tight text-foreground">
-              {data.title || "Store"}
-            </h2>
-            {data.subtitle && (
-              <p className="text-lg text-muted-foreground">{data.subtitle}</p>
-            )}
+            <InlineEdit
+              tagName="h2"
+              className="text-4xl md:text-5xl font-bold tracking-tight text-white block"
+              text={data.title || "Store"}
+              sectionId={id}
+              fieldKey="title"
+              isPreview={isPreview}
+            />
+            <InlineEdit
+              tagName="p"
+              className="text-lg text-neutral-400 block"
+              text={data.subtitle || "Browse my digital and physical products."}
+              sectionId={id}
+              fieldKey="subtitle"
+              isPreview={isPreview}
+            />
           </div>
         )}
 
@@ -388,14 +414,16 @@ export const DynamicStore = ({ data, actorId, isPreview }: any) => {
           <div className="flex justify-center items-center py-20">
             <Loader2 className="w-8 h-8 animate-spin text-primary" />
           </div>
-        ) : products.length === 0 ? (
-          <div className="text-center py-24 border border-border rounded-2xl bg-card/50 max-w-2xl mx-auto shadow-sm">
-            <ShoppingBag className="w-12 h-12 mx-auto text-muted-foreground/50 mb-4" />
-            <h3 className="text-xl font-bold text-foreground mb-2">
-              No products to display
+        ) : !hasProducts && isPreview ? (
+          /* 🚀 5. AAA+ EMPTY STATE UX FOR BUILDER */
+          <div className="text-center py-24 border-2 border-dashed border-white/20 rounded-3xl bg-white/5 max-w-2xl mx-auto shadow-sm">
+            <Store className="w-12 h-12 mx-auto text-neutral-500 mb-4" />
+            <h3 className="text-xl font-bold text-white mb-2">
+              No products found
             </h3>
-            <p className="text-muted-foreground">
-              Products will appear here once added to the inventory.
+            <p className="text-neutral-400 max-w-sm mx-auto">
+              This block automatically syncs with your Dashboard Store. Go to
+              your Dashboard's Product tab to create products.
             </p>
           </div>
         ) : (
@@ -410,22 +438,30 @@ export const DynamicStore = ({ data, actorId, isPreview }: any) => {
 
             {variant === "spotlight" && products[0] && (
               <div>
-                <div className="mb-12 text-center">
-                  <h2 className="text-4xl md:text-5xl font-bold tracking-tight text-foreground">
-                    {data.title || "Featured Product"}
-                  </h2>
-                  {data.subtitle && (
-                    <p className="text-lg text-muted-foreground mt-4">
-                      {data.subtitle}
-                    </p>
-                  )}
+                <div className="mb-12 text-center space-y-4">
+                  <InlineEdit
+                    tagName="h2"
+                    className="text-4xl md:text-5xl font-bold tracking-tight text-white block"
+                    text={data.title || "Featured Product"}
+                    sectionId={id}
+                    fieldKey="title"
+                    isPreview={isPreview}
+                  />
+                  <InlineEdit
+                    tagName="p"
+                    className="text-lg text-neutral-400 block"
+                    text={data.subtitle || ""}
+                    sectionId={id}
+                    fieldKey="subtitle"
+                    isPreview={isPreview}
+                  />
                 </div>
                 <SpotlightLayout product={products[0]} isPreview={isPreview} />
               </div>
             )}
 
             {variant === "carousel" && (
-              <div className="flex overflow-x-auto pb-8 gap-6 snap-x snap-mandatory hide-scrollbar -mx-4 px-4 md:mx-0 md:px-0">
+              <div className="flex overflow-x-auto pb-8 gap-6 snap-x snap-mandatory hide-scrollbar -mx-4 px-4 md:mx-0 md:px-0 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:'none'] [scrollbar-width:'none']">
                 {products.map((p) => (
                   <div
                     key={p.id}
@@ -442,3 +478,4 @@ export const DynamicStore = ({ data, actorId, isPreview }: any) => {
     </section>
   );
 };
+export default DynamicStore;
