@@ -8,6 +8,7 @@ import {
 import emailjs from "@emailjs/browser";
 import Navbar from "./components/Navbar"; // Import Navbar
 import Footer from "./components/Footer"; // Import Footer
+import BuilderPreview from "./pages/dashboard/BuilderPreview";
 //import HomePage from './pages/HomePage';
 //import OptInPage from './pages/OptInPage';
 //import ThankYouPage from './pages/ThankYouPage';
@@ -74,6 +75,7 @@ import PublicProductPage from "./pages/PublicProductPage";
 import ProductsPage from "./pages/dashboard/ProductsPage"; // <-- Added this!
 import CollectionsPage from "./pages/dashboard/CollectionsPage"; // Create this later!
 import PublicShopPage from "./pages/PublicShopPage.tsx";
+import ProtectedRoute from "./components/ProtectedRoute.tsx";
 
 // Define main domains globally
 const MAIN_DOMAINS = [
@@ -126,9 +128,13 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
     "/client-dashboard",
     "/admin",
     "/pro",
+    "/builder-preview",
   ];
 
-  const hideNavbarPaths = ["/pro"];
+  const hideNavbarPaths = [
+    "/pro",
+    "/builder-preview", // 🚀 ADD THIS: Hides navbar in the iframe
+  ];
 
   // 3. Logic: Hide if it's a Custom Domain OR if the path matches the list
   const shouldHideFooter =
@@ -236,25 +242,30 @@ function App() {
                 />
 
                 {/* Admin Routes */}
-                <Route path="/admin" element={<AdminDashboardPage />} />
-                <Route
-                  path="/admin/order/:orderId"
-                  element={<AdminOrderDetailPage />}
-                />
-                <Route path="/admin/actors" element={<AdminActorListPage />} />
-                <Route
-                  path="/admin/clients"
-                  element={<AdminClientListPage />}
-                />
-                <Route
-                  path="/admin/domains"
-                  element={<AdminDomainListPage />}
-                />
-                <Route
-                  path="/admin/domains/order/:id"
-                  element={<AdminDomainOrderDetailPage />}
-                />
-                <Route path="/admin/payouts" element={<AdminPayoutsPage />} />
+                <Route element={<ProtectedRoute allowedRoles={["admin"]} />}>
+                  <Route path="/admin" element={<AdminDashboardPage />} />
+                  <Route
+                    path="/admin/order/:orderId"
+                    element={<AdminOrderDetailPage />}
+                  />
+                  <Route
+                    path="/admin/actors"
+                    element={<AdminActorListPage />}
+                  />
+                  <Route
+                    path="/admin/clients"
+                    element={<AdminClientListPage />}
+                  />
+                  <Route
+                    path="/admin/domains"
+                    element={<AdminDomainListPage />}
+                  />
+                  <Route
+                    path="/admin/domains/order/:id"
+                    element={<AdminDomainOrderDetailPage />}
+                  />
+                  <Route path="/admin/payouts" element={<AdminPayoutsPage />} />
+                </Route>
 
                 {/* Marketplace Routes */}
                 <Route
@@ -273,6 +284,8 @@ function App() {
                   path="/marketplace/order/:id/status"
                   element={<DomainOrderPage />}
                 />
+
+                <Route path="/builder-preview" element={<BuilderPreview />} />
 
                 {/* Dashboard Layout Routes */}
                 <Route path="/dashboard" element={<ActorDashboardLayout />}>

@@ -1,12 +1,18 @@
+// src/pages/PortfolioRenderer.tsx
+
 import React, { useEffect } from "react";
 import { useParams } from "react-router-dom";
 import { PortfolioSection } from "../types/portfolio";
 import { cn, hexToHSL } from "@/lib/utils";
 import { Loader2 } from "lucide-react";
-import { THEME_REGISTRY, DEFAULT_THEME } from "../themes/registry";
+import {
+  THEME_REGISTRY,
+  DEFAULT_THEME,
+  resolveThemeComponent,
+} from "../themes/registry"; // <--- Import resolver
 import SEO from "../components/common/SEO";
 import { trackEvent } from "../lib/analytics";
-import { usePortfolio } from "../hooks/usePortfolio"; // <--- Importing the hook
+import { usePortfolio } from "../hooks/usePortfolio";
 
 const COLOR_PALETTES = [
   { id: "violet", value: "#8b5cf6" },
@@ -36,20 +42,18 @@ const ThemeWrapper = ({
     COLOR_PALETTES[0];
   const primaryHSL = hexToHSL(activeColorObj.value);
   const radiusVal = theme?.radius !== undefined ? theme.radius : 0.5;
-  const radiusCSS = `${radiusVal * 2}rem`;
 
   const style = {
     "--primary": primaryHSL,
     "--ring": primaryHSL,
-    "--radius": radiusCSS,
+    "--radius": `${radiusVal * 2}rem`,
   } as React.CSSProperties;
 
   return (
     <div
       className={cn(
-        "min-h-screen bg-background text-foreground",
-        fontClass,
-        "subpixel-antialiased"
+        "min-h-screen bg-background text-foreground subpixel-antialiased",
+        fontClass
       )}
       data-theme={theme?.templateId}
       data-btn-style={theme?.buttonStyle || "solid"}
@@ -73,14 +77,12 @@ const PortfolioRenderer: React.FC<PortfolioRendererProps> = ({
 }) => {
   const { slug } = useParams<{ slug: string }>();
 
-  // --- REPLACED OLD LOGIC WITH THE NEW HOOK ---
   const { data, isLoading, isError } = usePortfolio({
     slug,
     customDomain,
-    enabled: !editorData, // Don't fetch if we are in editor mode
+    enabled: !editorData,
   });
 
-  // Determine which data to use (Editor Data or Real Data)
   const portfolio = editorData || data?.portfolio;
   const actorProfile = data?.actorProfile;
 
@@ -97,16 +99,15 @@ const PortfolioRenderer: React.FC<PortfolioRendererProps> = ({
     }
   }, [portfolio, isPreview]);
 
-  // --- LOADING STATE ---
+  // --- LOADING / ERROR STATES ---
   if (isLoading && !editorData) {
     return (
       <div className="h-screen flex items-center justify-center">
-        <Loader2 className="animate-spin" />
+        <Loader2 className="animate-spin text-primary" />
       </div>
     );
   }
 
-  // --- ERROR STATE ---
   if ((isError || !portfolio) && !editorData) {
     return (
       <div className="h-screen flex flex-col items-center justify-center text-center p-4">
@@ -118,7 +119,7 @@ const PortfolioRenderer: React.FC<PortfolioRendererProps> = ({
     );
   }
 
-  // --- RENDER CONTENT ---
+  // --- RENDER SETUP ---
   const sections = portfolio.sections as PortfolioSection[];
   const themeId = portfolio.theme_config?.templateId || "modern";
   const ActiveTheme = THEME_REGISTRY[themeId] || DEFAULT_THEME;
@@ -131,8 +132,6 @@ const PortfolioRenderer: React.FC<PortfolioRendererProps> = ({
     : actorProfile?.bio ||
       `Check out the professional portfolio of ${seoTitle}.`;
   const seoImage = isPreview ? "" : actorProfile?.HeadshotURL || "";
-
-  const activeActorId = portfolio.actor_id;
 
   return (
     <>
@@ -147,66 +146,56 @@ const PortfolioRenderer: React.FC<PortfolioRendererProps> = ({
 
       <ThemeWrapper theme={portfolio.theme_config}>
         {sections
-          .filter((section: PortfolioSection) => section.isVisible)
-          .map((section: PortfolioSection) => {
+          .filter((s) => s.isVisible)
+          .map((section) => {
+            // 1. Safe Component Lookup via Registry
+            const Component = resolveThemeComponent(ActiveTheme, section.type);
+
+            // 2. Graceful Fallback for missing components
+            if (!Component) {
+              if (isPreview) {
+                return (
+                  <div
+                    key={section.id}
+                    className="p-4 text-center text-red-500 font-mono text-sm bg-red-50"
+                  >
+                    Missing Component: {section.type}
+                  </div>
+                );
+              }
+              return null; // On the LIVE site, silently hide broken sections to protect the actor's brand
+            }
+
             const zIndexClass =
               section.type === "header" ? "relative z-50" : "relative z-0";
+
+            // 3. Unified Props Object (No more if/else statements!)
+            const sectionProps = {
+              data: section.data,
+              settings: section.settings || {},
+              id: section.id,
+              allSections: sections,
+              isPreview: isPreview,
+              actorId: portfolio.actor_id,
+              portfolioId: portfolio.id,
+            };
 
             return (
               <div
                 id={section.id}
                 key={section.id}
-                className={`scroll-mt-20 ${zIndexClass}`}
+                className={cn("scroll-mt-20", zIndexClass)}
               >
-                {(() => {
-                  const Component =
-                    (ActiveTheme as any)[
-                      section.type === "lead_form"
-                        ? "LeadForm"
-                        : section.type.charAt(0).toUpperCase() +
-                          section.type
-                            .slice(1)
-                            .replace(/_([a-z])/g, (g: string) =>
-                              g[1].toUpperCase()
-                            )
-                    ] ||
-                    (ActiveTheme as any)[
-                      Object.keys(ActiveTheme).find(
-                        (k) =>
-                          k.toLowerCase() ===
-                          section.type.replace("_", "").toLowerCase()
-                      ) || ""
-                    ];
-
-                  if (section.type === "header") {
-                    return (
-                      <Component
-                        data={section.data}
-                        allSections={sections}
-                        isPreview={isPreview}
-                      />
-                    );
+                {/* 4. React Suspense Wrapper for future Lazy Loading */}
+                <React.Suspense
+                  fallback={
+                    <div className="py-24 flex justify-center">
+                      <Loader2 className="animate-spin text-muted-foreground" />
+                    </div>
                   }
-
-                  // ✅ FIX: Added dynamic_store to the list, and passed isPreview down!
-                  if (
-                    section.type === "services_showcase" ||
-                    section.type === "shop" ||
-                    section.type === "lead_form" ||
-                    section.type === "dynamic_store"
-                  ) {
-                    return (
-                      <Component
-                        data={section.data}
-                        actorId={activeActorId}
-                        portfolioId={portfolio.id}
-                        isPreview={isPreview}
-                      />
-                    );
-                  }
-
-                  return <Component data={section.data} />;
-                })()}
+                >
+                  <Component {...sectionProps} />
+                </React.Suspense>
               </div>
             );
           })}

@@ -1,4 +1,10 @@
+// src/components/dashboard/SectionEditor.tsx
+
 import React, { useState, useEffect } from "react";
+import { useBuilderStore } from "../../store/useBuilderStore"; // <-- ZUSTAND IMPORT
+import { supabase } from "@/supabaseClient";
+
+// --- shadcn/ui Imports ---
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -8,8 +14,7 @@ import {
   SheetContent,
   SheetHeader,
   SheetTitle,
-  SheetFooter,
-  SheetDescription, // <-- Add this
+  SheetDescription,
 } from "@/components/ui/sheet";
 import { Switch } from "@/components/ui/switch";
 import { Slider } from "@/components/ui/slider";
@@ -20,6 +25,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  Dialog,
+  DialogContent,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
+
+// --- Icons ---
 import {
   Video,
   Map,
@@ -36,43 +51,36 @@ import {
   ExternalLink,
   Package,
 } from "lucide-react";
-// ✅ CORRECT (Add this line if you don't have it)
-import { Badge } from "@/components/ui/badge";
+
 import PortfolioMediaManager, {
   UnifiedMediaItem,
 } from "./PortfolioMediaManager";
-import {
-  Dialog,
-  DialogContent,
-  DialogTitle,
-  DialogDescription,
-} from "@/components/ui/dialog"; // <-- Add Title and Description
 import { PortfolioSection } from "../../types/portfolio";
 import { THEME_REGISTRY } from "../../themes/registry";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"; // <--- You need this component
-import { supabase } from "@/supabaseClient";
 
 interface SectionEditorProps {
   section: PortfolioSection | null;
-  sections: PortfolioSection[]; // <-- NEW PROP: We need context of all sections
+  sections: PortfolioSection[]; // Kept for backwards compatibility if needed
   isOpen: boolean;
   onClose: () => void;
-  onSave: (updatedSection: PortfolioSection) => void;
+  // onSave is no longer needed! Zustand handles it.
   actorId: string;
-  themeId?: string; // <--- Pass the active theme ID so we know which schema to load
+  themeId?: string;
 }
 
 const SectionEditor: React.FC<SectionEditorProps> = ({
   section,
+  sections,
   isOpen,
   onClose,
-  onSave,
   actorId,
-  sections,
   themeId = "modern",
 }) => {
-  const [formData, setFormData] = useState<Record<string, any>>({});
-  const [settingsData, setSettingsData] = useState<Record<string, any>>({}); // Zone B Data
+  // --- ZUSTAND HOOK ---
+  // We grab the update action from the store.
+  const updateSectionInStore = useBuilderStore((state) => state.updateSection);
+
+  // --- LOCAL UI STATE ---
   const [isMediaPickerOpen, setIsMediaPickerOpen] = useState(false);
   const [activeMediaField, setActiveMediaField] = useState<string>("");
   const [isProductManagerOpen, setIsProductManagerOpen] = useState(false);
@@ -83,84 +91,68 @@ const SectionEditor: React.FC<SectionEditorProps> = ({
       if (!actorId) return;
       const { data, error } = await supabase
         .from("pro_products")
-        .select("id, title, status") // We only need basic info for the checklist
+        .select("id, title, status")
         .eq("actor_id", actorId)
         .order("created_at", { ascending: false });
 
-      if (!error && data) {
-        setAvailableProducts(data);
-      }
+      if (!error && data) setAvailableProducts(data);
     };
 
-    // Only fetch if they actually open a dynamic_store block to save bandwidth
     if (section?.type === "dynamic_store") {
       fetchActorProducts();
     }
   }, [actorId, section?.type]);
 
-  useEffect(() => {
-    if (section) {
-      // Zone A: Core Data
-      setFormData(JSON.parse(JSON.stringify(section.data || {})));
-      // Zone B: Theme Settings (or empty object if none)
-      setSettingsData(JSON.parse(JSON.stringify(section.settings || {})));
-    }
-  }, [section]);
-
   if (!section) return null;
 
-  const handleSave = () => {
-    onSave({
-      ...section,
-      data: formData, // Save Core Data
-      settings: settingsData, // Save Theme Settings
-    });
-    onClose();
-  };
+  // For convenience, we extract data and settings here so we don't have to keep typing `section.data`
+  const formData = section.data || {};
+  const settingsData = section.settings || {};
 
+  // =========================================================
+  // CORE UPDATE HANDLERS (Zustand Connected)
+  // =========================================================
+
+  // Update Core Content (Zone A)
   const updateField = (key: string, value: any) => {
-    setFormData((prev) => ({ ...prev, [key]: value }));
+    // We pass ONLY the changed data field. Zustand merges it safely.
+    updateSectionInStore(section.id, {
+      data: { ...formData, [key]: value },
+    });
   };
 
-  // --- HELPER: UPDATE THEME SETTINGS (Zone B) ---
+  // Update Theme Settings (Zone B)
   const updateSetting = (key: string, value: any) => {
-    setSettingsData((prev) => ({ ...prev, [key]: value }));
+    updateSectionInStore(section.id, {
+      settings: { ...settingsData, [key]: value },
+    });
   };
 
+  // =========================================================
+  // MEDIA HANDLER (Adapted to Zustand)
+  // =========================================================
   const handleMediaSelect = (item: UnifiedMediaItem) => {
-    // 1. HEADER LOGO FIX
     if (activeMediaField === "logoImage") {
       updateField("logoImage", item.url);
-
-      // 2. Team Member Images
     } else if (activeMediaField.startsWith("member-image-")) {
       const index = parseInt(activeMediaField.split("-").pop() || "0");
       updateMember(index, "image", item.url);
-
-      // 3. Slider Images
     } else if (activeMediaField.startsWith("slider-image-")) {
       const index = parseInt(activeMediaField.split("-").pop() || "0");
       handleUpdateSlide("image", index, "url", item.url);
-
-      // 4. Slider Videos
     } else if (activeMediaField.startsWith("slider-video-")) {
       const index = parseInt(activeMediaField.split("-").pop() || "0");
       handleUpdateSlide("video", index, "url", item.url);
       if (!formData.videos?.[index]?.title) {
         handleUpdateSlide("video", index, "title", item.title || "Video");
       }
-
-      // 5. Gallery
     } else if (activeMediaField === "gallery") {
       const currentList = formData.images || [];
       updateField("images", [
         ...currentList,
         { url: item.url, type: item.type },
       ]);
-
-      // 6. Generic Single Images
     } else if (activeMediaField === "backgroundImage") {
-      // If we are editing the Header, background image is usually a Design Setting
       if (section.type === "header") {
         updateSetting("backgroundImage", item.url);
       } else {
@@ -168,64 +160,51 @@ const SectionEditor: React.FC<SectionEditorProps> = ({
       }
     } else if (activeMediaField === "image") {
       updateField("image", item.url);
-
-      // 7. Generic Video URL (Hero Video)
     } else if (activeMediaField === "videoUrl") {
       updateField("videoUrl", item.url);
     } else if (activeMediaField.startsWith("product-image-")) {
-      // OLD SINGLE IMAGE LOGIC (Keep if you want, or replace)
       const index = parseInt(activeMediaField.split("-").pop() || "0");
       const currentProducts = [...(formData.products || [])];
       if (currentProducts[index]) {
-        currentProducts[index].image = item.url; // Main/Legacy image
-        // Also ensure it's in the images array if empty
+        currentProducts[index].image = item.url;
         if (!currentProducts[index].images) currentProducts[index].images = [];
         if (currentProducts[index].images.length === 0)
           currentProducts[index].images.push(item.url);
-
         updateField("products", currentProducts);
       }
     } else if (activeMediaField.startsWith("product-gallery-add-")) {
-      // NEW MULTI-IMAGE LOGIC
       const index = parseInt(activeMediaField.split("product-gallery-add-")[1]);
       const currentProducts = [...(formData.products || [])];
       if (currentProducts[index]) {
         const currentImages = currentProducts[index].images || [];
-        // Add new image to array
         currentProducts[index].images = [...currentImages, item.url];
-        // If main image is empty, set this as main
         if (!currentProducts[index].image)
           currentProducts[index].image = item.url;
-
         updateField("products", currentProducts);
       }
     }
-
     setIsMediaPickerOpen(false);
   };
 
-  // Helper to manage custom stats array
-  const addStat = () => {
-    const currentStats = formData.customStats || [];
+  // =========================================================
+  // ARRAY HELPERS (Adapted to use formData directly)
+  // =========================================================
+  const addStat = () =>
     updateField("customStats", [
-      ...currentStats,
+      ...(formData.customStats || []),
       { label: "New Stat", value: "100" },
     ]);
-  };
-
   const updateStat = (index: number, field: "label" | "value", val: string) => {
     const currentStats = [...(formData.customStats || [])];
     currentStats[index][field] = val;
     updateField("customStats", currentStats);
   };
-
   const removeStat = (index: number) => {
     const currentStats = [...(formData.customStats || [])];
     currentStats.splice(index, 1);
     updateField("customStats", currentStats);
   };
 
-  // Helper for managing slider items
   const handleAddSlide = (type: "image" | "video") => {
     const field = type === "image" ? "images" : "videos";
     const newItem =
@@ -234,7 +213,6 @@ const SectionEditor: React.FC<SectionEditorProps> = ({
         : { url: "", title: "", poster: "" };
     updateField(field, [...(formData[field] || []), newItem]);
   };
-
   const handleUpdateSlide = (
     type: "image" | "video",
     index: number,
@@ -246,7 +224,6 @@ const SectionEditor: React.FC<SectionEditorProps> = ({
     newSlides[index][key] = val;
     updateField(field, newSlides);
   };
-
   const handleRemoveSlide = (type: "image" | "video", index: number) => {
     const field = type === "image" ? "images" : "videos";
     const newSlides = [...(formData[field] || [])];
@@ -254,7 +231,6 @@ const SectionEditor: React.FC<SectionEditorProps> = ({
     updateField(field, newSlides);
   };
 
-  // Helper to update the menu config for a specific section
   const updateMenuConfig = (
     targetSectionId: string,
     field: "visible" | "label",
@@ -265,25 +241,17 @@ const SectionEditor: React.FC<SectionEditorProps> = ({
       visible: true,
       label: "",
     };
-
-    const newConfig = {
+    updateField("menuConfig", {
       ...currentConfig,
-      [targetSectionId]: {
-        ...sectionConfig,
-        [field]: value,
-      },
-    };
-    updateField("menuConfig", newConfig);
+      [targetSectionId]: { ...sectionConfig, [field]: value },
+    });
   };
 
-  // Team Helpers
-  const handleAddMember = () => {
-    const current = formData.members || [];
+  const handleAddMember = () =>
     updateField("members", [
-      ...current,
+      ...(formData.members || []),
       { name: "New Member", role: "Role", image: "" },
     ]);
-  };
   const updateMember = (idx: number, field: string, val: any) => {
     const current = [...(formData.members || [])];
     current[idx][field] = val;
@@ -295,14 +263,11 @@ const SectionEditor: React.FC<SectionEditorProps> = ({
     updateField("members", current);
   };
 
-  // Pricing Helpers
-  const handleAddPlan = () => {
-    const current = formData.plans || [];
+  const handleAddPlan = () =>
     updateField("plans", [
-      ...current,
+      ...(formData.plans || []),
       { name: "Basic", price: "1000", features: "Feature 1, Feature 2" },
     ]);
-  };
   const updatePlan = (idx: number, field: string, val: any) => {
     const current = [...(formData.plans || [])];
     current[idx][field] = val;
@@ -314,11 +279,9 @@ const SectionEditor: React.FC<SectionEditorProps> = ({
     updateField("plans", current);
   };
 
-  // --- SHOP HELPERS ---
-  const handleAddProduct = () => {
-    const current = formData.products || [];
+  const handleAddProduct = () =>
     updateField("products", [
-      ...current,
+      ...(formData.products || []),
       {
         title: "New Product",
         price: "$19.99",
@@ -326,14 +289,11 @@ const SectionEditor: React.FC<SectionEditorProps> = ({
         link: "",
       },
     ]);
-  };
-
   const updateProduct = (idx: number, field: string, val: any) => {
     const current = [...(formData.products || [])];
     current[idx][field] = val;
     updateField("products", current);
   };
-
   const removeProduct = (idx: number) => {
     const current = [...(formData.products || [])];
     current.splice(idx, 1);
@@ -341,23 +301,17 @@ const SectionEditor: React.FC<SectionEditorProps> = ({
   };
 
   // =========================================================
-  // DYNAMIC FORM BUILDER (The Magic Part)
+  // DYNAMIC FORM BUILDER (Theme Settings)
   // =========================================================
   const renderThemeSettings = () => {
-    // 1. Find the active theme component
     const ActiveTheme = THEME_REGISTRY[themeId];
     if (!ActiveTheme) return <p>Theme not found.</p>;
 
-    // 2. Find the component for this section type (e.g., Header)
-    // We assume your Registry maps keys like 'header', 'bio', etc.
-    // If your registry uses Capitalized keys (Header), match that.
     const ComponentKey =
       section.type.charAt(0).toUpperCase() +
       section.type.slice(1).replace(/_([a-z])/g, (g) => g[1].toUpperCase());
     const SectionComponent =
-      (ActiveTheme as any)[ComponentKey] || (ActiveTheme as any)["Header"]; // Fallback
-
-    // 3. Get the Schema
+      (ActiveTheme as any)[ComponentKey] || (ActiveTheme as any)["Header"];
     const schema = (SectionComponent as any)?.schema || [];
 
     if (schema.length === 0) {
@@ -368,7 +322,6 @@ const SectionEditor: React.FC<SectionEditorProps> = ({
       );
     }
 
-    // 4. Render Fields based on Schema
     return (
       <div className="space-y-6 animate-in fade-in">
         {schema.map((field: any) => (
@@ -380,13 +333,8 @@ const SectionEditor: React.FC<SectionEditorProps> = ({
               <Label htmlFor={field.id} className="text-base font-medium">
                 {field.label}
               </Label>
-              {/* Optional: Show current value for debugging */}
-              {/* <span className="text-xs text-muted-foreground">{settingsData[field.id]}</span> */}
             </div>
 
-            {/* RENDER INPUT BASED ON TYPE */}
-
-            {/* TOGGLE */}
             {field.type === "toggle" && (
               <Switch
                 id={field.id}
@@ -399,7 +347,6 @@ const SectionEditor: React.FC<SectionEditorProps> = ({
               />
             )}
 
-            {/* SELECT / DROPDOWN */}
             {field.type === "select" && (
               <Select
                 value={settingsData[field.id] || field.defaultValue}
@@ -418,7 +365,6 @@ const SectionEditor: React.FC<SectionEditorProps> = ({
               </Select>
             )}
 
-            {/* SLIDER */}
             {field.type === "slider" && (
               <div className="pt-2">
                 <Slider
@@ -442,7 +388,6 @@ const SectionEditor: React.FC<SectionEditorProps> = ({
               </div>
             )}
 
-            {/* COLOR PICKER (Simple Text Input for now) */}
             {field.type === "color" && (
               <div className="flex gap-2">
                 <Input
@@ -458,7 +403,6 @@ const SectionEditor: React.FC<SectionEditorProps> = ({
               </div>
             )}
 
-            {/* IMAGE UPLOAD (Using your Media Picker) */}
             {field.type === "image" && (
               <div className="flex gap-2">
                 {settingsData[field.id] && (
@@ -472,7 +416,7 @@ const SectionEditor: React.FC<SectionEditorProps> = ({
                   variant="outline"
                   size="sm"
                   onClick={() => {
-                    setActiveMediaField(field.id); // Set the active field to this setting ID
+                    setActiveMediaField(field.id);
                     setIsMediaPickerOpen(true);
                   }}
                 >
@@ -486,13 +430,14 @@ const SectionEditor: React.FC<SectionEditorProps> = ({
     );
   };
 
-  // --- RENDER FORM FIELDS BASED ON TYPE ---
+  // =========================================================
+  // CORE CONTENT FIELDS
+  // =========================================================
   const renderFields = () => {
     switch (section.type) {
       case "header":
         return (
           <div className="space-y-6">
-            {/* 1. BRANDING */}
             <div className="space-y-4 p-4 border rounded-lg bg-muted/20">
               <Label className="text-base font-semibold">Branding</Label>
               <div className="space-y-2">
@@ -503,7 +448,6 @@ const SectionEditor: React.FC<SectionEditorProps> = ({
                   placeholder="e.g. HAMZA KAEL"
                 />
               </div>
-
               <div className="space-y-2">
                 <Label>Logo Image</Label>
                 <div className="flex items-center gap-4">
@@ -528,8 +472,6 @@ const SectionEditor: React.FC<SectionEditorProps> = ({
                   </Button>
                 </div>
               </div>
-
-              {/* --- NEW: LOGO SIZE SLIDER --- */}
               {formData.logoImage && (
                 <div className="space-y-3 pt-2">
                   <div className="flex justify-between">
@@ -549,10 +491,8 @@ const SectionEditor: React.FC<SectionEditorProps> = ({
               )}
             </div>
 
-            {/* 2. LAYOUT CONFIG */}
             <div className="space-y-4 p-4 border rounded-lg bg-muted/20">
               <Label className="text-base font-semibold">Layout & Style</Label>
-
               <div className="space-y-2">
                 <Label>Header Variant</Label>
                 <Select
@@ -575,8 +515,6 @@ const SectionEditor: React.FC<SectionEditorProps> = ({
                   </SelectContent>
                 </Select>
               </div>
-
-              {/* Sticky Toggle - Available for ALL variants now */}
               <div className="flex items-center justify-between border p-3 rounded-md bg-background">
                 <div className="space-y-0.5">
                   <Label htmlFor="isSticky" className="cursor-pointer">
@@ -596,7 +534,6 @@ const SectionEditor: React.FC<SectionEditorProps> = ({
               </div>
             </div>
 
-            {/* 3. MENU BUILDER */}
             <div className="space-y-3 pt-4 border-t">
               <div className="flex items-center justify-between">
                 <Label className="text-base">Navigation Menu</Label>
@@ -628,7 +565,6 @@ const SectionEditor: React.FC<SectionEditorProps> = ({
                       const config = formData.menuConfig?.[s.id] || {};
                       const isSelected = config.visible !== false;
                       const label = config.label || s.data.title || s.type;
-
                       return (
                         <div key={s.id} className="flex items-center gap-3">
                           <Switch
@@ -655,7 +591,6 @@ const SectionEditor: React.FC<SectionEditorProps> = ({
               )}
             </div>
 
-            {/* 4. CTA BUTTON */}
             <div className="pt-4 border-t space-y-2">
               <Label>Call to Action Button</Label>
               <div className="grid grid-cols-2 gap-2">
@@ -677,7 +612,6 @@ const SectionEditor: React.FC<SectionEditorProps> = ({
       case "dynamic_store":
         return (
           <div className="space-y-6">
-            {/* The Management Button */}
             <div className="bg-primary/5 border border-primary/20 rounded-xl p-4 flex flex-col items-center justify-center text-center space-y-3">
               <div className="bg-primary/10 p-3 rounded-full">
                 <Package className="w-6 h-6 text-primary" />
@@ -700,7 +634,6 @@ const SectionEditor: React.FC<SectionEditorProps> = ({
               <h4 className="font-semibold text-sm uppercase text-muted-foreground tracking-wider">
                 Display Settings
               </h4>
-
               <div className="space-y-2">
                 <Label>Section Title</Label>
                 <Input
@@ -709,7 +642,6 @@ const SectionEditor: React.FC<SectionEditorProps> = ({
                   placeholder="e.g., My Store"
                 />
               </div>
-
               <div className="space-y-2">
                 <Label>Subtitle (Optional)</Label>
                 <Input
@@ -740,8 +672,6 @@ const SectionEditor: React.FC<SectionEditorProps> = ({
                     </SelectContent>
                   </Select>
                 </div>
-
-                {/* Max products only matters if they aren't hand-picking them */}
                 <div className="space-y-2">
                   <Label>Max Products</Label>
                   <Input
@@ -757,7 +687,6 @@ const SectionEditor: React.FC<SectionEditorProps> = ({
               </div>
             </div>
 
-            {/* PRODUCT SELECTION UI */}
             <div className="space-y-3 pt-4 border-t">
               <div className="space-y-1">
                 <Label>Select Specific Products</Label>
@@ -766,7 +695,6 @@ const SectionEditor: React.FC<SectionEditorProps> = ({
                   your most recent active products will display automatically.
                 </p>
               </div>
-
               <div className="max-h-[200px] overflow-y-auto border rounded-md p-3 space-y-2 bg-muted/10">
                 {availableProducts.length === 0 ? (
                   <p className="text-xs text-muted-foreground text-center py-4">
@@ -790,13 +718,12 @@ const SectionEditor: React.FC<SectionEditorProps> = ({
                             const currentList =
                               formData.selectedProductIds || [];
                             let newList;
-                            if (e.target.checked) {
+                            if (e.target.checked)
                               newList = [...currentList, prod.id];
-                            } else {
+                            else
                               newList = currentList.filter(
                                 (id: string) => id !== prod.id
                               );
-                            }
                             updateField("selectedProductIds", newList);
                           }}
                           className="rounded border-gray-300 text-primary focus:ring-primary h-4 w-4"
@@ -824,535 +751,9 @@ const SectionEditor: React.FC<SectionEditorProps> = ({
           </div>
         );
 
-      case "lead_form":
-        return (
-          <div className="space-y-8">
-            {/* 1. BASIC SETTINGS */}
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <Label>Section Title</Label>
-                <Input
-                  value={formData.title || ""}
-                  onChange={(e) => updateField("title", e.target.value)}
-                  placeholder="Get in Touch"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Subheadline</Label>
-                <Textarea
-                  value={formData.subheadline || ""}
-                  onChange={(e) => updateField("subheadline", e.target.value)}
-                  placeholder="Send me a message..."
-                  rows={2}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Button Text</Label>
-                <Input
-                  value={formData.buttonText || ""}
-                  onChange={(e) => updateField("buttonText", e.target.value)}
-                  placeholder="Send Message"
-                />
-              </div>
-            </div>
-
-            {/* 2. LAYOUT VARIANT */}
-            <div className="space-y-3 pt-4 border-t">
-              <Label>Layout Style</Label>
-              <Select
-                value={formData.variant || "centered"}
-                onValueChange={(val) => updateField("variant", val)}
-              >
-                <SelectTrigger className="bg-background">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="centered">
-                    Centered Box (Standard)
-                  </SelectItem>
-                  <SelectItem value="split">
-                    Split Screen (Image Left)
-                  </SelectItem>
-                  <SelectItem value="minimal">
-                    Minimal (No Background)
-                  </SelectItem>
-                </SelectContent>
-              </Select>
-
-              {formData.variant === "split" && (
-                <div className="mt-2">
-                  <Label className="text-xs">Side Image</Label>
-                  <div className="flex gap-2 mt-1">
-                    <Input
-                      value={formData.image || ""}
-                      onChange={(e) => updateField("image", e.target.value)}
-                      placeholder="https://..."
-                      className="text-xs"
-                    />
-                    {/* You can add the MediaPicker button here if you have it available in scope */}
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* 3. FORM FIELDS BUILDER */}
-            <div className="space-y-4 pt-4 border-t">
-              <div className="flex justify-between items-center">
-                <Label>Form Fields</Label>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => {
-                    const newField = {
-                      id: `custom_${Date.now()}`,
-                      label: "New Field",
-                      type: "text",
-                      placeholder: "",
-                      required: false,
-                      width: "full",
-                    };
-                    updateField("fields", [
-                      ...(formData.fields || []),
-                      newField,
-                    ]);
-                  }}
-                >
-                  <Plus className="w-4 h-4 mr-2" /> Add Field
-                </Button>
-              </div>
-
-              <div className="space-y-3">
-                {(formData.fields || []).map((field: any, idx: number) => (
-                  <div
-                    key={idx}
-                    className="border p-3 rounded-lg bg-muted/10 space-y-3 group relative"
-                  >
-                    {/* Remove Button */}
-                    <button
-                      onClick={() => {
-                        const newFields = [...formData.fields];
-                        newFields.splice(idx, 1);
-                        updateField("fields", newFields);
-                      }}
-                      className="absolute top-2 right-2 text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity"
-                    >
-                      <Trash2 size={14} />
-                    </button>
-
-                    <div className="grid grid-cols-2 gap-2">
-                      <div className="space-y-1">
-                        <Label className="text-[10px] text-muted-foreground uppercase">
-                          Label
-                        </Label>
-                        <Input
-                          value={field.label}
-                          onChange={(e) => {
-                            const newFields = [...formData.fields];
-                            newFields[idx].label = e.target.value;
-                            updateField("fields", newFields);
-                          }}
-                          className="h-8 text-xs"
-                        />
-                      </div>
-                      <div className="space-y-1">
-                        <Label className="text-[10px] text-muted-foreground uppercase">
-                          Type
-                        </Label>
-                        <Select
-                          value={field.type}
-                          onValueChange={(val) => {
-                            const newFields = [...formData.fields];
-                            newFields[idx].type = val;
-                            updateField("fields", newFields);
-                          }}
-                        >
-                          <SelectTrigger className="h-8 text-xs">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="text">Short Text</SelectItem>
-                            <SelectItem value="textarea">Long Text</SelectItem>
-                            <SelectItem value="email">Email</SelectItem>
-                            <SelectItem value="tel">Phone</SelectItem>
-                            <SelectItem value="date">Date</SelectItem>
-                            {/* Future: Select/Dropdown */}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-2">
-                      <div className="space-y-1">
-                        <Label className="text-[10px] text-muted-foreground uppercase">
-                          Placeholder
-                        </Label>
-                        <Input
-                          value={field.placeholder || ""}
-                          onChange={(e) => {
-                            const newFields = [...formData.fields];
-                            newFields[idx].placeholder = e.target.value;
-                            updateField("fields", newFields);
-                          }}
-                          className="h-8 text-xs"
-                          placeholder="e.g. Enter name"
-                        />
-                      </div>
-                      <div className="flex items-end gap-2 pb-1">
-                        <div className="flex items-center gap-2 border rounded px-2 h-8 w-full bg-background">
-                          <input
-                            type="checkbox"
-                            checked={field.required}
-                            onChange={(e) => {
-                              const newFields = [...formData.fields];
-                              newFields[idx].required = e.target.checked;
-                              updateField("fields", newFields);
-                            }}
-                            className="accent-primary"
-                          />
-                          <span className="text-xs">Required</span>
-                        </div>
-                        <div className="flex items-center gap-2 border rounded px-2 h-8 w-full bg-background">
-                          <input
-                            type="checkbox"
-                            checked={field.width === "half"}
-                            onChange={(e) => {
-                              const newFields = [...formData.fields];
-                              newFields[idx].width = e.target.checked
-                                ? "half"
-                                : "full";
-                              updateField("fields", newFields);
-                            }}
-                            className="accent-primary"
-                          />
-                          <span className="text-xs">50% Width</span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        );
-
-      // --- SHOP SECTION EDITOR ---
-      case "shop":
-        return (
-          <div className="space-y-6">
-            <div className="space-y-2">
-              <Label>Section Title</Label>
-              <Input
-                value={formData.title || ""}
-                onChange={(e) => updateField("title", e.target.value)}
-                placeholder="Shop"
-              />
-            </div>
-
-            {/* 1. CONFIGURATION */}
-            <div className="grid grid-cols-1 gap-4 p-4 border rounded-lg bg-muted/20">
-              <div className="space-y-2">
-                <Label>Layout Style</Label>
-                <Select
-                  value={formData.variant || "grid"}
-                  onValueChange={(val) => updateField("variant", val)}
-                >
-                  <SelectTrigger className="bg-background">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="grid">Grid (Standard)</SelectItem>
-                    <SelectItem value="carousel">
-                      Carousel (Horizontal)
-                    </SelectItem>
-                    <SelectItem value="spotlight">
-                      Spotlight (Hero Product)
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
-            {/* 2. PRODUCT MANAGER */}
-            <div className="space-y-3 pt-4 border-t">
-              <div className="flex justify-between items-center">
-                <Label>Products</Label>
-                <Button size="sm" variant="outline" onClick={handleAddProduct}>
-                  <Plus className="w-4 h-4 mr-2" /> Add Product
-                </Button>
-              </div>
-
-              <div className="space-y-6">
-                {(formData.products || []).map((product: any, idx: number) => (
-                  <div
-                    key={idx}
-                    className="border p-4 rounded-lg bg-muted/10 space-y-4 relative group"
-                  >
-                    <div className="absolute top-3 right-3 flex gap-2">
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        className="text-muted-foreground hover:text-destructive h-8 w-8"
-                        onClick={() => removeProduct(idx)}
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
-                    </div>
-
-                    {/* BASIC INFO */}
-                    <div className="flex gap-4 items-start">
-                      <div className="space-y-2">
-                        <Label className="text-xs text-muted-foreground">
-                          Product Gallery (First image is featured)
-                        </Label>
-
-                        <div className="flex flex-wrap gap-2">
-                          {/* Existing Images */}
-                          {(
-                            product.images ||
-                            (product.image ? [product.image] : [])
-                          ).map((imgUrl: string, imgIdx: number) => (
-                            <div
-                              key={imgIdx}
-                              className="relative group/thumb w-16 h-16 border rounded overflow-hidden"
-                            >
-                              <img
-                                src={imgUrl}
-                                className="w-full h-full object-cover"
-                                alt="thumb"
-                              />
-
-                              {/* Remove Image Button */}
-                              <button
-                                className="absolute top-0 right-0 bg-red-500/90 text-white p-1 opacity-0 group-hover/thumb:opacity-100 transition-opacity"
-                                onClick={(e) => {
-                                  e.stopPropagation(); // Stop bubble
-                                  const newProds = [
-                                    ...(formData.products || []),
-                                  ];
-                                  const newImages = [...(product.images || [])];
-                                  newImages.splice(imgIdx, 1);
-                                  newProds[idx].images = newImages;
-                                  // Update legacy 'image' field to always be the first one
-                                  newProds[idx].image = newImages[0] || "";
-                                  updateField("products", newProds);
-                                }}
-                              >
-                                <Trash2 size={10} />
-                              </button>
-                            </div>
-                          ))}
-
-                          {/* Add New Image Button */}
-                          <div
-                            className="w-16 h-16 border border-dashed rounded flex flex-col items-center justify-center cursor-pointer hover:bg-muted/50 text-muted-foreground hover:text-primary transition-colors"
-                            onClick={() => {
-                              setActiveMediaField(`product-gallery-add-${idx}`);
-                              setIsMediaPickerOpen(true);
-                            }}
-                          >
-                            <Plus size={16} />
-                            <span className="text-[9px] font-semibold mt-1">
-                              ADD
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="flex-grow space-y-2">
-                        <Input
-                          placeholder="Product Title"
-                          value={product.title}
-                          onChange={(e) =>
-                            updateProduct(idx, "title", e.target.value)
-                          }
-                          className="font-medium"
-                        />
-                        <div className="flex gap-2">
-                          <Input
-                            placeholder="Price"
-                            value={product.price}
-                            onChange={(e) =>
-                              updateProduct(idx, "price", e.target.value)
-                            }
-                            className="w-1/2"
-                          />
-                          <Input
-                            placeholder="Stock"
-                            value={product.stock}
-                            onChange={(e) =>
-                              updateProduct(idx, "stock", e.target.value)
-                            }
-                            className="w-1/2"
-                          />
-                        </div>
-                      </div>
-                    </div>
-
-                    <Textarea
-                      placeholder="Short description..."
-                      value={product.description}
-                      onChange={(e) =>
-                        updateProduct(idx, "description", e.target.value)
-                      }
-                      rows={2}
-                      className="text-sm resize-none"
-                    />
-
-                    {/* CHECKOUT METHOD SELECTOR */}
-                    <div className="p-3 bg-background border rounded-md space-y-3">
-                      <Label className="text-xs font-bold text-muted-foreground uppercase">
-                        Checkout Action
-                      </Label>
-                      <Select
-                        value={product.actionType || "whatsapp"}
-                        onValueChange={(val) =>
-                          updateProduct(idx, "actionType", val)
-                        }
-                      >
-                        <SelectTrigger className="h-9 text-sm">
-                          <SelectValue placeholder="Select Action" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="whatsapp">
-                            <div className="flex items-center gap-2">
-                              <MessageCircle
-                                size={14}
-                                className="text-green-500"
-                              />{" "}
-                              WhatsApp Order
-                            </div>
-                          </SelectItem>
-                          <SelectItem value="form_order">
-                            {/* NEW OPTION */}
-                            <div className="flex items-center gap-2">
-                              <FileText size={14} className="text-orange-500" />{" "}
-                              Direct Order Form
-                            </div>
-                          </SelectItem>
-                          <SelectItem value="link">
-                            <div className="flex items-center gap-2">
-                              <ExternalLink
-                                size={14}
-                                className="text-blue-500"
-                              />{" "}
-                              External Link
-                            </div>
-                          </SelectItem>
-                        </SelectContent>
-                      </Select>
-
-                      {/* CONDITIONAL INPUTS */}
-                      {product.actionType === "link" && (
-                        <Input
-                          placeholder="https://buy.stripe.com/..."
-                          value={product.checkoutUrl || ""}
-                          onChange={(e) =>
-                            updateProduct(idx, "checkoutUrl", e.target.value)
-                          }
-                          className="h-9 text-xs"
-                        />
-                      )}
-
-                      {product.actionType === "whatsapp" && (
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm text-muted-foreground whitespace-nowrap">
-                            wa.me/
-                          </span>
-                          <Input
-                            placeholder="212600000000"
-                            value={product.whatsappNumber || ""}
-                            onChange={(e) =>
-                              updateProduct(
-                                idx,
-                                "whatsappNumber",
-                                e.target.value
-                              )
-                            }
-                            className="h-9 text-xs"
-                          />
-                        </div>
-                      )}
-
-                      {/* Note: 'form_order' doesn't need extra inputs, just the button label below */}
-
-                      <Input
-                        placeholder="Button Label (e.g. Buy Now)"
-                        value={product.buttonText}
-                        onChange={(e) =>
-                          updateProduct(idx, "buttonText", e.target.value)
-                        }
-                        className="h-9 text-xs"
-                      />
-                    </div>
-
-                    {/* VISUAL VARIANT BUILDER (Only for WhatsApp flow mostly, but useful for display too) */}
-                    <div className="space-y-2">
-                      <div className="flex justify-between items-end">
-                        <Label className="text-xs">Product Variants</Label>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          className="h-6 text-[10px]"
-                          onClick={() => {
-                            const current = product.variants || [];
-                            updateProduct(idx, "variants", [
-                              ...current,
-                              { name: "Size", options: "S, M, L" },
-                            ]);
-                          }}
-                        >
-                          <Plus className="w-3 h-3 mr-1" /> Add Option
-                        </Button>
-                      </div>
-
-                      {(product.variants || []).map((v: any, vIdx: number) => (
-                        <div key={vIdx} className="flex gap-2 items-center">
-                          <Input
-                            placeholder="Type (Color)"
-                            value={v.name}
-                            onChange={(e) => {
-                              const newVars = [...(product.variants || [])];
-                              newVars[vIdx].name = e.target.value;
-                              updateProduct(idx, "variants", newVars);
-                            }}
-                            className="w-1/3 h-8 text-xs"
-                          />
-                          <Input
-                            placeholder="Options (Red, Blue)"
-                            value={v.options}
-                            onChange={(e) => {
-                              const newVars = [...(product.variants || [])];
-                              newVars[vIdx].options = e.target.value;
-                              updateProduct(idx, "variants", newVars);
-                            }}
-                            className="flex-grow h-8 text-xs"
-                          />
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8 text-muted-foreground"
-                            onClick={() => {
-                              const newVars = [...(product.variants || [])];
-                              newVars.splice(vIdx, 1);
-                              updateProduct(idx, "variants", newVars);
-                            }}
-                          >
-                            <Trash2 className="w-3 h-3" />
-                          </Button>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        );
-
       case "hero":
         return (
           <div className="space-y-6">
-            {/* 1. LAYOUT VARIANT */}
             <div className="space-y-3 p-4 border rounded-lg bg-muted/20">
               <Label>Hero Layout Style</Label>
               <Select
@@ -1374,7 +775,6 @@ const SectionEditor: React.FC<SectionEditorProps> = ({
               </Select>
             </div>
 
-            {/* 2. CONTENT FIELDS */}
             <div className="space-y-4">
               <div className="grid gap-2">
                 <Label>Eyebrow Label</Label>
@@ -1403,19 +803,16 @@ const SectionEditor: React.FC<SectionEditorProps> = ({
               </div>
             </div>
 
-            {/* 3. MEDIA FIELDS (Conditional) */}
             <div className="space-y-4 pt-4 border-t">
               <Label className="text-base font-semibold">
                 Background Media
               </Label>
 
-              {/* OPTION A: VIDEO INPUT */}
               {formData.variant === "video" ? (
                 <div className="space-y-4 animate-in fade-in slide-in-from-top-2">
                   <div className="grid gap-2">
                     <Label>Video Source</Label>
                     <div className="flex gap-2">
-                      {/* Text Input for external links */}
                       <div className="relative flex-grow">
                         <LinkIcon className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                         <Input
@@ -1427,8 +824,6 @@ const SectionEditor: React.FC<SectionEditorProps> = ({
                           className="pl-9"
                         />
                       </div>
-
-                      {/* Library Select Button */}
                       <Button
                         variant="secondary"
                         type="button"
@@ -1438,8 +833,7 @@ const SectionEditor: React.FC<SectionEditorProps> = ({
                         }}
                         title="Select from Library"
                       >
-                        <Video className="h-4 w-4 mr-2" />
-                        Library
+                        <Video className="h-4 w-4 mr-2" /> Library
                       </Button>
                     </div>
                     <p className="text-[11px] text-muted-foreground">
@@ -1447,8 +841,6 @@ const SectionEditor: React.FC<SectionEditorProps> = ({
                       library.
                     </p>
                   </div>
-
-                  {/* Fallback Image */}
                   <div className="p-3 border rounded-md bg-muted/10">
                     <div className="flex items-center justify-between mb-2">
                       <Label className="text-sm">
@@ -1471,13 +863,11 @@ const SectionEditor: React.FC<SectionEditorProps> = ({
                           setIsMediaPickerOpen(true);
                         }}
                       >
-                        <ImageIcon className="h-4 w-4 mr-2" />
+                        <ImageIcon className="h-4 w-4 mr-2" />{" "}
                         {formData.backgroundImage
                           ? "Change Poster Image"
                           : "Select Poster Image"}
                       </Button>
-
-                      {/* REMOVE BUTTON (Only shows if image exists) */}
                       {formData.backgroundImage && (
                         <Button
                           variant="ghost"
@@ -1493,11 +883,9 @@ const SectionEditor: React.FC<SectionEditorProps> = ({
                   </div>
                 </div>
               ) : (
-                /* OPTION B: STANDARD IMAGE INPUT */
                 <div className="grid gap-2 animate-in fade-in slide-in-from-top-2">
                   <Label>Background Image</Label>
                   <div className="flex gap-2 items-center">
-                    {/* Preview Tiny Thumbnail if exists */}
                     {formData.backgroundImage && (
                       <div className="h-9 w-9 rounded overflow-hidden border shrink-0 bg-muted relative group cursor-pointer">
                         <img
@@ -1507,7 +895,6 @@ const SectionEditor: React.FC<SectionEditorProps> = ({
                         />
                       </div>
                     )}
-
                     <Button
                       variant="outline"
                       className="flex-grow justify-start"
@@ -1516,13 +903,11 @@ const SectionEditor: React.FC<SectionEditorProps> = ({
                         setIsMediaPickerOpen(true);
                       }}
                     >
-                      <ImageIcon className="h-4 w-4 mr-2" />
+                      <ImageIcon className="h-4 w-4 mr-2" />{" "}
                       {formData.backgroundImage
                         ? "Change Background Image"
                         : "Select Background Image"}
                     </Button>
-
-                    {/* REMOVE BUTTON (Only shows if image exists) */}
                     {formData.backgroundImage && (
                       <Button
                         variant="ghost"
@@ -1538,7 +923,6 @@ const SectionEditor: React.FC<SectionEditorProps> = ({
                 </div>
               )}
 
-              {/* Overlay Opacity Slider */}
               <div className="grid gap-4 pt-2">
                 <div className="flex justify-between">
                   <Label>Overlay Darkness</Label>
@@ -1557,7 +941,6 @@ const SectionEditor: React.FC<SectionEditorProps> = ({
               </div>
             </div>
 
-            {/* 4. BUTTONS & ALIGNMENT */}
             <div className="space-y-4 pt-2 border-t">
               <div className="grid grid-cols-2 gap-4">
                 <div className="grid gap-2">
@@ -1576,7 +959,6 @@ const SectionEditor: React.FC<SectionEditorProps> = ({
                 </div>
               </div>
 
-              {/* Secondary Button */}
               {formData.variant === "video" && (
                 <div className="grid grid-cols-2 gap-4">
                   <div className="grid gap-2">
@@ -3091,7 +2473,7 @@ const SectionEditor: React.FC<SectionEditorProps> = ({
       default:
         return (
           <p className="text-muted-foreground">
-            No settings available for this section type.
+            Detailed settings for this section are available in the Design tab.
           </p>
         );
     }
@@ -3104,54 +2486,35 @@ const SectionEditor: React.FC<SectionEditorProps> = ({
           <SheetHeader className="mb-6">
             <SheetTitle>
               Edit{" "}
-              {section.type.charAt(0).toUpperCase() + section.type.slice(1)}{" "}
-              Section
+              {section.type.charAt(0).toUpperCase() +
+                section.type.slice(1).replace(/_/g, " ")}
             </SheetTitle>
-
-            {/* ADD THIS */}
             <SheetDescription className="sr-only">
-              Customize the content and design settings for this block.
+              Customize the content and design settings.
             </SheetDescription>
           </SheetHeader>
 
-          {/* --- THE FIX: WRAP EDITORS IN TABS --- */}
           <Tabs defaultValue="content" className="w-full">
             <TabsList className="grid w-full grid-cols-2 mb-4">
               <TabsTrigger value="content">Content</TabsTrigger>
               <TabsTrigger value="design">Design</TabsTrigger>
             </TabsList>
-
-            {/* TAB 1: CORE CONTENT (Your existing hardcoded fields) */}
             <TabsContent value="content" className="space-y-4">
               {renderFields()}
             </TabsContent>
-
-            {/* TAB 2: THEME SETTINGS (The new dynamic schema) */}
             <TabsContent value="design" className="space-y-4">
               {renderThemeSettings()}
             </TabsContent>
           </Tabs>
-          {/* ------------------------------------- */}
-
-          <SheetFooter className="mt-8">
-            <Button variant="outline" onClick={onClose}>
-              Cancel
-            </Button>
-            <Button onClick={handleSave}>Save Changes</Button>
-          </SheetFooter>
         </SheetContent>
       </Sheet>
 
-      {/* --- MEDIA PICKER DIALOG --- */}
       <Dialog open={isMediaPickerOpen} onOpenChange={setIsMediaPickerOpen}>
         <DialogContent className="max-w-4xl h-[80vh] flex flex-col p-0">
-          
-          {/* 🚨 FIX: You were missing these two lines here! */}
           <DialogTitle className="sr-only">Media Library</DialogTitle>
           <DialogDescription className="sr-only">
-            Select or upload an image or video for your portfolio.
+            Select or upload media.
           </DialogDescription>
-
           <div className="p-6 flex-grow overflow-hidden">
             <PortfolioMediaManager
               actorId={actorId}

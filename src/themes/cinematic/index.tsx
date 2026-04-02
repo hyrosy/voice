@@ -1,31 +1,22 @@
-import { PortfolioThemeDefinition } from '../types';
+// src/themes/cinematic/index.ts
 
-// --- 1. Import Your Cinematic-Specific Components ---
-import ImageSlider from './ImageSlider';
-import VideoSlider from './VideoSlider';
-import Header from './Header';
-import LeadForm from '../modern/LeadForm';
+import { lazy } from "react";
+import { PortfolioThemeDefinition } from "../types";
+import { ModernTheme } from "../modern"; // Inherits the lazy-loaded Modern base
 
-// --- 2. Import the Base Theme to Borrow From ---
-import { ModernTheme } from '../modern';
+// 🚀 AAA+ LAZY LOADING: Dynamic imports for the Cinematic overrides
+const Header = lazy(() => import("./Header"));
+const ImageSlider = lazy(() => import("./ImageSlider"));
+const VideoSlider = lazy(() => import("./VideoSlider"));
+// (Note: We don't need to import LeadForm here anymore, because spreading
+// ModernTheme below automatically brings in the lazy-loaded Modern LeadForm!)
 
 // --- 3. Create the Theme Definition ---
 export const CinematicTheme: PortfolioThemeDefinition = {
-  // A. Use your new Cinematic components
-  Header,       
+  ...ModernTheme, // 1. Fallback to Modern for everything else (Fixes the Shop typo!)
+
+  // 2. Overwrite with your specific Cinematic components
+  Header,
   ImageSlider,
   VideoSlider,
-LeadForm,
-  // B. Fallback to Modern for everything else (prevents crashes!)
-  Hero: ModernTheme.Hero,
-  About: ModernTheme.About,
-  Gallery: ModernTheme.Gallery,
-  ServicesShowcase: ModernTheme.ServicesShowcase, // <-- WAS MISSING
-  Contact: ModernTheme.Contact,
-  Stats: ModernTheme.Stats,
-  Reviews: ModernTheme.Reviews,
-  Team: ModernTheme.Team,                         // <-- WAS MISSING
-  Map: ModernTheme.Map,                           // <-- WAS MISSING
-  Pricing: ModernTheme.Pricing,                    // <-- WAS MISSING
-  Shop: ModernTheme.Pricing,                    // <-- WAS MISSING
-  };
+};

@@ -1,19 +1,30 @@
+// src/themes/modern/index.tsx
+
+import React, { lazy } from "react";
 import { PortfolioThemeDefinition } from "../types";
-import Hero from "./Hero";
-import About from "./About";
-import Gallery from "./Gallery";
-import Contact from "./Contact";
-import ImageSlider from "./ImageSlider"; // <-- NEW
-import VideoSlider from "./VideoSlider"; // <-- NEW
-import Header from "./Header"; // <-- Import
-import ServicesShowcase from "./ServicesShowcase"; // <-- Import
-import Team from "./Team";
-import Map from "./Map";
-import Pricing from "./Pricing";
-import Shop from "./Shop";
-import LeadForm from "./LeadForm"; // <--- Import
-import { DynamicStore } from "./DynamicStore";
-// // Temporary Placeholders
+
+// 🚀 AAA+ LAZY LOADING: Replaced static imports with dynamic imports.
+// Webpack will now split these into tiny, individual JS chunks.
+const Header = lazy(() => import("./Header"));
+const Hero = lazy(() => import("./Hero"));
+const About = lazy(() => import("./About"));
+const Gallery = lazy(() => import("./Gallery"));
+const Contact = lazy(() => import("./Contact"));
+const ImageSlider = lazy(() => import("./ImageSlider"));
+const VideoSlider = lazy(() => import("./VideoSlider"));
+const ServicesShowcase = lazy(() => import("./ServicesShowcase"));
+const Team = lazy(() => import("./Team"));
+const Map = lazy(() => import("./Map"));
+const Pricing = lazy(() => import("./Pricing"));
+const Shop = lazy(() => import("./Shop"));
+const LeadForm = lazy(() => import("./LeadForm"));
+
+// Handle named exports dynamically
+const DynamicStore = lazy(() =>
+  import("./DynamicStore").then((module) => ({ default: module.DynamicStore }))
+);
+
+// Temporary Placeholders (Kept inline because they are tiny and don't need splitting)
 const Stats = () => (
   <div className="py-20 text-center bg-muted">Stats Section (Coming Soon)</div>
 );
@@ -27,16 +38,16 @@ const Reviews = () => (
 );
 
 export const ModernTheme: PortfolioThemeDefinition = {
-  Header, // <-- Export
+  Header,
   Hero,
   About,
   Gallery,
-  ServicesShowcase, // <-- Export
+  ServicesShowcase,
   Contact,
   Stats,
   Reviews,
-  ImageSlider, // <-- Export
-  VideoSlider, // <-- Export
+  ImageSlider,
+  VideoSlider,
   Team,
   Map,
   Pricing,
