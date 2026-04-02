@@ -32,12 +32,13 @@ export interface Product {
 interface ProductDetailModalProps {
     product: Product | null;
     actorId?: string; 
-    portfolioId?: string; // <--- 1. NEW PROP
+    portfolioId?: string; 
     isOpen: boolean;
     onClose: () => void;
+    isPreview?: boolean; // 🚀 1. ADD IS_PREVIEW PROP FOR SAFETY
 }
 
-export const ProductDetailModal = ({ product, actorId, portfolioId, isOpen, onClose }: ProductDetailModalProps) => {
+export const ProductDetailModal = ({ product, actorId, portfolioId, isOpen, onClose, isPreview }: ProductDetailModalProps) => {
     const [step, setStep] = useState<'details' | 'form' | 'success'>('details');
     const [quantity, setQuantity] = useState(1);
     const [selectedVariants, setSelectedVariants] = useState<Record<string, string>>({});
@@ -55,10 +56,15 @@ export const ProductDetailModal = ({ product, actorId, portfolioId, isOpen, onCl
     const actionType = product.actionType || 'whatsapp';
 
     const handleMainAction = () => {
+        // 🚀 2. SAFE SHIELD: Block live links in builder
+        if (isPreview) {
+            alert("Checkout actions are disabled in the builder preview.");
+            return;
+        }
+
         // A. External Link
         if (actionType === 'link') {
             const url = product.checkoutUrl || '#';
-            // 2. Track Click with Portfolio ID
             trackEvent(product.actor_id, 'shop_click', { 
                 product_name: product.title, 
                 url: product.checkoutUrl,
@@ -81,6 +87,9 @@ export const ProductDetailModal = ({ product, actorId, portfolioId, isOpen, onCl
     };
 
     const handleConfirmOrder = async () => {
+        // 🚀 3. SAFE SHIELD: Double block DB inserts
+        if (isPreview) return;
+
         if (!clientInfo.name || !clientInfo.phone) {
             alert("Please provide your name and phone number.");
             return;
@@ -88,7 +97,6 @@ export const ProductDetailModal = ({ product, actorId, portfolioId, isOpen, onCl
 
         // B. WhatsApp Flow
         if (actionType === 'whatsapp') {
-            // 3. Track WhatsApp with Portfolio ID
             trackEvent(product.actor_id, 'whatsapp_click', { 
                 product_name: product.title,
                 portfolio_id: portfolioId 
@@ -115,7 +123,7 @@ export const ProductDetailModal = ({ product, actorId, portfolioId, isOpen, onCl
             
             const { error } = await supabase.from('pro_orders').insert({
                 actor_id: actorId,
-                portfolio_id: portfolioId, // <--- 4. SAVE PORTFOLIO ID
+                portfolio_id: portfolioId, 
                 customer_name: clientInfo.name,
                 customer_phone: clientInfo.phone,
                 customer_address: clientInfo.address,
@@ -132,7 +140,6 @@ export const ProductDetailModal = ({ product, actorId, portfolioId, isOpen, onCl
                 console.error("Order Error:", error);
                 alert("There was an issue saving your order. Please try again.");
             } else {
-                // 5. Track Success Event
                 trackEvent(product.actor_id, 'shop_click', { 
                     product_name: product.title, 
                     type: 'direct_order',
@@ -154,7 +161,7 @@ export const ProductDetailModal = ({ product, actorId, portfolioId, isOpen, onCl
 
     return (
         <Dialog open={isOpen} onOpenChange={(open) => !open && handleClose()}>
-            <DialogContent className="max-w-4xl p-0 overflow-hidden bg-neutral-900 text-white border-white/10 md:h-[600px] flex flex-col md:flex-row">
+            <DialogContent className="max-w-4xl p-0 overflow-hidden bg-neutral-900 text-white border-white/10 md:h-[600px] flex flex-col md:flex-row z-[99999]">
                 
                 {/* LEFT: IMAGE GALLERY */}
                 <div className="w-full md:w-1/2 bg-black flex flex-col relative h-[300px] md:h-full">
@@ -197,7 +204,7 @@ export const ProductDetailModal = ({ product, actorId, portfolioId, isOpen, onCl
                                     Thank you, {clientInfo.name}. We have received your order for <strong>{product.title}</strong> and will contact you at {clientInfo.phone} shortly.
                                 </p>
                              </div>
-                             <Button onClick={handleClose} variant="outline" className="mt-4 border-white/10 text-white hover:bg-white/5">Close</Button>
+                             <Button onClick={handleClose} variant="outline" className="mt-4 border-white/10 text-white hover:bg-white/5 border-white">Close</Button>
                         </div>
                     )}
 
@@ -237,15 +244,15 @@ export const ProductDetailModal = ({ product, actorId, portfolioId, isOpen, onCl
                                 <div className="space-y-2 pt-2">
                                     <Label className="text-xs uppercase tracking-wider text-neutral-500">Quantity</Label>
                                     <div className="flex items-center gap-4">
-                                        <Button size="icon" variant="outline" className="h-8 w-8 rounded-full" onClick={() => setQuantity(q => Math.max(1, q - 1))}><Minus size={14}/></Button>
+                                        <Button size="icon" variant="outline" className="h-8 w-8 rounded-full border-white/20 text-white" onClick={() => setQuantity(q => Math.max(1, q - 1))}><Minus size={14}/></Button>
                                         <span className="font-mono text-lg w-8 text-center">{quantity}</span>
-                                        <Button size="icon" variant="outline" className="h-8 w-8 rounded-full" onClick={() => setQuantity(q => q + 1)}><Plus size={14}/></Button>
+                                        <Button size="icon" variant="outline" className="h-8 w-8 rounded-full border-white/20 text-white" onClick={() => setQuantity(q => q + 1)}><Plus size={14}/></Button>
                                     </div>
                                 </div>
                             )}
 
                             <div className="mt-auto pt-4">
-                                <Button className="w-full h-12 text-base rounded-lg" onClick={handleMainAction}>
+                                <Button className="w-full h-12 text-base rounded-lg bg-white text-black hover:bg-neutral-200" onClick={handleMainAction}>
                                     {product.buttonText || (actionType === 'link' ? 'Buy Now' : 'Order Now')} 
                                     {actionType === 'link' ? <ExternalLink className="ml-2 w-4 h-4" /> : <ArrowRight className="ml-2 w-4 h-4" />}
                                 </Button>
@@ -267,21 +274,21 @@ export const ProductDetailModal = ({ product, actorId, portfolioId, isOpen, onCl
                                     <Label className="text-neutral-400">Full Name</Label>
                                     <div className="relative">
                                         <User className="absolute left-3 top-3 h-4 w-4 text-neutral-500" />
-                                        <Input value={clientInfo.name} onChange={e => setClientInfo({...clientInfo, name: e.target.value})} placeholder="Your Name" className="bg-neutral-800 border-white/10 pl-10"/>
+                                        <Input value={clientInfo.name} onChange={e => setClientInfo({...clientInfo, name: e.target.value})} placeholder="Your Name" className="bg-neutral-800 border-white/10 pl-10 text-white"/>
                                     </div>
                                 </div>
                                 <div className="space-y-2">
                                     <Label className="text-neutral-400">Phone Number</Label>
                                     <div className="relative">
                                         <Phone className="absolute left-3 top-3 h-4 w-4 text-neutral-500" />
-                                        <Input value={clientInfo.phone} onChange={e => setClientInfo({...clientInfo, phone: e.target.value})} placeholder="+1 234 567 890" className="bg-neutral-800 border-white/10 pl-10"/>
+                                        <Input value={clientInfo.phone} onChange={e => setClientInfo({...clientInfo, phone: e.target.value})} placeholder="+1 234 567 890" className="bg-neutral-800 border-white/10 pl-10 text-white"/>
                                     </div>
                                 </div>
                                 <div className="space-y-2">
                                     <Label className="text-neutral-400">Delivery Address</Label>
                                     <div className="relative">
                                         <MapPin className="absolute left-3 top-3 h-4 w-4 text-neutral-500" />
-                                        <Input value={clientInfo.address} onChange={e => setClientInfo({...clientInfo, address: e.target.value})} placeholder="Street, City" className="bg-neutral-800 border-white/10 pl-10"/>
+                                        <Input value={clientInfo.address} onChange={e => setClientInfo({...clientInfo, address: e.target.value})} placeholder="Street, City" className="bg-neutral-800 border-white/10 pl-10 text-white"/>
                                     </div>
                                 </div>
                             </div>
@@ -297,7 +304,7 @@ export const ProductDetailModal = ({ product, actorId, portfolioId, isOpen, onCl
                                     disabled={isSubmitting}
                                     className={cn(
                                         "w-full h-12 text-base text-white rounded-lg",
-                                        actionType === 'whatsapp' ? "bg-green-600 hover:bg-green-500" : "bg-primary hover:bg-primary/90 text-black"
+                                        actionType === 'whatsapp' ? "bg-green-600 hover:bg-green-500" : "bg-white text-black hover:bg-neutral-200"
                                     )} 
                                     onClick={handleConfirmOrder}
                                 >
