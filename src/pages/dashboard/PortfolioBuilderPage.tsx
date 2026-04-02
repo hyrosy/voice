@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useCallback, Suspense } from "react";
 import { supabase } from "../../supabaseClient";
+import { useQuery } from "@tanstack/react-query";
 import {
   useOutletContext,
   useSearchParams,
@@ -151,17 +152,20 @@ const IframePreview = ({
   sections,
   theme,
   actorId,
+  onEditSection,
+  updateSection, // 🚀 1. ADD THIS PROP
 }: {
   sections: PortfolioSection[];
   theme: any;
   actorId: string;
+  onEditSection: (section: PortfolioSection) => void;
+  updateSection: (id: string, updates: Partial<PortfolioSection>) => void; // 🚀 2. TYPE IT
 }) => {
   const iframeRef = React.useRef<HTMLIFrameElement>(null);
   const [viewport, setViewport] = useState<"desktop" | "tablet" | "mobile">(
     "desktop"
   );
 
-  // Send data to iframe whenever state changes
   const sendDataToIframe = useCallback(() => {
     if (iframeRef.current && iframeRef.current.contentWindow) {
       iframeRef.current.contentWindow.postMessage(
@@ -178,16 +182,26 @@ const IframePreview = ({
     sendDataToIframe();
   }, [sendDataToIframe]);
 
-  // Listen for the iframe telling us it's ready
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
       if (event.data?.type === "PREVIEW_READY") {
-        sendDataToIframe(); // Send initial data immediately
+        sendDataToIframe();
+      } else if (event.data?.type === "EDIT_SECTION") {
+        const clickedSection = sections.find(
+          (s) => s.id === event.data.payload
+        );
+        if (clickedSection) onEditSection(clickedSection);
+      } else if (event.data?.type === "INLINE_EDIT") {
+        const { sectionId, fieldKey, value } = event.data.payload;
+        // 🚀 3. IT NOW KNOWS WHAT THIS IS!
+        updateSection(sectionId, {
+          data: { [fieldKey]: value },
+        });
       }
     };
     window.addEventListener("message", handleMessage);
     return () => window.removeEventListener("message", handleMessage);
-  }, [sendDataToIframe]);
+  }, [sendDataToIframe, sections, onEditSection, updateSection]);
 
   const viewportWidths = {
     desktop: "100%",
@@ -289,7 +303,6 @@ const PortfolioBuilderPage = () => {
     activePortfolioIdParam
   );
   const [siteList, setSiteList] = useState<any[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [isPublished, setIsPublished] = useState(false);
   const [editingSection, setEditingSection] = useState<PortfolioSection | null>(
@@ -321,92 +334,96 @@ const PortfolioBuilderPage = () => {
   const [activeDomain, setActiveDomain] = useState("");
 
   // --- 1. DATA FETCHING ---
-  const fetchSiteList = useCallback(async () => {
-    if (!actorData?.id) return;
-    const { data } = await supabase
-      .from("portfolios")
-      .select("id, site_name")
-      .eq("actor_id", actorData.id)
-      .order("created_at", { ascending: false });
-    if (data) setSiteList(data);
-  }, [actorData?.id]);
+  // --- 1. AAA+ DATA FETCHING (REACT QUERY) ---
 
-  const fetchPortfolioData = useCallback(
-    async (portfolioId: string | null) => {
-      setIsLoading(true);
-      try {
-        let data = null,
-          error = null;
-
-        if (portfolioId) {
-          const response = await supabase
-            .from("portfolios")
-            .select("*")
-            .eq("id", portfolioId)
-            .single();
-          data = response.data;
-          error = response.error;
-        } else {
-          const response = await supabase
-            .from("portfolios")
-            .select("*")
-            .eq("actor_id", actorData.id)
-            .order("created_at", { ascending: false })
-            .limit(1)
-            .single();
-          data = response.data;
-          error = response.error;
-        }
-
-        if (error && error.code !== "PGRST116") throw error;
-
-        if (data) {
-          setActivePortfolioId(data.id);
-          setIsPublished(data.is_published);
-          setSiteIdentity({
-            name: data.site_name,
-            slug: data.public_slug,
-            customDomain: data.custom_domain || "",
-          });
-
-          if (data.custom_domain) {
-            setActiveDomain(data.custom_domain);
-            checkDomainStatus(data.custom_domain);
-          } else {
-            setActiveDomain("");
-            setDomainStatus(null);
-          }
-
-          // INIT ZUSTAND STATE
-          setInitialState(data.sections || [], {
-            ...data.theme_config,
-            radius: data.theme_config?.radius ?? 0.5,
-            buttonStyle: data.theme_config?.buttonStyle ?? "solid",
-          });
-        } else {
-          setInitialState(DEFAULT_PORTFOLIO_SECTIONS, {
-            templateId: "modern",
-            primaryColor: "violet",
-            font: "sans",
-            radius: 0.5,
-            buttonStyle: "solid",
-          });
-        }
-      } catch (error) {
-        console.error("Error fetching portfolio:", error);
-      } finally {
-        setIsLoading(false);
-      }
+  // A. Fetch Site List for Dropdown
+  // A. Fetch Site List for Dropdown
+  const {
+    data: fetchedSiteList = [],
+    refetch: fetchSiteList, // 🚀 FIX: Extract React Query's refetch and alias it!
+  } = useQuery({
+    queryKey: ["siteList", actorData?.id],
+    queryFn: async () => {
+      if (!actorData?.id) return [];
+      const { data, error } = await supabase
+        .from("portfolios")
+        .select("id, site_name")
+        .eq("actor_id", actorData.id)
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return data || [];
     },
-    [actorData.id, setInitialState]
-  );
+    enabled: !!actorData?.id,
+  });
 
+  // Keep local state in sync with fetched list
   useEffect(() => {
-    if (actorData.id) {
-      fetchSiteList();
-      fetchPortfolioData(activePortfolioIdParam);
+    setSiteList(fetchedSiteList);
+  }, [fetchedSiteList]);
+
+  // B. Fetch Active Portfolio Data
+  const { data: fetchedPortfolio, isLoading: isPortfolioLoading } = useQuery({
+    queryKey: ["portfolio", actorData?.id, activePortfolioIdParam],
+    queryFn: async () => {
+      if (!actorData?.id) return null;
+      let query = supabase.from("portfolios").select("*");
+
+      if (activePortfolioIdParam) {
+        query = query.eq("id", activePortfolioIdParam);
+      } else {
+        query = query
+          .eq("actor_id", actorData.id)
+          .order("created_at", { ascending: false })
+          .limit(1);
+      }
+
+      const { data, error } = await query.single();
+      if (error && error.code !== "PGRST116") throw error; // Ignore "No rows found" error
+      return data || null;
+    },
+    enabled: !!actorData?.id,
+  });
+
+  // C. Sync Fetched Data to Local/Zustand State
+  useEffect(() => {
+    if (isPortfolioLoading) return;
+
+    if (fetchedPortfolio) {
+      setActivePortfolioId(fetchedPortfolio.id);
+      setIsPublished(fetchedPortfolio.is_published);
+      setSiteIdentity({
+        name: fetchedPortfolio.site_name,
+        slug: fetchedPortfolio.public_slug,
+        customDomain: fetchedPortfolio.custom_domain || "",
+      });
+
+      if (fetchedPortfolio.custom_domain) {
+        setActiveDomain(fetchedPortfolio.custom_domain);
+        // We will handle the domain checking in the next step!
+      } else {
+        setActiveDomain("");
+        setDomainStatus(null);
+      }
+
+      setInitialState(fetchedPortfolio.sections || [], {
+        ...fetchedPortfolio.theme_config,
+        radius: fetchedPortfolio.theme_config?.radius ?? 0.5,
+        buttonStyle: fetchedPortfolio.theme_config?.buttonStyle ?? "solid",
+      });
+    } else {
+      // No portfolio exists yet for this user
+      setInitialState(DEFAULT_PORTFOLIO_SECTIONS, {
+        templateId: "modern",
+        primaryColor: "violet",
+        font: "sans",
+        radius: 0.5,
+        buttonStyle: "solid",
+      });
     }
-  }, [actorData.id, activePortfolioIdParam, fetchSiteList, fetchPortfolioData]);
+  }, [fetchedPortfolio, isPortfolioLoading, setInitialState]);
+
+  // Override old isLoading state
+  const isLoading = isPortfolioLoading;
 
   // --- 2. AAA+ AUTO-SAVE ENGINE ---
   // --- 2. AAA+ AUTO-SAVE ENGINE ---
@@ -464,14 +481,75 @@ const PortfolioBuilderPage = () => {
   }, [undo, redo]);
 
   // --- DOMAIN LOGIC (Unchanged) ---
-  const checkDomainStatus = async (domain: string) => {
-    setIsCheckingDomain(true);
-    const { data } = await supabase.functions.invoke("manage-domains", {
-      body: { action: "check", domain },
-    });
-    if (data) setDomainStatus(data);
-    setIsCheckingDomain(false);
+  // --- AAA+ AUTOMATED DOMAIN POLLING ---
+  // --- AAA+ AUTOMATED DOMAIN POLLING ---
+  const {
+    data: polledDomainStatus,
+    refetch: checkDomainStatus, // 🚀 FIX: Extract React Query's manual fetch and alias it!
+  } = useQuery({
+    queryKey: ["domainStatus", activeDomain],
+    queryFn: async () => {
+      const { data } = await supabase.functions.invoke("manage-domains", {
+        body: { action: "check", domain: activeDomain },
+      });
+      return data;
+    },
+    enabled: !!activeDomain && isSettingsOpen,
+    refetchInterval: (query) => {
+      const status = query.state.data;
+      if (status?.verified && status?.configured) return false;
+      return 10000;
+    },
+  });
+
+  // Keep local state synced
+  useEffect(() => {
+    if (polledDomainStatus) setDomainStatus(polledDomainStatus);
+  }, [polledDomainStatus]);
+
+  const handleSaveIdentity = async () => {
+    if (!activePortfolioId) return;
+    if (siteIdentity.customDomain && !limits.canConnectDomain) {
+      alert("Please upgrade to connect a domain.");
+      return;
+    }
+
+    setIsSavingIdentity(true);
+
+    const cleanSlug = siteIdentity.slug
+      .toLowerCase()
+      .replace(/[^a-z0-9-]/g, "-");
+    const cleanDomain = siteIdentity.customDomain
+      .trim()
+      .replace(/^https?:\/\//, "");
+
+    const { error } = await supabase
+      .from("portfolios")
+      .update({
+        site_name: siteIdentity.name,
+        public_slug: cleanSlug,
+        custom_domain: cleanDomain || null,
+      })
+      .eq("id", activePortfolioId);
+
+    if (error) {
+      alert("Error saving settings. The URL might be taken.");
+    } else {
+      setSiteIdentity((prev) => ({
+        ...prev,
+        slug: cleanSlug,
+        customDomain: cleanDomain,
+      }));
+
+      // 🚀 MAGIC: Setting this state automatically triggers the React Query background polling!
+      setActiveDomain(cleanDomain);
+
+      setIsSettingsOpen(false);
+    }
+    setIsSavingIdentity(false);
   };
+
+  // Remove the old manual checkDomainStatus function entirely!
   const handleAddDomain = async () => {
     if (!siteIdentity.customDomain) return;
     const cleanDomain = siteIdentity.customDomain
@@ -491,7 +569,6 @@ const PortfolioBuilderPage = () => {
     } else {
       setSiteIdentity((prev) => ({ ...prev, customDomain: cleanDomain }));
       setActiveDomain(cleanDomain);
-      checkDomainStatus(cleanDomain);
     }
     setIsCheckingDomain(false);
   };
@@ -604,41 +681,6 @@ const PortfolioBuilderPage = () => {
     } finally {
       setIsCreating(false);
     }
-  };
-
-  const handleSaveIdentity = async () => {
-    if (!activePortfolioId) return;
-    if (siteIdentity.customDomain && !limits.canConnectDomain) {
-      alert("Please upgrade to connect a domain.");
-      return;
-    }
-    setIsSavingIdentity(true);
-    const cleanSlug = siteIdentity.slug
-      .toLowerCase()
-      .replace(/[^a-z0-9-]/g, "-");
-    const cleanDomain = siteIdentity.customDomain
-      .trim()
-      .replace(/^https?:\/\//, "");
-    const { error } = await supabase
-      .from("portfolios")
-      .update({
-        site_name: siteIdentity.name,
-        public_slug: cleanSlug,
-        custom_domain: cleanDomain || null,
-      })
-      .eq("id", activePortfolioId);
-    if (error) {
-      alert("Error saving settings. The URL might be taken.");
-    } else {
-      setSiteIdentity((prev) => ({
-        ...prev,
-        slug: cleanSlug,
-        customDomain: cleanDomain,
-      }));
-      setIsSettingsOpen(false);
-      if (cleanDomain) checkDomainStatus(cleanDomain);
-    }
-    setIsSavingIdentity(false);
   };
 
   const saveLabel = (e: React.MouseEvent | React.KeyboardEvent) => {
@@ -1206,6 +1248,8 @@ const PortfolioBuilderPage = () => {
                 sections={sections}
                 theme={themeConfig}
                 actorId={actorData?.id || ""}
+                onEditSection={setEditingSection}
+                updateSection={updateSection} // 🚀 ADD THIS HERE
               />
             </TabsContent>
           </Tabs>
@@ -1218,6 +1262,8 @@ const PortfolioBuilderPage = () => {
             sections={sections}
             theme={themeConfig}
             actorId={actorData?.id || ""}
+            onEditSection={setEditingSection}
+            updateSection={updateSection} // 🚀 AND ADD THIS HERE
           />
         </div>
       </div>
@@ -1416,7 +1462,7 @@ const PortfolioBuilderPage = () => {
                           size="sm"
                           variant="outline"
                           className="w-full gap-2"
-                          onClick={() => checkDomainStatus(activeDomain)}
+                          onClick={() => checkDomainStatus()}
                           disabled={isCheckingDomain}
                         >
                           {isCheckingDomain ? (

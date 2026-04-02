@@ -751,6 +751,531 @@ const SectionEditor: React.FC<SectionEditorProps> = ({
           </div>
         );
 
+      case "lead_form":
+        return (
+          <div className="space-y-8">
+            {/* 1. BASIC SETTINGS */}
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label>Section Title</Label>
+                <Input
+                  value={formData.title || ""}
+                  onChange={(e) => updateField("title", e.target.value)}
+                  placeholder="Get in Touch"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Subheadline</Label>
+                <Textarea
+                  value={formData.subheadline || ""}
+                  onChange={(e) => updateField("subheadline", e.target.value)}
+                  placeholder="Send me a message..."
+                  rows={2}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Button Text</Label>
+                <Input
+                  value={formData.buttonText || ""}
+                  onChange={(e) => updateField("buttonText", e.target.value)}
+                  placeholder="Send Message"
+                />
+              </div>
+            </div>
+
+            {/* 2. LAYOUT VARIANT */}
+            <div className="space-y-3 pt-4 border-t">
+              <Label>Layout Style</Label>
+              <Select
+                value={formData.variant || "centered"}
+                onValueChange={(val) => updateField("variant", val)}
+              >
+                <SelectTrigger className="bg-background">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="centered">
+                    Centered Box (Standard)
+                  </SelectItem>
+                  <SelectItem value="split">
+                    Split Screen (Image Left)
+                  </SelectItem>
+                  <SelectItem value="minimal">
+                    Minimal (No Background)
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+
+              {formData.variant === "split" && (
+                <div className="mt-2">
+                  <Label className="text-xs">Side Image</Label>
+                  <div className="flex gap-2 mt-1">
+                    <Input
+                      value={formData.image || ""}
+                      onChange={(e) => updateField("image", e.target.value)}
+                      placeholder="https://..."
+                      className="text-xs"
+                    />
+                    {/* You can add the MediaPicker button here if you have it available in scope */}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* 3. FORM FIELDS BUILDER */}
+            <div className="space-y-4 pt-4 border-t">
+              <div className="flex justify-between items-center">
+                <Label>Form Fields</Label>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => {
+                    const newField = {
+                      id: `custom_${Date.now()}`,
+                      label: "New Field",
+                      type: "text",
+                      placeholder: "",
+                      required: false,
+                      width: "full",
+                    };
+                    updateField("fields", [
+                      ...(formData.fields || []),
+                      newField,
+                    ]);
+                  }}
+                >
+                  <Plus className="w-4 h-4 mr-2" /> Add Field
+                </Button>
+              </div>
+
+              <div className="space-y-3">
+                {(formData.fields || []).map((field: any, idx: number) => (
+                  <div
+                    key={idx}
+                    className="border p-3 rounded-lg bg-muted/10 space-y-3 group relative"
+                  >
+                    {/* Remove Button */}
+                    <button
+                      onClick={() => {
+                        const newFields = [...formData.fields];
+                        newFields.splice(idx, 1);
+                        updateField("fields", newFields);
+                      }}
+                      className="absolute top-2 right-2 text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity"
+                    >
+                      <Trash2 size={14} />
+                    </button>
+
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="space-y-1">
+                        <Label className="text-[10px] text-muted-foreground uppercase">
+                          Label
+                        </Label>
+                        <Input
+                          value={field.label}
+                          onChange={(e) => {
+                            const newFields = [...formData.fields];
+                            newFields[idx].label = e.target.value;
+                            updateField("fields", newFields);
+                          }}
+                          className="h-8 text-xs"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-[10px] text-muted-foreground uppercase">
+                          Type
+                        </Label>
+                        <Select
+                          value={field.type}
+                          onValueChange={(val) => {
+                            const newFields = [...formData.fields];
+                            newFields[idx].type = val;
+                            updateField("fields", newFields);
+                          }}
+                        >
+                          <SelectTrigger className="h-8 text-xs">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="text">Short Text</SelectItem>
+                            <SelectItem value="textarea">Long Text</SelectItem>
+                            <SelectItem value="email">Email</SelectItem>
+                            <SelectItem value="tel">Phone</SelectItem>
+                            <SelectItem value="date">Date</SelectItem>
+                            {/* Future: Select/Dropdown */}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="space-y-1">
+                        <Label className="text-[10px] text-muted-foreground uppercase">
+                          Placeholder
+                        </Label>
+                        <Input
+                          value={field.placeholder || ""}
+                          onChange={(e) => {
+                            const newFields = [...formData.fields];
+                            newFields[idx].placeholder = e.target.value;
+                            updateField("fields", newFields);
+                          }}
+                          className="h-8 text-xs"
+                          placeholder="e.g. Enter name"
+                        />
+                      </div>
+                      <div className="flex items-end gap-2 pb-1">
+                        <div className="flex items-center gap-2 border rounded px-2 h-8 w-full bg-background">
+                          <input
+                            type="checkbox"
+                            checked={field.required}
+                            onChange={(e) => {
+                              const newFields = [...formData.fields];
+                              newFields[idx].required = e.target.checked;
+                              updateField("fields", newFields);
+                            }}
+                            className="accent-primary"
+                          />
+                          <span className="text-xs">Required</span>
+                        </div>
+                        <div className="flex items-center gap-2 border rounded px-2 h-8 w-full bg-background">
+                          <input
+                            type="checkbox"
+                            checked={field.width === "half"}
+                            onChange={(e) => {
+                              const newFields = [...formData.fields];
+                              newFields[idx].width = e.target.checked
+                                ? "half"
+                                : "full";
+                              updateField("fields", newFields);
+                            }}
+                            className="accent-primary"
+                          />
+                          <span className="text-xs">50% Width</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        );
+
+      // --- SHOP SECTION EDITOR ---
+      case "shop":
+        return (
+          <div className="space-y-6">
+            <div className="space-y-2">
+              <Label>Section Title</Label>
+              <Input
+                value={formData.title || ""}
+                onChange={(e) => updateField("title", e.target.value)}
+                placeholder="Shop"
+              />
+            </div>
+
+            {/* 1. CONFIGURATION */}
+            <div className="grid grid-cols-1 gap-4 p-4 border rounded-lg bg-muted/20">
+              <div className="space-y-2">
+                <Label>Layout Style</Label>
+                <Select
+                  value={formData.variant || "grid"}
+                  onValueChange={(val) => updateField("variant", val)}
+                >
+                  <SelectTrigger className="bg-background">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="grid">Grid (Standard)</SelectItem>
+                    <SelectItem value="carousel">
+                      Carousel (Horizontal)
+                    </SelectItem>
+                    <SelectItem value="spotlight">
+                      Spotlight (Hero Product)
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            {/* 2. PRODUCT MANAGER */}
+            <div className="space-y-3 pt-4 border-t">
+              <div className="flex justify-between items-center">
+                <Label>Products</Label>
+                <Button size="sm" variant="outline" onClick={handleAddProduct}>
+                  <Plus className="w-4 h-4 mr-2" /> Add Product
+                </Button>
+              </div>
+
+              <div className="space-y-6">
+                {(formData.products || []).map((product: any, idx: number) => (
+                  <div
+                    key={idx}
+                    className="border p-4 rounded-lg bg-muted/10 space-y-4 relative group"
+                  >
+                    <div className="absolute top-3 right-3 flex gap-2">
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        className="text-muted-foreground hover:text-destructive h-8 w-8"
+                        onClick={() => removeProduct(idx)}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </div>
+
+                    {/* BASIC INFO */}
+                    <div className="flex gap-4 items-start">
+                      <div className="space-y-2">
+                        <Label className="text-xs text-muted-foreground">
+                          Product Gallery (First image is featured)
+                        </Label>
+
+                        <div className="flex flex-wrap gap-2">
+                          {/* Existing Images */}
+                          {(
+                            product.images ||
+                            (product.image ? [product.image] : [])
+                          ).map((imgUrl: string, imgIdx: number) => (
+                            <div
+                              key={imgIdx}
+                              className="relative group/thumb w-16 h-16 border rounded overflow-hidden"
+                            >
+                              <img
+                                src={imgUrl}
+                                className="w-full h-full object-cover"
+                                alt="thumb"
+                              />
+
+                              {/* Remove Image Button */}
+                              <button
+                                className="absolute top-0 right-0 bg-red-500/90 text-white p-1 opacity-0 group-hover/thumb:opacity-100 transition-opacity"
+                                onClick={(e) => {
+                                  e.stopPropagation(); // Stop bubble
+                                  const newProds = [
+                                    ...(formData.products || []),
+                                  ];
+                                  const newImages = [...(product.images || [])];
+                                  newImages.splice(imgIdx, 1);
+                                  newProds[idx].images = newImages;
+                                  // Update legacy 'image' field to always be the first one
+                                  newProds[idx].image = newImages[0] || "";
+                                  updateField("products", newProds);
+                                }}
+                              >
+                                <Trash2 size={10} />
+                              </button>
+                            </div>
+                          ))}
+
+                          {/* Add New Image Button */}
+                          <div
+                            className="w-16 h-16 border border-dashed rounded flex flex-col items-center justify-center cursor-pointer hover:bg-muted/50 text-muted-foreground hover:text-primary transition-colors"
+                            onClick={() => {
+                              setActiveMediaField(`product-gallery-add-${idx}`);
+                              setIsMediaPickerOpen(true);
+                            }}
+                          >
+                            <Plus size={16} />
+                            <span className="text-[9px] font-semibold mt-1">
+                              ADD
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="flex-grow space-y-2">
+                        <Input
+                          placeholder="Product Title"
+                          value={product.title}
+                          onChange={(e) =>
+                            updateProduct(idx, "title", e.target.value)
+                          }
+                          className="font-medium"
+                        />
+                        <div className="flex gap-2">
+                          <Input
+                            placeholder="Price"
+                            value={product.price}
+                            onChange={(e) =>
+                              updateProduct(idx, "price", e.target.value)
+                            }
+                            className="w-1/2"
+                          />
+                          <Input
+                            placeholder="Stock"
+                            value={product.stock}
+                            onChange={(e) =>
+                              updateProduct(idx, "stock", e.target.value)
+                            }
+                            className="w-1/2"
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    <Textarea
+                      placeholder="Short description..."
+                      value={product.description}
+                      onChange={(e) =>
+                        updateProduct(idx, "description", e.target.value)
+                      }
+                      rows={2}
+                      className="text-sm resize-none"
+                    />
+
+                    {/* CHECKOUT METHOD SELECTOR */}
+                    <div className="p-3 bg-background border rounded-md space-y-3">
+                      <Label className="text-xs font-bold text-muted-foreground uppercase">
+                        Checkout Action
+                      </Label>
+                      <Select
+                        value={product.actionType || "whatsapp"}
+                        onValueChange={(val) =>
+                          updateProduct(idx, "actionType", val)
+                        }
+                      >
+                        <SelectTrigger className="h-9 text-sm">
+                          <SelectValue placeholder="Select Action" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="whatsapp">
+                            <div className="flex items-center gap-2">
+                              <MessageCircle
+                                size={14}
+                                className="text-green-500"
+                              />{" "}
+                              WhatsApp Order
+                            </div>
+                          </SelectItem>
+                          <SelectItem value="form_order">
+                            {/* NEW OPTION */}
+                            <div className="flex items-center gap-2">
+                              <FileText size={14} className="text-orange-500" />{" "}
+                              Direct Order Form
+                            </div>
+                          </SelectItem>
+                          <SelectItem value="link">
+                            <div className="flex items-center gap-2">
+                              <ExternalLink
+                                size={14}
+                                className="text-blue-500"
+                              />{" "}
+                              External Link
+                            </div>
+                          </SelectItem>
+                        </SelectContent>
+                      </Select>
+
+                      {/* CONDITIONAL INPUTS */}
+                      {product.actionType === "link" && (
+                        <Input
+                          placeholder="https://buy.stripe.com/..."
+                          value={product.checkoutUrl || ""}
+                          onChange={(e) =>
+                            updateProduct(idx, "checkoutUrl", e.target.value)
+                          }
+                          className="h-9 text-xs"
+                        />
+                      )}
+
+                      {product.actionType === "whatsapp" && (
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm text-muted-foreground whitespace-nowrap">
+                            wa.me/
+                          </span>
+                          <Input
+                            placeholder="212600000000"
+                            value={product.whatsappNumber || ""}
+                            onChange={(e) =>
+                              updateProduct(
+                                idx,
+                                "whatsappNumber",
+                                e.target.value
+                              )
+                            }
+                            className="h-9 text-xs"
+                          />
+                        </div>
+                      )}
+
+                      {/* Note: 'form_order' doesn't need extra inputs, just the button label below */}
+
+                      <Input
+                        placeholder="Button Label (e.g. Buy Now)"
+                        value={product.buttonText}
+                        onChange={(e) =>
+                          updateProduct(idx, "buttonText", e.target.value)
+                        }
+                        className="h-9 text-xs"
+                      />
+                    </div>
+
+                    {/* VISUAL VARIANT BUILDER (Only for WhatsApp flow mostly, but useful for display too) */}
+                    <div className="space-y-2">
+                      <div className="flex justify-between items-end">
+                        <Label className="text-xs">Product Variants</Label>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-6 text-[10px]"
+                          onClick={() => {
+                            const current = product.variants || [];
+                            updateProduct(idx, "variants", [
+                              ...current,
+                              { name: "Size", options: "S, M, L" },
+                            ]);
+                          }}
+                        >
+                          <Plus className="w-3 h-3 mr-1" /> Add Option
+                        </Button>
+                      </div>
+
+                      {(product.variants || []).map((v: any, vIdx: number) => (
+                        <div key={vIdx} className="flex gap-2 items-center">
+                          <Input
+                            placeholder="Type (Color)"
+                            value={v.name}
+                            onChange={(e) => {
+                              const newVars = [...(product.variants || [])];
+                              newVars[vIdx].name = e.target.value;
+                              updateProduct(idx, "variants", newVars);
+                            }}
+                            className="w-1/3 h-8 text-xs"
+                          />
+                          <Input
+                            placeholder="Options (Red, Blue)"
+                            value={v.options}
+                            onChange={(e) => {
+                              const newVars = [...(product.variants || [])];
+                              newVars[vIdx].options = e.target.value;
+                              updateProduct(idx, "variants", newVars);
+                            }}
+                            className="flex-grow h-8 text-xs"
+                          />
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-muted-foreground"
+                            onClick={() => {
+                              const newVars = [...(product.variants || [])];
+                              newVars.splice(vIdx, 1);
+                              updateProduct(idx, "variants", newVars);
+                            }}
+                          >
+                            <Trash2 className="w-3 h-3" />
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        );
+
       case "hero":
         return (
           <div className="space-y-6">

@@ -82,7 +82,40 @@ export default function BuilderPreview() {
             section.type === "header" ? "relative z-50" : "relative z-0";
 
           return (
-            <div id={section.id} key={section.id} className={zIndexClass}>
+            <div
+              id={section.id}
+              key={section.id}
+              className={cn(
+                zIndexClass,
+                // Subtle hover ring so they know what section they are looking at
+                "group relative hover:ring-2 hover:ring-primary/40 hover:ring-inset transition-all duration-200"
+              )}
+              // ONLY catch clicks on links/buttons so the user doesn't accidentally navigate away
+              onClickCapture={(e) => {
+                const target = e.target as HTMLElement;
+                if (target.closest("a") || target.tagName === "BUTTON") {
+                  e.preventDefault();
+                }
+              }}
+            >
+              {/* 🚀 THE FIX: Dedicated Settings Tab (Framer Style) */}
+              <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-[100]">
+                <button
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation(); // Prevent this click from doing anything else
+                    window.parent.postMessage(
+                      { type: "EDIT_SECTION", payload: section.id },
+                      "*"
+                    );
+                  }}
+                  className="bg-primary text-primary-foreground text-xs font-bold px-3 py-1.5 rounded shadow-lg flex items-center gap-2 cursor-pointer hover:scale-105 active:scale-95 transition-transform"
+                >
+                  {/* Assuming you have Settings or Edit2 imported from lucide-react */}
+                  Edit {section.type.replace("_", " ")}
+                </button>
+              </div>
+
               <Suspense
                 fallback={
                   <div className="py-12 flex justify-center">
@@ -90,6 +123,7 @@ export default function BuilderPreview() {
                   </div>
                 }
               >
+                {/* Removed pointer-events-none so users can click text to inline-edit! */}
                 <Component {...sectionProps} />
               </Suspense>
             </div>
