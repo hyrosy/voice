@@ -23,12 +23,32 @@ import {
   Store,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { ProductDetailModal, Product } from "./components/ProductDetailModal";
 import { supabase } from "@/supabaseClient";
 import { trackEvent } from "../../lib/analytics";
 // 🚀 1. IMPORT INLINE EDIT
 import { InlineEdit } from "../../components/dashboard/InlineEdit";
+import { ProductModalContainer } from "@/components/shop/ProductModalContainer";
+// --- TYPES ---
+export interface ProductVariant {
+  name: string;
+  options: string;
+}
 
+export interface Product {
+  id?: string;
+  actor_id: string;
+  title: string;
+  price: string;
+  description: string;
+  image?: string;
+  images?: string[];
+  variants?: ProductVariant[];
+  actionType?: "whatsapp" | "link" | "form_order";
+  checkoutUrl?: string;
+  whatsappNumber?: string;
+  buttonText?: string;
+  stock?: string;
+}
 // --- HELPER: Parse Variants String ---
 const parseVariants = (raw: string) => {
   if (!raw) return [];
@@ -549,12 +569,13 @@ const Shop: React.FC<any> = ({ data, id, isPreview, actorId, portfolioId }) => {
       </div>
 
       {/* Modal won't open in preview mode due to the onClick block above */}
-      <ProductDetailModal
+      <ProductModalContainer
         product={selectedProduct}
         actorId={actorId}
         portfolioId={portfolioId}
         isOpen={!!selectedProduct}
         onClose={() => setSelectedProduct(null)}
+        isPreview={isPreview} // 🚀 ADD THIS LINE!
       />
     </section>
   );

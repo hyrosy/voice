@@ -1,5 +1,3 @@
-// src/pages/PortfolioRenderer.tsx
-
 import React, { useEffect } from "react";
 import { useParams } from "react-router-dom";
 import { PortfolioSection } from "../types/portfolio";
@@ -9,8 +7,9 @@ import {
   THEME_REGISTRY,
   DEFAULT_THEME,
   resolveThemeComponent,
-} from "../themes/registry"; // <--- Import resolver
-import SEO from "../components/common/SEO";
+} from "../themes/registry";
+// 🚀 1. IMPORT HELMET
+import { Helmet, HelmetProvider } from "react-helmet-async";
 import { trackEvent } from "../lib/analytics";
 import { usePortfolio } from "../hooks/usePortfolio";
 
@@ -134,24 +133,28 @@ const PortfolioRenderer: React.FC<PortfolioRendererProps> = ({
   const seoImage = isPreview ? "" : actorProfile?.HeadshotURL || "";
 
   return (
-    <>
+    // 🚀 2. WRAP IN HELMET PROVIDER
+    <HelmetProvider>
       {!isPreview && (
-        <SEO
-          title={seoTitle}
-          description={seoDesc}
-          image={seoImage}
-          type="profile"
-        />
+        <Helmet>
+          <title>{seoTitle}</title>
+          <meta name="description" content={seoDesc} />
+
+          {/* OpenGraph / Social Media Tags */}
+          <meta property="og:title" content={seoTitle} />
+          <meta property="og:description" content={seoDesc} />
+          {seoImage && <meta property="og:image" content={seoImage} />}
+          <meta property="og:type" content="website" />
+          <meta name="twitter:card" content="summary_large_image" />
+        </Helmet>
       )}
 
       <ThemeWrapper theme={portfolio.theme_config}>
         {sections
           .filter((s) => s.isVisible)
           .map((section) => {
-            // 1. Safe Component Lookup via Registry
             const Component = resolveThemeComponent(ActiveTheme, section.type);
 
-            // 2. Graceful Fallback for missing components
             if (!Component) {
               if (isPreview) {
                 return (
@@ -163,13 +166,12 @@ const PortfolioRenderer: React.FC<PortfolioRendererProps> = ({
                   </div>
                 );
               }
-              return null; // On the LIVE site, silently hide broken sections to protect the actor's brand
+              return null;
             }
 
             const zIndexClass =
               section.type === "header" ? "relative z-50" : "relative z-0";
 
-            // 3. Unified Props Object (No more if/else statements!)
             const sectionProps = {
               data: section.data,
               settings: section.settings || {},
@@ -186,7 +188,6 @@ const PortfolioRenderer: React.FC<PortfolioRendererProps> = ({
                 key={section.id}
                 className={cn("scroll-mt-20", zIndexClass)}
               >
-                {/* 4. React Suspense Wrapper for future Lazy Loading */}
                 <React.Suspense
                   fallback={
                     <div className="py-24 flex justify-center">
@@ -200,7 +201,7 @@ const PortfolioRenderer: React.FC<PortfolioRendererProps> = ({
             );
           })}
       </ThemeWrapper>
-    </>
+    </HelmetProvider>
   );
 };
 
