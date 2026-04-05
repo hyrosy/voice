@@ -397,6 +397,7 @@ const PortfolioBuilderPage = () => {
       return data || [];
     },
     enabled: !!activePortfolioId,
+    refetchOnWindowFocus: false, // 🚀 PREVENT RACE CONDITION OVERWRITES
   });
   // --- 1. DATA FETCHING ---
   // --- 1. AAA+ DATA FETCHING (REACT QUERY) ---
@@ -427,7 +428,11 @@ const PortfolioBuilderPage = () => {
   }, [fetchedSiteList]);
 
   // B. Fetch Active Portfolio Data
-  const { data: fetchedPortfolio, isLoading: isPortfolioLoading } = useQuery({
+  const {
+    data: fetchedPortfolio,
+    isLoading: isPortfolioLoading,
+    refetch: fetchPortfolio,
+  } = useQuery({
     queryKey: ["portfolio", actorData?.id, activePortfolioIdParam],
     queryFn: async () => {
       if (!actorData?.id) return null;
@@ -443,12 +448,14 @@ const PortfolioBuilderPage = () => {
       }
 
       const { data, error } = await query.single();
-      if (error && error.code !== "PGRST116") throw error; // Ignore "No rows found" error
+      if (error && error.code !== "PGRST116") throw error;
       return data || null;
     },
     enabled: !!actorData?.id,
+    refetchOnWindowFocus: false, // 🚀 PREVENT RACE CONDITION OVERWRITES
   });
 
+  // C. Sync Fetched Data to Local/Zustand State
   // C. Sync Fetched Data to Local/Zustand State
   useEffect(() => {
     if (isPortfolioLoading) return;
@@ -464,32 +471,39 @@ const PortfolioBuilderPage = () => {
 
       if (fetchedPortfolio.custom_domain) {
         setActiveDomain(fetchedPortfolio.custom_domain);
-        // We will handle the domain checking in the next step!
       } else {
         setActiveDomain("");
         setDomainStatus(null);
       }
 
-      setInitialState(fetchedPortfolio.sections || [], {
-        ...fetchedPortfolio.theme_config,
-        radius: fetchedPortfolio.theme_config?.radius ?? 0.5,
-        buttonStyle: fetchedPortfolio.theme_config?.buttonStyle ?? "solid",
-      });
+      // 🚀 CRITICAL FIX: Only overwrite the visual canvas if we are on the Home Page
+      // AND we haven't started dragging blocks around!
+      if (activePageId === "home" && !hasUnsavedChanges) {
+        setInitialState(fetchedPortfolio.sections || [], {
+          ...fetchedPortfolio.theme_config,
+          radius: fetchedPortfolio.theme_config?.radius ?? 0.5,
+          buttonStyle: fetchedPortfolio.theme_config?.buttonStyle ?? "solid",
+        });
+      }
     } else {
       // No portfolio exists yet for this user
-      setInitialState(DEFAULT_PORTFOLIO_SECTIONS, {
-        templateId: "modern",
-        primaryColor: "violet",
-        font: "sans",
-        radius: 0.5,
-        buttonStyle: "solid",
-      });
+      if (activePageId === "home" && !hasUnsavedChanges) {
+        setInitialState(DEFAULT_PORTFOLIO_SECTIONS, {
+          templateId: "modern",
+          primaryColor: "violet",
+          font: "sans",
+          radius: 0.5,
+          buttonStyle: "solid",
+        });
+      }
     }
-  }, [fetchedPortfolio, isPortfolioLoading, setInitialState]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fetchedPortfolio, isPortfolioLoading]);
 
   // Override old isLoading state
   const isLoading = isPortfolioLoading;
 
+  // --- 2. AAA+ AUTO-SAVE ENGINE ---
   // --- 2. AAA+ AUTO-SAVE ENGINE ---
   // --- 2. AAA+ AUTO-SAVE ENGINE ---
   // --- 2. AAA+ AUTO-SAVE ENGINE ---
@@ -510,7 +524,10 @@ const PortfolioBuilderPage = () => {
           })
           .eq("id", activePortfolioId);
 
-        if (!error) markSaved();
+        if (!error) {
+          markSaved();
+          fetchPortfolio(); // 🚀 SYNC CACHE WITH DB
+        }
       } else {
         // 2. Save to Custom Page (pro_pages table)
         const { error } = await supabase
@@ -524,21 +541,25 @@ const PortfolioBuilderPage = () => {
           .update({ theme_config: themeConfig })
           .eq("id", activePortfolioId);
 
-        if (!error) markSaved();
+        if (!error) {
+          markSaved();
+          fetchCustomPages(); // 🚀 SYNC CACHE: Prevents the "refresh wipe" bug!
+          fetchPortfolio(); // 🚀 SYNC CACHE: Keeps global theme updated!
+        }
       }
 
       setIsSaving(false);
     }, 1500);
 
     return () => clearTimeout(autoSaveTimer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     sections,
     themeConfig,
     hasUnsavedChanges,
     isLoading,
     activePortfolioId,
-    activePageId, // 🚀 CRITICAL: Auto-save now watches which page is active!
-    markSaved,
+    activePageId,
   ]);
 
   // --- 3. AAA+ KEYBOARD SHORTCUTS ---
@@ -669,6 +690,10 @@ const PortfolioBuilderPage = () => {
   // --- ACTIONS (Zustand Connected) ---
   const handleDragEnd = (result: any) => {
     if (!result.destination) return;
+
+    // 🚀 SAFETY CHECK: Don't trigger a save if they dropped it in the same spot!
+    if (result.source.index === result.destination.index) return;
+
     const items = Array.from(sections);
     const [reorderedItem] = items.splice(result.source.index, 1);
     items.splice(result.destination.index, 0, reorderedItem);
@@ -698,28 +723,30 @@ const PortfolioBuilderPage = () => {
     setIsSaving(true);
 
     if (activePageId === "home") {
-      // 1. Save to Home Page (portfolios table)
       await supabase
         .from("portfolios")
         .update({
-          sections: sections, // Save current Zustand sections
+          sections: sections,
           theme_config: themeConfig,
           is_published: isPublished,
           updated_at: new Date().toISOString(),
         })
         .eq("id", activePortfolioId);
+
+      fetchPortfolio(); // 🚀 SYNC CACHE
     } else {
-      // 2. Save to Custom Page (pro_pages table)
       await supabase
         .from("pro_pages")
-        .update({ sections: sections }) // Save current Zustand sections to THIS page
+        .update({ sections: sections })
         .eq("id", activePageId);
 
-      // Note: Theme config is global, so we still save it to the portfolio table
       await supabase
         .from("portfolios")
         .update({ theme_config: themeConfig })
         .eq("id", activePortfolioId);
+
+      fetchCustomPages(); // 🚀 SYNC CACHE
+      fetchPortfolio(); // 🚀 SYNC CACHE
     }
 
     markSaved();

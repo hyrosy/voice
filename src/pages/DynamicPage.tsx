@@ -45,7 +45,7 @@ export default function DynamicPage() {
   const ActiveTheme = THEME_REGISTRY[themeId] || DEFAULT_THEME;
 
   return (
-    <div className="pt-24 pb-12">
+    <div className="flex flex-col flex-grow w-full relative z-0">
       {pageData.sections?.map((section: any) => {
         const Component = resolveThemeComponent(ActiveTheme, section.type);
         if (!Component) return null;
