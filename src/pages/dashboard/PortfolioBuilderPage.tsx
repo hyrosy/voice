@@ -48,6 +48,7 @@ import {
   CloudOff, // <--- ADDED ICONS
   Monitor,
   Tablet,
+  Trash2,
 } from "lucide-react";
 import {
   PortfolioSection,
@@ -148,18 +149,23 @@ const VISUAL_THEMES = [
 ];
 
 // --- NEW AAA+ IFRAME PREVIEW COMPONENT ---
+// --- NEW AAA+ IFRAME PREVIEW COMPONENT ---
 const IframePreview = ({
   sections,
   theme,
   actorId,
   onEditSection,
-  updateSection, // 🚀 1. ADD THIS PROP
+  updateSection,
+  activePageId, // 🚀 1. ADD THIS
+  globalSections, // 🚀 2. ADD THIS
 }: {
   sections: PortfolioSection[];
   theme: any;
   actorId: string;
   onEditSection: (section: PortfolioSection) => void;
-  updateSection: (id: string, updates: Partial<PortfolioSection>) => void; // 🚀 2. TYPE IT
+  updateSection: (id: string, updates: Partial<PortfolioSection>) => void;
+  activePageId: string; // 🚀 1. TYPE THIS
+  globalSections: PortfolioSection[]; // 🚀 2. TYPE THIS
 }) => {
   const iframeRef = React.useRef<HTMLIFrameElement>(null);
   const [viewport, setViewport] = useState<"desktop" | "tablet" | "mobile">(
@@ -168,15 +174,26 @@ const IframePreview = ({
 
   const sendDataToIframe = useCallback(() => {
     if (iframeRef.current && iframeRef.current.contentWindow) {
+      let previewSections = [...sections];
+
+      // 🚀 MAGIC STITCHING: If we are on a custom page, inject the global header and footer!
+      if (activePageId !== "home" && globalSections.length > 0) {
+        const header = globalSections.find((s) => s.type === "header");
+        //const footer = globalSections.find((s) => s.type === "footer");
+
+        if (header && header.isVisible) previewSections.unshift(header);
+        //if (footer && footer.isVisible) previewSections.push(footer);
+      }
+
       iframeRef.current.contentWindow.postMessage(
         {
           type: "UPDATE_PREVIEW",
-          payload: { sections, themeConfig: theme, actorId },
+          payload: { sections: previewSections, themeConfig: theme, actorId },
         },
         "*"
       );
     }
-  }, [sections, theme, actorId]);
+  }, [sections, theme, actorId, activePageId, globalSections]); // <-- Update dependencies!
 
   useEffect(() => {
     sendDataToIframe();
@@ -332,7 +349,55 @@ const PortfolioBuilderPage = () => {
   const [domainStatus, setDomainStatus] = useState<any>(null);
   const [isCheckingDomain, setIsCheckingDomain] = useState(false);
   const [activeDomain, setActiveDomain] = useState("");
+  // --- NEW: PAGE STATE ---
+  const [activePageId, setActivePageId] = useState<string | "home">("home");
+  const [isPageModalOpen, setIsPageModalOpen] = useState(false);
+  const [newPageName, setNewPageName] = useState("");
+  const [isCreatingPage, setIsCreatingPage] = useState(false);
+  const [isDeletingPage, setIsDeletingPage] = useState(false);
 
+  // --- DELETE PAGE LOGIC ---
+  const handleDeletePage = async () => {
+    if (activePageId === "home") return;
+    if (
+      !confirm(
+        "Are you sure you want to delete this page? This cannot be undone."
+      )
+    )
+      return;
+
+    setIsDeletingPage(true);
+    const { error } = await supabase
+      .from("pro_pages")
+      .delete()
+      .eq("id", activePageId);
+
+    setIsDeletingPage(false);
+
+    if (error) {
+      alert("Failed to delete page.");
+      return;
+    }
+
+    // Switch back to the Home page after deletion
+    setActivePageId("home");
+    setInitialState(fetchedPortfolio?.sections || [], themeConfig);
+    await fetchCustomPages();
+  };
+  // --- NEW: FETCH CUSTOM PAGES ---
+  const { data: customPages = [], refetch: fetchCustomPages } = useQuery({
+    queryKey: ["pro_pages", activePortfolioId],
+    queryFn: async () => {
+      if (!activePortfolioId) return [];
+      const { data } = await supabase
+        .from("pro_pages")
+        .select("*")
+        .eq("portfolio_id", activePortfolioId)
+        .order("created_at", { ascending: true });
+      return data || [];
+    },
+    enabled: !!activePortfolioId,
+  });
   // --- 1. DATA FETCHING ---
   // --- 1. AAA+ DATA FETCHING (REACT QUERY) ---
 
@@ -427,30 +492,42 @@ const PortfolioBuilderPage = () => {
 
   // --- 2. AAA+ AUTO-SAVE ENGINE ---
   // --- 2. AAA+ AUTO-SAVE ENGINE ---
+  // --- 2. AAA+ AUTO-SAVE ENGINE ---
   useEffect(() => {
     if (!hasUnsavedChanges || isLoading || !activePortfolioId) return;
 
     const autoSaveTimer = setTimeout(async () => {
       setIsSaving(true);
-      const { error } = await supabase
-        .from("portfolios")
-        .update({
-          sections: sections,
-          theme_config: themeConfig,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", activePortfolioId);
+
+      if (activePageId === "home") {
+        // 1. Save to Home Page (portfolios table)
+        const { error } = await supabase
+          .from("portfolios")
+          .update({
+            sections: sections,
+            theme_config: themeConfig,
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", activePortfolioId);
+
+        if (!error) markSaved();
+      } else {
+        // 2. Save to Custom Page (pro_pages table)
+        const { error } = await supabase
+          .from("pro_pages")
+          .update({ sections: sections })
+          .eq("id", activePageId);
+
+        // Keep the global theme synced
+        await supabase
+          .from("portfolios")
+          .update({ theme_config: themeConfig })
+          .eq("id", activePortfolioId);
+
+        if (!error) markSaved();
+      }
 
       setIsSaving(false);
-
-      if (error) {
-        console.error("Auto-save failed:", error);
-        // Do NOT call markSaved() here.
-        // This leaves hasUnsavedChanges = true, allowing the user to click
-        // the manual Save button or letting it retry on the next edit.
-      } else {
-        markSaved(); // Only clear the dirty state if the DB actually received the data!
-      }
     }, 1500);
 
     return () => clearTimeout(autoSaveTimer);
@@ -460,6 +537,7 @@ const PortfolioBuilderPage = () => {
     hasUnsavedChanges,
     isLoading,
     activePortfolioId,
+    activePageId, // 🚀 CRITICAL: Auto-save now watches which page is active!
     markSaved,
   ]);
 
@@ -618,15 +696,32 @@ const PortfolioBuilderPage = () => {
   const handleManualSave = async () => {
     if (!activePortfolioId) return;
     setIsSaving(true);
-    await supabase
-      .from("portfolios")
-      .update({
-        sections: sections,
-        theme_config: themeConfig,
-        is_published: isPublished,
-        updated_at: new Date().toISOString(),
-      })
-      .eq("id", activePortfolioId);
+
+    if (activePageId === "home") {
+      // 1. Save to Home Page (portfolios table)
+      await supabase
+        .from("portfolios")
+        .update({
+          sections: sections, // Save current Zustand sections
+          theme_config: themeConfig,
+          is_published: isPublished,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", activePortfolioId);
+    } else {
+      // 2. Save to Custom Page (pro_pages table)
+      await supabase
+        .from("pro_pages")
+        .update({ sections: sections }) // Save current Zustand sections to THIS page
+        .eq("id", activePageId);
+
+      // Note: Theme config is global, so we still save it to the portfolio table
+      await supabase
+        .from("portfolios")
+        .update({ theme_config: themeConfig })
+        .eq("id", activePortfolioId);
+    }
+
     markSaved();
     setIsSaving(false);
   };
@@ -682,14 +777,71 @@ const PortfolioBuilderPage = () => {
       setIsCreating(false);
     }
   };
+  const handleCreatePage = async () => {
+    if (!activePortfolioId) return;
+    if (!newPageName.trim()) {
+      alert("Please enter a page name.");
+      return;
+    }
 
+    setIsCreatingPage(true);
+
+    // 🚀 CLEAN SLUG: No more random suffixes!
+    const cleanSlug = newPageName
+      .toLowerCase()
+      .replace(/[^a-z0-9]/g, "-")
+      .replace(/-+/g, "-")
+      .replace(/^-|-$/g, "");
+
+    const { data, error } = await supabase
+      .from("pro_pages")
+      .insert({
+        portfolio_id: activePortfolioId,
+        title: newPageName.trim(),
+        slug: cleanSlug,
+        sections: [],
+      })
+      .select()
+      .single();
+
+    setIsCreatingPage(false);
+
+    if (error) {
+      // 🚀 Handle Duplicate URLs Gracefully
+      if (error.code === "23505") {
+        alert(
+          "A page with this name/URL already exists. Please choose a different name."
+        );
+      } else {
+        alert("Failed to create page. Please try again.");
+      }
+      return;
+    }
+
+    setIsPageModalOpen(false);
+    setNewPageName("");
+    await fetchCustomPages();
+    setActivePageId(data.id);
+    setInitialState([], themeConfig);
+  };
   const saveLabel = (e: React.MouseEvent | React.KeyboardEvent) => {
     e.stopPropagation();
     if (!renamingId) return;
-    updateSection(renamingId, { data: { _label: tempLabel } }); // Triggers Zustand & Auto-save
+    updateSection(renamingId, { data: { _label: tempLabel } });
     setRenamingId(null);
   };
 
+  // 🚀 PASTE IT EXACTLY HERE!
+  // Outside of all other functions, but still inside PortfolioBuilderPage!
+  const activeCustomPage = customPages.find((p) => p.id === activePageId);
+  const liveUrl =
+    activePageId === "home"
+      ? `/pro/${siteIdentity.slug || "portfolio"}`
+      : `/pro/${siteIdentity.slug || "portfolio"}/${
+          activeCustomPage?.slug || ""
+        }`;
+
+  // IT MUST BE RIGHT ABOVE THIS LOADING CHECK:
   if (isLoading || isSubLoading)
     return (
       <div className="flex items-center justify-center min-h-[50vh]">
@@ -701,46 +853,129 @@ const PortfolioBuilderPage = () => {
     // 1. Made it slightly wider (max-w-[1600px]) so the Desktop preview has more breathing room
     <div className="max-w-[1600px] w-full mx-auto flex flex-col pt-20 px-4 lg:px-8 pb-4 lg:pb-6 h-[100dvh]">
       {/* Header / Toolbar (Unchanged) */}
+      {/* Header / Toolbar */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4 shrink-0">
-        <div className="flex flex-col gap-1">
-          <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
-            Editing Site
-          </span>
-          <Select
-            value={activePortfolioId || ""}
-            onValueChange={(val) =>
-              val === "new"
-                ? setIsCreateOpen(true)
-                : navigate(`/dashboard/portfolio?id=${val}`)
-            }
-          >
-            <SelectTrigger className="h-9 border-0 p-0 shadow-none text-2xl md:text-3xl font-bold tracking-tight bg-transparent focus:ring-0 w-auto min-w-[200px] justify-start gap-2">
-              <SelectValue placeholder="Select Site">
-                {siteList.find((s) => s.id === activePortfolioId)?.site_name ||
-                  siteIdentity.name ||
-                  "Untitled Site"}
-              </SelectValue>
-            </SelectTrigger>
-            <SelectContent>
-              {siteList.map((site) => (
+        {/* LEFT SIDE: Site & Page Switchers */}
+        <div className="flex items-end gap-4">
+          <div className="flex flex-col gap-1">
+            <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
+              Editing Site
+            </span>
+            <Select
+              value={activePortfolioId || ""}
+              onValueChange={(val) =>
+                val === "new"
+                  ? setIsCreateOpen(true)
+                  : navigate(`/dashboard/portfolio?id=${val}`)
+              }
+            >
+              <SelectTrigger className="h-9 border-0 p-0 shadow-none text-2xl md:text-3xl font-bold tracking-tight bg-transparent focus:ring-0 w-auto min-w-[200px] justify-start gap-2">
+                <SelectValue placeholder="Select Site">
+                  {siteList.find((s) => s.id === activePortfolioId)
+                    ?.site_name ||
+                    siteIdentity.name ||
+                    "Untitled Site"}
+                </SelectValue>
+              </SelectTrigger>
+              <SelectContent>
+                {siteList.map((site) => (
+                  <SelectItem
+                    key={site.id}
+                    value={site.id}
+                    className="font-medium cursor-pointer"
+                  >
+                    {site.site_name || "Untitled Site"}
+                  </SelectItem>
+                ))}
                 <SelectItem
-                  key={site.id}
-                  value={site.id}
-                  className="font-medium cursor-pointer"
+                  value="new"
+                  className="text-muted-foreground italic border-t mt-1 pt-2"
                 >
-                  {site.site_name || "Untitled Site"}
+                  + Create New Site...
                 </SelectItem>
-              ))}
-              <SelectItem
-                value="new"
-                className="text-muted-foreground italic border-t mt-1 pt-2"
-              >
-                + Create New Site...
-              </SelectItem>
-            </SelectContent>
-          </Select>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* --- PAGE SWITCHER --- */}
+          {activePortfolioId && (
+            <div className="flex flex-col gap-1 border-l pl-4">
+              <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
+                Editing Page
+              </span>
+              <div className="flex items-center gap-2">
+                <Select
+                  value={activePageId}
+                  onValueChange={(val) => {
+                    if (val === "new") {
+                      setIsPageModalOpen(true);
+                    } else {
+                      setActivePageId(val);
+                      if (val === "home") {
+                        setInitialState(
+                          fetchedPortfolio?.sections || [],
+                          themeConfig
+                        );
+                      } else {
+                        const selectedPage = customPages.find(
+                          (p) => p.id === val
+                        );
+                        setInitialState(
+                          selectedPage?.sections || [],
+                          themeConfig
+                        );
+                      }
+                    }
+                  }}
+                >
+                  <SelectTrigger className="h-9 border-0 p-0 shadow-none text-xl font-bold tracking-tight bg-transparent focus:ring-0 w-auto min-w-[150px] justify-start gap-2">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="home" className="font-medium">
+                      Home Page
+                    </SelectItem>
+                    {customPages.map((page) => (
+                      <SelectItem
+                        key={page.id}
+                        value={page.id}
+                        className="font-medium"
+                      >
+                        {page.title} (/{page.slug})
+                      </SelectItem>
+                    ))}
+                    <SelectItem
+                      value="new"
+                      className="text-primary italic border-t mt-1 pt-2"
+                    >
+                      + Add New Page...
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+
+                {/* 🚀 TRASH BUTTON (Only shows on custom pages) */}
+                {activePageId !== "home" && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={handleDeletePage}
+                    disabled={isDeletingPage}
+                    className="h-8 w-8 text-destructive/70 hover:text-destructive hover:bg-destructive/10"
+                    title="Delete Page"
+                  >
+                    {isDeletingPage ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <Trash2 className="w-4 h-4" />
+                    )}
+                  </Button>
+                )}
+              </div>
+            </div>
+          )}
         </div>
 
+        {/* RIGHT SIDE: Controls & Actions */}
         <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto">
           <div className="flex items-center gap-1 border-r pr-3 mr-1">
             <Button
@@ -780,6 +1015,7 @@ const PortfolioBuilderPage = () => {
             <Switch checked={isPublished} onCheckedChange={setIsPublished} />
           </div>
 
+          {/* 🚀 FIXED DIV NESTING HERE */}
           <div className="flex items-center gap-2 ml-auto sm:ml-0">
             {isPublished && (
               <Button
@@ -789,7 +1025,7 @@ const PortfolioBuilderPage = () => {
                 className="px-2 sm:px-4"
               >
                 <a
-                  href={`/pro/${siteIdentity.slug || "portfolio"}`}
+                  href={liveUrl}
                   target="_blank"
                   rel="noreferrer"
                   title="View Live Page"
@@ -1250,6 +1486,8 @@ const PortfolioBuilderPage = () => {
                 actorId={actorData?.id || ""}
                 onEditSection={setEditingSection}
                 updateSection={updateSection} // 🚀 ADD THIS HERE
+                activePageId={activePageId}
+                globalSections={fetchedPortfolio?.sections || []}
               />
             </TabsContent>
           </Tabs>
@@ -1264,6 +1502,8 @@ const PortfolioBuilderPage = () => {
             actorId={actorData?.id || ""}
             onEditSection={setEditingSection}
             updateSection={updateSection} // 🚀 AND ADD THIS HERE
+            activePageId={activePageId}
+            globalSections={fetchedPortfolio?.sections || []}
           />
         </div>
       </div>
@@ -1280,7 +1520,56 @@ const PortfolioBuilderPage = () => {
           themeId={themeConfig.templateId || "modern"}
         />
       )}
-
+      {/* --- CREATE NEW PAGE MODAL --- */}
+      <Dialog open={isPageModalOpen} onOpenChange={setIsPageModalOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Create New Page</DialogTitle>
+            <DialogDescription>
+              Add a new custom page to your website (e.g., About, Tour Dates,
+              Setup).
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4 space-y-4">
+            <div className="space-y-2">
+              <Label>Page Name</Label>
+              <Input
+                placeholder="e.g. Tour Dates"
+                value={newPageName}
+                onChange={(e) => setNewPageName(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") handleCreatePage();
+                }}
+                autoFocus
+              />
+              {newPageName && (
+                <p className="text-xs text-muted-foreground mt-2">
+                  URL will be:{" "}
+                  <span className="font-mono text-primary">
+                    /pro/{siteIdentity.slug || "username"}/
+                    {newPageName
+                      .toLowerCase()
+                      .replace(/[^a-z0-9]/g, "-")
+                      .replace(/-+/g, "-")
+                      .replace(/^-|-$/g, "")}
+                  </span>
+                </p>
+              )}
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsPageModalOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleCreatePage} disabled={isCreatingPage}>
+              {isCreatingPage && (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              )}
+              Create Page
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
       <Dialog open={isSettingsOpen} onOpenChange={setIsSettingsOpen}>
         <DialogContent className="sm:max-w-[500px]">
           {/* ... Dialog Content Unchanged ... */}

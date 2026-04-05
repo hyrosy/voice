@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React, { useEffect, Suspense, lazy } from "react";
 import {
   BrowserRouter as Router,
   Routes,
@@ -6,25 +6,33 @@ import {
   useLocation,
 } from "react-router-dom";
 import emailjs from "@emailjs/browser";
-import Navbar from "./components/Navbar"; // Import Navbar
-import Footer from "./components/Footer"; // Import Footer
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { Loader2 } from "lucide-react";
+import { supabase } from "./supabaseClient";
+
+// --- LAYOUTS & COMPONENTS ---
+import Navbar from "./components/Navbar";
+import Footer from "./components/Footer";
+import ScrollToTop from "./components/ScrollToTop";
+import ProtectedRoute from "./components/ProtectedRoute.tsx";
+
+// --- LAZY LOADED PORTFOLIO ARCHITECTURE (NEW) ---
+const PortfolioLayout = lazy(() => import("./layouts/PortfolioLayout"));
+const PortfolioHome = lazy(() => import("./pages/PortfolioHome"));
+const DynamicPage = lazy(() => import("./pages/DynamicPage"));
+
+// --- LAZY LOADED MAIN PAGES ---
+const HomePage = lazy(() => import("./pages/HomePage"));
+
+// --- STANDARD IMPORTS ---
 import BuilderPreview from "./pages/dashboard/BuilderPreview";
-//import HomePage from './pages/HomePage';
-//import OptInPage from './pages/OptInPage';
-//import ThankYouPage from './pages/ThankYouPage';
 import PortfolioPage from "./pages/PortfolioPage";
 import PrivacyPolicyPage from "./components/PrivacyPolicy.tsx";
-import ContactUsPage from "./pages/ContactUsPage"; // Import the Contact Us page
+import ContactUsPage from "./pages/ContactUsPage";
 import TermsofService from "./components/TermsofService.tsx";
 import TermsandConditions from "./components/TermsandConditions.tsx";
-//import MembersPage from './pages/Members'; // Import MembersPage if needed
-//import CinematoGraphyPage from './pages/CenimatoGraphy.tsx';
-//import CustomizedPackages from './pages/CustomizedPackages.tsx';
-//import SoftwareServicesPage from './pages/SoftwareDev.tsx'
 import VoiceOverLandingPage from "./pages/VoiceOverLandingPage";
-//import MarketingServices from './pages/MarketingServices'
 import ActorProfilePage from "./pages/ActorProfilePage";
-// import ActorAuthPage from './pages/ActorAuthPage.tsx';
 import ActorDashboardPage from "./pages/ActorDashboardPage";
 import ClientOrderPage from "./pages/ClientOrderPage";
 import AdminDashboardPage from "./pages/AdminDashboardPage";
@@ -33,29 +41,27 @@ import ClientDashboardPage from "./pages/ClientDashboardPage";
 import ActorLoginPage from "./pages/ActorLoginPage";
 import ActorSignUpPage from "./pages/ActorSignUpPage";
 import MyShortlistPage from "./pages/MyShortlistPage";
-import ScrollToTop from "./components/ScrollToTop"; // 1. Import the new component
-import { supabase } from "./supabaseClient"; // <-- Import supabase client
-import AdminOrderDetailPage from "./pages/AdminOrderDetailPage"; // <-- Import the new page
-import AdminActorListPage from "./pages/AdminActorListPage"; // <-- Import Actor List
-import AdminClientListPage from "./pages/AdminClientListPage"; // <-- Import Client List
-import CreateProfilePromptPage from "./pages/CreateProfilePromptPage"; // <-- Import new page
-import FavoriteActorsPage from "./pages/FavoriteActorsPage"; // <-- 1. Import the new page
-import MessagesPage from "./pages/MessagesPage"; // <-- Import new page
-// --- NEW: Actor Dashboard Layout & Pages ---
+import AdminOrderDetailPage from "./pages/AdminOrderDetailPage";
+import AdminActorListPage from "./pages/AdminActorListPage";
+import AdminClientListPage from "./pages/AdminClientListPage";
+import CreateProfilePromptPage from "./pages/CreateProfilePromptPage";
+import FavoriteActorsPage from "./pages/FavoriteActorsPage";
+import MessagesPage from "./pages/MessagesPage";
+
+// --- DASHBOARD IMPORTS ---
 import ActorDashboardLayout from "./layouts/ActorDashboardLayout";
 import DashboardOrders from "./pages/dashboard/DashboardOrders";
 import DashboardProfile from "./pages/dashboard/DashboardProfile";
 import DashboardServices from "./pages/dashboard/DashboardServices";
 import DashboardDemos from "./pages/dashboard/DashboardDemos";
 import DashboardLibrary from "./pages/dashboard/DashboardLibrary";
-import ActorEarningsPage from "./pages/dashboard/ActorEarningsPage"; // <-- 1. Import the new page
-import AdminPayoutsPage from "./pages/AdminPayoutsPage"; // <-- 1. Import the new page
-import ActorPayoutSettingsPage from "./pages/dashboard/ActorPayoutSettingsPage"; // <-- 1. Import the new page
+import ActorEarningsPage from "./pages/dashboard/ActorEarningsPage";
+import AdminPayoutsPage from "./pages/AdminPayoutsPage";
+import ActorPayoutSettingsPage from "./pages/dashboard/ActorPayoutSettingsPage";
 import PortfolioBuilderPage from "./pages/dashboard/PortfolioBuilderPage.tsx";
-//import PortfolioRenderer from './pages/PortfolioRenderer'; // <-- Import it
 import AdminDomainListPage from "./pages/AdminDomainListPage";
-import DomainMarketplace from "./pages/marketplace/DomainMarketplace"; // Adjust path
-import DomainCheckout from "./pages/marketplace/DomainCheckout"; // Adjust path
+import DomainMarketplace from "./pages/marketplace/DomainMarketplace";
+import DomainCheckout from "./pages/marketplace/DomainCheckout";
 import DomainThankYouPage from "./pages/marketplace/DomainThankYouPage";
 import AdminDomainOrderDetailPage from "./pages/AdminDomainOrderDetailPage";
 import DomainOrderPage from "./pages/marketplace/DomainOrderPage";
@@ -63,19 +69,12 @@ import AnalyticsPage from "./pages/dashboard/AnalyticsPage.tsx";
 import OrdersPage from "./pages/dashboard/OrdersPage.tsx";
 import LeadsPage from "./pages/dashboard/LeadsPage.tsx";
 import SettingsPage from "./pages/dashboard/SettingsPage";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { Suspense, lazy } from "react";
-import { Loader2 } from "lucide-react"; // Added for the loading spinner
-const HomePage = lazy(() => import("./pages/HomePage"));
-const PortfolioRenderer = lazy(() => import("./pages/PortfolioRenderer"));
+import ProductsPage from "./pages/dashboard/ProductsPage";
+import CollectionsPage from "./pages/dashboard/CollectionsPage";
 
-// Public Pages
+// --- E-COMMERCE PUBLIC PAGES ---
 import PublicProductPage from "./pages/PublicProductPage";
-//import PublicShopPage from "./pages/PublicShopPage"; // Create this later!
-import ProductsPage from "./pages/dashboard/ProductsPage"; // <-- Added this!
-import CollectionsPage from "./pages/dashboard/CollectionsPage"; // Create this later!
 import PublicShopPage from "./pages/PublicShopPage.tsx";
-import ProtectedRoute from "./components/ProtectedRoute.tsx";
 
 // Define main domains globally
 const MAIN_DOMAINS = [
@@ -85,21 +84,6 @@ const MAIN_DOMAINS = [
   "127.0.0.1",
   "sy4pxh-5173.csb.app",
 ];
-
-const DomainAwareHome = () => {
-  const currentHostname = window.location.hostname;
-  const isMainApp = MAIN_DOMAINS.some((domain) =>
-    currentHostname.includes(domain)
-  );
-
-  if (!isMainApp) {
-    // It is a custom domain -> Load Portfolio Renderer
-    return <PortfolioRenderer customDomain={currentHostname} />;
-  }
-
-  // It is the main site -> Load Home Page
-  return <HomePage />;
-};
 
 // Create a React Query client
 const queryClient = new QueryClient({
@@ -111,17 +95,16 @@ const queryClient = new QueryClient({
   },
 });
 
-// --- UPDATED LAYOUT COMPONENT ---
-const Layout = ({ children }: { children: React.ReactNode }) => {
+// --- MAIN WRAPPER LAYOUT COMPONENT ---
+const Layout = ({
+  children,
+  isCustomDomain,
+}: {
+  children: React.ReactNode;
+  isCustomDomain: boolean;
+}) => {
   const location = useLocation();
 
-  // 1. Check if we are on a custom domain (e.g. rajaalemnari.com)
-  const currentHostname = window.location.hostname;
-  const isCustomDomain = !MAIN_DOMAINS.some((domain) =>
-    currentHostname.includes(domain)
-  );
-
-  // 2. Define paths where footer/navbar should hide on the MAIN site
   const hideFooterPaths = [
     "/dashboard",
     "/messages",
@@ -131,12 +114,9 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
     "/builder-preview",
   ];
 
-  const hideNavbarPaths = [
-    "/pro",
-    "/builder-preview", // 🚀 ADD THIS: Hides navbar in the iframe
-  ];
+  const hideNavbarPaths = ["/pro", "/builder-preview"];
 
-  // 3. Logic: Hide if it's a Custom Domain OR if the path matches the list
+  // If on a custom domain, NEVER show the main platform navbar/footer!
   const shouldHideFooter =
     isCustomDomain ||
     hideFooterPaths.some((path) => location.pathname.startsWith(path));
@@ -147,11 +127,9 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
   return (
     <>
       {!shouldHideNavbar && <Navbar />}
-
       <main className={`flex-grow ${shouldHideNavbar ? "" : "pt-0"}`}>
         {children}
       </main>
-
       {!shouldHideFooter && <Footer />}
     </>
   );
@@ -173,145 +151,202 @@ function App() {
     };
   }, []);
 
+  // 🚀 CUSTOM DOMAIN ROUTING LOGIC
+  const currentHostname = window.location.hostname;
+  const isCustomDomain = !MAIN_DOMAINS.some((domain) =>
+    currentHostname.includes(domain)
+  );
+
   return (
     <QueryClientProvider client={queryClient}>
       <Router>
         <ScrollToTop />
         <main className="flex-grow">
-          <Layout>
-            {/* Added Suspense Wrapper for Lazy Loading */}
+          <Layout isCustomDomain={isCustomDomain}>
             <Suspense
               fallback={
-                <div className="h-screen flex items-center justify-center">
+                <div className="h-screen flex items-center justify-center bg-neutral-950">
                   <Loader2 className="animate-spin w-10 h-10 text-primary" />
                 </div>
               }
             >
               <Routes>
-                {/* Public Routes */}
-                <Route path="/" element={<DomainAwareHome />} />
-                <Route path="/my-favorites" element={<FavoriteActorsPage />} />
-                <Route path="/Voiceover" element={<VoiceOverLandingPage />} />
-                <Route path="/portfolio" element={<PortfolioPage />} />
-                <Route path="/privacy-policy" element={<PrivacyPolicyPage />} />
-                <Route path="/terms-of-service" element={<TermsofService />} />
-                <Route
-                  path="/terms-of-conditions"
-                  element={<TermsandConditions />}
-                />
-                <Route path="/contact" element={<ContactUsPage />} />
-                <Route path="/pro/:slug" element={<PortfolioRenderer />} />
+                {/* ========================================= */}
+                {/* 🚀 ROUTE SPLIT A: CUSTOM DOMAIN VISITORS  */}
+                {/* ========================================= */}
+                {isCustomDomain ? (
+                  <Route
+                    path="/"
+                    element={<PortfolioLayout customDomain={currentHostname} />}
+                  >
+                    <Route index element={<PortfolioHome />} />
+                    <Route path="shop" element={<PublicShopPage />} />
+                    <Route
+                      path="product/:productSlug"
+                      element={<PublicProductPage />}
+                    />
 
-                {/* --- NEW PUBLIC E-COMMERCE ROUTES --- */}
-                <Route
-                  path="/pro/:slug/product/:productSlug"
-                  element={<PublicProductPage />}
-                />
-                <Route path="/pro/:slug/shop" element={<PublicShopPage />} />
-                {/* 2. For custom domains (rajaalemnari.com/product/slug) */}
-                <Route
-                  path="/product/:productSlug"
-                  element={<PublicProductPage />}
-                />
-                <Route path="/shop" element={<PublicShopPage />} />
-                {/* Actor/User Routes */}
-                <Route
-                  path="/actor/:actorName"
-                  element={<ActorProfilePage />}
-                />
-                <Route path="/dashboard" element={<ActorDashboardPage />} />
-                <Route path="/order/:orderId" element={<ClientOrderPage />} />
-                <Route path="/actor-login" element={<ActorLoginPage />} />
-                <Route path="/actor-signup" element={<ActorSignUpPage />} />
-                <Route path="/my-shortlist" element={<MyShortlistPage />} />
-                <Route path="/messages" element={<MessagesPage />} />
-                <Route
-                  path="/messages/:conversationId"
-                  element={<MessagesPage />}
-                />
-                <Route
-                  path="/create-profile"
-                  element={<CreateProfilePromptPage />}
-                />
+                    {/* The Magic Catch-All for Custom Pages! */}
+                    <Route path=":pageSlug" element={<DynamicPage />} />
+                  </Route>
+                ) : (
+                  /* ========================================= */
+                  /* 🚀 ROUTE SPLIT B: MAIN PLATFORM VISITORS  */
+                  /* ========================================= */
+                  <>
+                    <Route path="/" element={<HomePage />} />
 
-                {/* Client Routes */}
-                <Route path="/client-auth" element={<ClientAuthPage />} />
-                <Route
-                  path="/client-dashboard"
-                  element={<ClientDashboardPage />}
-                />
+                    {/* PUBLIC PLATFORM ROUTES */}
+                    <Route
+                      path="/my-favorites"
+                      element={<FavoriteActorsPage />}
+                    />
+                    <Route
+                      path="/Voiceover"
+                      element={<VoiceOverLandingPage />}
+                    />
+                    <Route path="/portfolio" element={<PortfolioPage />} />
+                    <Route
+                      path="/privacy-policy"
+                      element={<PrivacyPolicyPage />}
+                    />
+                    <Route
+                      path="/terms-of-service"
+                      element={<TermsofService />}
+                    />
+                    <Route
+                      path="/terms-of-conditions"
+                      element={<TermsandConditions />}
+                    />
+                    <Route path="/contact" element={<ContactUsPage />} />
 
-                {/* Admin Routes */}
-                <Route element={<ProtectedRoute allowedRoles={["admin"]} />}>
-                  <Route path="/admin" element={<AdminDashboardPage />} />
-                  <Route
-                    path="/admin/order/:orderId"
-                    element={<AdminOrderDetailPage />}
-                  />
-                  <Route
-                    path="/admin/actors"
-                    element={<AdminActorListPage />}
-                  />
-                  <Route
-                    path="/admin/clients"
-                    element={<AdminClientListPage />}
-                  />
-                  <Route
-                    path="/admin/domains"
-                    element={<AdminDomainListPage />}
-                  />
-                  <Route
-                    path="/admin/domains/order/:id"
-                    element={<AdminDomainOrderDetailPage />}
-                  />
-                  <Route path="/admin/payouts" element={<AdminPayoutsPage />} />
-                </Route>
+                    {/* 🚀 /PRO/:SLUG ROUTES (With Layout Wrapper!) */}
+                    <Route path="/pro/:slug" element={<PortfolioLayout />}>
+                      <Route index element={<PortfolioHome />} />
+                      <Route path="shop" element={<PublicShopPage />} />
+                      <Route
+                        path="product/:productSlug"
+                        element={<PublicProductPage />}
+                      />
 
-                {/* Marketplace Routes */}
-                <Route
-                  path="/marketplace/domains"
-                  element={<DomainMarketplace />}
-                />
-                <Route
-                  path="/marketplace/domains/:id/checkout"
-                  element={<DomainCheckout />}
-                />
-                <Route
-                  path="/marketplace/order/:id/thank-you"
-                  element={<DomainThankYouPage />}
-                />
-                <Route
-                  path="/marketplace/order/:id/status"
-                  element={<DomainOrderPage />}
-                />
+                      {/* The Magic Catch-All for Custom Pages! */}
+                      <Route path=":pageSlug" element={<DynamicPage />} />
+                    </Route>
 
-                <Route path="/builder-preview" element={<BuilderPreview />} />
+                    {/* AUTH & PROFILES */}
+                    <Route
+                      path="/actor/:actorName"
+                      element={<ActorProfilePage />}
+                    />
+                    <Route path="/actor-login" element={<ActorLoginPage />} />
+                    <Route path="/actor-signup" element={<ActorSignUpPage />} />
+                    <Route
+                      path="/create-profile"
+                      element={<CreateProfilePromptPage />}
+                    />
 
-                {/* Dashboard Layout Routes */}
-                <Route path="/dashboard" element={<ActorDashboardLayout />}>
-                  <Route index element={<DashboardOrders />} />
-                  <Route path="profile" element={<DashboardProfile />} />
-                  <Route path="messages" element={<MessagesPage />} />
-                  <Route
-                    path="messages/:conversationId"
-                    element={<MessagesPage />}
-                  />
-                  <Route path="services" element={<DashboardServices />} />
-                  <Route path="demos" element={<DashboardDemos />} />
-                  <Route path="library" element={<DashboardLibrary />} />
-                  <Route path="earnings" element={<ActorEarningsPage />} />
-                  <Route
-                    path="payout-settings"
-                    element={<ActorPayoutSettingsPage />}
-                  />
-                  <Route path="Portfolio" element={<PortfolioBuilderPage />} />
-                  <Route path="analytics" element={<AnalyticsPage />} />
-                  <Route path="Orders" element={<OrdersPage />} />
-                  <Route path="leads" element={<LeadsPage />} />
-                  <Route path="settings" element={<SettingsPage />} />
-                  <Route path="products" element={<ProductsPage />} />
-                  <Route path="collections" element={<CollectionsPage />} />
-                </Route>
+                    {/* CLIENT ROUTES */}
+                    <Route path="/client-auth" element={<ClientAuthPage />} />
+                    <Route
+                      path="/client-dashboard"
+                      element={<ClientDashboardPage />}
+                    />
+                    <Route
+                      path="/order/:orderId"
+                      element={<ClientOrderPage />}
+                    />
+
+                    {/* MESSAGES & TOOLS */}
+                    <Route path="/my-shortlist" element={<MyShortlistPage />} />
+                    <Route path="/messages" element={<MessagesPage />} />
+                    <Route
+                      path="/messages/:conversationId"
+                      element={<MessagesPage />}
+                    />
+                    <Route
+                      path="/builder-preview"
+                      element={<BuilderPreview />}
+                    />
+
+                    {/* ACTOR DASHBOARD */}
+                    <Route path="/dashboard" element={<ActorDashboardLayout />}>
+                      <Route index element={<DashboardOrders />} />
+                      <Route path="profile" element={<DashboardProfile />} />
+                      <Route path="messages" element={<MessagesPage />} />
+                      <Route
+                        path="messages/:conversationId"
+                        element={<MessagesPage />}
+                      />
+                      <Route path="services" element={<DashboardServices />} />
+                      <Route path="demos" element={<DashboardDemos />} />
+                      <Route path="library" element={<DashboardLibrary />} />
+                      <Route path="earnings" element={<ActorEarningsPage />} />
+                      <Route
+                        path="payout-settings"
+                        element={<ActorPayoutSettingsPage />}
+                      />
+                      <Route
+                        path="Portfolio"
+                        element={<PortfolioBuilderPage />}
+                      />
+                      <Route path="analytics" element={<AnalyticsPage />} />
+                      <Route path="Orders" element={<OrdersPage />} />
+                      <Route path="leads" element={<LeadsPage />} />
+                      <Route path="settings" element={<SettingsPage />} />
+                      <Route path="products" element={<ProductsPage />} />
+                      <Route path="collections" element={<CollectionsPage />} />
+                    </Route>
+
+                    {/* ADMIN ROUTES */}
+                    <Route
+                      element={<ProtectedRoute allowedRoles={["admin"]} />}
+                    >
+                      <Route path="/admin" element={<AdminDashboardPage />} />
+                      <Route
+                        path="/admin/order/:orderId"
+                        element={<AdminOrderDetailPage />}
+                      />
+                      <Route
+                        path="/admin/actors"
+                        element={<AdminActorListPage />}
+                      />
+                      <Route
+                        path="/admin/clients"
+                        element={<AdminClientListPage />}
+                      />
+                      <Route
+                        path="/admin/domains"
+                        element={<AdminDomainListPage />}
+                      />
+                      <Route
+                        path="/admin/domains/order/:id"
+                        element={<AdminDomainOrderDetailPage />}
+                      />
+                      <Route
+                        path="/admin/payouts"
+                        element={<AdminPayoutsPage />}
+                      />
+                    </Route>
+
+                    {/* MARKETPLACE ROUTES */}
+                    <Route
+                      path="/marketplace/domains"
+                      element={<DomainMarketplace />}
+                    />
+                    <Route
+                      path="/marketplace/domains/:id/checkout"
+                      element={<DomainCheckout />}
+                    />
+                    <Route
+                      path="/marketplace/order/:id/thank-you"
+                      element={<DomainThankYouPage />}
+                    />
+                    <Route
+                      path="/marketplace/order/:id/status"
+                      element={<DomainOrderPage />}
+                    />
+                  </>
+                )}
               </Routes>
             </Suspense>
           </Layout>
