@@ -36,6 +36,7 @@ export const ThemeWrapper = ({
       : theme?.font === "mono"
       ? "font-mono"
       : "font-sans";
+
   const activeColorObj =
     COLOR_PALETTES.find((c) => c.id === theme?.primaryColor) ||
     COLOR_PALETTES[0];
@@ -48,10 +49,19 @@ export const ThemeWrapper = ({
     "--radius": `${radiusVal * 2}rem`,
   } as React.CSSProperties;
 
+  // 🚀 MAGIC THEME CHECK: If it's Modern or Cinematic, force AAA+ Dark Mode globally!
+  const isDarkTheme =
+    !theme?.templateId ||
+    theme?.templateId === "modern" ||
+    theme?.templateId === "cinematic";
+
   return (
     <div
       className={cn(
-        "min-h-screen bg-background text-foreground subpixel-antialiased",
+        "min-h-screen flex flex-col w-full subpixel-antialiased",
+        isDarkTheme
+          ? "bg-neutral-950 text-white"
+          : "bg-background text-foreground",
         fontClass
       )}
       data-theme={theme?.templateId}

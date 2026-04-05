@@ -95,21 +95,22 @@ const AVAILABLE_BLOCKS: {
   label: string;
   module?: "shop" | "appointments";
 }[] = [
-  { type: "header", label: "Header / Navbar" },
-  { type: "hero", label: "Hero Section" },
-  { type: "about", label: "About Me" },
-  { type: "shop", label: "Shop / Products", module: "shop" },
-  { type: "dynamic_store", label: "E-commerce Store", module: "shop" },
-  { type: "services_showcase", label: "Services" },
+  { type: "header", label: "Header" },
+  { type: "hero", label: "Hero" },
+  { type: "about", label: "About" },
+  { type: "shop", label: "Quick Shop", module: "shop" },
+  { type: "dynamic_store", label: "E-commerce", module: "shop" },
   { type: "gallery", label: "Gallery" },
   { type: "image_slider", label: "Image Slider" },
   { type: "video_slider", label: "Video Slider" },
-  { type: "stats", label: "Statistics" },
-  { type: "reviews", label: "Reviews" },
   { type: "contact", label: "Contact Form" },
+  { type: "lead_form", label: "LeadForm" },
+  { type: "map", label: "Map" },
   { type: "team", label: "Team" },
   { type: "pricing", label: "Pricing" },
-  { type: "lead_form", label: "LeadForm" },
+  { type: "stats", label: "Statistics" },
+  { type: "reviews", label: "Reviews" },
+  { type: "services_showcase", label: "Services" },
 ];
 
 const LOCAL_FONT_OPTIONS = [
@@ -148,7 +149,6 @@ const VISUAL_THEMES = [
   },
 ];
 
-// --- NEW AAA+ IFRAME PREVIEW COMPONENT ---
 // --- NEW AAA+ IFRAME PREVIEW COMPONENT ---
 const IframePreview = ({
   sections,
