@@ -1,5 +1,22 @@
 {
   "rewrites": [
-    { "source": "/(.*)", "destination": "/" }
+    {
+      "source": "/(.*)",
+      "has": [
+        {
+          "type": "host",
+          "value": "(?!localhost|ucpmaroc\\.com|www\\.ucpmaroc\\.com).*"
+        }
+      ],
+      "destination": "/api/edge-seo"
+    },
+    {
+      "source": "/pro/:slug",
+      "destination": "/api/edge-seo?slug=:slug"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
   ]
 }

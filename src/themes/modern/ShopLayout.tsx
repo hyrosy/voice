@@ -16,42 +16,48 @@ export default function ModernShopLayout({
   filteredProducts,
 }: ShopLayoutProps) {
   return (
-    <div className="min-h-screen bg-background text-foreground font-sans selection:bg-primary selection:text-primary-foreground">
+    <div className="min-h-screen bg-neutral-950 text-white font-sans selection:bg-primary selection:text-black pt-20">
       {/* SHOP HEADER */}
-      <header className="bg-muted/30 border-b border-border pt-20 pb-12 px-6 text-center">
-        <h1 className="text-4xl md:text-5xl font-bold tracking-tight mb-4">
-          Shop
-        </h1>
-        <p className="text-muted-foreground max-w-lg mx-auto">
-          Browse our latest products, digital downloads, and exclusive services.
-        </p>
+      <header className="bg-neutral-900/30 border-b border-white/10 pt-20 pb-12 px-6 text-center relative overflow-hidden">
+        {/* Subtle background glow */}
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-1/2 h-full bg-primary/5 blur-[100px] rounded-full pointer-events-none" />
+
+        <div className="relative z-10">
+          <h1 className="text-4xl md:text-5xl font-bold tracking-tight mb-4 text-white">
+            Shop
+          </h1>
+          <p className="text-neutral-400 max-w-lg mx-auto text-lg">
+            Browse our latest products, digital downloads, and exclusive
+            services.
+          </p>
+        </div>
       </header>
 
-      <main className="max-w-7xl mx-auto px-4 md:px-8 py-12 flex flex-col md:flex-row gap-8 items-start">
+      <main className="max-w-7xl mx-auto px-4 md:px-8 py-12 flex flex-col md:flex-row gap-8 items-start relative z-10">
         {/* LEFT SIDEBAR: FILTERS */}
         <aside className="w-full md:w-64 flex-shrink-0 md:sticky md:top-24 space-y-8">
           <div className="relative">
-            <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+            <Search className="absolute left-3 top-3.5 h-4 w-4 text-neutral-500" />
             <Input
               placeholder="Search products..."
-              className="pl-9 bg-background border-border"
+              className="pl-10 bg-black/50 border-white/10 text-white placeholder:text-neutral-500 focus:border-primary/50 transition-colors h-11 rounded-xl"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
           </div>
 
           <div className="hidden md:block">
-            <h3 className="text-sm font-bold uppercase tracking-widest text-muted-foreground mb-4">
+            <h3 className="text-xs font-bold uppercase tracking-widest text-neutral-500 mb-4 px-3">
               Collections
             </h3>
-            <div className="flex flex-col space-y-2">
+            <div className="flex flex-col space-y-1">
               <button
                 onClick={() => setActiveCollection(null)}
                 className={cn(
-                  "text-left px-3 py-2 rounded-lg text-sm transition-colors",
+                  "text-left px-4 py-2.5 rounded-xl text-sm transition-all duration-200",
                   activeCollection === null
-                    ? "bg-primary/10 text-primary font-semibold"
-                    : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                    ? "bg-primary/10 text-primary font-bold border border-primary/20"
+                    : "text-neutral-400 hover:bg-white/5 hover:text-white border border-transparent"
                 )}
               >
                 All Products
@@ -61,10 +67,10 @@ export default function ModernShopLayout({
                   key={c.id}
                   onClick={() => setActiveCollection(c.id)}
                   className={cn(
-                    "text-left px-3 py-2 rounded-lg text-sm transition-colors",
+                    "text-left px-4 py-2.5 rounded-xl text-sm transition-all duration-200",
                     activeCollection === c.id
-                      ? "bg-primary/10 text-primary font-semibold"
-                      : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                      ? "bg-primary/10 text-primary font-bold border border-primary/20"
+                      : "text-neutral-400 hover:bg-white/5 hover:text-white border border-transparent"
                   )}
                 >
                   {c.title}
@@ -78,10 +84,10 @@ export default function ModernShopLayout({
             <Badge
               variant={activeCollection === null ? "default" : "outline"}
               className={cn(
-                "cursor-pointer px-4 py-2 text-sm whitespace-nowrap",
+                "cursor-pointer px-5 py-2.5 text-sm whitespace-nowrap rounded-full transition-all",
                 activeCollection === null
-                  ? ""
-                  : "text-muted-foreground border-border"
+                  ? "bg-primary text-black hover:bg-primary/90 font-bold"
+                  : "text-neutral-400 border-white/10 hover:bg-white/5 hover:text-white"
               )}
               onClick={() => setActiveCollection(null)}
             >
@@ -92,10 +98,10 @@ export default function ModernShopLayout({
                 key={c.id}
                 variant={activeCollection === c.id ? "default" : "outline"}
                 className={cn(
-                  "cursor-pointer px-4 py-2 text-sm whitespace-nowrap",
+                  "cursor-pointer px-5 py-2.5 text-sm whitespace-nowrap rounded-full transition-all",
                   activeCollection === c.id
-                    ? ""
-                    : "text-muted-foreground border-border"
+                    ? "bg-primary text-black hover:bg-primary/90 font-bold"
+                    : "text-neutral-400 border-white/10 hover:bg-white/5 hover:text-white"
                 )}
                 onClick={() => setActiveCollection(c.id)}
               >
@@ -108,11 +114,14 @@ export default function ModernShopLayout({
         {/* RIGHT CONTENT: PRODUCT GRID */}
         <div className="flex-1 w-full">
           {filteredProducts.length === 0 ? (
-            <div className="text-center py-24 border border-dashed border-border rounded-2xl bg-muted/10">
-              <ShoppingBag className="w-12 h-12 mx-auto text-muted-foreground mb-4 opacity-50" />
-              <h3 className="text-xl font-bold mb-2">No products found</h3>
-              <p className="text-muted-foreground">
-                Try adjusting your search or selecting a different collection.
+            <div className="text-center py-24 border-2 border-dashed border-white/10 rounded-2xl bg-neutral-900/30">
+              <ShoppingBag className="w-16 h-16 mx-auto text-neutral-600 mb-4 opacity-50" />
+              <h3 className="text-2xl font-bold mb-2 text-white">
+                No products found
+              </h3>
+              <p className="text-neutral-400 max-w-sm mx-auto">
+                Try adjusting your search or selecting a different collection to
+                find what you're looking for.
               </p>
             </div>
           ) : (
@@ -121,36 +130,36 @@ export default function ModernShopLayout({
                 <Link
                   key={product.id}
                   to={`/${username}/product/${product.slug || product.id}`}
-                  className="group flex flex-col bg-card border border-border rounded-2xl overflow-hidden hover:border-primary/50 hover:shadow-lg transition-all duration-300"
+                  className="group flex flex-col bg-neutral-900/50 border border-white/10 rounded-2xl overflow-hidden hover:border-primary/50 hover:shadow-[0_0_30px_rgba(var(--primary),0.1)] transition-all duration-300"
                 >
-                  <div className="aspect-[4/3] bg-muted relative overflow-hidden">
+                  <div className="aspect-[4/3] bg-black/50 relative overflow-hidden">
                     {product.images?.[0] ? (
                       <img
                         src={product.images[0]}
                         alt={product.title}
-                        className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                        className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
                       />
                     ) : (
-                      <div className="w-full h-full flex items-center justify-center text-muted-foreground">
-                        <ShoppingBag size={40} opacity={0.5} />
+                      <div className="w-full h-full flex items-center justify-center text-neutral-700">
+                        <ShoppingBag size={48} opacity={0.5} />
                       </div>
                     )}
                     <div className="absolute top-3 right-3 flex flex-col gap-2 items-end">
-                      <Badge className="bg-background/80 backdrop-blur-md text-foreground border-border font-bold">
+                      <Badge className="bg-black/70 backdrop-blur-md text-white border-white/10 font-bold px-3 py-1 text-sm shadow-xl">
                         ${product.price.toFixed(2)}
                       </Badge>
                     </div>
                   </div>
-                  <div className="p-5 flex flex-col flex-1">
+                  <div className="p-6 flex flex-col flex-1">
                     {product.pro_collections?.title && (
-                      <span className="text-[10px] uppercase tracking-widest text-primary font-bold mb-2">
+                      <span className="text-[10px] uppercase tracking-widest text-primary font-bold mb-3 block">
                         {product.pro_collections.title}
                       </span>
                     )}
-                    <h3 className="font-bold text-lg leading-tight mb-2 group-hover:text-primary transition-colors line-clamp-2">
+                    <h3 className="font-bold text-xl leading-tight mb-2 group-hover:text-primary transition-colors text-white line-clamp-2">
                       {product.title}
                     </h3>
-                    <p className="text-sm text-muted-foreground line-clamp-2 mt-auto">
+                    <p className="text-sm text-neutral-400 line-clamp-2 mt-auto leading-relaxed">
                       {product.description}
                     </p>
                   </div>
