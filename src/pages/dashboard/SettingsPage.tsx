@@ -1,19 +1,18 @@
 import React, { useEffect, useState } from 'react';
 import { supabase } from '../../supabaseClient';
-import { useOutletContext } from 'react-router-dom';
+import { useOutletContext, useSearchParams, useNavigate } from 'react-router-dom';
 import { ActorDashboardContextType } from '../../layouts/ActorDashboardLayout';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Loader2, Globe, User, Plus, ExternalLink, LayoutTemplate, Check, CreditCard, ArrowUpRight, Coins, Gift, AlertTriangle, CalendarDays, Clock, Trash2, Sparkles, MessageCircle, Star, ShoppingCart, Zap, Box, X } from 'lucide-react';
+import { Loader2, Globe, User, Plus, ExternalLink, LayoutTemplate, Check, CheckCircle2, CreditCard, ArrowUpRight, Coins, Gift, AlertTriangle, CalendarDays, Clock, Trash2, Sparkles, MessageCircle, Star, ShoppingCart, Zap, Box, X } from 'lucide-react';
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { PORTFOLIO_TEMPLATES } from '../../lib/templates';
 import { cn } from "@/lib/utils";
 import { NotificationContainer, Notification } from '@/components/ui/NotificationToast';
-// 1. IMPORT THE CONTEXT
 import { useSubscription } from '../../context/SubscriptionContext';
 
 type PlanDuration = 1 | 3 | 6 | 12;
@@ -22,7 +21,6 @@ type PlanDuration = 1 | 3 | 6 | 12;
 
 const SLOT_COST = 500; // Cost in coins to buy 1 extra site slot
 
-// 2. RENAMED PLANS (Starter / eCommerce / Pro)
 const PLANS = [
     { 
         id: 'starter', 
@@ -38,7 +36,7 @@ const PLANS = [
         }
     },
     { 
-        id: 'ecommerce', // Was 'pro'
+        id: 'ecommerce',
         tier: 2, 
         name: 'eCommerce', 
         popular: true, 
@@ -52,7 +50,7 @@ const PLANS = [
         }
     },
     { 
-        id: 'pro', // Was 'agency'
+        id: 'pro',
         tier: 3, 
         name: 'Pro', 
         description: 'Ultimate power and storage.',
@@ -77,8 +75,12 @@ const COIN_PACKS = [
 
 const SettingsPage = () => {
   const { actorData } = useOutletContext<ActorDashboardContextType>();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const navigate = useNavigate();
   
-  // 3. USE CONTEXT
+  // URL-Driven Sub Navigation
+  const activeTab = searchParams.get('tab') || 'websites';
+
   const { plan: currentPlanId, siteSlots, refreshSubscription, isLoading: isSubLoading } = useSubscription();
 
   const [loading, setLoading] = useState(true);
@@ -96,6 +98,7 @@ const SettingsPage = () => {
   const [isTopUpOpen, setIsTopUpOpen] = useState(false); 
   const [isUpgradeOpen, setIsUpgradeOpen] = useState(false); 
   const [selectedPortfolioId, setSelectedPortfolioId] = useState<string | null>(null); 
+  const [isConnectingStripe, setIsConnectingStripe] = useState(false); // 🚀 STRIPE STATE
   
   // Delete State
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
@@ -217,9 +220,31 @@ const SettingsPage = () => {
     };
   };
 
+  // --- STRIPE CONNECT LOGIC ---
+ // --- STRIPE CONNECT LOGIC ---
+ const handleConnectStripe = async () => {
+    if (!actorData?.id) return;
+    setIsConnectingStripe(true);
+    try {
+        const { data, error } = await supabase.functions.invoke('stripe-connect', {
+            body: {
+                actorId: actorData.id, // 🚀 1. THIS IS THE MISSING PIECE!
+                portfolioId: selectedPortfolioId || null, // 🚀 2. Add this so site-specific overrides work!
+                returnUrl: window.location.origin + '/dashboard/settings?tab=payments',
+            }
+        });
+        if (error) throw error;
+        if (data?.url) {
+            window.location.href = data.url;
+        }
+    } catch (err: any) {
+        notify('error', 'Stripe Error', err.message);
+        setIsConnectingStripe(false);
+    }
+};
+
   // --- ACTIONS ---
 
-  // 4. NEW: HANDLE BUY SLOT
   const handleBuySlot = () => {
       if (walletBalance < SLOT_COST) {
           openConfirmation(
@@ -239,7 +264,6 @@ const SettingsPage = () => {
           </div>,
           async () => {
               setConfirmDialog(null);
-              // Call the RPC function we created
               const { data, error } = await supabase.rpc('buy_portfolio_slot', { 
                   p_actor_id: actorData.id, 
                   p_cost: SLOT_COST 
@@ -249,7 +273,6 @@ const SettingsPage = () => {
                   notify('error', "Purchase Failed", data?.message || error?.message);
               } else {
                   notify('success', "Slot Purchased", "You can now create another website.");
-                  // Refresh EVERYTHING
                   await refreshSubscription();
                   await fetchData();
               }
@@ -262,10 +285,8 @@ const SettingsPage = () => {
       if (!newSiteName.trim()) { notify('error', "Missing Name", "Please enter a site name"); return; }
       if (!actorData?.id) return;
 
-      // 5. CHECK SLOTS BEFORE CREATING
       if (siteSlots.remaining <= 0) {
           notify('error', "No Slots Available", "You have used all your portfolio slots.");
-          // Optionally auto-trigger the buy flow here
           handleBuySlot();
           return;
       }
@@ -290,7 +311,7 @@ const SettingsPage = () => {
           setIsCreateOpen(false); 
           setNewSiteName(""); 
           fetchData();
-          refreshSubscription(); // Update usage count
+          refreshSubscription();
       }
       setIsCreating(false);
   };
@@ -314,7 +335,7 @@ const SettingsPage = () => {
         setIsDeleteOpen(false);
         setDeleteConfirmationName("");
         fetchData();
-        refreshSubscription(); // Release slot
+        refreshSubscription();
     }
     setIsDeleting(false);
   };
@@ -334,7 +355,6 @@ const SettingsPage = () => {
       
       const calc = calculateProration(plan.id);
 
-      // LOGIC A: DOWNGRADE
       if (calc.isDowngrade) {
           const sub = subscriptions[selectedPortfolioId];
           const endDate = sub ? new Date(sub.current_period_end).toLocaleDateString() : 'cycle end';
@@ -368,7 +388,6 @@ const SettingsPage = () => {
           return;
       }
 
-      // LOGIC B: UPGRADE
       const costToPay = calc.cost || 0;
       if (walletBalance < costToPay) {
           openConfirmation(
@@ -457,7 +476,7 @@ const SettingsPage = () => {
   const handleManageStripeSub = async () => {
       if (!actorData?.id) return;
       setIsRedirecting(true);
-      const { data, error } = await supabase.functions.invoke('create-portal-session', { body: { returnUrl: window.location.origin + '/dashboard/settings' } });
+      const { data, error } = await supabase.functions.invoke('create-portal-session', { body: { returnUrl: window.location.origin + '/dashboard/settings?tab=billing' } });
       if (error || !data?.url) { notify('error', "Portal Error", "Could not load billing portal."); setIsRedirecting(false); }
       else window.location.href = data.url;
   };
@@ -471,8 +490,8 @@ const SettingsPage = () => {
               amount: pack.cost * 100, 
               name: `${pack.coins} UCP Coins`,
               metadata: { type: 'top_up', actor_id: actorData.id, coins_amount: pack.coins },
-              successUrl: window.location.origin + '/dashboard/settings?topup=success',
-              cancelUrl: window.location.origin + '/dashboard/settings?topup=canceled'
+              successUrl: window.location.origin + '/dashboard/settings?tab=billing&topup=success',
+              cancelUrl: window.location.origin + '/dashboard/settings?tab=billing&topup=canceled'
           }
       });
       if (error || !data?.url) { notify('error', "Checkout Failed", "Could not start payment session."); setIsRedirecting(false); }
@@ -513,18 +532,15 @@ const SettingsPage = () => {
       {/* --- HEADER SECTION --- */}
       <div className="px-4 pt-6 pb-2 md:pt-12 md:pb-8 md:px-8 max-w-6xl mx-auto space-y-6">
         
-        {/* Title & Subtitle */}
         <div className="flex flex-col md:flex-row justify-between md:items-end gap-4 pt-20">
             <div className="space-y-1">
-                <h1 className="text-2xl md:text-4xl font-black tracking-tight text-foreground">Settings & Billing</h1>
-                <p className="text-muted-foreground text-base md:text-lg">Manage your digital presence.</p>
+                <h1 className="text-2xl md:text-4xl font-black tracking-tight text-foreground">Settings Hub</h1>
+                <p className="text-muted-foreground text-base md:text-lg">Manage your sites, billing, and payouts.</p>
             </div>
         </div>
         
-        {/* --- STATS WIDGETS (Grid on Mobile for Native Feel) --- */}
+        {/* --- STATS WIDGETS --- */}
         <div className="grid grid-cols-2 md:flex md:flex-wrap items-stretch gap-3">
-            
-            {/* SITE SLOTS WIDGET */}
             <div className="col-span-1 md:w-auto flex flex-col justify-between bg-card p-3 md:p-2 md:pl-4 rounded-xl border shadow-sm min-h-[80px] md:min-h-[60px] md:flex-row md:items-center md:gap-3">
                 <div className="flex flex-col items-start">
                     <span className="text-[10px] text-muted-foreground uppercase font-bold tracking-widest leading-none mb-1.5">Slots</span>
@@ -542,7 +558,6 @@ const SettingsPage = () => {
                 </Button>
             </div>
 
-            {/* WALLET WIDGET */}
             <div className="col-span-1 md:w-auto flex flex-col justify-between bg-gradient-to-br from-amber-50 to-orange-50/50 p-3 md:p-2 md:pl-4 rounded-xl border border-amber-200/50 shadow-sm min-h-[80px] md:min-h-[60px] md:flex-row md:items-center md:gap-3">
                 <div className="flex flex-col items-start">
                     <span className="text-[10px] text-amber-600/80 uppercase font-bold tracking-widest leading-none mb-1.5">Balance</span>
@@ -561,18 +576,21 @@ const SettingsPage = () => {
         </div>
       </div>
 
-      <Tabs defaultValue="websites" className="w-full max-w-6xl mx-auto">
+      <Tabs value={activeTab} onValueChange={(val) => setSearchParams({ tab: val })} className="w-full max-w-6xl mx-auto">
         
-        {/* --- STICKY NATIVE TABS --- */}
+        {/* --- STICKY SUB NAVIGATION --- */}
         <div className="sticky top-0 z-40 bg-background/80 backdrop-blur-md border-b border-border/40 px-4 md:px-8 py-2 mb-6">
-            <TabsList className="w-full flex h-auto p-1 bg-muted/50 rounded-xl">
-                <TabsTrigger value="websites" className="flex-1 py-2 rounded-lg text-xs md:text-sm font-medium data-[state=active]:bg-background data-[state=active]:shadow-sm transition-all">
-                    <Globe size={16} className="mr-2 hidden sm:block"/> Websites
+            <TabsList className="w-full flex h-auto p-1 bg-muted/50 rounded-xl overflow-x-auto no-scrollbar justify-start sm:justify-between gap-1">
+                <TabsTrigger value="websites" className="flex-1 py-2 rounded-lg text-xs md:text-sm font-medium data-[state=active]:bg-background data-[state=active]:shadow-sm transition-all whitespace-nowrap min-w-[100px]">
+                    <Globe size={16} className="mr-2 hidden sm:block"/> Sites
                 </TabsTrigger>
-                <TabsTrigger value="history" className="flex-1 py-2 rounded-lg text-xs md:text-sm font-medium data-[state=active]:bg-background data-[state=active]:shadow-sm transition-all">
-                    <CreditCard size={16} className="mr-2 hidden sm:block"/> History
+                <TabsTrigger value="billing" className="flex-1 py-2 rounded-lg text-xs md:text-sm font-medium data-[state=active]:bg-background data-[state=active]:shadow-sm transition-all whitespace-nowrap min-w-[100px]">
+                    <Coins size={16} className="mr-2 hidden sm:block"/> Billing
                 </TabsTrigger>
-                <TabsTrigger value="account" className="flex-1 py-2 rounded-lg text-xs md:text-sm font-medium data-[state=active]:bg-background data-[state=active]:shadow-sm transition-all">
+                <TabsTrigger value="payments" className="flex-1 py-2 rounded-lg text-xs md:text-sm font-medium data-[state=active]:bg-background data-[state=active]:shadow-sm transition-all whitespace-nowrap min-w-[100px]">
+                    <CreditCard size={16} className="mr-2 hidden sm:block"/> Payouts
+                </TabsTrigger>
+                <TabsTrigger value="account" className="flex-1 py-2 rounded-lg text-xs md:text-sm font-medium data-[state=active]:bg-background data-[state=active]:shadow-sm transition-all whitespace-nowrap min-w-[100px]">
                     <User size={16} className="mr-2 hidden sm:block"/> Profile
                 </TabsTrigger>
             </TabsList>
@@ -581,16 +599,14 @@ const SettingsPage = () => {
         <div className="px-4 md:px-8">
             {/* --- TAB 1: WEBSITES --- */}
             <TabsContent value="websites" className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 mt-0">
-                
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
                     
-                    {/* CREATE CARD (Native Touch Feedback) */}
                     <div 
                         role="button"
                         tabIndex={0}
                         className={cn(
                             "relative flex flex-col items-center justify-center gap-4 min-h-[220px] md:min-h-[280px] rounded-2xl border-2 border-dashed p-6 transition-all duration-200 outline-none",
-                            "active:scale-[0.98] md:hover:scale-[1.01]", // Native touch feel
+                            "active:scale-[0.98] md:hover:scale-[1.01]", 
                             siteSlots.remaining > 0 
                                 ? "border-muted-foreground/20 bg-card hover:border-primary/50 hover:bg-primary/5 cursor-pointer" 
                                 : "border-muted/50 opacity-75 bg-muted/20"
@@ -643,7 +659,6 @@ const SettingsPage = () => {
                                                 <Badge variant="outline" className="border-amber-500 text-amber-600 bg-amber-50 rounded-md h-5 text-[10px] uppercase tracking-wide">Trial</Badge>
                                             )}
                                         </div>
-                                        {/* Hit area larger for mobile */}
                                         <div className="h-8 w-8 flex items-center justify-center -mr-2 -mt-1">
                                             <a href={`/pro/${site.public_slug}`} target="_blank" rel="noreferrer" className="text-muted-foreground hover:text-foreground p-2"><ExternalLink size={18} /></a>
                                         </div>
@@ -694,9 +709,10 @@ const SettingsPage = () => {
                 </div>
             </TabsContent>
 
-            <TabsContent value="history" className="mt-0">
+            {/* --- TAB 2: BILLING --- */}
+            <TabsContent value="billing" className="mt-0 animate-in fade-in slide-in-from-bottom-4 duration-500">
                 <Card className="rounded-2xl shadow-sm border-border/60">
-                    <CardHeader className="pb-2"><CardTitle className="text-lg">Transactions</CardTitle></CardHeader>
+                    <CardHeader className="pb-2"><CardTitle className="text-lg">Coin Transactions</CardTitle></CardHeader>
                     <CardContent className="p-0">
                         {transactions.length === 0 ? ( <div className="text-center py-12 text-muted-foreground text-sm">No transactions yet.</div> ) : (
                             <div className="divide-y">
@@ -722,9 +738,67 @@ const SettingsPage = () => {
                 </Card>
             </TabsContent>
 
-            <TabsContent value="account" className="mt-0">
+            {/* --- TAB 3: PAYOUTS (STRIPE) --- */}
+            <TabsContent value="payments" className="mt-0 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                <Card className="rounded-2xl shadow-sm border-border/60">
+                    <CardHeader>
+                        <CardTitle className="text-lg flex items-center gap-2">
+                            <CreditCard className="w-5 h-5 text-indigo-500" />
+                            Payment Gateway
+                        </CardTitle>
+                        <CardDescription>
+                            Connect your bank account securely via Stripe to receive automated payouts from your portfolio sales and bookings.
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                        {profile.stripe_account_id ? (
+                            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-4 bg-green-500/10 border border-green-500/20 rounded-xl text-green-700 dark:text-green-400">
+                                <div className="flex items-center gap-3">
+                                    <CheckCircle2 size={24} className="text-green-600 dark:text-green-400" />
+                                    <div>
+                                        <p className="font-bold text-sm">Stripe Account Connected</p>
+                                        <p className="text-xs opacity-80 font-mono mt-0.5">ID: {profile.stripe_account_id}</p>
+                                    </div>
+                                </div>
+                                <Button 
+                                    variant="outline" 
+                                    size="sm" 
+                                    onClick={handleConnectStripe}
+                                    disabled={isConnectingStripe}
+                                    className="border-green-500/30 hover:bg-green-500/20 w-full sm:w-auto"
+                                >
+                                    {isConnectingStripe ? <Loader2 className="w-4 h-4 animate-spin" /> : "Access Stripe Dashboard"}
+                                </Button>
+                            </div>
+                        ) : (
+                            <div className="flex flex-col items-center justify-center p-8 border-2 border-dashed rounded-xl bg-muted/20 text-center gap-4">
+                                <div className="w-12 h-12 bg-[#635BFF]/10 rounded-full flex items-center justify-center">
+                                    <CreditCard className="w-6 h-6 text-[#635BFF]" />
+                                </div>
+                                <div>
+                                    <h3 className="font-bold text-foreground">Setup Automated Payouts</h3>
+                                    <p className="text-sm text-muted-foreground max-w-md mx-auto mt-1">
+                                        Route funds directly to your bank account whenever a fan buys a product or books a service on your portfolio.
+                                    </p>
+                                </div>
+                                <Button 
+                                    onClick={handleConnectStripe} 
+                                    disabled={isConnectingStripe}
+                                    className="bg-[#635BFF] hover:bg-[#635BFF]/90 text-white font-bold"
+                                >
+                                    {isConnectingStripe ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
+                                    Connect with Stripe
+                                </Button>
+                            </div>
+                        )}
+                    </CardContent>
+                </Card>
+            </TabsContent>
+
+            {/* --- TAB 4: PROFILE --- */}
+            <TabsContent value="account" className="mt-0 animate-in fade-in slide-in-from-bottom-4 duration-500">
                  <Card className="rounded-2xl shadow-sm border-border/60">
-                    <CardHeader><CardTitle className="text-lg">Profile</CardTitle></CardHeader>
+                    <CardHeader><CardTitle className="text-lg">Profile Details</CardTitle></CardHeader>
                     <CardContent className="space-y-4">
                         <div className="space-y-2"><Label>Full Name</Label><Input value={profile.ActorName || ''} onChange={e => setProfile({...profile, ActorName: e.target.value})} className="h-10 text-base" /></div>
                         <div className="space-y-2"><Label>Email</Label><Input disabled value={profile.email || ''} className="bg-muted h-10 text-base" /></div>
@@ -753,13 +827,10 @@ const SettingsPage = () => {
             </DialogContent>
         </Dialog>
 
-      {/* --- TOP UP MODAL (FULL SCREEN ON MOBILE) --- */}
+      {/* --- TOP UP MODAL --- */}
       <Dialog open={isTopUpOpen} onOpenChange={setIsTopUpOpen}>
-          {/* Native Mobile Feel: h-[100dvh] (dynamic viewport height), rounded-none on mobile */}
           <DialogContent className="w-full h-[100dvh] sm:h-[85vh] sm:max-w-[950px] p-0 gap-0 bg-zinc-50 dark:bg-zinc-900 border-none shadow-2xl sm:rounded-2xl flex flex-col">
               <Tabs defaultValue="packs" className="w-full h-full flex flex-col">
-                  
-                  {/* Header with Back Button logic feel */}
                   <div className="p-4 md:p-8 shrink-0 bg-background sm:bg-transparent border-b sm:border-0 z-20">
                       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                           <div className="flex justify-between items-center">
@@ -769,7 +840,6 @@ const SettingsPage = () => {
                                   </DialogTitle>
                                   <DialogDescription className="text-sm">Top up to purchase upgrades.</DialogDescription>
                               </div>
-                              {/* Close button is handled by DialogPrimitive usually, but on full screen mobile we sometimes want a specific UI */}
                           </div>
                           <TabsList className="bg-muted/50 p-1 w-full md:w-fit grid grid-cols-2 md:flex">
                               <TabsTrigger value="packs">Packs</TabsTrigger>
@@ -781,7 +851,6 @@ const SettingsPage = () => {
                   <TabsContent value="packs" className="mt-0 flex-grow overflow-y-auto px-4 py-4 md:px-8 md:pb-8 custom-scrollbar bg-zinc-50/50">
                       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 pb-12 sm:pb-0">
                           {COIN_PACKS.map(pack => {
-                              // ... (Gradient logic same as before)
                               let bgGradient = "from-slate-800 to-slate-900";
                               let borderColor = "border-slate-600";
                               let glowColor = "bg-slate-500/20";
@@ -801,7 +870,6 @@ const SettingsPage = () => {
                                       "relative rounded-xl border-2 overflow-hidden transition-all duration-200 active:scale-[0.98] sm:hover:scale-[1.02] cursor-pointer flex flex-col shadow-lg",
                                       borderColor, "bg-gradient-to-br", bgGradient
                                   )}>
-                                      {/* Simplified internal structure for brevity */}
                                       <div className="p-3 flex justify-between relative z-10">
                                           <div className="flex gap-0.5">{[...Array(pack.rarity)].map((_, i) => (<Star key={i} size={12} className={cn("fill-current", starColor)} />))}</div>
                                           {pack.bonus && <Badge className="bg-white/90 text-black text-[9px] font-bold h-5">BONUS</Badge>}
@@ -828,9 +896,7 @@ const SettingsPage = () => {
                   </TabsContent>
 
                   <TabsContent value="redeem" className="mt-0 flex-grow overflow-y-auto px-4 pb-8">
-                       {/* Same redeem logic, just ensure spacing */}
                       <div className="bg-white dark:bg-zinc-800 p-6 rounded-2xl shadow-sm flex flex-col gap-4 mt-4">
-                           {/* ... redeem content ... */}
                           <div className="flex w-full items-center gap-2">
                               <Input className="text-center font-mono uppercase text-lg h-12" placeholder="CODE" value={redeemCode} onChange={e => setRedeemCode(e.target.value)} />
                           </div>
@@ -839,7 +905,6 @@ const SettingsPage = () => {
                   </TabsContent>
               </Tabs>
               
-              {/* Mobile Close Button Footer if needed, or rely on top X */}
               <div className="sm:hidden p-4 bg-background border-t">
                   <Button variant="outline" className="w-full h-12 text-base" onClick={() => setIsTopUpOpen(false)}>Close Shop</Button>
               </div>
@@ -849,7 +914,6 @@ const SettingsPage = () => {
       {/* --- DELETE MODAL --- */}
       <Dialog open={isDeleteOpen} onOpenChange={setIsDeleteOpen}>
           <DialogContent className="w-[90vw] rounded-2xl sm:max-w-md">
-                {/* Content same as previous, just ensure w-[90vw] for mobile margins */}
                 <DialogHeader>
                   <DialogTitle className="text-destructive flex items-center gap-2"><AlertTriangle className="h-5 w-5"/> Delete Website</DialogTitle>
                   <DialogDescription>This action cannot be undone.</DialogDescription>
@@ -867,7 +931,7 @@ const SettingsPage = () => {
           </DialogContent>
       </Dialog>
 
-      {/* --- UPGRADE MODAL (FULL SCREEN MOBILE) --- */}
+      {/* --- UPGRADE MODAL --- */}
       <Dialog open={isUpgradeOpen} onOpenChange={setIsUpgradeOpen}>
           <DialogContent className="w-full h-[100dvh] sm:h-[90vh] sm:max-w-[1000px] p-0 flex flex-col bg-background sm:rounded-2xl border-none">
               <div className="p-4 border-b shrink-0 flex items-center justify-between">
@@ -879,7 +943,6 @@ const SettingsPage = () => {
               </div>
 
               <div className="flex-grow overflow-y-auto p-4 custom-scrollbar">
-                  {/* Billing Cycle Selector - Horizontal Scroll on Mobile */}
                   <div className="flex justify-start sm:justify-center mb-6 overflow-x-auto no-scrollbar pb-2">
                       <div className="bg-muted p-1 rounded-xl flex gap-1 border shrink-0">
                           {[1, 3, 6, 12].map(duration => {
@@ -903,7 +966,6 @@ const SettingsPage = () => {
 
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pb-12">
                       {PLANS.map(plan => {
-                          // ... (Plan Logic same as before)
                           const details = plan.pricing[billingDuration as PlanDuration];
                           const proration = calculateProration(plan.id);
                           const isCurrentPlanId = subscriptions[selectedPortfolioId || '']?.plan_id === plan.id;
@@ -944,10 +1006,9 @@ const SettingsPage = () => {
           </DialogContent>
       </Dialog>
       
-      {/* Create Modal - Also Mobile Full Screen */}
+      {/* Create Modal */}
       <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
           <DialogContent className="w-[95vw] rounded-2xl sm:max-w-[600px] max-h-[85vh] flex flex-col p-0">
-             {/* ... similar full screen mobile structure ... */}
               <DialogHeader className="p-6 pb-2">
                   <DialogTitle>New Website</DialogTitle>
                   <DialogDescription>Pick a template to start.</DialogDescription>
