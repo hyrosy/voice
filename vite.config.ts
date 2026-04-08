@@ -5,6 +5,7 @@ import path from "path"; // <-- 1. ADD THIS IMPORT
 // https://vitejs.dev/config/
 export default defineConfig({
   plugins: [react()],
+  base: "/",
   server: {
     allowedHosts: [
       "sy4pxh-5173.csb.app", // <-- Adds your specific CodeSandbox URL
