@@ -14,7 +14,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 // 🚀 Initialize Stripe outside the render cycle so it doesn't recreate on every state change
 const stripePromise = loadStripe(
-  import.meta.env.VITE_STRIPE_PUBLIC_KEY || "pk_test_YOUR_STRIPE_PUBLIC_KEY"
+  import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY ||
+    "pk_test_YOUR_STRIPE_PUBLIC_KEY"
 );
 
 // --- THE STRIPE FORM COMPONENT ---
