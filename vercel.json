@@ -1,22 +1,31 @@
 {
+  "cleanUrls": true,
   "rewrites": [
     {
       "source": "/(.*)",
       "has": [
         {
-          "type": "host",
-          "value": "(?!localhost|ucpmaroc\\.com|www\\.ucpmaroc\\.com).*"
+          "type": "header",
+          "key": "user-agent",
+          "value": "(.*(?:bot|facebook|twitter|whatsapp|telegram|discord|slack|linkedin|skype|google|bing|applebot|imessage).*)"
         }
       ],
       "destination": "/api/edge-seo"
     },
     {
-      "source": "/pro/:slug",
-      "destination": "/api/edge-seo?slug=:slug"
-    },
-    {
       "source": "/(.*)",
       "destination": "/index.html"
+    }
+  ],
+  "headers": [
+    {
+      "source": "/assets/(.*)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=31536000, immutable"
+        }
+      ]
     }
   ]
 }

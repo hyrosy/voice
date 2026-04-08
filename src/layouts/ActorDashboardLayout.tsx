@@ -22,7 +22,7 @@ import {
   DollarSign,
   ChevronRight,
   LayoutTemplate,
-  BarChart3, // New Icon for Analytics
+  BarChart3,
   Globe,
   Briefcase,
   Package,
@@ -31,6 +31,7 @@ import {
   Lock,
   ShoppingBag,
   Layers,
+  CreditCard, // <-- Added CreditCard for the new payments nav item
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Separator } from "@/components/ui/separator";
@@ -45,7 +46,6 @@ import {
 import { Card, CardContent } from "@/components/ui/card";
 import { SubscriptionProvider } from "../context/SubscriptionContext";
 
-// 2. EXPORT THE CONTEXT TYPE (This fixes your error)
 export interface ActorDashboardContextType {
   actorData: Partial<Actor>;
   role: string;
@@ -70,7 +70,7 @@ type NavItem = {
 type NavGroup = {
   label: string;
   items: NavItem[];
-  p2pOnly?: boolean; // Whole group hidden if not Actor
+  p2pOnly?: boolean;
 };
 
 // --- NAVIGATION STRUCTURE ---
@@ -89,8 +89,7 @@ const NAV_GROUPS: NavGroup[] = [
         name: "Overview",
         icon: BarChart3,
         description: "Traffic & Shop Stats",
-      }, // NEW
-      // --- ADDED PRODUCTS HERE ---
+      },
       {
         to: "/dashboard/products",
         name: "Products",
@@ -108,9 +107,25 @@ const NAV_GROUPS: NavGroup[] = [
         name: "Leads & Inbox",
         icon: Mail,
         description: "Contact submissions",
-      }, // Ensure you import 'Mail' from lucide-react
-
-      // Future: Products, Orders
+      },
+    ],
+  },
+  // --- MOVED UP: SETTINGS & PAYMENTS ---
+  {
+    label: "Account & Settings",
+    items: [
+      {
+        to: "/dashboard/settings",
+        name: "Settings & Sites",
+        icon: Settings,
+        description: "Manage domains & profile",
+      },
+      {
+        to: "/dashboard/payments",
+        name: "Payments & Integrations",
+        icon: CreditCard,
+        description: "Stripe & Payouts",
+      },
     ],
   },
   {
@@ -155,12 +170,6 @@ const NAV_GROUPS: NavGroup[] = [
       },
     ],
   },
-  {
-    label: "Account",
-    items: [
-      { to: "/dashboard/settings", name: "Settings & Sites", icon: Settings },
-    ],
-  },
 ];
 
 const mobilePrimaryItems = [
@@ -178,6 +187,7 @@ const ActorDashboardLayout = () => {
   const isShopActive =
     location.pathname.includes("/products") ||
     location.pathname.includes("/collections");
+
   const fetchActorData = useCallback(async () => {
     setLoading(true);
     const {
@@ -227,7 +237,12 @@ const ActorDashboardLayout = () => {
   if (loading) {
     return (
       <div className="min-h-screen bg-background text-foreground flex items-center justify-center">
-        Loading Dashboard...
+        <div className="animate-pulse flex flex-col items-center">
+          <div className="w-8 h-8 rounded-full border-2 border-primary border-t-transparent animate-spin mb-4" />
+          <p className="text-muted-foreground text-sm font-medium">
+            Loading Dashboard...
+          </p>
+        </div>
       </div>
     );
   }
@@ -300,7 +315,11 @@ const ActorDashboardLayout = () => {
                         <div key={item.name}>
                           <NavLink
                             to={item.to}
-                            end={item.to === "/dashboard"}
+                            end={
+                              item.to === "/dashboard" ||
+                              item.to === "/dashboard/settings" ||
+                              item.to === "/dashboard/payments"
+                            }
                             className={({ isActive }) =>
                               getNavLinkClass({
                                 isActive: isActive || isActiveOverride,
@@ -372,8 +391,6 @@ const ActorDashboardLayout = () => {
             })}
 
             {/* Premium Upsell Card (Styled) */}
-
-            {/* Premium Upsell Card (Styled) */}
             {!actorData.is_p2p_enabled && (
               <div
                 className="relative overflow-hidden rounded-xl border border-indigo-500/30 bg-gradient-to-br from-indigo-500/5 via-purple-500/5 to-background p-4 mt-6 group cursor-pointer hover:border-indigo-500/50 transition-all"
@@ -418,8 +435,8 @@ const ActorDashboardLayout = () => {
         <main
           className={cn(
             "flex-1 md:ml-[280px] min-h-screen flex flex-col transition-all duration-300",
-            "bg-zinc-50/50 dark:bg-black", // Subtle background contrast
-            isMessagesPage ? "pb-[88px] md:pb-0" : "pb-[96px] md:pb-8" // Exact padding for nav + safe area
+            "bg-zinc-50/50 dark:bg-black",
+            isMessagesPage ? "pb-[88px] md:pb-0" : "pb-[96px] md:pb-8"
           )}
         >
           <Outlet context={{ actorData, role: "actor" }} />
@@ -427,7 +444,6 @@ const ActorDashboardLayout = () => {
 
         {/* --- MOBILE BOTTOM NAV (iOS Style Island) --- */}
         <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50">
-          {/* Gradient fade to integrate with content */}
           <div className="absolute bottom-0 w-full h-24 bg-gradient-to-t from-background to-transparent pointer-events-none" />
 
           <div className="bg-background/80 backdrop-blur-xl border-t border-border/60 pb-safe pt-1">
@@ -445,7 +461,6 @@ const ActorDashboardLayout = () => {
                 >
                   {({ isActive }) => (
                     <>
-                      {/* Active Indicator Line at top */}
                       {isActive && (
                         <span className="absolute -top-1 w-8 h-1 rounded-b-full bg-primary shadow-[0_0_10px_rgba(0,0,0,0.2)] shadow-primary/50" />
                       )}
@@ -482,7 +497,6 @@ const ActorDashboardLayout = () => {
                   </button>
                 </SheetTrigger>
 
-                {/* FULL SCREEN MOBILE MENU (Immersive) */}
                 <SheetContent
                   side="right"
                   className="w-full sm:w-[400px] border-l border-border/40 p-0 flex flex-col bg-background/95 backdrop-blur-2xl"
@@ -492,7 +506,6 @@ const ActorDashboardLayout = () => {
                   </SheetHeader>
 
                   <div className="flex-1 overflow-y-auto px-4 py-6 space-y-8">
-                    {/* Profile Snippet in Menu */}
                     <div className="flex items-center gap-4 px-2">
                       <Avatar className="h-12 w-12 border-2 border-primary/20">
                         <AvatarImage

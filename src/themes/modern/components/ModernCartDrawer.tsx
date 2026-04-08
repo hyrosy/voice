@@ -1,6 +1,6 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
-import { useCartStore } from "@/store/useCartStore";
+import { useCartStore } from "@/store/useCartStore"; // Adjust path if needed
 import {
   Sheet,
   SheetContent,
@@ -19,9 +19,15 @@ export default function ModernCartDrawer({
   username?: string;
   isPreview?: boolean;
 }) {
-  const { items, isOpen, closeCart, updateQuantity, removeItem, getCartTotal } =
+  const { items, isOpen, closeCart, updateQuantity, removeItem } =
     useCartStore();
   const navigate = useNavigate();
+
+  // Safely calculate total to avoid any Zustand type errors
+  const cartTotal = items.reduce(
+    (sum, item) => sum + item.price * item.quantity,
+    0
+  );
 
   const handleCheckout = () => {
     if (isPreview) {
@@ -32,8 +38,12 @@ export default function ModernCartDrawer({
     }
 
     closeCart();
-    if (username) navigate(`/${username}/checkout`);
-    else alert("Checkout coming soon!");
+    if (username) {
+      // 🚀 CRITICAL FIX: Routes to the exact checkout layout we built
+      navigate(`/pro/${username}/checkout`);
+    } else {
+      alert("Checkout unavailable. Missing portfolio data.");
+    }
   };
 
   return (
@@ -161,7 +171,7 @@ export default function ModernCartDrawer({
                 Subtotal
               </span>
               <span className="text-3xl font-bold text-white">
-                ${getCartTotal().toFixed(2)}
+                ${cartTotal.toFixed(2)}
               </span>
             </div>
 

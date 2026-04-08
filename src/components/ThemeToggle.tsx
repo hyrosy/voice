@@ -1,33 +1,33 @@
 // In src/components/ThemeToggle.tsx
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button"; // Use your new shadcn button
-import { Moon, Sun } from 'lucide-react';
+import { Moon, Sun } from "lucide-react";
 
 // This determines the user's preference from their OS or localStorage
-const getInitialTheme = (): 'dark' | 'light' => {
-  if (typeof window !== 'undefined') {
+const getInitialTheme = (): "dark" | "light" => {
+  if (typeof window !== "undefined") {
     // If the user has explicitly set it to light, return light.
-    if (localStorage.theme === 'dark') {
-      return 'light';
+    if (localStorage.theme === "dark") {
+      return "light";
     }
   }
   // Otherwise, default to dark.
-  return 'light';
+  return "dark";
 };
 
 const ThemeToggle: React.FC = () => {
-  const [theme, setTheme] = useState<'dark' | 'light'>(getInitialTheme());
+  const [theme, setTheme] = useState<"dark" | "light">(getInitialTheme());
 
   // This effect applies the class to the <html> tag
   useEffect(() => {
-  const root = window.document.documentElement; // <-- This is the <html> tag
-  root.classList.remove(theme === 'dark' ? 'light' : 'dark');
-  root.classList.add(theme);
-}, [theme]);
+    const root = window.document.documentElement; // <-- This is the <html> tag
+    root.classList.remove(theme === "dark" ? "light" : "dark");
+    root.classList.add(theme);
+  }, [theme]);
 
   const toggleTheme = () => {
-    setTheme(theme === 'light' ? 'dark' : 'light');
+    setTheme(theme === "light" ? "dark" : "light");
   };
 
   return (

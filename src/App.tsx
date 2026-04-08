@@ -75,6 +75,10 @@ import CollectionsPage from "./pages/dashboard/CollectionsPage";
 // --- E-COMMERCE PUBLIC PAGES ---
 import PublicProductPage from "./pages/PublicProductPage";
 import PublicShopPage from "./pages/PublicShopPage.tsx";
+import PaymentsPage from "./pages/dashboard/PaymentsPage.tsx";
+import PublicCheckoutPage from "./pages/PublicCheckoutPage.tsx";
+import CheckoutLayout from "./themes/modern/CheckoutLayout.tsx";
+import StripeCallbackPage from "./pages/dashboard/StripeCallbackPage.tsx";
 
 // Define main domains globally
 const MAIN_DOMAINS = [
@@ -228,11 +232,19 @@ function App() {
                         path="product/:productSlug"
                         element={<PublicProductPage />}
                       />
+                      {/* 2. The Checkout Wrapper (Injects the Theme's specific Checkout styling) */}
+                      <Route path="checkout" element={<CheckoutLayout />}>
+                        {/* 3. The Logic (Injects the Stripe Form and Cart Data into the Layout) */}
+                        <Route index element={<PublicCheckoutPage />} />
+                      </Route>
 
                       {/* The Magic Catch-All for Custom Pages! */}
                       <Route path=":pageSlug" element={<DynamicPage />} />
                     </Route>
-
+                    <Route
+                      path="/dashboard/payments/callback"
+                      element={<StripeCallbackPage />}
+                    />
                     {/* AUTH & PROFILES */}
                     <Route
                       path="/actor/:actorName"
@@ -295,6 +307,7 @@ function App() {
                       <Route path="settings" element={<SettingsPage />} />
                       <Route path="products" element={<ProductsPage />} />
                       <Route path="collections" element={<CollectionsPage />} />
+                      <Route path="payments" element={<PaymentsPage />} />
                     </Route>
 
                     {/* ADMIN ROUTES */}

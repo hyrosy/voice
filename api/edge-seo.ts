@@ -1,82 +1,108 @@
+// api/edge-seo.ts
+import { createClient } from "@supabase/supabase-js";
+
+// Vercel Edge configuration
 export const config = {
   runtime: "edge",
 };
 
 export default async function handler(req: Request) {
   const url = new URL(req.url);
-  const host = req.headers.get("host") || "";
+  const hostname = req.headers.get("host") || "";
 
-  // Check if it's a Custom Domain OR a /pro/ link
-  const isCustomDomain =
-    !host.includes("ucpmaroc.com") && !host.includes("localhost");
-  const slug = url.searchParams.get("slug");
+  // Define your main app domains
+  const MAIN_DOMAINS = [
+    "ucpmaroc.com",
+    "www.ucpmaroc.com",
+    "localhost",
+    "sy4pxh-5173.csb.app",
+  ];
+  const isCustomDomain = !MAIN_DOMAINS.some((domain) =>
+    hostname.includes(domain)
+  );
 
-  // YOUR SUPABASE KEYS (Vercel will inject these from your Environment Variables)
-  const SUPABASE_URL = process.env.VITE_SUPABASE_URL;
-  const SUPABASE_ANON_KEY = process.env.VITE_SUPABASE_ANON_KEY;
-
-  let queryUrl = "";
+  // Extract the slug (either from the custom domain, or from the URL path like /pro/johndoe)
+  let slug = "";
   if (isCustomDomain) {
-    queryUrl = `${SUPABASE_URL}/rest/v1/portfolios?custom_domain=eq.${host}&select=site_name,public_slug,theme_config&limit=1`;
-  } else if (slug) {
-    queryUrl = `${SUPABASE_URL}/rest/v1/portfolios?public_slug=eq.${slug}&select=site_name,public_slug,theme_config&limit=1`;
-  }
-
-  // Fallbacks
-  let siteName = "Actor Portfolio";
-  let ogImage = "https://ucpmaroc.com/default-og.png";
-
-  // Fast fetch from Supabase
-  if (queryUrl) {
-    try {
-      const response = await fetch(queryUrl, {
-        headers: {
-          apikey: SUPABASE_ANON_KEY!,
-          Authorization: `Bearer ${SUPABASE_ANON_KEY!}`,
-        },
-      });
-      const data = await response.json();
-
-      if (data && data.length > 0) {
-        siteName = data[0].site_name || siteName;
-        if (data[0].theme_config?.ogImage) {
-          ogImage = data[0].theme_config.ogImage;
-        }
-      }
-    } catch (err) {
-      console.error("Edge Fetch Error:", err);
+    slug = hostname; // We will use the custom domain to look up the portfolio
+  } else {
+    const pathParts = url.pathname.split("/");
+    if (pathParts[1] === "pro" && pathParts[2]) {
+      slug = pathParts[2];
     }
   }
 
-  // Return the raw HTML shell with the injected tags
-  const html = `
-      <!DOCTYPE html>
-      <html lang="en">
-        <head>
-          <meta charset="UTF-8" />
-          <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-          
-          <title>${siteName}</title>
-          <meta property="og:title" content="${siteName}" />
-          <meta property="og:description" content="Check out my professional portfolio and services." />
-          <meta property="og:image" content="${ogImage}" />
-          <meta property="og:type" content="website" />
-          <meta name="twitter:card" content="summary_large_image" />
-          
-          <script type="module" crossorigin src="/assets/index.js"></script>
-          <link rel="stylesheet" crossorigin href="/assets/index.css">
-        </head>
-        <body>
-          <div id="root"></div>
-        </body>
-      </html>
-    `;
+  // Default SEO fallback
+  let seoTitle = "Hyrosy | The Modern Portfolio Builder";
+  let seoDescription =
+    "Create stunning, high-converting portfolios and stores.";
+  let seoImage = "https://ucpmaroc.com/default-og-image.jpg"; // Replace with your actual default image
 
-  // 🚀 EDGE CACHING HEADERS: Load the site in 50ms globally
+  if (slug) {
+    // Connect to Supabase directly from the Edge
+    const supabaseUrl =
+      process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
+    const supabaseKey =
+      process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY;
+
+    if (supabaseUrl && supabaseKey) {
+      const supabase = createClient(supabaseUrl, supabaseKey);
+
+      try {
+        // Find the portfolio by custom domain OR by public_slug
+        const { data: portfolio } = await supabase
+          .from("portfolios")
+          .select("*, actor_profiles(ActorName, bio, HeadshotURL)")
+          .or(`custom_domain.eq.${slug},public_slug.eq.${slug}`)
+          .single();
+
+        if (portfolio) {
+          seoTitle =
+            portfolio.site_name ||
+            portfolio.actor_profiles?.ActorName ||
+            seoTitle;
+          seoDescription =
+            portfolio.actor_profiles?.bio ||
+            `Check out the professional portfolio of ${seoTitle}.`;
+          seoImage = portfolio.actor_profiles?.HeadshotURL || seoImage;
+        }
+      } catch (e) {
+        console.error("Edge SEO Supabase Error:", e);
+      }
+    }
+  }
+
+  // Construct the raw HTML shell with exactly what social bots are looking for
+  const html = `
+    <!DOCTYPE html>
+    <html lang="en">
+      <head>
+        <meta charset="UTF-8" />
+        <title>${seoTitle}</title>
+        <meta name="description" content="${seoDescription}" />
+        
+        <meta property="og:type" content="website" />
+        <meta property="og:title" content="${seoTitle}" />
+        <meta property="og:description" content="${seoDescription}" />
+        <meta property="og:image" content="${seoImage}" />
+        
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content="${seoTitle}" />
+        <meta name="twitter:description" content="${seoDescription}" />
+        <meta name="twitter:image" content="${seoImage}" />
+      </head>
+      <body>
+        <h1>${seoTitle}</h1>
+        <p>${seoDescription}</p>
+      </body>
+    </html>
+  `;
+
   return new Response(html, {
+    status: 200,
     headers: {
-      "Content-Type": "text/html",
-      "Cache-Control": "public, s-maxage=60, stale-while-revalidate=300",
+      "Content-Type": "text/html; charset=utf-8",
+      "Cache-Control": "public, s-maxage=3600, stale-while-revalidate=86400", // Cache at the Edge for 1 hour!
     },
   });
 }
