@@ -26,20 +26,11 @@ import {
   ExternalLink,
   LayoutTemplate,
   Check,
-  CheckCircle2,
   CreditCard,
   ArrowUpRight,
   Coins,
-  Gift,
   AlertTriangle,
-  CalendarDays,
-  Clock,
   Trash2,
-  Sparkles,
-  MessageCircle,
-  Star,
-  ShoppingCart,
-  Zap,
   Box,
   X,
 } from "lucide-react";
@@ -59,12 +50,11 @@ import {
   Notification,
 } from "@/components/ui/NotificationToast";
 import { useSubscription } from "../../context/SubscriptionContext";
+import TopUpModal from "@/components/dashboard/TopUpModal";
 
 type PlanDuration = 1 | 3 | 6 | 12;
 
-// --- CONFIGURATION ---
-
-const SLOT_COST = 500; // Cost in coins to buy 1 extra site slot
+const SLOT_COST = 500;
 
 const PLANS = [
   {
@@ -179,65 +169,11 @@ const PLANS = [
   },
 ];
 
-const COIN_PACKS = [
-  {
-    id: "handful",
-    name: "Handful of Coins",
-    coins: 250,
-    cost: 5,
-    bonus: "",
-    rarity: 3,
-  },
-  {
-    id: "bag",
-    name: "Bag of Coins",
-    coins: 550,
-    cost: 10,
-    bonus: "+50 Free!",
-    popular: true,
-    rarity: 4,
-  },
-  {
-    id: "chest",
-    name: "Chest of Coins",
-    coins: 1200,
-    cost: 20,
-    bonus: "+200 Free!",
-    rarity: 5,
-  },
-  {
-    id: "handful_lg",
-    name: "Sack of Coins",
-    coins: 1500,
-    cost: 26,
-    bonus: "+200 Free!",
-    rarity: 4,
-  },
-  {
-    id: "bag_lg",
-    name: "Treasury",
-    coins: 3000,
-    cost: 54,
-    bonus: "+300 Free!",
-    popular: true,
-    rarity: 5,
-  },
-  {
-    id: "chest_lg",
-    name: "Vault of Coins",
-    coins: 8000,
-    cost: 153,
-    bonus: "+350 Free!",
-    rarity: 5,
-  },
-];
-
 const SettingsPage = () => {
   const { actorData } = useOutletContext<ActorDashboardContextType>();
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
 
-  // URL-Driven Sub Navigation
   const activeTab = searchParams.get("tab") || "websites";
 
   const {
@@ -248,15 +184,12 @@ const SettingsPage = () => {
   } = useSubscription();
 
   const [loading, setLoading] = useState(true);
-
-  // Data State
   const [portfolios, setPortfolios] = useState<any[]>([]);
   const [profile, setProfile] = useState<any>({});
   const [walletBalance, setWalletBalance] = useState(0);
   const [subscriptions, setSubscriptions] = useState<Record<string, any>>({});
   const [transactions, setTransactions] = useState<any[]>([]);
 
-  // UI State
   const [isSaving, setIsSaving] = useState(false);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isTopUpOpen, setIsTopUpOpen] = useState(false);
@@ -264,16 +197,12 @@ const SettingsPage = () => {
   const [selectedPortfolioId, setSelectedPortfolioId] = useState<string | null>(
     null
   );
-  const [isConnectingStripe, setIsConnectingStripe] = useState(false); // 🚀 STRIPE STATE
 
-  // Delete State
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [deleteConfirmationName, setDeleteConfirmationName] = useState("");
   const [isDeleting, setIsDeleting] = useState(false);
 
-  // Upgrade Modal UI State
   const [billingDuration, setBillingDuration] = useState<PlanDuration>(1);
-
   const [selectedTemplate, setSelectedTemplate] = useState<string>(
     PORTFOLIO_TEMPLATES[0].id
   );
@@ -282,11 +211,6 @@ const SettingsPage = () => {
   const [processingPlan, setProcessingPlan] = useState<string | null>(null);
   const [isRedirecting, setIsRedirecting] = useState(false);
 
-  // Redeem State
-  const [redeemCode, setRedeemCode] = useState("");
-  const [isRedeeming, setIsRedeeming] = useState(false);
-
-  // Notification & Confirmation
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [confirmDialog, setConfirmDialog] = useState<{
     isOpen: boolean;
@@ -373,11 +297,9 @@ const SettingsPage = () => {
     fetchData();
   }, [actorData.id]);
 
-  // --- SAFE PRORATION LOGIC ---
   const calculateProration = (targetPlanId: string) => {
     if (!selectedPortfolioId || !subscriptions[selectedPortfolioId])
       return { cost: 0, isUpgrade: true, unusedValue: 0, activeDuration: 0 };
-
     const currentSub = subscriptions[selectedPortfolioId];
     if (currentSub.payment_method === "stripe")
       return {
@@ -390,14 +312,12 @@ const SettingsPage = () => {
 
     const currentPlan = PLANS.find((p) => p.id === currentSub.plan_id);
     const targetPlan = PLANS.find((p) => p.id === targetPlanId);
-
     if (!currentPlan || !targetPlan)
       return { cost: 0, isUpgrade: true, unusedValue: 0, activeDuration: 0 };
 
     const start = new Date(currentSub.current_period_start).getTime();
     const end = new Date(currentSub.current_period_end).getTime();
     const now = new Date().getTime();
-
     const daysDuration = Math.round((end - start) / (1000 * 60 * 60 * 24));
 
     let activeDuration: PlanDuration = 1;
@@ -408,7 +328,6 @@ const SettingsPage = () => {
     const isHigherTier = targetPlan.tier > currentPlan.tier;
     const isSameTier = targetPlan.tier === currentPlan.tier;
     const isLongerDuration = billingDuration > activeDuration;
-
     const isUpgrade = isHigherTier || (isSameTier && isLongerDuration);
     const isDowngrade =
       !isUpgrade && !(isSameTier && billingDuration === activeDuration);
@@ -427,15 +346,11 @@ const SettingsPage = () => {
       0,
       remainingDurationMs / totalDurationMs
     );
-
     const originalPaidCost = currentPlan.pricing[activeDuration]?.coinCost || 0;
     const unusedValue = Math.floor(originalPaidCost * percentageRemaining);
-
     let finalCost = targetPlan.pricing[billingDuration].coinCost;
 
-    if (isUpgrade) {
-      finalCost = Math.max(0, finalCost - unusedValue);
-    }
+    if (isUpgrade) finalCost = Math.max(0, finalCost - unusedValue);
 
     return {
       cost: finalCost,
@@ -446,34 +361,6 @@ const SettingsPage = () => {
       activeDuration,
     };
   };
-
-  // --- STRIPE CONNECT LOGIC ---
-  const handleConnectStripe = async () => {
-    if (!actorData?.id) return;
-    setIsConnectingStripe(true);
-    try {
-      const { data, error } = await supabase.functions.invoke(
-        "stripe-connect",
-        {
-          body: {
-            actorId: actorData.id, // 🚀 1. THIS IS THE MISSING PIECE!
-            portfolioId: selectedPortfolioId || null, // 🚀 2. Add this so site-specific overrides work!
-            returnUrl:
-              window.location.origin + "/dashboard/settings?tab=payments",
-          },
-        }
-      );
-      if (error) throw error;
-      if (data?.url) {
-        window.location.href = data.url;
-      }
-    } catch (err: any) {
-      notify("error", "Stripe Error", err.message);
-      setIsConnectingStripe(false);
-    }
-  };
-
-  // --- ACTIONS ---
 
   const handleBuySlot = () => {
     if (walletBalance < SLOT_COST) {
@@ -491,7 +378,6 @@ const SettingsPage = () => {
       );
       return;
     }
-
     openConfirmation(
       "Buy Portfolio Slot",
       <div className="space-y-2">
@@ -509,10 +395,9 @@ const SettingsPage = () => {
           p_actor_id: actorData.id,
           p_cost: SLOT_COST,
         });
-
-        if (error || (data && !data.success)) {
+        if (error || (data && !data.success))
           notify("error", "Purchase Failed", data?.message || error?.message);
-        } else {
+        else {
           notify(
             "success",
             "Slot Purchased",
@@ -527,12 +412,9 @@ const SettingsPage = () => {
   };
 
   const handleCreateSite = async () => {
-    if (!newSiteName.trim()) {
-      notify("error", "Missing Name", "Please enter a site name");
-      return;
-    }
+    if (!newSiteName.trim())
+      return notify("error", "Missing Name", "Please enter a site name");
     if (!actorData?.id) return;
-
     if (siteSlots.remaining <= 0) {
       notify(
         "error",
@@ -586,25 +468,20 @@ const SettingsPage = () => {
   const handleDeleteSite = async () => {
     if (!selectedPortfolioId) return;
     const site = portfolios.find((p) => p.id === selectedPortfolioId);
-
-    if (deleteConfirmationName !== site?.site_name) {
-      notify(
+    if (deleteConfirmationName !== site?.site_name)
+      return notify(
         "error",
         "Name Mismatch",
         "Website name does not match. Please type it exactly."
       );
-      return;
-    }
 
     setIsDeleting(true);
     const { error } = await supabase
       .from("portfolios")
       .delete()
       .eq("id", selectedPortfolioId);
-
-    if (error) {
-      notify("error", "Deletion Failed", error.message);
-    } else {
+    if (error) notify("error", "Deletion Failed", error.message);
+    else {
       notify(
         "success",
         "Website Deleted",
@@ -636,10 +513,8 @@ const SettingsPage = () => {
     setIsSaving(false);
   };
 
-  // --- PAYMENT LOGIC ---
   const handleBuyWithWallet = async (plan: (typeof PLANS)[0]) => {
     if (!selectedPortfolioId || !actorData?.id) return;
-
     const calc = calculateProration(plan.id);
 
     if (calc.isDowngrade) {
@@ -647,7 +522,6 @@ const SettingsPage = () => {
       const endDate = sub
         ? new Date(sub.current_period_end).toLocaleDateString()
         : "cycle end";
-
       openConfirmation(
         `Downgrade to ${plan.name}`,
         <div className="space-y-2 text-sm text-muted-foreground">
@@ -669,10 +543,8 @@ const SettingsPage = () => {
               metadata: { ...sub?.metadata, next_plan_id: plan.id },
             })
             .eq("portfolio_id", selectedPortfolioId);
-
-          if (error) {
-            notify("error", "Downgrade Failed", error.message);
-          } else {
+          if (error) notify("error", "Downgrade Failed", error.message);
+          else {
             notify(
               "success",
               "Downgrade Scheduled",
@@ -696,7 +568,7 @@ const SettingsPage = () => {
         "Insufficient Balance",
         <p className="text-sm text-muted-foreground">
           You need <strong>{costToPay} Coins</strong> but have{" "}
-          <strong>{walletBalance}</strong>. Please top up your wallet.
+          <strong>{walletBalance}</strong>.
         </p>,
         () => {
           setIsUpgradeOpen(false);
@@ -714,8 +586,7 @@ const SettingsPage = () => {
         <strong>{billingDuration} month(s)</strong> access?
       </p>
     );
-
-    if (calc.unusedValue > 0) {
+    if (calc.unusedValue > 0)
       message = (
         <div className="text-sm space-y-2 bg-muted/50 p-3 rounded-md">
           <div className="flex justify-between">
@@ -732,7 +603,6 @@ const SettingsPage = () => {
           </div>
         </div>
       );
-    }
 
     openConfirmation(
       `Confirm ${calc.isUpgrade ? "Upgrade" : "Purchase"}`,
@@ -750,14 +620,13 @@ const SettingsPage = () => {
             p_duration_months: billingDuration,
           }
         );
-
-        if (error || (data && !data.success)) {
+        if (error || (data && !data.success))
           notify(
             "error",
             "Transaction Failed",
             data?.message || error?.message || "Unknown error"
           );
-        } else {
+        else {
           notify(
             "success",
             "Plan Activated!",
@@ -776,15 +645,12 @@ const SettingsPage = () => {
   const handleDirectStripe = async (plan: (typeof PLANS)[0]) => {
     if (!actorData?.id || !selectedPortfolioId) return;
     const details = plan.pricing[billingDuration as PlanDuration];
-
-    if (!details.stripePriceId) {
-      notify(
+    if (!details.stripePriceId)
+      return notify(
         "error",
         "Unavailable",
         "This plan duration is not available via card yet."
       );
-      return;
-    }
 
     setIsRedirecting(true);
     const { data, error } = await supabase.functions.invoke(
@@ -831,62 +697,6 @@ const SettingsPage = () => {
     } else window.location.href = data.url;
   };
 
-  const handleTopUpStripe = async (pack: (typeof COIN_PACKS)[0]) => {
-    if (!actorData?.id) return;
-    setIsRedirecting(true);
-    const { data, error } = await supabase.functions.invoke(
-      "create-checkout-session",
-      {
-        body: {
-          mode: "payment",
-          amount: pack.cost * 100,
-          name: `${pack.coins} UCP Coins`,
-          metadata: {
-            type: "top_up",
-            actor_id: actorData.id,
-            coins_amount: pack.coins,
-          },
-          successUrl:
-            window.location.origin +
-            "/dashboard/settings?tab=billing&topup=success",
-          cancelUrl:
-            window.location.origin +
-            "/dashboard/settings?tab=billing&topup=canceled",
-        },
-      }
-    );
-    if (error || !data?.url) {
-      notify("error", "Checkout Failed", "Could not start payment session.");
-      setIsRedirecting(false);
-    } else window.location.href = data.url;
-  };
-
-  const handleBankTransfer = (pack: (typeof COIN_PACKS)[0]) => {
-    if (!actorData?.ActorName) return;
-    const userEmail = profile.email || (actorData as any).email || "No Email";
-    const message = `Hello, I would like to purchase the "${pack.name}" (${pack.coins} Coins) for $${pack.cost} via Bank Transfer.\n\nMy Details:\nName: ${actorData.ActorName}\nEmail: ${userEmail} (ID: ${actorData.id})\n\nPlease provide the bank details.`;
-    const encodedMessage = encodeURIComponent(message);
-    const whatsappUrl = `https://wa.me/212695121176?text=${encodedMessage}`;
-    window.open(whatsappUrl, "_blank");
-  };
-
-  const handleRedeemCode = async () => {
-    if (!redeemCode.trim() || !actorData?.id) return;
-    setIsRedeeming(true);
-    const { data, error } = await supabase.rpc("redeem_gift_code", {
-      p_actor_id: actorData.id,
-      p_code: redeemCode.trim(),
-    });
-    if (error || (data && !data.success)) {
-      notify("error", "Redeem Failed", data?.message || error?.message);
-    } else {
-      notify("success", "Coins Added!", "Gift code redeemed.");
-      setRedeemCode("");
-      fetchData();
-    }
-    setIsRedeeming(false);
-  };
-
   const openDeleteDialog = (portfolioId: string) => {
     setSelectedPortfolioId(portfolioId);
     setDeleteConfirmationName("");
@@ -901,21 +711,31 @@ const SettingsPage = () => {
     );
 
   return (
-    <div className="min-h-screen bg-background pb-24 relative">
+    <div className="p-4 md:p-8 space-y-8 w-full max-w-8xl mx-auto ">
       <NotificationContainer
         notifications={notifications}
         removeNotification={removeNotification}
       />
 
+      {/* --- TOP-UP MODAL EXTACTED --- */}
+      <TopUpModal
+        isOpen={isTopUpOpen}
+        onOpenChange={setIsTopUpOpen}
+        actorData={actorData}
+        profile={profile}
+        onSuccess={fetchData}
+        notify={notify}
+      />
+
       {/* --- HEADER SECTION --- */}
-      <div className="px-4 pt-6 pb-2 md:pt-12 md:pb-8 md:px-8 max-w-6xl mx-auto space-y-6">
-        <div className="flex flex-col md:flex-row justify-between md:items-end gap-4 pt-20">
+      <div className="px-4 py-6 md:py-8 space-y-6">
+        <div className="flex flex-col md:flex-row justify-between md:items-end gap-4">
           <div className="space-y-1">
             <h1 className="text-2xl md:text-4xl font-black tracking-tight text-foreground">
               Settings Hub
             </h1>
             <p className="text-muted-foreground text-base md:text-lg">
-              Manage your sites, billing, and payouts.
+              Manage your sites, billing, and profile.
             </p>
           </div>
         </div>
@@ -965,10 +785,10 @@ const SettingsPage = () => {
       <Tabs
         value={activeTab}
         onValueChange={(val) => setSearchParams({ tab: val })}
-        className="w-full max-w-6xl mx-auto"
+        className="w-full"
       >
-        {/* --- STICKY SUB NAVIGATION --- */}
-        <div className="sticky top-0 z-40 bg-background/80 backdrop-blur-md border-b border-border/40 px-4 md:px-8 py-2 mb-6">
+        {/* --- STICKY SUB NAVIGATION (Sticks right below the new Topbar) --- */}
+        <div className="sticky top-14 z-40 bg-zinc-50/90 dark:bg-zinc-950/90 backdrop-blur-md border-b border-border/40 px-4 md:px-8 py-2 mb-6">
           <TabsList className="w-full flex h-auto p-1 bg-muted/50 rounded-xl overflow-x-auto no-scrollbar justify-start sm:justify-between gap-1">
             <TabsTrigger
               value="websites"
@@ -981,12 +801,6 @@ const SettingsPage = () => {
               className="flex-1 py-2 rounded-lg text-xs md:text-sm font-medium data-[state=active]:bg-background data-[state=active]:shadow-sm transition-all whitespace-nowrap min-w-[100px]"
             >
               <Coins size={16} className="mr-2 hidden sm:block" /> Billing
-            </TabsTrigger>
-            <TabsTrigger
-              value="payments"
-              className="flex-1 py-2 rounded-lg text-xs md:text-sm font-medium data-[state=active]:bg-background data-[state=active]:shadow-sm transition-all whitespace-nowrap min-w-[100px]"
-            >
-              <CreditCard size={16} className="mr-2 hidden sm:block" /> Payouts
             </TabsTrigger>
             <TabsTrigger
               value="account"
@@ -1008,8 +822,7 @@ const SettingsPage = () => {
                 role="button"
                 tabIndex={0}
                 className={cn(
-                  "relative flex flex-col items-center justify-center gap-4 min-h-[220px] md:min-h-[280px] rounded-2xl border-2 border-dashed p-6 transition-all duration-200 outline-none",
-                  "active:scale-[0.98] md:hover:scale-[1.01]",
+                  "relative flex flex-col items-center justify-center gap-4 min-h-[220px] md:min-h-[280px] rounded-2xl border-2 border-dashed p-6 transition-all duration-200 outline-none active:scale-[0.98] md:hover:scale-[1.01]",
                   siteSlots.remaining > 0
                     ? "border-muted-foreground/20 bg-card hover:border-primary/50 hover:bg-primary/5 cursor-pointer"
                     : "border-muted/50 opacity-75 bg-muted/20"
@@ -1055,7 +868,6 @@ const SettingsPage = () => {
                   sub &&
                   sub.status === "active" &&
                   new Date(sub.current_period_end) > new Date();
-
                 let badgeColor = "bg-primary";
                 if (sub?.plan_id === "starter") badgeColor = "bg-blue-500";
                 if (sub?.plan_id === "ecommerce") badgeColor = "bg-indigo-600";
@@ -1113,7 +925,6 @@ const SettingsPage = () => {
                         {site.custom_domain || `${site.public_slug}.ucp.com`}
                       </CardDescription>
                     </CardHeader>
-
                     <CardContent className="px-5 py-2 flex-grow">
                       {isPro ? (
                         <div className="text-[11px] font-medium text-foreground/70 bg-muted/50 p-3 rounded-lg flex justify-between items-center border border-border/50">
@@ -1137,7 +948,6 @@ const SettingsPage = () => {
                         </div>
                       )}
                     </CardContent>
-
                     <CardFooter className="p-4 pt-2 grid grid-cols-[1fr_auto_auto] gap-2">
                       {isPro && sub?.payment_method === "stripe" ? (
                         <Button
@@ -1170,7 +980,6 @@ const SettingsPage = () => {
                           {isPro ? "Extend" : "Upgrade"}
                         </Button>
                       )}
-
                       <Button
                         size="icon"
                         variant="outline"
@@ -1211,7 +1020,7 @@ const SettingsPage = () => {
                     No transactions yet.
                   </div>
                 ) : (
-                  <div className="divide-y">
+                  <div className="divide-y border-t">
                     {transactions.map((tx) => (
                       <div
                         key={tx.id}
@@ -1258,12 +1067,12 @@ const SettingsPage = () => {
             </Card>
           </TabsContent>
 
-          {/* --- TAB 4: PROFILE --- */}
+          {/* --- TAB 3: PROFILE --- */}
           <TabsContent
             value="account"
             className="mt-0 animate-in fade-in slide-in-from-bottom-4 duration-500"
           >
-            <Card className="rounded-2xl shadow-sm border-border/60">
+            <Card className="rounded-2xl shadow-sm border-border/60 max-w-2xl">
               <CardHeader>
                 <CardTitle className="text-lg">Profile Details</CardTitle>
               </CardHeader>
@@ -1302,7 +1111,7 @@ const SettingsPage = () => {
         </div>
       </Tabs>
 
-      {/* --- CONFIRMATION --- */}
+      {/* --- CONFIRMATION DIALOG --- */}
       <Dialog
         open={!!confirmDialog}
         onOpenChange={(open) => !open && setConfirmDialog(null)}
@@ -1310,7 +1119,7 @@ const SettingsPage = () => {
         <DialogContent className="w-[90vw] rounded-2xl sm:max-w-md">
           <DialogHeader>
             <DialogTitle>{confirmDialog?.title}</DialogTitle>
-            <DialogDescription className="py-2">
+            <DialogDescription className="py-2 text-foreground">
               {confirmDialog?.message}
             </DialogDescription>
           </DialogHeader>
@@ -1330,181 +1139,6 @@ const SettingsPage = () => {
               {confirmDialog?.confirmText || "Confirm"}
             </Button>
           </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* --- TOP UP MODAL --- */}
-      <Dialog open={isTopUpOpen} onOpenChange={setIsTopUpOpen}>
-        <DialogContent className="w-full h-[100dvh] sm:h-[85vh] sm:max-w-[950px] p-0 gap-0 bg-zinc-50 dark:bg-zinc-900 border-none shadow-2xl sm:rounded-2xl flex flex-col">
-          <Tabs defaultValue="packs" className="w-full h-full flex flex-col">
-            <div className="p-4 md:p-8 shrink-0 bg-background sm:bg-transparent border-b sm:border-0 z-20">
-              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <div className="flex justify-between items-center">
-                  <div className="space-y-1">
-                    <DialogTitle className="text-xl md:text-2xl font-black tracking-tight flex items-center gap-2">
-                      <Coins className="text-amber-500 fill-amber-500" /> Coin
-                      Shop
-                    </DialogTitle>
-                    <DialogDescription className="text-sm">
-                      Top up to purchase upgrades.
-                    </DialogDescription>
-                  </div>
-                </div>
-                <TabsList className="bg-muted/50 p-1 w-full md:w-fit grid grid-cols-2 md:flex">
-                  <TabsTrigger value="packs">Packs</TabsTrigger>
-                  <TabsTrigger value="redeem">Redeem</TabsTrigger>
-                </TabsList>
-              </div>
-            </div>
-
-            <TabsContent
-              value="packs"
-              className="mt-0 flex-grow overflow-y-auto px-4 py-4 md:px-8 md:pb-8 custom-scrollbar bg-zinc-50/50"
-            >
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 pb-12 sm:pb-0">
-                {COIN_PACKS.map((pack) => {
-                  let bgGradient = "from-slate-800 to-slate-900";
-                  let borderColor = "border-slate-600";
-                  let glowColor = "bg-slate-500/20";
-                  let textColor = "text-slate-100";
-                  let starColor = "text-slate-400";
-
-                  if (pack.rarity === 3) {
-                    bgGradient = "from-[#1e3a8a] to-[#172554]";
-                    borderColor = "border-blue-400/50";
-                    glowColor = "bg-blue-500/20";
-                    textColor = "text-blue-50";
-                    starColor = "text-blue-300";
-                  } else if (pack.rarity === 4) {
-                    bgGradient = "from-[#581c87] to-[#3b0764]";
-                    borderColor = "border-purple-400/50";
-                    glowColor = "bg-purple-500/20";
-                    textColor = "text-purple-50";
-                    starColor = "text-purple-300";
-                  } else if (pack.rarity === 5) {
-                    bgGradient = "from-[#d97706] to-[#78350f]";
-                    borderColor = "border-amber-300";
-                    glowColor = "bg-amber-500/30";
-                    textColor = "text-amber-50";
-                    starColor = "text-yellow-300";
-                  }
-
-                  return (
-                    <div
-                      key={pack.id}
-                      className={cn(
-                        "relative rounded-xl border-2 overflow-hidden transition-all duration-200 active:scale-[0.98] sm:hover:scale-[1.02] cursor-pointer flex flex-col shadow-lg",
-                        borderColor,
-                        "bg-gradient-to-br",
-                        bgGradient
-                      )}
-                    >
-                      <div className="p-3 flex justify-between relative z-10">
-                        <div className="flex gap-0.5">
-                          {[...Array(pack.rarity)].map((_, i) => (
-                            <Star
-                              key={i}
-                              size={12}
-                              className={cn("fill-current", starColor)}
-                            />
-                          ))}
-                        </div>
-                        {pack.bonus && (
-                          <Badge className="bg-white/90 text-black text-[9px] font-bold h-5">
-                            BONUS
-                          </Badge>
-                        )}
-                      </div>
-                      <div className="flex-grow flex flex-col items-center justify-center py-2 relative">
-                        <div
-                          className={cn(
-                            "absolute inset-0 blur-3xl rounded-full opacity-60",
-                            glowColor
-                          )}
-                        />
-                        <Coins
-                          size={40}
-                          className={cn(
-                            "relative z-10 drop-shadow-lg",
-                            textColor
-                          )}
-                        />
-                        <h3
-                          className={cn(
-                            "mt-2 font-black text-xl tracking-wide relative z-10",
-                            textColor
-                          )}
-                        >
-                          {pack.coins}
-                        </h3>
-                      </div>
-                      <div className="p-3 bg-black/40 backdrop-blur-md border-t border-white/10 relative z-10">
-                        <Button
-                          className="w-full bg-white text-black hover:bg-white/90 font-bold h-10 shadow-lg"
-                          onClick={() => handleTopUpStripe(pack)}
-                          disabled={isRedirecting}
-                        >
-                          {isRedirecting ? (
-                            <Loader2 className="w-4 h-4 animate-spin" />
-                          ) : (
-                            `$${pack.cost.toFixed(2)}`
-                          )}
-                        </Button>
-                        {pack.coins >= 550 && (
-                          <div
-                            onClick={() => handleBankTransfer(pack)}
-                            className={cn(
-                              "mt-2 text-center text-[10px] opacity-70 flex items-center justify-center gap-1 py-1 cursor-pointer active:opacity-100",
-                              textColor
-                            )}
-                          >
-                            <MessageCircle size={10} /> Bank Transfer
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </TabsContent>
-
-            <TabsContent
-              value="redeem"
-              className="mt-0 flex-grow overflow-y-auto px-4 pb-8"
-            >
-              <div className="bg-white dark:bg-zinc-800 p-6 rounded-2xl shadow-sm flex flex-col gap-4 mt-4">
-                <div className="flex w-full items-center gap-2">
-                  <Input
-                    className="text-center font-mono uppercase text-lg h-12"
-                    placeholder="CODE"
-                    value={redeemCode}
-                    onChange={(e) => setRedeemCode(e.target.value)}
-                  />
-                </div>
-                <Button
-                  onClick={handleRedeemCode}
-                  disabled={isRedeeming}
-                  className="w-full h-12 font-bold text-lg"
-                >
-                  {isRedeeming ? (
-                    <Loader2 className="w-5 h-5 animate-spin" />
-                  ) : (
-                    "Redeem"
-                  )}
-                </Button>
-              </div>
-            </TabsContent>
-          </Tabs>
-
-          <div className="sm:hidden p-4 bg-background border-t">
-            <Button
-              variant="outline"
-              className="w-full h-12 text-base"
-              onClick={() => setIsTopUpOpen(false)}
-            >
-              Close Shop
-            </Button>
-          </div>
         </DialogContent>
       </Dialog>
 
@@ -1576,7 +1210,6 @@ const SettingsPage = () => {
               <X size={20} />
             </Button>
           </div>
-
           <div className="flex-grow overflow-y-auto p-4 custom-scrollbar">
             <div className="flex justify-start sm:justify-center mb-6 overflow-x-auto no-scrollbar pb-2">
               <div className="bg-muted p-1 rounded-xl flex gap-1 border shrink-0">
@@ -1591,7 +1224,7 @@ const SettingsPage = () => {
                       className={cn(
                         "px-4 py-2.5 rounded-lg text-sm font-bold transition-all flex items-center gap-2 whitespace-nowrap",
                         isActive
-                          ? "bg-white shadow-sm text-foreground"
+                          ? "bg-white dark:bg-zinc-800 shadow-sm text-foreground"
                           : "text-muted-foreground"
                       )}
                     >
@@ -1606,7 +1239,6 @@ const SettingsPage = () => {
                 })}
               </div>
             </div>
-
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pb-12">
               {PLANS.map((plan) => {
                 const details = plan.pricing[billingDuration as PlanDuration];
@@ -1637,11 +1269,11 @@ const SettingsPage = () => {
                       </div>
                     </CardHeader>
                     <CardContent className="flex-grow p-5 pt-0 space-y-4">
-                      <div className="bg-amber-50 p-3 rounded-lg text-center border border-amber-100">
-                        <div className="text-[10px] text-amber-700 font-bold uppercase mb-1">
+                      <div className="bg-amber-50 dark:bg-amber-950/30 p-3 rounded-lg text-center border border-amber-100 dark:border-amber-900/50">
+                        <div className="text-[10px] text-amber-700 dark:text-amber-500 font-bold uppercase mb-1">
                           Coin Price
                         </div>
-                        <div className="flex items-center justify-center gap-1.5 text-amber-900 font-black text-lg">
+                        <div className="flex items-center justify-center gap-1.5 text-amber-900 dark:text-amber-400 font-black text-lg">
                           <Coins
                             size={16}
                             className="fill-amber-500 text-amber-600"
@@ -1692,7 +1324,7 @@ const SettingsPage = () => {
         </DialogContent>
       </Dialog>
 
-      {/* Create Modal */}
+      {/* --- CREATE SITE MODAL --- */}
       <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
         <DialogContent className="w-[95vw] rounded-2xl sm:max-w-[600px] max-h-[85vh] flex flex-col p-0">
           <DialogHeader className="p-6 pb-2">

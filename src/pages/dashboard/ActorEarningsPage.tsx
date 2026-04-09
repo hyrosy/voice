@@ -1,10 +1,16 @@
 // In src/pages/dashboard/ActorEarningsPage.tsx
 
-import React, { useState, useEffect, useCallback } from 'react';
-import { supabase } from '../../supabaseClient';
-import { Link, useOutletContext } from 'react-router-dom';
-import { ActorDashboardContextType } from '../../layouts/ActorDashboardLayout';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import React, { useState, useEffect, useCallback } from "react";
+import { supabase } from "../../supabaseClient";
+import { Link, useOutletContext } from "react-router-dom";
+import { ActorDashboardContextType } from "../../layouts/ActorDashboardLayout";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from "@/components/ui/card";
 import {
   Table,
   TableBody,
@@ -14,8 +20,8 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { ArrowRight, DollarSign, History } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { ArrowRight, DollarSign, History } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 interface Payout {
   id: string;
@@ -37,29 +43,35 @@ const ActorEarningsPage = () => {
 
     // 1. Get the total amount owed (unpaid)
     const { data: owedData, error: owedError } = await supabase
-      .from('orders')
-      .select('actor_payout_amount')
-      .eq('actor_id', actorData.id)
-      .eq('payout_status', 'unpaid')
-      .eq('status', 'Completed');
+      .from("orders")
+      .select("actor_payout_amount")
+      .eq("actor_id", actorData.id)
+      .eq("payout_status", "unpaid")
+      .eq("status", "Completed");
 
     if (owedError) console.error("Error fetching total owed:", owedError);
     if (owedData) {
-      const total = owedData.reduce((sum, o) => sum + (o.actor_payout_amount || 0), 0);
+      const total = owedData.reduce(
+        (sum, o) => sum + (o.actor_payout_amount || 0),
+        0
+      );
       setTotalOwed(total);
     }
 
     // 2. Get the history of paid orders
     const { data: historyData, error: historyError } = await supabase
-      .from('orders')
-      .select('id, order_id_string, actor_payout_amount, created_at, total_price')
-      .eq('actor_id', actorData.id)
-      .eq('payout_status', 'paid')
-      .order('created_at', { ascending: false });
+      .from("orders")
+      .select(
+        "id, order_id_string, actor_payout_amount, created_at, total_price"
+      )
+      .eq("actor_id", actorData.id)
+      .eq("payout_status", "paid")
+      .order("created_at", { ascending: false });
 
-    if (historyError) console.error("Error fetching payout history:", historyError);
+    if (historyError)
+      console.error("Error fetching payout history:", historyError);
     if (historyData) setHistory(historyData as Payout[]);
-    
+
     setLoading(false);
   }, [actorData.id]);
 
@@ -68,13 +80,14 @@ const ActorEarningsPage = () => {
   }, [fetchEarnings]);
 
   return (
-    <div className="space-y-6 w-full pt-20">
-        <Card>
+    <div className="p-4 md:p-8 space-y-8 w-full max-w-8xl mx-auto ">
+      <Card>
         <CardHeader>
           <CardTitle>Payout Settings</CardTitle>
           <CardDescription>
             Manage the bank account where you receive payouts from the platform.
-            This is kept private and is separate from your "Direct Payment" details.
+            This is kept private and is separate from your "Direct Payment"
+            details.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -91,9 +104,13 @@ const ActorEarningsPage = () => {
           <DollarSign className="h-4 w-4 text-muted-foreground" />
         </CardHeader>
         <CardContent>
-          <div className="text-3xl font-bold">{totalOwed.toFixed(2)} <span className="text-lg text-muted-foreground">MAD</span></div>
+          <div className="text-3xl font-bold">
+            {totalOwed.toFixed(2)}{" "}
+            <span className="text-lg text-muted-foreground">MAD</span>
+          </div>
           <p className="text-xs text-muted-foreground">
-            This is the total amount for your completed orders that is pending payout from the platform.
+            This is the total amount for your completed orders that is pending
+            payout from the platform.
           </p>
         </CardContent>
       </Card>
@@ -101,7 +118,9 @@ const ActorEarningsPage = () => {
       <Card>
         <CardHeader>
           <CardTitle>Payout History</CardTitle>
-          <CardDescription>A list of all payouts you have received from the platform.</CardDescription>
+          <CardDescription>
+            A list of all payouts you have received from the platform.
+          </CardDescription>
         </CardHeader>
         <CardContent>
           <Table>
@@ -115,14 +134,23 @@ const ActorEarningsPage = () => {
             </TableHeader>
             <TableBody>
               {loading ? (
-                <TableRow><TableCell colSpan={4} className="h-24 text-center">Loading...</TableCell></TableRow>
+                <TableRow>
+                  <TableCell colSpan={4} className="h-24 text-center">
+                    Loading...
+                  </TableCell>
+                </TableRow>
               ) : history.length > 0 ? (
-                history.map(payout => (
+                history.map((payout) => (
                   <TableRow key={payout.id}>
-                    <TableCell className="font-medium">#{payout.order_id_string}</TableCell>
+                    <TableCell className="font-medium">
+                      #{payout.order_id_string}
+                    </TableCell>
                     <TableCell>{payout.total_price?.toFixed(2)} MAD</TableCell>
                     <TableCell>
-                      <Badge variant="outline" className="text-green-500 border-green-500">
+                      <Badge
+                        variant="outline"
+                        className="text-green-500 border-green-500"
+                      >
                         {payout.actor_payout_amount.toFixed(2)} MAD
                       </Badge>
                     </TableCell>
@@ -132,7 +160,11 @@ const ActorEarningsPage = () => {
                   </TableRow>
                 ))
               ) : (
-                <TableRow><TableCell colSpan={4} className="h-24 text-center">No paid-out orders found.</TableCell></TableRow>
+                <TableRow>
+                  <TableCell colSpan={4} className="h-24 text-center">
+                    No paid-out orders found.
+                  </TableCell>
+                </TableRow>
               )}
             </TableBody>
           </Table>

@@ -12,6 +12,8 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   Loader2,
   Globe,
@@ -37,11 +39,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Label } from "recharts";
 
 const PaymentsPage = () => {
   const { actorData } = useOutletContext<ActorDashboardContextType>();
-  const { plan: currentPlanId, isLoading: isSubLoading } = useSubscription();
+  const { plan: currentPlanId } = useSubscription();
   const navigate = useNavigate();
 
   const [loading, setLoading] = useState(true);
@@ -53,6 +54,10 @@ const PaymentsPage = () => {
 
   const [isConnectingStripe, setIsConnectingStripe] = useState(false);
   const [notifications, setNotifications] = useState<Notification[]>([]);
+
+  // Crypto State
+  const [cryptoWallet, setCryptoWallet] = useState("");
+  const [isSavingCrypto, setIsSavingCrypto] = useState(false);
 
   // Check if they are on the Pro plan (assuming 'pro' is the ID for the top tier)
   const isPro = currentPlanId === "pro";
@@ -79,13 +84,19 @@ const PaymentsPage = () => {
       .select("*")
       .eq("id", actorData.id)
       .single();
-    if (actor) setProfile(actor);
+
+    if (actor) {
+      setProfile(actor);
+      // Load existing crypto wallet if available
+      if (actor.crypto_wallet) setCryptoWallet(actor.crypto_wallet);
+    }
 
     const { data: sites } = await supabase
       .from("portfolios")
       .select("*")
       .eq("actor_id", actorData.id)
       .order("created_at", { ascending: false });
+
     if (sites) setPortfolios(sites);
 
     setLoading(false);
@@ -120,6 +131,7 @@ const PaymentsPage = () => {
       setIsConnectingStripe(false);
     }
   };
+
   // --- STRIPE STANDARD LOGIC (BRING YOUR OWN) ---
   const handleConnectStandard = () => {
     if (!isPro) {
@@ -129,23 +141,44 @@ const PaymentsPage = () => {
 
     if (!actorData?.id) return;
 
-    // 1. Get your Client ID from your .env file
     const clientId = import.meta.env.VITE_STRIPE_CLIENT_ID;
-
-    // 2. We use the 'state' parameter to pass the actor ID and site context
-    // so we know exactly who is connecting when Stripe sends them back.
     const isOverride = selectedContext !== "global";
     const portfolioId = isOverride ? selectedContext : "global";
     const stateString = btoa(
       JSON.stringify({ actorId: actorData.id, portfolioId })
-    ); // Base64 encode it
+    );
 
-    // 3. Construct the secure Stripe OAuth URL
     const stripeOAuthUrl = `https://connect.stripe.com/oauth/authorize?response_type=code&client_id=${clientId}&scope=read_write&state=${stateString}`;
-
-    // 4. Send them to Stripe!
     window.location.href = stripeOAuthUrl;
   };
+
+  // --- CRYPTO LOGIC ---
+  const handleSaveCryptoWallet = async () => {
+    setIsSavingCrypto(true);
+    try {
+      // NOTE: Ensure you have added a 'crypto_wallet' column (type text) to your 'actors' table in Supabase!
+      const { error } = await supabase
+        .from("actors")
+        .update({ crypto_wallet: cryptoWallet.trim() })
+        .eq("id", actorData.id);
+
+      if (error) throw error;
+      notify(
+        "success",
+        "Wallet Saved",
+        "Your USDC wallet has been securely updated."
+      );
+      fetchData();
+    } catch (err: any) {
+      notify(
+        "error",
+        "Save Failed",
+        "Could not save wallet. Please ensure the crypto_wallet column exists in your database."
+      );
+    }
+    setIsSavingCrypto(false);
+  };
+
   if (loading)
     return (
       <div className="flex h-96 items-center justify-center">
@@ -153,27 +186,38 @@ const PaymentsPage = () => {
       </div>
     );
 
-  // Determine which Stripe ID we are currently looking at
+  // --- DETERMINE ACTIVE STATE ---
   const activePortfolio = portfolios.find((p) => p.id === selectedContext);
-  const currentStripeId =
+
+  const activeStripeId =
     selectedContext === "global"
       ? profile.stripe_account_id
       : activePortfolio?.stripe_account_id;
+
+  const activeStripeType =
+    selectedContext === "global"
+      ? profile.stripe_account_type
+      : activePortfolio?.stripe_account_type;
+
   const isInheriting =
     selectedContext !== "global" &&
     !activePortfolio?.stripe_account_id &&
     profile.stripe_account_id;
 
+  // Determine which card should show the Green "Active" state
+  const isStandardActive = activeStripeId && activeStripeType === "standard";
+  const isExpressActive = activeStripeId && activeStripeType !== "standard";
+
   return (
-    <div className="min-h-screen bg-background pb-24 relative">
+    <div className="p-4 md:p-8 space-y-8 w-full max-w-8xl mx-auto ">
       <NotificationContainer
         notifications={notifications}
         removeNotification={removeNotification}
       />
 
       {/* --- HEADER --- */}
-      <div className="px-4 pt-6 pb-6 md:pt-12 md:pb-8 md:px-8 max-w-5xl mx-auto space-y-6">
-        <div className="flex flex-col md:flex-row justify-between md:items-end gap-4 pt-20">
+      <div className="px-4 py-6 md:py-8 space-y-6">
+        <div className="flex flex-col md:flex-row justify-between md:items-end gap-4">
           <div className="space-y-1">
             <h1 className="text-2xl md:text-4xl font-black tracking-tight text-foreground">
               Payments & Integrations
@@ -234,9 +278,10 @@ const PaymentsPage = () => {
           <Card
             className={cn(
               "flex flex-col border-2 overflow-hidden transition-all",
-              currentStripeId
-                ? "border-green-500/30 bg-green-50/10"
-                : "border-border"
+              isExpressActive
+                ? "border-green-500/30 bg-green-50/10 dark:bg-green-950/10"
+                : "border-border",
+              isStandardActive && "opacity-50 grayscale" // Dim if they are using Standard
             )}
           >
             <CardHeader className="pb-3">
@@ -244,10 +289,10 @@ const PaymentsPage = () => {
                 <div className="h-10 w-10 bg-[#635BFF]/10 rounded-xl flex items-center justify-center">
                   <Zap size={20} className="text-[#635BFF] fill-[#635BFF]/20" />
                 </div>
-                {currentStripeId && (
+                {isExpressActive && (
                   <Badge
                     variant="outline"
-                    className="bg-green-50 text-green-700 border-green-200"
+                    className="bg-green-50 text-green-700 border-green-200 dark:bg-green-950 dark:text-green-400 dark:border-green-800"
                   >
                     Active
                   </Badge>
@@ -268,15 +313,15 @@ const PaymentsPage = () => {
               </div>
             </CardContent>
             <CardFooter className="pt-0">
-              {currentStripeId ? (
+              {isExpressActive ? (
                 <div className="w-full flex items-center justify-between p-3 bg-green-500/10 border border-green-500/20 rounded-xl text-green-700 dark:text-green-400">
                   <div className="flex items-center gap-2 font-mono text-xs">
-                    <CheckCircle2 size={16} /> ID: {currentStripeId}
+                    <CheckCircle2 size={16} /> ID: {activeStripeId}
                   </div>
                   <Button
                     variant="link"
                     size="sm"
-                    className="h-auto p-0 text-green-700"
+                    className="h-auto p-0 text-green-700 dark:text-green-400"
                     onClick={handleConnectExpress}
                   >
                     Dashboard
@@ -286,14 +331,16 @@ const PaymentsPage = () => {
                 <Button
                   className="w-full font-bold bg-[#635BFF] hover:bg-[#635BFF]/90 text-white"
                   onClick={handleConnectExpress}
-                  disabled={isConnectingStripe}
+                  disabled={isConnectingStripe || isStandardActive}
                 >
                   {isConnectingStripe ? (
                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                   ) : (
                     <CreditCard className="w-4 h-4 mr-2" />
                   )}
-                  Connect Bank Account
+                  {isStandardActive
+                    ? "Disabled (Using Standard)"
+                    : "Connect Bank Account"}
                 </Button>
               )}
             </CardFooter>
@@ -303,10 +350,15 @@ const PaymentsPage = () => {
           <Card
             className={cn(
               "flex flex-col border-2 overflow-hidden transition-all relative",
-              !isPro ? "bg-muted/30 border-dashed" : "border-border"
+              isStandardActive
+                ? "border-green-500/30 bg-green-50/10 dark:bg-green-950/10"
+                : !isPro
+                ? "bg-muted/30 border-dashed"
+                : "border-border",
+              isExpressActive && "opacity-50 grayscale" // Dim if they are using Express
             )}
           >
-            {!isPro && (
+            {!isPro && !isStandardActive && (
               <div className="absolute inset-0 bg-background/40 backdrop-blur-[1px] z-10 flex items-start justify-end p-5 pointer-events-none">
                 <div className="bg-background border shadow-sm rounded-full p-2 text-muted-foreground">
                   <Lock size={18} />
@@ -321,7 +373,19 @@ const PaymentsPage = () => {
                     className="text-slate-700 dark:text-slate-300"
                   />
                 </div>
-                {isPro && <Badge variant="secondary">Pro Only</Badge>}
+                <div className="flex gap-2">
+                  {isPro && !isStandardActive && (
+                    <Badge variant="secondary">Pro Only</Badge>
+                  )}
+                  {isStandardActive && (
+                    <Badge
+                      variant="outline"
+                      className="bg-green-50 text-green-700 border-green-200 dark:bg-green-950 dark:text-green-400 dark:border-green-800"
+                    >
+                      Active
+                    </Badge>
+                  )}
+                </div>
               </div>
               <CardTitle className="text-xl">Bring Your Own Stripe</CardTitle>
               <CardDescription>
@@ -335,11 +399,26 @@ const PaymentsPage = () => {
               </div>
             </CardContent>
             <CardFooter className="pt-0 relative z-20">
-              {!isPro ? (
+              {isStandardActive ? (
+                <div className="w-full flex items-center justify-between p-3 bg-green-500/10 border border-green-500/20 rounded-xl text-green-700 dark:text-green-400">
+                  <div className="flex items-center gap-2 font-mono text-xs">
+                    <CheckCircle2 size={16} /> ID: {activeStripeId}
+                  </div>
+                  <a
+                    href="https://dashboard.stripe.com"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-sm font-bold hover:underline text-green-700 dark:text-green-400"
+                  >
+                    Stripe Dashboard
+                  </a>
+                </div>
+              ) : !isPro ? (
                 <Button
                   variant="outline"
                   className="w-full font-bold border-indigo-500/30 text-indigo-600 hover:bg-indigo-50"
                   onClick={handleConnectStandard}
+                  disabled={isExpressActive}
                 >
                   Upgrade to Pro to Unlock
                 </Button>
@@ -348,14 +427,80 @@ const PaymentsPage = () => {
                   variant="outline"
                   className="w-full font-bold"
                   onClick={handleConnectStandard}
+                  disabled={isExpressActive}
                 >
-                  Connect Standard Account
+                  {isExpressActive
+                    ? "Disabled (Using Express)"
+                    : "Connect Standard Account"}
                 </Button>
               )}
             </CardFooter>
           </Card>
 
-          {/* 3. MANUAL BANK TRANSFER (PLACEHOLDER) */}
+          {/* 3. CRYPTO / USDC */}
+          <Card
+            className={cn(
+              "flex flex-col border-2 transition-all",
+              profile?.crypto_wallet
+                ? "border-amber-500/30 bg-amber-50/5 dark:bg-amber-950/10"
+                : "border-border"
+            )}
+          >
+            <CardHeader className="pb-3">
+              <div className="flex justify-between items-start mb-1">
+                <div className="h-10 w-10 bg-amber-100 dark:bg-amber-900/30 rounded-xl flex items-center justify-center mb-1">
+                  <Bitcoin
+                    size={20}
+                    className="text-amber-600 dark:text-amber-400"
+                  />
+                </div>
+                {profile?.crypto_wallet && (
+                  <Badge
+                    variant="outline"
+                    className="bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950 dark:text-amber-400 dark:border-amber-800"
+                  >
+                    Ready
+                  </Badge>
+                )}
+              </div>
+              <CardTitle className="text-lg">Crypto (USDC / SOL)</CardTitle>
+              <CardDescription>
+                Receive stablecoins directly to your Web3 wallet. Bypass Stripe
+                entirely with zero chargeback risk.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="flex-grow">
+              <Label className="text-xs font-semibold mb-1.5 block">
+                Wallet Address (EVM or Solana)
+              </Label>
+              <Input
+                placeholder="0x... or Solana address"
+                value={cryptoWallet}
+                onChange={(e) => setCryptoWallet(e.target.value)}
+                className="font-mono text-sm"
+              />
+            </CardContent>
+            <CardFooter className="mt-auto">
+              <Button
+                variant={profile?.crypto_wallet ? "outline" : "default"}
+                className={cn(
+                  "w-full font-bold",
+                  !profile?.crypto_wallet &&
+                    "bg-amber-500 hover:bg-amber-600 text-white"
+                )}
+                onClick={handleSaveCryptoWallet}
+                disabled={isSavingCrypto}
+              >
+                {isSavingCrypto ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  "Save Wallet"
+                )}
+              </Button>
+            </CardFooter>
+          </Card>
+
+          {/* 4. MANUAL BANK TRANSFER (PLACEHOLDER) */}
           <Card className="flex flex-col border-2 border-border/50 opacity-60 grayscale hover:grayscale-0 transition-all cursor-not-allowed">
             <CardHeader className="pb-3">
               <div className="h-10 w-10 bg-blue-100 dark:bg-blue-900/30 rounded-xl flex items-center justify-center mb-1">
@@ -368,31 +513,6 @@ const PaymentsPage = () => {
               <CardDescription>
                 Display your local bank or Wise details to fans. Manage order
                 fulfillment manually.
-              </CardDescription>
-            </CardHeader>
-            <CardFooter className="mt-auto">
-              <Badge
-                variant="secondary"
-                className="w-full justify-center rounded-lg py-1.5"
-              >
-                Coming Soon
-              </Badge>
-            </CardFooter>
-          </Card>
-
-          {/* 4. CRYPTO / USDC (PLACEHOLDER) */}
-          <Card className="flex flex-col border-2 border-border/50 opacity-60 grayscale hover:grayscale-0 transition-all cursor-not-allowed">
-            <CardHeader className="pb-3">
-              <div className="h-10 w-10 bg-amber-100 dark:bg-amber-900/30 rounded-xl flex items-center justify-center mb-1">
-                <Bitcoin
-                  size={20}
-                  className="text-amber-600 dark:text-amber-400"
-                />
-              </div>
-              <CardTitle className="text-lg">Crypto (USDC)</CardTitle>
-              <CardDescription>
-                Receive stablecoins directly to your Web3 wallet. Zero
-                chargeback risk globally.
               </CardDescription>
             </CardHeader>
             <CardFooter className="mt-auto">
