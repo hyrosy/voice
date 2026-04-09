@@ -118,7 +118,7 @@ const Layout = ({
     "/builder-preview",
   ];
 
-  const hideNavbarPaths = ["/pro", "/builder-preview"];
+  const hideNavbarPaths = ["/pro", "/builder-preview", "/dashboard"];
 
   // If on a custom domain, NEVER show the main platform navbar/footer!
   const shouldHideFooter =

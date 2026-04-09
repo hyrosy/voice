@@ -167,7 +167,7 @@ export default function CollectionsPage() {
   if (!actorId) return null;
 
   return (
-    <div className="p-4 md:p-8 max-w-7xl mx-auto w-full space-y-6">
+    <div className="p-4 md:p-8 max-w-8xl mx-auto w-full space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Collections</h1>

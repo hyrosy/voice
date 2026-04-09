@@ -878,8 +878,7 @@ const PortfolioBuilderPage = () => {
 
   return (
     // 1. Made it slightly wider (max-w-[1600px]) so the Desktop preview has more breathing room
-    <div className="max-w-[1600px] w-full mx-auto flex flex-col pt-20 px-4 lg:px-8 pb-4 lg:pb-6 h-[100dvh]">
-      {/* Header / Toolbar (Unchanged) */}
+    <div className="max-w-[1600px] w-full mx-auto flex flex-col pt-4 px-4 lg:px-8 pb-4 lg:pb-6 h-[100dvh]">
       {/* Header / Toolbar */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4 shrink-0">
         {/* LEFT SIDE: Site & Page Switchers */}
