@@ -196,7 +196,7 @@ export default function TopUpModal({
     "card" | "crypto" | "bank"
   >("card");
   const [isGeneratingCrypto, setIsGeneratingCrypto] = useState(false);
-
+  const [cryptoInvoiceUrl, setCryptoInvoiceUrl] = useState<string | null>(null); // 🚀 ADD THIS LINE
   // Detect Dark Mode for Stripe Elements
   useEffect(() => {
     const checkDark = () => document.documentElement.classList.contains("dark");
@@ -299,8 +299,18 @@ export default function TopUpModal({
       if (error) throw error;
 
       if (data?.invoiceUrl) {
-        // Redirect the user to the NOWPayments or BTCPay checkout page!
-        window.location.href = data.invoiceUrl;
+        // 1. Mercilessly force HTTPS
+        let finalUrl = data.invoiceUrl;
+        if (finalUrl.includes("http://")) {
+          finalUrl = finalUrl.replace("http://", "https://");
+        }
+
+        // 2. Log it to prove it worked!
+        console.log("🔗 Original API URL:", data.invoiceUrl);
+        console.log("🔒 Secured iframe URL:", finalUrl);
+
+        // 3. Set the state
+        setCryptoInvoiceUrl(finalUrl);
       } else {
         throw new Error("Failed to generate invoice URL.");
       }
@@ -310,10 +320,10 @@ export default function TopUpModal({
         "Gateway Error",
         err.message || "Could not generate crypto invoice."
       );
+    } finally {
       setIsGeneratingCrypto(false);
     }
   };
-
   const handleRedeemCode = async () => {
     if (!redeemCode.trim() || !actorData?.id) return;
     setIsRedeeming(true);
@@ -565,61 +575,49 @@ export default function TopUpModal({
                     </TabsContent>
 
                     {/* --- CRYPTO TAB (NOWPayments / BTCPay) --- */}
-                    {/* Removed h-full and flex-grow to eliminate scrolling gaps */}
+                    {/* --- CRYPTO TAB (NOWPayments) --- */}
                     <TabsContent
                       value="crypto"
-                      className="mt-0 animate-in fade-in slide-in-from-right-4 duration-300"
+                      className="mt-0 h-full flex flex-col animate-in fade-in slide-in-from-right-4 duration-300"
                     >
-                      <div className="p-8 border-2 border-amber-500/20 bg-amber-500/5 rounded-3xl flex flex-col items-center text-center mb-6">
-                        <div className="h-20 w-20 bg-gradient-to-br from-amber-400 to-orange-600 text-white rounded-full flex items-center justify-center mb-6 shadow-lg shadow-amber-500/20">
-                          <QrCode size={36} />
+                      {cryptoInvoiceUrl ? (
+                        // 🚀 THE EMBEDDED IFRAME
+                        <div className="flex-grow w-full rounded-2xl overflow-hidden border border-border/50 bg-white relative animate-in zoom-in-95 min-h-[400px]">
+                          <iframe
+                            src={cryptoInvoiceUrl}
+                            className="absolute inset-0 w-full h-full border-none"
+                            allow="clipboard-read; clipboard-write"
+                          />
                         </div>
-                        <h4 className="font-black text-2xl mb-3 text-foreground">
-                          Pay with Web3
-                        </h4>
-                        <p className="text-base text-muted-foreground mb-8 max-w-sm">
-                          We accept USDC, USDT, BTC, and Solana via a secure
-                          decentralized gateway. Instant settlement, no borders.
-                        </p>
-                        <div className="flex flex-wrap justify-center gap-2">
-                          <Badge
-                            variant="outline"
-                            className="bg-background text-sm py-1 font-mono border-border/50"
+                      ) : (
+                        // THE STANDARD GENERATE UI
+                        <>
+                          <div className="p-8 border-2 border-amber-500/20 bg-amber-500/5 rounded-3xl flex flex-col items-center text-center mb-6">
+                            <div className="h-20 w-20 bg-gradient-to-br from-amber-400 to-orange-600 text-white rounded-full flex items-center justify-center mb-6 shadow-lg shadow-amber-500/20">
+                              <QrCode size={36} />
+                            </div>
+                            <h4 className="font-black text-2xl mb-3 text-foreground">
+                              Pay with Web3
+                            </h4>
+                            <p className="text-base text-muted-foreground mb-8 max-w-sm">
+                              We accept USDC, USDT, BTC, and Solana. Instant
+                              settlement, no borders.
+                            </p>
+                          </div>
+                          <Button
+                            className="w-full h-12 font-bold text-lg bg-amber-500 hover:bg-amber-600 text-white shadow-xl shadow-amber-500/20 transition-transform active:scale-[0.98] mt-auto"
+                            onClick={handleGenerateCryptoInvoice}
+                            disabled={isGeneratingCrypto}
                           >
-                            USDC
-                          </Badge>
-                          <Badge
-                            variant="outline"
-                            className="bg-background text-sm py-1 font-mono border-border/50"
-                          >
-                            USDT
-                          </Badge>
-                          <Badge
-                            variant="outline"
-                            className="bg-background text-sm py-1 font-mono border-border/50"
-                          >
-                            BTC
-                          </Badge>
-                          <Badge
-                            variant="outline"
-                            className="bg-background text-sm py-1 font-mono border-border/50"
-                          >
-                            SOL
-                          </Badge>
-                        </div>
-                      </div>
-                      <Button
-                        className="w-full h-12 font-bold text-lg bg-amber-500 hover:bg-amber-600 text-white shadow-xl shadow-amber-500/20 transition-transform active:scale-[0.98]"
-                        onClick={handleGenerateCryptoInvoice}
-                        disabled={isGeneratingCrypto}
-                      >
-                        {isGeneratingCrypto ? (
-                          <Loader2 className="animate-spin mr-2" />
-                        ) : (
-                          <Bitcoin className="mr-2" />
-                        )}
-                        Generate Crypto Invoice
-                      </Button>
+                            {isGeneratingCrypto ? (
+                              <Loader2 className="animate-spin mr-2" />
+                            ) : (
+                              <Bitcoin className="mr-2" />
+                            )}
+                            Generate Crypto Checkout
+                          </Button>
+                        </>
+                      )}
                     </TabsContent>
 
                     {/* --- WISE / BANK TRANSFER TAB --- */}
