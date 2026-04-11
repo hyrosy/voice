@@ -326,30 +326,7 @@ const AdminDashboardPage = () => {
                 </Card>
                 </div>
                 
-                {/* --- 2. RESTYLED Management Links (with new Payouts button) --- */}
-                <div className="mb-6 flex flex-col sm:flex-row gap-2">
-                  <Button asChild variant="outline">
-                    <Link to="/admin/actors">
-                      <Users size={16} className="mr-2" /> Manage Actors
-                    </Link>
-                  </Button>
-                  <Button asChild variant="outline">
-                    <Link to="/admin/clients">
-                      <Users size={16} className="mr-2" /> Manage Clients
-                    </Link>
-                  </Button>
-                  {/* --- THIS IS THE NEW BUTTON --- */}
-                  <Button asChild variant="default">
-                    <Link to="/admin/payouts">
-                      <Banknote size={16} className="mr-2" /> Manage Payouts
-                    </Link>
-                  </Button>
-                  <Button asChild variant="outline">
-                  <Link to="/admin/domains">
-                    <Globe className="mr-2 h-4 w-4" /> Manage Domains
-                  </Link>
-                </Button>
-                </div>
+                
                 
                 {message && <p className="mb-4 p-3 bg-card rounded-md text-sm">{message}</p>}
 

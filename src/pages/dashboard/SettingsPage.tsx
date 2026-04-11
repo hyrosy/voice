@@ -293,6 +293,51 @@ const SettingsPage = () => {
     setLoading(false);
   };
 
+  // --- PHASE A: REAL-TIME WALLET LISTENER ---
+  useEffect(() => {
+    if (!actorData?.id) return;
+
+    const channel = supabase
+      .channel('wallet_updates')
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'actors',
+          filter: `id=eq.${actorData.id}`
+        },
+        (payload) => {
+          const newBalance = payload.new.wallet_balance;
+          
+          // If the balance increased (a top-up happened!)
+          if (newBalance > walletBalance) {
+            setWalletBalance(newBalance);
+            setIsTopUpOpen(false); // Instantly close the crypto checkout iframe!
+            
+            notify(
+              "success", 
+              "Top-Up Successful! 🎉", 
+              `Your balance is now ${newBalance.toLocaleString()} Coins.`
+            );
+            
+            // Refresh the transactions list to show the new receipt
+            fetchData(); 
+          } 
+          // If the balance decreased (they bought something)
+          else if (newBalance < walletBalance) {
+             setWalletBalance(newBalance);
+             // We don't need a notification here because the Buy functions handle their own UI alerts
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [actorData.id, walletBalance]); // Re-bind if balance changes
+
   useEffect(() => {
     fetchData();
   }, [actorData.id]);

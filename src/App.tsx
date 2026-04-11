@@ -15,8 +15,9 @@ import Navbar from "./components/Navbar";
 import Footer from "./components/Footer";
 import ScrollToTop from "./components/ScrollToTop";
 import ProtectedRoute from "./components/ProtectedRoute.tsx";
+import AdminDashboardLayout from "./layouts/AdminDashboardLayout"; // 🚀 1. NEW IMPORT
 
-// --- LAZY LOADED PORTFOLIO ARCHITECTURE (NEW) ---
+// --- LAZY LOADED PORTFOLIO ARCHITECTURE ---
 const PortfolioLayout = lazy(() => import("./layouts/PortfolioLayout"));
 const PortfolioHome = lazy(() => import("./pages/PortfolioHome"));
 const DynamicPage = lazy(() => import("./pages/DynamicPage"));
@@ -86,17 +87,11 @@ const MAIN_DOMAINS = [
   "www.ucpmaroc.com",
   "localhost",
   "127.0.0.1",
-  "sy4pxh-5173.csb.app",
+  "sy4pxh-5174.csb.app",
 ];
 
-// Create a React Query client
 const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      staleTime: 1000 * 60 * 5, // Data stays "fresh" for 5 minutes
-      retry: 1,
-    },
-  },
+  defaultOptions: { queries: { staleTime: 1000 * 60 * 5, retry: 1 } },
 });
 
 // --- MAIN WRAPPER LAYOUT COMPONENT ---
@@ -117,10 +112,8 @@ const Layout = ({
     "/pro",
     "/builder-preview",
   ];
+  const hideNavbarPaths = ["/pro", "/builder-preview", "/dashboard", "/admin"]; // 🚀 2. ADDED /admin TO HIDE MAIN NAVBAR
 
-  const hideNavbarPaths = ["/pro", "/builder-preview", "/dashboard"];
-
-  // If on a custom domain, NEVER show the main platform navbar/footer!
   const shouldHideFooter =
     isCustomDomain ||
     hideFooterPaths.some((path) => location.pathname.startsWith(path));
@@ -144,18 +137,6 @@ function App() {
     emailjs.init("LOZrhOD88Fa4aQQlz");
   }, []);
 
-  useEffect(() => {
-    const { data: authListener } = supabase.auth.onAuthStateChange(
-      (event, session) => {
-        console.log("Supabase Auth Event:", event, session);
-      }
-    );
-    return () => {
-      authListener?.subscription.unsubscribe();
-    };
-  }, []);
-
-  // 🚀 CUSTOM DOMAIN ROUTING LOGIC
   const currentHostname = window.location.hostname;
   const isCustomDomain = !MAIN_DOMAINS.some((domain) =>
     currentHostname.includes(domain)
@@ -175,9 +156,7 @@ function App() {
               }
             >
               <Routes>
-                {/* ========================================= */}
-                {/* 🚀 ROUTE SPLIT A: CUSTOM DOMAIN VISITORS  */}
-                {/* ========================================= */}
+                {/* 🚀 ROUTE SPLIT A: CUSTOM DOMAIN VISITORS */}
                 {isCustomDomain ? (
                   <Route
                     path="/"
@@ -189,18 +168,12 @@ function App() {
                       path="product/:productSlug"
                       element={<PublicProductPage />}
                     />
-
-                    {/* The Magic Catch-All for Custom Pages! */}
                     <Route path=":pageSlug" element={<DynamicPage />} />
                   </Route>
                 ) : (
-                  /* ========================================= */
-                  /* 🚀 ROUTE SPLIT B: MAIN PLATFORM VISITORS  */
-                  /* ========================================= */
+                  /* 🚀 ROUTE SPLIT B: MAIN PLATFORM VISITORS */
                   <>
                     <Route path="/" element={<HomePage />} />
-
-                    {/* PUBLIC PLATFORM ROUTES */}
                     <Route
                       path="/my-favorites"
                       element={<FavoriteActorsPage />}
@@ -224,7 +197,6 @@ function App() {
                     />
                     <Route path="/contact" element={<ContactUsPage />} />
 
-                    {/* 🚀 /PRO/:SLUG ROUTES (With Layout Wrapper!) */}
                     <Route path="/pro/:slug" element={<PortfolioLayout />}>
                       <Route index element={<PortfolioHome />} />
                       <Route path="shop" element={<PublicShopPage />} />
@@ -232,20 +204,16 @@ function App() {
                         path="product/:productSlug"
                         element={<PublicProductPage />}
                       />
-                      {/* 2. The Checkout Wrapper (Injects the Theme's specific Checkout styling) */}
                       <Route path="checkout" element={<CheckoutLayout />}>
-                        {/* 3. The Logic (Injects the Stripe Form and Cart Data into the Layout) */}
                         <Route index element={<PublicCheckoutPage />} />
                       </Route>
-
-                      {/* The Magic Catch-All for Custom Pages! */}
                       <Route path=":pageSlug" element={<DynamicPage />} />
                     </Route>
+
                     <Route
                       path="/dashboard/payments/callback"
                       element={<StripeCallbackPage />}
                     />
-                    {/* AUTH & PROFILES */}
                     <Route
                       path="/actor/:actorName"
                       element={<ActorProfilePage />}
@@ -257,7 +225,6 @@ function App() {
                       element={<CreateProfilePromptPage />}
                     />
 
-                    {/* CLIENT ROUTES */}
                     <Route path="/client-auth" element={<ClientAuthPage />} />
                     <Route
                       path="/client-dashboard"
@@ -267,8 +234,6 @@ function App() {
                       path="/order/:orderId"
                       element={<ClientOrderPage />}
                     />
-
-                    {/* MESSAGES & TOOLS */}
                     <Route path="/my-shortlist" element={<MyShortlistPage />} />
                     <Route path="/messages" element={<MessagesPage />} />
                     <Route
@@ -310,35 +275,31 @@ function App() {
                       <Route path="payments" element={<PaymentsPage />} />
                     </Route>
 
-                    {/* ADMIN ROUTES */}
+                    {/* 🚀 3. THE NEW ADMIN DASHBOARD ROUTING */}
                     <Route
                       element={<ProtectedRoute allowedRoles={["admin"]} />}
                     >
-                      <Route path="/admin" element={<AdminDashboardPage />} />
-                      <Route
-                        path="/admin/order/:orderId"
-                        element={<AdminOrderDetailPage />}
-                      />
-                      <Route
-                        path="/admin/actors"
-                        element={<AdminActorListPage />}
-                      />
-                      <Route
-                        path="/admin/clients"
-                        element={<AdminClientListPage />}
-                      />
-                      <Route
-                        path="/admin/domains"
-                        element={<AdminDomainListPage />}
-                      />
-                      <Route
-                        path="/admin/domains/order/:id"
-                        element={<AdminDomainOrderDetailPage />}
-                      />
-                      <Route
-                        path="/admin/payouts"
-                        element={<AdminPayoutsPage />}
-                      />
+                      <Route path="/admin" element={<AdminDashboardLayout />}>
+                        <Route index element={<AdminDashboardPage />} />
+                        <Route
+                          path="order/:orderId"
+                          element={<AdminOrderDetailPage />}
+                        />
+                        <Route path="actors" element={<AdminActorListPage />} />
+                        <Route
+                          path="clients"
+                          element={<AdminClientListPage />}
+                        />
+                        <Route
+                          path="domains"
+                          element={<AdminDomainListPage />}
+                        />
+                        <Route
+                          path="domains/order/:id"
+                          element={<AdminDomainOrderDetailPage />}
+                        />
+                        <Route path="payouts" element={<AdminPayoutsPage />} />
+                      </Route>
                     </Route>
 
                     {/* MARKETPLACE ROUTES */}
