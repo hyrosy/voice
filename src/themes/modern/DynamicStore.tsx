@@ -22,7 +22,7 @@ const MAIN_DOMAINS = [
   "www.ucpmaroc.com",
   "localhost",
   "127.0.0.1",
-  "sy4pxh-5173.csb.app",
+  "sy4pxh-5174.csb.app",
 ];
 
 // --- HELPER COMPONENTS ---

@@ -6,12 +6,10 @@ import {
   NavLink,
   useNavigate,
   useLocation,
-  useParams,
 } from "react-router-dom";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Button, buttonVariants } from "@/components/ui/button";
+import { Button } from "@/components/ui/button";
 import {
-  ListOrdered,
   User,
   Music,
   AudioLines,
@@ -23,12 +21,9 @@ import {
   ChevronRight,
   LayoutTemplate,
   BarChart3,
-  Globe,
   Briefcase,
   Package,
   Mail,
-  Sparkles,
-  Lock,
   ShoppingBag,
   Layers,
   CreditCard,
@@ -36,9 +31,12 @@ import {
   PanelLeftOpen,
   Bell,
   Search,
+  Coins,
+  Plus,
+  ArrowRightLeft,
+  Sparkles,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { Separator } from "@/components/ui/separator";
 import {
   Sheet,
   SheetContent,
@@ -47,9 +45,17 @@ import {
   SheetTrigger,
   SheetClose,
 } from "@/components/ui/sheet";
-import { Card, CardContent } from "@/components/ui/card";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { SubscriptionProvider } from "../context/SubscriptionContext";
-import ThemeToggle from "../components/ThemeToggle"; // 🚀 1. IMPORTED HERE
+import ThemeToggle from "../components/ThemeToggle";
+import TopUpModal from "@/components/dashboard/TopUpModal"; // 🚀 IMPORT TOPUP MODAL
 
 export interface ActorDashboardContextType {
   actorData: Partial<Actor>;
@@ -62,24 +68,14 @@ interface Actor {
   ActorName: string;
   HeadshotURL?: string;
   is_p2p_enabled?: boolean;
+  wallet_balance?: number;
+  country?: string;
+  marketplace_status?: string;
+  email?: string;
 }
 
-// --- 2. Nav Group Configuration ---
-type NavItem = {
-  to: string;
-  name: string;
-  icon: React.ElementType;
-  description?: string;
-};
-
-type NavGroup = {
-  label: string;
-  items: NavItem[];
-  p2pOnly?: boolean;
-};
-
 // --- NAVIGATION STRUCTURE ---
-const NAV_GROUPS: NavGroup[] = [
+const NAV_GROUPS = [
   {
     label: "Portfolio & Shop",
     items: [
@@ -125,6 +121,12 @@ const NAV_GROUPS: NavGroup[] = [
         description: "Manage domains & profile",
       },
       {
+        to: "/dashboard/profile",
+        name: "My Profile",
+        icon: User,
+        description: "Manage personal details",
+      },
+      {
         to: "/dashboard/payments",
         name: "Payments & Integrations",
         icon: CreditCard,
@@ -133,8 +135,8 @@ const NAV_GROUPS: NavGroup[] = [
     ],
   },
   {
-    label: "Casting Network",
-    p2pOnly: true, // Hidden for Creatives
+    label: "UCP Agency (Marketplace)",
+    marketplaceOnly: true, // 🚀 NEW FLAG FOR GATING
     items: [
       {
         to: "/dashboard",
@@ -185,9 +187,8 @@ const mobilePrimaryItems = [
 const ActorDashboardLayout = () => {
   const [actorData, setActorData] = useState<Partial<Actor>>({});
   const [loading, setLoading] = useState(true);
-
-  // Sidebar state
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const [isTopUpOpen, setIsTopUpOpen] = useState(false); // 🚀 TOPUP MODAL STATE
 
   const navigate = useNavigate();
   const location = useLocation();
@@ -196,13 +197,10 @@ const ActorDashboardLayout = () => {
     location.pathname.includes("/products") ||
     location.pathname.includes("/collections");
 
-  // Auto-collapse the sidebar if they open the Portfolio Editor
   useEffect(() => {
-    if (location.pathname.includes("/dashboard/portfolio")) {
+    if (location.pathname.includes("/dashboard/portfolio"))
       setIsCollapsed(true);
-    } else {
-      setIsCollapsed(false);
-    }
+    else setIsCollapsed(false);
   }, [location.pathname]);
 
   const fetchActorData = useCallback(async () => {
@@ -217,7 +215,9 @@ const ActorDashboardLayout = () => {
 
     const { data: actorProfile, error: actorError } = await supabase
       .from("actors")
-      .select("id, ActorName, HeadshotURL, is_p2p_enabled")
+      .select(
+        "id, ActorName, HeadshotURL, is_p2p_enabled, wallet_balance, country, marketplace_status"
+      )
       .eq("user_id", user.id)
       .single();
 
@@ -226,8 +226,32 @@ const ActorDashboardLayout = () => {
       return;
     }
 
-    setActorData(actorProfile);
+    setActorData({ ...actorProfile, email: user.email });
     setLoading(false);
+
+    // 🚀 REALTIME LISTENER FOR TOPBAR WALLET BALANCE
+    const channel = supabase
+      .channel("topbar_wallet")
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "actors",
+          filter: `id=eq.${actorProfile.id}`,
+        },
+        (payload) => {
+          setActorData((prev) => ({
+            ...prev,
+            wallet_balance: payload.new.wallet_balance,
+          }));
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [navigate]);
 
   useEffect(() => {
@@ -239,16 +263,8 @@ const ActorDashboardLayout = () => {
     navigate("/actor-login");
   };
 
-  const handleEnableP2P = async () => {
-    if (!actorData.id) return;
-    const { error } = await supabase
-      .from("actors")
-      .update({ is_p2p_enabled: true })
-      .eq("id", actorData.id);
-
-    if (!error) {
-      window.location.reload();
-    }
+  const handleSwitchToClient = () => {
+    navigate("/client-dashboard");
   };
 
   if (loading) {
@@ -264,15 +280,27 @@ const ActorDashboardLayout = () => {
     );
   }
 
+  const isMoroccan = actorData.country === "Morocco";
+  const isApprovedMarketplace = actorData.marketplace_status === "approved";
+
   return (
     <div className="min-h-screen bg-zinc-50/50 dark:bg-zinc-950 text-foreground flex flex-col antialiased">
       <SubscriptionProvider actorId={actorData.id}>
+        {/* --- GLOBAL TOP-UP MODAL --- */}
+        <TopUpModal
+          isOpen={isTopUpOpen}
+          onOpenChange={setIsTopUpOpen}
+          actorData={actorData}
+          profile={actorData}
+          onSuccess={fetchActorData}
+          notify={(type, title, msg) => console.log(type, title, msg)} // Ideally pass your real notify function here if available globally
+        />
+
         {/* ========================================== */}
-        {/* 1. THE TOPBAR (New SaaS Global Header)       */}
+        {/* 1. THE TOPBAR                              */}
         {/* ========================================== */}
         <header className="hidden md:flex h-14 border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 fixed top-0 w-full z-50 items-center justify-between px-4">
           <div className="flex items-center gap-4">
-            {/* Collapse Toggle */}
             <Button
               variant="ghost"
               size="icon"
@@ -285,8 +313,6 @@ const ActorDashboardLayout = () => {
                 <PanelLeftClose size={18} />
               )}
             </Button>
-
-            {/* Branding / Page Context */}
             <div className="font-bold tracking-tight text-sm flex items-center gap-2">
               <span className="bg-primary/10 text-primary px-2 py-0.5 rounded-md text-xs">
                 PRO
@@ -296,6 +322,21 @@ const ActorDashboardLayout = () => {
           </div>
 
           <div className="flex items-center gap-2">
+            {/* 🚀 THE WALLET WIDGET */}
+            <div className="flex items-center bg-amber-500/10 border border-amber-500/20 rounded-full pr-1 pl-3 h-9 mr-2">
+              <Coins size={14} className="text-amber-500 mr-2" />
+              <span className="font-black text-sm text-amber-600 dark:text-amber-400 mr-3">
+                {actorData.wallet_balance?.toLocaleString() || 0}
+              </span>
+              <Button
+                size="icon"
+                className="h-7 w-7 rounded-full bg-amber-500 hover:bg-amber-600 text-white shadow-sm"
+                onClick={() => setIsTopUpOpen(true)}
+              >
+                <Plus size={14} />
+              </Button>
+            </div>
+
             <Button
               variant="ghost"
               size="icon"
@@ -310,25 +351,64 @@ const ActorDashboardLayout = () => {
             >
               <Bell size={18} />
             </Button>
-
-            {/* 🚀 2. PLACED TOGGLE HERE */}
             <ThemeToggle />
 
             <div className="h-6 w-px bg-border mx-2" />
-            <div className="flex items-center gap-3 ml-2">
-              <span className="text-sm font-semibold text-foreground hidden lg:block">
-                {actorData.ActorName}
-              </span>
-              <Avatar className="h-8 w-8 border border-border cursor-pointer hover:opacity-80 transition-opacity">
-                <AvatarImage
-                  src={actorData.HeadshotURL}
-                  className="object-cover"
-                />
-                <AvatarFallback className="text-xs bg-primary/10 text-primary">
-                  {actorData.ActorName?.slice(0, 2).toUpperCase()}
-                </AvatarFallback>
-              </Avatar>
-            </div>
+
+            {/* 🚀 THE PROFILE SWITCHER DROPDOWN */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <div className="flex items-center gap-3 ml-2 cursor-pointer group outline-none">
+                  <span className="text-sm font-semibold text-foreground hidden lg:block group-hover:text-primary transition-colors">
+                    {actorData.ActorName}
+                  </span>
+                  <Avatar className="h-8 w-8 border border-border group-hover:opacity-80 transition-opacity ring-2 ring-transparent group-hover:ring-primary/20">
+                    <AvatarImage
+                      src={actorData.HeadshotURL}
+                      className="object-cover"
+                    />
+                    <AvatarFallback className="text-xs bg-primary/10 text-primary">
+                      {actorData.ActorName?.slice(0, 2).toUpperCase()}
+                    </AvatarFallback>
+                  </Avatar>
+                </div>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56 rounded-xl p-2">
+                <DropdownMenuLabel className="flex flex-col">
+                  <span>{actorData.ActorName}</span>
+                  <span className="text-xs text-muted-foreground font-normal">
+                    {actorData.email}
+                  </span>
+                </DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  onClick={handleSwitchToClient}
+                  className="cursor-pointer py-2 text-sm font-medium"
+                >
+                  <ArrowRightLeft
+                    size={16}
+                    className="mr-2 text-muted-foreground"
+                  />
+                  Switch to Client Dashboard
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  asChild
+                  className="cursor-pointer py-2 text-sm font-medium"
+                >
+                  <Link to="/dashboard/profile">
+                    <User size={16} className="mr-2 text-muted-foreground" />{" "}
+                    Account Settings
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  onClick={handleLogout}
+                  className="cursor-pointer text-red-500 focus:bg-red-50 focus:text-red-600 py-2 font-bold"
+                >
+                  <LogOut size={16} className="mr-2" /> Log out
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </header>
 
@@ -336,21 +416,20 @@ const ActorDashboardLayout = () => {
         {/* 2. THE APP BODY (Sidebar + Main Content)     */}
         {/* ========================================== */}
         <div className="flex flex-1 pt-14">
-          {/* THE COLLAPSIBLE SIDEBAR */}
           <aside
             className={cn(
               "hidden md:flex flex-col fixed left-0 h-[calc(100vh-3.5rem)] border-r border-border/40 bg-background/80 backdrop-blur-xl z-40 transition-all duration-300 ease-in-out",
-              isCollapsed ? "w-[72px]" : "w-[260px]" // CSS transition magic
+              isCollapsed ? "w-[72px]" : "w-[260px]"
             )}
           >
-            {/* Scrollable Nav Area */}
             <nav className="flex-1 overflow-y-auto py-6 space-y-6 custom-scrollbar overflow-x-hidden">
               {NAV_GROUPS.map((group, idx) => {
-                if (group.p2pOnly && !actorData.is_p2p_enabled) return null;
+                // 🚀 MARKETPLACE GATING LOGIC
+                if (group.marketplaceOnly && !isApprovedMarketplace)
+                  return null;
 
                 return (
                   <div key={idx} className="space-y-1">
-                    {/* Hide group labels when collapsed */}
                     <h3
                       className={cn(
                         "px-4 text-[11px] font-bold text-muted-foreground/70 uppercase tracking-widest mb-2 transition-opacity duration-200",
@@ -359,7 +438,6 @@ const ActorDashboardLayout = () => {
                     >
                       {group.label}
                     </h3>
-
                     <div className="space-y-1 px-3">
                       {group.items.map((item) => {
                         const isProductTab = item.to === "/dashboard/products";
@@ -369,12 +447,12 @@ const ActorDashboardLayout = () => {
                           <div key={item.name}>
                             <NavLink
                               to={item.to}
-                              end={
-                                item.to === "/dashboard" ||
-                                item.to === "/dashboard/settings" ||
-                                item.to === "/dashboard/payments"
-                              }
-                              title={isCollapsed ? item.name : undefined} // Native tooltip when collapsed
+                              end={[
+                                "/dashboard",
+                                "/dashboard/settings",
+                                "/dashboard/payments",
+                              ].includes(item.to)}
+                              title={isCollapsed ? item.name : undefined}
                               className={({ isActive }) =>
                                 cn(
                                   "group flex items-center rounded-lg transition-all duration-200 outline-none select-none relative",
@@ -393,8 +471,6 @@ const ActorDashboardLayout = () => {
                                   isCollapsed ? "h-5 w-5" : "h-4 w-4"
                                 )}
                               />
-
-                              {/* Hide text when collapsed */}
                               {!isCollapsed && (
                                 <>
                                   <span className="text-sm font-medium truncate">
@@ -416,8 +492,7 @@ const ActorDashboardLayout = () => {
                                 </>
                               )}
                             </NavLink>
-
-                            {/* --- DYNAMIC SUBMENU FOR COLLECTIONS (Hidden when collapsed) --- */}
+                            {/* DYNAMIC SUBMENU */}
                             {!isCollapsed && isProductTab && isShopActive && (
                               <div className="ml-9 mt-1 mb-2 flex flex-col space-y-1 border-l-2 border-border/50 pl-3 animate-in slide-in-from-top-2 duration-200">
                                 <NavLink
@@ -445,7 +520,7 @@ const ActorDashboardLayout = () => {
                                     )
                                   }
                                 >
-                                  <Layers className="w-3.5 h-3.5 mr-2 opacity-70" />
+                                  <Layers className="w-3.5 h-3.5 mr-2 opacity-70" />{" "}
                                   Collections
                                 </NavLink>
                               </div>
@@ -458,58 +533,34 @@ const ActorDashboardLayout = () => {
                 );
               })}
 
-              {/* Premium Upsell Card (Hidden when collapsed) */}
-              {!actorData.is_p2p_enabled && !isCollapsed && (
+              {/* 🚀 AGENCY APPLICATION UPSELL (Visible only to unapproved Moroccans) */}
+              {isMoroccan && !isApprovedMarketplace && !isCollapsed && (
                 <div className="px-4">
-                  <div
-                    className="relative overflow-hidden rounded-xl border border-indigo-500/30 bg-gradient-to-br from-indigo-500/5 via-purple-500/5 to-background p-4 mt-6 group cursor-pointer hover:border-indigo-500/50 transition-all animate-in fade-in"
-                    onClick={handleEnableP2P}
-                  >
-                    <div className="absolute top-0 right-0 p-2 opacity-10 group-hover:opacity-20 transition-opacity">
+                  <div className="relative overflow-hidden rounded-xl border border-amber-500/30 bg-gradient-to-br from-amber-500/5 via-orange-500/5 to-background p-4 mt-6 group animate-in fade-in">
+                    <div className="absolute top-0 right-0 p-2 opacity-10 group-hover:opacity-20 transition-opacity text-amber-500">
                       <Sparkles size={48} />
                     </div>
-                    <div className="flex items-center gap-2 mb-1 text-indigo-600 dark:text-indigo-400">
-                      <Lock size={12} />
+                    <div className="flex items-center gap-2 mb-1 text-amber-600 dark:text-amber-500">
+                      <Briefcase size={14} />
                       <h4 className="font-bold text-xs tracking-wide uppercase">
-                        Unlock Pro
+                        Join Agency
                       </h4>
                     </div>
-                    <p className="text-xs text-muted-foreground mb-3 font-medium">
-                      Enable casting features & get hired directly.
+                    <p className="text-[11px] text-muted-foreground mb-3 font-medium leading-relaxed">
+                      You're in Morocco! Apply to the UCP Marketplace to get
+                      hired directly.
                     </p>
                     <Button
                       size="sm"
-                      className="w-full h-8 text-xs font-semibold bg-indigo-600 hover:bg-indigo-500 shadow-sm shadow-indigo-500/20"
+                      asChild
+                      className="w-full h-8 text-xs font-bold bg-amber-500 hover:bg-amber-600 text-white shadow-sm"
                     >
-                      Enable Now
+                      <Link to="/dashboard/profile">Apply Now</Link>
                     </Button>
                   </div>
                 </div>
               )}
             </nav>
-
-            {/* Logout Footer */}
-            <div className="p-3 border-t border-border/40">
-              <Button
-                variant="ghost"
-                onClick={handleLogout}
-                className={cn(
-                  "w-full text-muted-foreground hover:text-destructive hover:bg-destructive/5 transition-all",
-                  isCollapsed
-                    ? "justify-center px-0 h-10 w-10 mx-auto"
-                    : "justify-start px-3 h-9"
-                )}
-                title={isCollapsed ? "Log Out" : undefined}
-              >
-                <LogOut
-                  className={cn(
-                    "shrink-0",
-                    isCollapsed ? "h-5 w-5" : "mr-2 h-4 w-4"
-                  )}
-                />
-                {!isCollapsed && <span className="text-sm">Log Out</span>}
-              </Button>
-            </div>
           </aside>
 
           {/* ========================================== */}
@@ -518,7 +569,7 @@ const ActorDashboardLayout = () => {
           <main
             className={cn(
               "flex-1 min-h-[calc(100vh-3.5rem)] flex flex-col transition-all duration-300 ease-in-out bg-zinc-50/50 dark:bg-black",
-              isCollapsed ? "md:ml-[72px]" : "md:ml-[260px]", // Follows the sidebar width!
+              isCollapsed ? "md:ml-[72px]" : "md:ml-[260px]",
               isMessagesPage ? "pb-[88px] md:pb-0" : "pb-[96px] md:pb-8"
             )}
           >
@@ -529,7 +580,6 @@ const ActorDashboardLayout = () => {
         {/* --- MOBILE BOTTOM NAV --- */}
         <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50">
           <div className="absolute bottom-0 w-full h-24 bg-gradient-to-t from-background to-transparent pointer-events-none" />
-
           <div className="bg-background/80 backdrop-blur-xl border-t border-border/60 pb-safe pt-1">
             <div className="flex justify-around items-center h-16 px-1">
               {mobilePrimaryItems.map((item) => (
@@ -548,7 +598,6 @@ const ActorDashboardLayout = () => {
                       {isActive && (
                         <span className="absolute -top-1 w-8 h-1 rounded-b-full bg-primary shadow-[0_0_10px_rgba(0,0,0,0.2)] shadow-primary/50" />
                       )}
-
                       <div
                         className={cn(
                           "p-1.5 rounded-xl transition-colors",
@@ -568,7 +617,6 @@ const ActorDashboardLayout = () => {
                 </NavLink>
               ))}
 
-              {/* Mobile Menu Trigger */}
               <Sheet>
                 <SheetTrigger asChild>
                   <button className="flex flex-col items-center justify-center w-full h-full space-y-1 text-muted-foreground active:scale-90 transition-transform">
@@ -580,17 +628,14 @@ const ActorDashboardLayout = () => {
                     </span>
                   </button>
                 </SheetTrigger>
-
                 <SheetContent
                   side="right"
                   className="w-full sm:w-[400px] border-l border-border/40 p-0 flex flex-col bg-background/95 backdrop-blur-2xl"
                 >
                   <SheetHeader className="px-6 pt-8 pb-4 text-left border-b border-border/40 flex flex-row items-center justify-between">
                     <SheetTitle className="text-2xl font-bold">Menu</SheetTitle>
-                    {/* Add ThemeToggle to Mobile Menu as well! */}
                     <ThemeToggle />
                   </SheetHeader>
-
                   <div className="flex-1 overflow-y-auto px-4 py-6 space-y-8">
                     <div className="flex items-center gap-4 px-2">
                       <Avatar className="h-12 w-12 border-2 border-primary/20">
@@ -604,14 +649,16 @@ const ActorDashboardLayout = () => {
                         <p className="font-bold text-lg">
                           {actorData.ActorName}
                         </p>
-                        <p className="text-xs text-muted-foreground">
-                          Managed Account
+                        <p
+                          className="text-xs text-muted-foreground cursor-pointer hover:underline"
+                          onClick={handleSwitchToClient}
+                        >
+                          Switch to Client Mode
                         </p>
                       </div>
                     </div>
-
                     {NAV_GROUPS.map((group, idx) => {
-                      if (group.p2pOnly && !actorData.is_p2p_enabled)
+                      if (group.marketplaceOnly && !isApprovedMarketplace)
                         return null;
                       return (
                         <div key={idx}>
@@ -648,7 +695,6 @@ const ActorDashboardLayout = () => {
                       );
                     })}
                   </div>
-
                   <div className="p-6 border-t border-border/40 bg-muted/20">
                     <SheetClose asChild>
                       <Button
