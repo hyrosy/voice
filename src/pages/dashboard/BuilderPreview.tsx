@@ -6,8 +6,43 @@ import {
   DEFAULT_THEME,
   resolveThemeComponent,
 } from "../../themes/registry";
-import { cn, hexToHSL } from "@/lib/utils";
+import { cn } from "@/lib/utils";
 import { Loader2 } from "lucide-react";
+
+// --- Helper to convert HEX to HSL for Tailwind ---
+function hexToHSLString(hex: string): string {
+  hex = hex.replace(/^#/, "");
+  let r = parseInt(hex.substring(0, 2), 16) / 255;
+  let g = parseInt(hex.substring(2, 4), 16) / 255;
+  let b = parseInt(hex.substring(4, 6), 16) / 255;
+
+  let max = Math.max(r, g, b),
+    min = Math.min(r, g, b);
+  let h = 0,
+    s = 0,
+    l = (max + min) / 2;
+
+  if (max !== min) {
+    let d = max - min;
+    s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+    switch (max) {
+      case r:
+        h = (g - b) / d + (g < b ? 6 : 0);
+        break;
+      case g:
+        h = (b - r) / d + 2;
+        break;
+      case b:
+        h = (r - g) / d + 4;
+        break;
+    }
+    h /= 6;
+  }
+
+  return `${Math.round(h * 360)} ${Math.round(s * 100)}% ${Math.round(
+    l * 100
+  )}%`;
+}
 
 export default function BuilderPreview() {
   const [sections, setSections] = useState<PortfolioSection[]>([]);
@@ -16,7 +51,6 @@ export default function BuilderPreview() {
   // 1. Establish the postMessage Bridge
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
-      // In production, you'd verify event.origin here for security
       if (event.data?.type === "UPDATE_PREVIEW") {
         setSections(event.data.payload.sections);
         setThemeConfig(event.data.payload.themeConfig);
@@ -34,101 +68,120 @@ export default function BuilderPreview() {
   // 2. Setup Theme Variables
   const themeId = themeConfig.templateId || "modern";
   const ActiveTheme = THEME_REGISTRY[themeId] || DEFAULT_THEME;
-  const fontClass =
-    themeConfig.font === "serif"
-      ? "font-serif"
-      : themeConfig.font === "mono"
-      ? "font-mono"
-      : "font-sans";
 
-  // Basic colors fallback
-  const primaryColor =
-    themeConfig.primaryColor === "blue" ? "#3b82f6" : "#8b5cf6"; // Expand this logic based on your palettes
-  const primaryHSL = hexToHSL(primaryColor);
-  const radiusVal = themeConfig.radius !== undefined ? themeConfig.radius : 0.5;
+  // 🚀 THE NEW CSS INJECTION LOGIC
+  const primaryHsl = themeConfig.primaryColor
+    ? hexToHSLString(themeConfig.primaryColor)
+    : "259 94% 51%";
+  const activeFont = themeConfig.font || "Inter";
+  const fontUrl = `https://fonts.googleapis.com/css2?family=${activeFont.replace(
+    / /g,
+    "+"
+  )}:wght@300;400;500;600;700;800;900&display=swap`;
+  const activeRadius =
+    themeConfig.radius !== undefined ? themeConfig.radius : 0.5;
 
-  const previewStyle = {
-    "--primary": primaryHSL,
-    "--ring": primaryHSL,
-    "--radius": `${radiusVal * 2}rem`,
-  } as React.CSSProperties;
-
-  // 3. Render the exact same way the live site does
   return (
-    <div
-      className={cn("min-h-screen bg-background text-foreground", fontClass)}
-      data-theme={themeConfig.templateId}
-      data-btn-style={themeConfig.buttonStyle || "solid"}
-      style={previewStyle}
-    >
-      {sections
-        .filter((s) => s.isVisible)
-        .map((section) => {
-          const Component = resolveThemeComponent(ActiveTheme, section.type);
+    <>
+      {/* 🚀 INJECTING THE STYLES EXACTLY LIKE THE LIVE SITE */}
+      <style>
+        {`
+          @import url('${fontUrl}');
+          
+          :root {
+            --primary: ${primaryHsl};
+            --radius: ${activeRadius}rem;
+          }
 
-          if (!Component) return null;
+          .builder-preview-wrapper {
+            font-family: '${activeFont}', sans-serif;
+            background-color: ${
+              themeId === "cinematic" ? "#0f172a" : "var(--background)"
+            };
+            color: ${themeId === "cinematic" ? "#f8fafc" : "var(--foreground)"};
+          }
+          
+          .builder-preview-wrapper button, 
+          .builder-preview-wrapper input, 
+          .builder-preview-wrapper textarea,
+          .builder-preview-wrapper select {
+            font-family: inherit;
+          }
+        `}
+      </style>
 
-          const sectionProps = {
-            data: section.data,
-            settings: section.settings || {},
-            id: section.id,
-            allSections: sections,
-            isPreview: true,
-            actorId: "preview-mode",
-            portfolioId: "preview-mode",
-          };
+      {/* 3. Render the preview wrapper */}
+      <div
+        className={cn(
+          "builder-preview-wrapper min-h-screen flex flex-col selection:bg-primary/30 selection:text-primary",
+          themeId === "cinematic" ? "dark" : ""
+        )}
+        data-btn-style={themeConfig.buttonStyle || "solid"}
+      >
+        {sections
+          .filter((s) => s.isVisible)
+          .map((section) => {
+            const Component = resolveThemeComponent(ActiveTheme, section.type);
 
-          const zIndexClass =
-            section.type === "header" ? "relative z-50" : "relative z-0";
+            if (!Component) return null;
 
-          return (
-            <div
-              id={section.id}
-              key={section.id}
-              className={cn(
-                zIndexClass,
-                // Subtle hover ring so they know what section they are looking at
-                "group relative hover:ring-2 hover:ring-primary/40 hover:ring-inset transition-all duration-200"
-              )}
-              // ONLY catch clicks on links/buttons so the user doesn't accidentally navigate away
-              onClickCapture={(e) => {
-                const target = e.target as HTMLElement;
-                if (target.closest("a") || target.tagName === "BUTTON") {
-                  e.preventDefault();
-                }
-              }}
-            >
-              {/* 🚀 THE FIX: Dedicated Settings Tab (Framer Style) */}
-              <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-[100]">
-                <button
-                  onClick={(e) => {
+            const sectionProps = {
+              data: section.data,
+              settings: section.settings || {},
+              id: section.id,
+              allSections: sections,
+              isPreview: true,
+              actorId: "preview-mode",
+              portfolioId: "preview-mode",
+            };
+
+            const zIndexClass =
+              section.type === "header" ? "relative z-50" : "relative z-0";
+
+            return (
+              <div
+                id={section.id}
+                key={section.id}
+                className={cn(
+                  zIndexClass,
+                  "group relative hover:ring-2 hover:ring-primary/40 hover:ring-inset transition-all duration-200"
+                )}
+                onClickCapture={(e) => {
+                  const target = e.target as HTMLElement;
+                  if (target.closest("a") || target.tagName === "BUTTON") {
                     e.preventDefault();
-                    e.stopPropagation(); // Prevent this click from doing anything else
-                    window.parent.postMessage(
-                      { type: "EDIT_SECTION", payload: section.id },
-                      "*"
-                    );
-                  }}
-                  className="bg-primary text-primary-foreground text-xs font-bold px-3 py-1.5 rounded shadow-lg flex items-center gap-2 cursor-pointer hover:scale-105 active:scale-95 transition-transform"
-                >
-                  {/* Assuming you have Settings or Edit2 imported from lucide-react */}
-                  Edit {section.type.replace("_", " ")}
-                </button>
-              </div>
-
-              <Suspense
-                fallback={
-                  <div className="py-12 flex justify-center">
-                    <Loader2 className="animate-spin text-muted-foreground" />
-                  </div>
-                }
+                  }
+                }}
               >
-                {/* Removed pointer-events-none so users can click text to inline-edit! */}
-                <Component {...sectionProps} />
-              </Suspense>
-            </div>
-          );
-        })}
-    </div>
+                <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-[100]">
+                  <button
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      window.parent.postMessage(
+                        { type: "EDIT_SECTION", payload: section.id },
+                        "*"
+                      );
+                    }}
+                    className="bg-primary text-primary-foreground text-xs font-bold px-3 py-1.5 rounded shadow-lg flex items-center gap-2 cursor-pointer hover:scale-105 active:scale-95 transition-transform"
+                  >
+                    Edit {section.type.replace("_", " ")}
+                  </button>
+                </div>
+
+                <Suspense
+                  fallback={
+                    <div className="py-12 flex justify-center">
+                      <Loader2 className="animate-spin text-muted-foreground" />
+                    </div>
+                  }
+                >
+                  <Component {...sectionProps} />
+                </Suspense>
+              </div>
+            );
+          })}
+      </div>
+    </>
   );
 }
