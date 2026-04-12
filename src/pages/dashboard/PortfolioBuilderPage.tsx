@@ -19,6 +19,7 @@ import { Input } from "@/components/ui/input";
 import {
   GripVertical,
   Eye,
+  ArrowLeft,
   EyeOff,
   Save,
   ExternalLink,
@@ -1117,110 +1118,180 @@ const PortfolioBuilderPage = () => {
               value="content"
               className="flex-grow flex flex-col overflow-hidden mt-0 data-[state=inactive]:hidden"
             >
-              <div className="flex-grow overflow-y-auto p-4 min-h-[400px] lg:min-h-0 custom-scrollbar">
-                <div className="mb-4 px-1 flex justify-between items-center text-xs text-muted-foreground">
-                  <span>
-                    Sections used: {sections.length} / {limits.maxBlocksPerSite}
-                  </span>
-                  {sections.length >= limits.maxBlocksPerSite && (
-                    <span className="text-amber-600 font-bold">
-                      Limit Reached
+              {/* 🚀 THE DRILL-DOWN LOGIC: If editing, show Editor. Else, show List. */}
+              {editingSection ? (
+                <div className="flex flex-col h-full w-full animate-in slide-in-from-right-4 duration-200">
+                  {/* Back Button Header */}
+                  <div className="p-3 border-b flex items-center justify-between bg-muted/10 shrink-0">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setEditingSection(null)}
+                      className="h-8 px-2 hover:bg-muted"
+                    >
+                      <ArrowLeft className="w-4 h-4 mr-1.5" /> Back
+                    </Button>
+                    <span className="font-bold text-xs uppercase tracking-wider text-muted-foreground mr-2 truncate">
+                      {editingSection.data._label ||
+                        editingSection.type.replace("_", " ")}
                     </span>
-                  )}
+                  </div>
+
+                  {/* The Inline Editor */}
+                  <div className="flex-grow overflow-y-auto custom-scrollbar p-0">
+                    <SectionEditor
+                      sections={sections}
+                      section={editingSection}
+                      isOpen={true} // Always true when rendered here
+                      onClose={() => setEditingSection(null)}
+                      actorId={actorData?.id || ""}
+                      themeId={themeConfig.templateId || "modern"}
+                      isInline={true} // 🚀 Pass a prop so SectionEditor knows it's NOT a modal anymore
+                    />
+                  </div>
                 </div>
+              ) : (
+                <>
+                  {/* ORIGINAL SECTION LIST VIEW */}
+                  <div className="flex-grow overflow-y-auto p-4 min-h-[400px] lg:min-h-0 custom-scrollbar animate-in slide-in-from-left-4 duration-200">
+                    <div className="mb-4 px-1 flex justify-between items-center text-xs text-muted-foreground">
+                      <span>
+                        Sections used: {sections.length} /{" "}
+                        {limits.maxBlocksPerSite}
+                      </span>
+                      {sections.length >= limits.maxBlocksPerSite && (
+                        <span className="text-amber-600 font-bold">
+                          Limit Reached
+                        </span>
+                      )}
+                    </div>
 
-                <DragDropContext onDragEnd={handleDragEnd}>
-                  <Droppable droppableId="sections">
-                    {(provided) => (
-                      <div
-                        {...provided.droppableProps}
-                        ref={provided.innerRef}
-                        className="space-y-3 pb-4"
-                      >
-                        {sections.map((section, index) => (
-                          <Draggable
-                            key={section.id}
-                            draggableId={section.id}
-                            index={index}
+                    <DragDropContext onDragEnd={handleDragEnd}>
+                      <Droppable droppableId="sections">
+                        {(provided) => (
+                          <div
+                            {...provided.droppableProps}
+                            ref={provided.innerRef}
+                            className="space-y-3 pb-4"
                           >
-                            {(provided, snapshot) => (
-                              <Card
-                                ref={provided.innerRef}
-                                {...provided.draggableProps}
-                                className={cn(
-                                  "border-l-4 transition-all cursor-pointer group active:scale-[0.99]",
-                                  section.isVisible
-                                    ? "border-l-primary shadow-sm"
-                                    : "border-l-muted opacity-60 bg-muted/20",
-                                  snapshot.isDragging &&
-                                    "shadow-lg scale-105 rotate-1 opacity-90 z-50"
-                                )}
-                                onClick={() => {
-                                  if (!renamingId) setEditingSection(section);
-                                }}
+                            {sections.map((section, index) => (
+                              <Draggable
+                                key={section.id}
+                                draggableId={section.id}
+                                index={index}
                               >
-                                <CardContent className="p-3 sm:p-4 flex items-center gap-3">
-                                  <div
-                                    {...provided.dragHandleProps}
-                                    className="cursor-grab active:cursor-grabbing text-muted-foreground/50 hover:text-foreground p-1"
+                                {(provided, snapshot) => (
+                                  <Card
+                                    ref={provided.innerRef}
+                                    {...provided.draggableProps}
+                                    className={cn(
+                                      "border-l-4 transition-all cursor-pointer group active:scale-[0.99]",
+                                      section.isVisible
+                                        ? "border-l-primary shadow-sm"
+                                        : "border-l-muted opacity-60 bg-muted/20",
+                                      snapshot.isDragging &&
+                                        "shadow-lg scale-105 rotate-1 opacity-90 z-50"
+                                    )}
+                                    onClick={() => {
+                                      if (!renamingId)
+                                        setEditingSection(section);
+                                    }}
                                   >
-                                    <GripVertical size={22} />
-                                  </div>
+                                    <CardContent className="p-3 sm:p-4 flex items-center gap-3">
+                                      <div
+                                        {...provided.dragHandleProps}
+                                        className="cursor-grab active:cursor-grabbing text-muted-foreground/50 hover:text-foreground p-1"
+                                      >
+                                        <GripVertical size={22} />
+                                      </div>
 
-                                  {renamingId === section.id ? (
-                                    <div
-                                      className="flex-grow flex items-center gap-2"
-                                      onClick={(e) => e.stopPropagation()}
-                                    >
-                                      <Input
-                                        value={tempLabel}
-                                        onChange={(e) =>
-                                          setTempLabel(e.target.value)
-                                        }
-                                        onKeyDown={(e) => {
-                                          if (e.key === "Enter") saveLabel(e);
-                                        }}
-                                        autoFocus
-                                        className="h-8 text-sm"
-                                      />
-                                      <Button
-                                        size="icon"
-                                        variant="ghost"
-                                        className="h-8 w-8 text-green-500 hover:bg-green-500/10"
-                                        onClick={saveLabel}
-                                      >
-                                        <Check size={16} />
-                                      </Button>
-                                      <Button
-                                        size="icon"
-                                        variant="ghost"
-                                        className="h-8 w-8 text-muted-foreground"
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          setRenamingId(null);
-                                        }}
-                                      >
-                                        <X size={16} />
-                                      </Button>
-                                    </div>
-                                  ) : (
-                                    <div
-                                      className="flex-grow min-w-0"
-                                      onDoubleClick={(e) => {
-                                        e.stopPropagation();
-                                        setRenamingId(section.id);
-                                        setTempLabel(
-                                          section.data._label ||
-                                            section.type.replace("_", " ")
-                                        );
-                                      }}
-                                    >
-                                      <div className="flex items-center gap-2">
-                                        <p className="font-semibold text-sm capitalize select-none truncate">
-                                          {section.data._label ||
-                                            section.type.replace("_", " ")}
-                                        </p>
-                                        <button
+                                      {/* ... (Keep your exact existing renamingId logic here) ... */}
+                                      {renamingId === section.id ? (
+                                        <div
+                                          className="flex-grow flex items-center gap-2"
+                                          onClick={(e) => e.stopPropagation()}
+                                        >
+                                          <Input
+                                            value={tempLabel}
+                                            onChange={(e) =>
+                                              setTempLabel(e.target.value)
+                                            }
+                                            onKeyDown={(e) => {
+                                              if (e.key === "Enter")
+                                                saveLabel(e);
+                                            }}
+                                            autoFocus
+                                            className="h-8 text-sm"
+                                          />
+                                          <Button
+                                            size="icon"
+                                            variant="ghost"
+                                            className="h-8 w-8 text-green-500 hover:bg-green-500/10"
+                                            onClick={saveLabel}
+                                          >
+                                            <Check size={16} />
+                                          </Button>
+                                          <Button
+                                            size="icon"
+                                            variant="ghost"
+                                            className="h-8 w-8 text-muted-foreground"
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              setRenamingId(null);
+                                            }}
+                                          >
+                                            <X size={16} />
+                                          </Button>
+                                        </div>
+                                      ) : (
+                                        <div
+                                          className="flex-grow min-w-0"
+                                          onDoubleClick={(e) => {
+                                            e.stopPropagation();
+                                            setRenamingId(section.id);
+                                            setTempLabel(
+                                              section.data._label ||
+                                                section.type.replace("_", " ")
+                                            );
+                                          }}
+                                        >
+                                          <div className="flex items-center gap-2">
+                                            <p className="font-semibold text-sm capitalize select-none truncate">
+                                              {section.data._label ||
+                                                section.type.replace("_", " ")}
+                                            </p>
+                                            <button
+                                              onClick={(e) => {
+                                                e.stopPropagation();
+                                                setRenamingId(section.id);
+                                                setTempLabel(
+                                                  section.data._label ||
+                                                    section.type.replace(
+                                                      "_",
+                                                      " "
+                                                    )
+                                                );
+                                              }}
+                                              className="opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-primary"
+                                            >
+                                              <Pencil size={12} />
+                                            </button>
+                                          </div>
+                                          {section.data.title &&
+                                            section.data.title !==
+                                              section.data._label && (
+                                              <p className="text-xs text-muted-foreground truncate max-w-[150px]">
+                                                {section.data.title}
+                                              </p>
+                                            )}
+                                        </div>
+                                      )}
+
+                                      <div className="flex items-center gap-1 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+                                        <Button
+                                          variant="ghost"
+                                          size="icon"
+                                          className="h-8 w-8 text-muted-foreground hover:text-foreground sm:hidden"
                                           onClick={(e) => {
                                             e.stopPropagation();
                                             setRenamingId(section.id);
@@ -1229,119 +1300,94 @@ const PortfolioBuilderPage = () => {
                                                 section.type.replace("_", " ")
                                             );
                                           }}
-                                          className="opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-primary"
                                         >
-                                          <Pencil size={12} />
-                                        </button>
+                                          <Pencil size={16} />
+                                        </Button>
+                                        <Button
+                                          variant="ghost"
+                                          size="icon"
+                                          className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            updateSection(section.id, {
+                                              isVisible: !section.isVisible,
+                                            });
+                                          }}
+                                        >
+                                          {section.isVisible ? (
+                                            <Eye size={18} />
+                                          ) : (
+                                            <EyeOff size={18} />
+                                          )}
+                                        </Button>
+                                        <Button
+                                          variant="ghost"
+                                          size="icon"
+                                          className="h-8 w-8 text-destructive/70 hover:text-destructive hover:bg-destructive/10"
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            if (confirm("Remove section?"))
+                                              removeSection(section.id);
+                                          }}
+                                        >
+                                          <Plus className="w-5 h-5 rotate-45" />
+                                        </Button>
                                       </div>
-                                      {section.data.title &&
-                                        section.data.title !==
-                                          section.data._label && (
-                                          <p className="text-xs text-muted-foreground truncate max-w-[150px]">
-                                            {section.data.title}
-                                          </p>
-                                        )}
-                                    </div>
-                                  )}
+                                    </CardContent>
+                                  </Card>
+                                )}
+                              </Draggable>
+                            ))}
+                            {provided.placeholder}
+                          </div>
+                        )}
+                      </Droppable>
+                    </DragDropContext>
+                  </div>
 
-                                  <div className="flex items-center gap-1 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
-                                    <Button
-                                      variant="ghost"
-                                      size="icon"
-                                      className="h-8 w-8 text-muted-foreground hover:text-foreground sm:hidden"
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        setRenamingId(section.id);
-                                        setTempLabel(
-                                          section.data._label ||
-                                            section.type.replace("_", " ")
-                                        );
-                                      }}
-                                    >
-                                      <Pencil size={16} />
-                                    </Button>
-                                    <Button
-                                      variant="ghost"
-                                      size="icon"
-                                      className="h-8 w-8 text-muted-foreground hover:text-foreground"
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        updateSection(section.id, {
-                                          isVisible: !section.isVisible,
-                                        });
-                                      }}
-                                    >
-                                      {section.isVisible ? (
-                                        <Eye size={18} />
-                                      ) : (
-                                        <EyeOff size={18} />
-                                      )}
-                                    </Button>
-                                    <Button
-                                      variant="ghost"
-                                      size="icon"
-                                      className="h-8 w-8 text-destructive/70 hover:text-destructive hover:bg-destructive/10"
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        if (confirm("Remove section?"))
-                                          removeSection(section.id);
-                                      }}
-                                    >
-                                      <Plus className="w-5 h-5 rotate-45" />
-                                    </Button>
-                                  </div>
-                                </CardContent>
-                              </Card>
-                            )}
-                          </Draggable>
-                        ))}
-                        {provided.placeholder}
-                      </div>
-                    )}
-                  </Droppable>
-                </DragDropContext>
-              </div>
-
-              <div className="p-4 border-t mt-auto shrink-0 z-10 bg-card">
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button
-                      variant="outline"
-                      className="w-full border-dashed h-12 text-foreground hover:text-primary hover:border-primary/50"
-                    >
-                      <Plus className="mr-2 h-5 w-5" /> Add New Section
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent
-                    className="w-64 max-h-[300px] overflow-y-auto"
-                    align="end"
-                  >
-                    {AVAILABLE_BLOCKS.map((block) => {
-                      const isLocked =
-                        block.module && !limits.modules[block.module];
-                      return (
-                        <DropdownMenuItem
-                          key={block.type}
-                          disabled={isLocked}
-                          onClick={() =>
-                            !isLocked && handleAddSectionAction(block.type)
-                          }
-                          className={cn(
-                            "cursor-pointer",
-                            isLocked && "opacity-50 cursor-not-allowed"
-                          )}
+                  {/* Add New Section Dropdown */}
+                  <div className="p-4 border-t mt-auto shrink-0 z-10 bg-card">
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          variant="outline"
+                          className="w-full border-dashed h-12 text-foreground hover:text-primary hover:border-primary/50"
                         >
-                          <Plus className="mr-2 h-4 w-4 opacity-50" />{" "}
-                          {block.label}
-                          {isLocked && (
-                            <Lock className="ml-auto h-3 w-3 text-amber-500" />
-                          )}
-                        </DropdownMenuItem>
-                      );
-                    })}
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </div>
+                          <Plus className="mr-2 h-5 w-5" /> Add New Section
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent
+                        className="w-64 max-h-[300px] overflow-y-auto"
+                        align="end"
+                      >
+                        {AVAILABLE_BLOCKS.map((block) => {
+                          const isLocked =
+                            block.module && !limits.modules[block.module];
+                          return (
+                            <DropdownMenuItem
+                              key={block.type}
+                              disabled={isLocked}
+                              onClick={() =>
+                                !isLocked && handleAddSectionAction(block.type)
+                              }
+                              className={cn(
+                                "cursor-pointer",
+                                isLocked && "opacity-50 cursor-not-allowed"
+                              )}
+                            >
+                              <Plus className="mr-2 h-4 w-4 opacity-50" />{" "}
+                              {block.label}
+                              {isLocked && (
+                                <Lock className="ml-auto h-3 w-3 text-amber-500" />
+                              )}
+                            </DropdownMenuItem>
+                          );
+                        })}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
+                </>
+              )}
             </TabsContent>
 
             {/* DESIGN TAB */}
@@ -1535,17 +1581,6 @@ const PortfolioBuilderPage = () => {
       </div>
       {/* ^^^ END OF GRID ^^^ */}
 
-      {/* --- MODALS & DIALOGS (MOVED OUTSIDE OF THE CSS GRID) --- */}
-      {editingSection && actorData?.id && (
-        <SectionEditor
-          sections={sections}
-          section={editingSection}
-          isOpen={!!editingSection}
-          onClose={() => setEditingSection(null)}
-          actorId={actorData.id || ""}
-          themeId={themeConfig.templateId || "modern"}
-        />
-      )}
       {/* --- CREATE NEW PAGE MODAL --- */}
       <Dialog open={isPageModalOpen} onOpenChange={setIsPageModalOpen}>
         <DialogContent className="sm:max-w-[425px]">

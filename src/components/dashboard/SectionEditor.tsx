@@ -62,6 +62,7 @@ interface SectionEditorProps {
   section: PortfolioSection | null;
   sections: PortfolioSection[]; // Kept for backwards compatibility if needed
   isOpen: boolean;
+  isInline: boolean;
   onClose: () => void;
   // onSave is no longer needed! Zustand handles it.
   actorId: string;
@@ -72,6 +73,7 @@ const SectionEditor: React.FC<SectionEditorProps> = ({
   section,
   sections,
   isOpen,
+  isInline, // 🚀 YOU MUST ADD THIS HERE!
   onClose,
   actorId,
   themeId = "modern",
@@ -3004,36 +3006,53 @@ const SectionEditor: React.FC<SectionEditorProps> = ({
     }
   };
 
+  // =========================================================
+  // 🚀 THE CONDITIONAL RENDER LOGIC
+  // =========================================================
+
+  // 1. Extract the actual form content into a variable
+  const EditorContent = (
+    <div className="w-full h-full flex flex-col">
+      {/* We only show the Header if it's NOT inline, because the inline sidebar already has a "<- Back" header */}
+      {!isInline && (
+        <div className="mb-6 px-4 pt-6">
+          <h2 className="text-lg font-semibold">
+            Edit{" "}
+            {section.type.charAt(0).toUpperCase() +
+              section.type.slice(1).replace(/_/g, " ")}
+          </h2>
+        </div>
+      )}
+
+      <Tabs defaultValue="content" className="w-full flex-grow flex flex-col">
+        <TabsList className="grid w-full grid-cols-2 mb-4 mx-4 w-auto">
+          <TabsTrigger value="content">Content</TabsTrigger>
+          <TabsTrigger value="design">Design</TabsTrigger>
+        </TabsList>
+        <TabsContent value="content" className="space-y-4 px-4 pb-8">
+          {renderFields()}
+        </TabsContent>
+        <TabsContent value="design" className="space-y-4 px-4 pb-8">
+          {renderThemeSettings()}
+        </TabsContent>
+      </Tabs>
+    </div>
+  );
+
   return (
     <>
-      <Sheet open={isOpen} onOpenChange={onClose}>
-        <SheetContent className="w-full sm:max-w-lg overflow-y-auto">
-          <SheetHeader className="mb-6">
-            <SheetTitle>
-              Edit{" "}
-              {section.type.charAt(0).toUpperCase() +
-                section.type.slice(1).replace(/_/g, " ")}
-            </SheetTitle>
-            <SheetDescription className="sr-only">
-              Customize the content and design settings.
-            </SheetDescription>
-          </SheetHeader>
+      {/* 2. THE SPLIT: Native Div OR Modal Sheet */}
+      {isInline ? (
+        EditorContent
+      ) : (
+        <Sheet open={isOpen} onOpenChange={onClose}>
+          <SheetContent className="w-full sm:max-w-lg overflow-y-auto p-0">
+            {EditorContent}
+          </SheetContent>
+        </Sheet>
+      )}
 
-          <Tabs defaultValue="content" className="w-full">
-            <TabsList className="grid w-full grid-cols-2 mb-4">
-              <TabsTrigger value="content">Content</TabsTrigger>
-              <TabsTrigger value="design">Design</TabsTrigger>
-            </TabsList>
-            <TabsContent value="content" className="space-y-4">
-              {renderFields()}
-            </TabsContent>
-            <TabsContent value="design" className="space-y-4">
-              {renderThemeSettings()}
-            </TabsContent>
-          </Tabs>
-        </SheetContent>
-      </Sheet>
-
+      {/* 3. MEDIA PICKER REMAINS A DIALOG */}
       <Dialog open={isMediaPickerOpen} onOpenChange={setIsMediaPickerOpen}>
         <DialogContent className="max-w-4xl h-[80vh] flex flex-col p-0">
           <DialogTitle className="sr-only">Media Library</DialogTitle>
