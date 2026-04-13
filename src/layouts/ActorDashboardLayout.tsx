@@ -132,6 +132,12 @@ const NAV_GROUPS = [
         icon: CreditCard,
         description: "Stripe & Payouts",
       },
+      {
+        to: "/dashboard/studio",
+        name: "Theme Editor",
+        icon: CreditCard,
+        description: "Build Themes & Earn",
+      },
     ],
   },
   {

@@ -768,7 +768,7 @@ const SettingsPage = () => {
     );
 
   return (
-    <div className="p-4 md:p-8 space-y-8 w-full max-w-8xl mx-auto ">
+    <div className=" md:p-4  w-full max-w-8xl ">
       <NotificationContainer
         notifications={notifications}
         removeNotification={removeNotification}
