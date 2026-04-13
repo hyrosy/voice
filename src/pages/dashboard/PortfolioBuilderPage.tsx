@@ -143,21 +143,24 @@ const VISUAL_THEMES = [
     name: "Modern Minimal",
     description: "Clean whitespace, classic layout.",
     previewColor: "#f3f4f6",
-    price: 0, // 🚀 FREE THEME
+    sitePrice: 0,
+    globalPrice: 0,
   },
   {
     id: "cinematic",
     name: "Cinematic Dark",
     description: "Immersive dark mode, dramatic transitions.",
     previewColor: "#1e293b",
-    price: 560, // 🚀 FREE THEME
+    sitePrice: 200, // 🚀 Cheaper option for one site
+    globalPrice: 500, // 🚀 Expensive option for all sites
   },
   {
     id: "cupertino",
     name: "Cupertino",
     description: "Apple-inspired. Bento grids, glassmorphism.",
     previewColor: "#3b82f6",
-    price: 50, // 🚀 FREE THEME
+    sitePrice: 300,
+    globalPrice: 800,
   },
 ];
 
@@ -369,6 +372,86 @@ const PortfolioBuilderPage = () => {
   const [newPageName, setNewPageName] = useState("");
   const [isCreatingPage, setIsCreatingPage] = useState(false);
   const [isDeletingPage, setIsDeletingPage] = useState(false);
+  const [isPurchasingTheme, setIsPurchasingTheme] = useState<string | null>(
+    null
+  );
+
+  // FETCH GLOBAL INVENTORY (Actor Table)
+  // FETCH GLOBAL INVENTORY (Actor Table)
+  const { data: actorWalletData, refetch: fetchActorWallet } = useQuery({
+    queryKey: ["actorWallet", actorData?.id],
+    queryFn: async () => {
+      if (!actorData?.id) return null;
+      const { data, error } = await supabase
+        .from("actors")
+        .select("purchased_themes") // 🚀 Only fetch themes, we already have the wallet balance!
+        .eq("id", actorData.id)
+        .single();
+
+      if (error) {
+        console.error(
+          "Error fetching themes. Make sure you ran the SQL query! ",
+          error
+        );
+        return null;
+      }
+      return data;
+    },
+    enabled: !!actorData?.id,
+  });
+
+  // Calculate Ownership Arrays
+  const globalOwnedThemes = actorWalletData?.purchased_themes || ["modern"];
+
+  // 🚀 THE FIX: Pull the balance directly from the real-time layout context!
+  const walletBalance = actorData.wallet_balance || 0;
+  // Helper function to check if the active site has access to a theme
+  const hasThemeAccess = (themeId: string) => {
+    return (
+      globalOwnedThemes.includes(themeId) || siteOwnedThemes.includes(themeId)
+    );
+  };
+
+  // 🚀 TIERED PURCHASE FUNCTION
+  const handlePurchaseTheme = async (
+    themeId: string,
+    price: number,
+    themeName: string,
+    scope: "site" | "global"
+  ) => {
+    if (!actorData?.id || !activePortfolioId) return;
+
+    if (walletBalance < price) {
+      alert(
+        `You need ${price} Coins, but you only have ${walletBalance}. Please top up!`
+      );
+      return;
+    }
+
+    const scopeText =
+      scope === "global" ? "all your sites forever" : "this specific site only";
+    if (!confirm(`Unlock ${themeName} for ${scopeText} for ${price} Coins?`))
+      return;
+
+    setIsPurchasingTheme(`${themeId}-${scope}`); // Track which button is loading
+
+    const { data, error } = await supabase.rpc("purchase_theme", {
+      p_actor_id: actorData.id,
+      p_theme_id: themeId,
+      p_cost: price,
+      p_scope: scope,
+      p_portfolio_id: activePortfolioId, // We pass this in case it's a site-level purchase
+    });
+
+    setIsPurchasingTheme(null);
+
+    if (error || (data && !data.success)) {
+      alert(data?.message || error?.message || "Failed to purchase theme.");
+    } else {
+      fetchActorWallet();
+      fetchPortfolio(); // Refresh site data to update local site inventory!
+    }
+  };
 
   // --- DELETE PAGE LOGIC ---
   const handleDeletePage = async () => {
@@ -468,6 +551,7 @@ const PortfolioBuilderPage = () => {
     enabled: !!actorData?.id,
     refetchOnWindowFocus: false, // 🚀 PREVENT RACE CONDITION OVERWRITES
   });
+  const siteOwnedThemes = fetchedPortfolio?.purchased_themes || []; // Pulled directly from your existing fetchedPortfolio!
 
   // C. Sync Fetched Data to Local/Zustand State
   // C. Sync Fetched Data to Local/Zustand State
@@ -1427,7 +1511,7 @@ const PortfolioBuilderPage = () => {
 
                   <div className="flex-grow overflow-y-auto p-4 space-y-4 custom-scrollbar bg-muted/5">
                     {VISUAL_THEMES.map((theme) => {
-                      const isOwned = ownedThemes.includes(theme.id);
+                      const isOwned = hasThemeAccess(theme.id);
                       const isPreviewing = themeConfig.templateId === theme.id;
 
                       return (
@@ -1461,35 +1545,112 @@ const PortfolioBuilderPage = () => {
                                   {theme.description}
                                 </p>
                               </div>
+                              {/* Price Display */}
                               {!isOwned && (
-                                <div className="flex items-center gap-1 font-black text-amber-600 bg-amber-50 px-2 py-1 rounded-md">
-                                  <Coins size={14} /> {theme.price || 500}
+                                <div className="flex flex-col items-end gap-1">
+                                  <div className="flex items-center gap-1 font-black text-amber-600 bg-amber-50 px-2 py-0.5 rounded text-[10px] whitespace-nowrap">
+                                    <Coins size={10} /> {theme.sitePrice} / Site
+                                  </div>
+                                  <div className="flex items-center gap-1 font-black text-primary bg-primary/10 px-2 py-0.5 rounded text-[10px] whitespace-nowrap">
+                                    <Coins size={10} /> {theme.globalPrice} /
+                                    Global
+                                  </div>
                                 </div>
                               )}
                             </div>
 
-                            <div className="flex gap-2 mt-4">
+                            <div className="flex flex-col gap-2 mt-4">
+                              {/* 🚀 THE SMART ACTIVATE / PREVIEW BUTTON */}
                               <Button
-                                variant={isPreviewing ? "secondary" : "outline"}
-                                className="flex-1"
+                                variant={
+                                  isPreviewing && isOwned
+                                    ? "default"
+                                    : isOwned
+                                    ? "outline"
+                                    : isPreviewing
+                                    ? "secondary"
+                                    : "outline"
+                                }
+                                className={cn(
+                                  "w-full transition-all",
+                                  isPreviewing &&
+                                    isOwned &&
+                                    "bg-green-600 hover:bg-green-700 text-white"
+                                )}
                                 onClick={() =>
                                   updateThemeConfig({ templateId: theme.id })
                                 }
+                                disabled={isPreviewing && isOwned} // Disable if it's already their active theme
                               >
-                                {isPreviewing ? (
+                                {isPreviewing && isOwned ? (
+                                  <>
+                                    <CheckCircle2 size={16} className="mr-2" />{" "}
+                                    Active Theme
+                                  </>
+                                ) : isOwned ? (
+                                  <>
+                                    <LayoutTemplate
+                                      size={16}
+                                      className="mr-2"
+                                    />{" "}
+                                    Activate Theme
+                                  </>
+                                ) : isPreviewing ? (
                                   <>
                                     <Eye size={16} className="mr-2" />{" "}
                                     Previewing...
                                   </>
                                 ) : (
-                                  "Preview in Canvas"
+                                  <>
+                                    <Eye
+                                      size={16}
+                                      className="mr-2 text-muted-foreground"
+                                    />{" "}
+                                    Preview in Canvas
+                                  </>
                                 )}
                               </Button>
 
+                              {/* 🚀 THE TIERED PURCHASE BUTTONS (Hidden if Owned) */}
                               {!isOwned && (
-                                <Button className="bg-amber-500 hover:bg-amber-600 text-white shadow-sm flex-1">
-                                  Buy Theme
-                                </Button>
+                                <div className="flex gap-2 w-full mt-1 border-t pt-3">
+                                  <Button
+                                    className="bg-amber-500 hover:bg-amber-600 text-white shadow-sm flex-1 text-[10px] px-1 h-9"
+                                    onClick={() =>
+                                      handlePurchaseTheme(
+                                        theme.id,
+                                        theme.sitePrice,
+                                        theme.name,
+                                        "site"
+                                      )
+                                    }
+                                    disabled={!!isPurchasingTheme}
+                                  >
+                                    {isPurchasingTheme ===
+                                    `${theme.id}-site` ? (
+                                      <Loader2 className="w-3 h-3 animate-spin mr-1" />
+                                    ) : null}
+                                    1 Site ({theme.sitePrice})
+                                  </Button>
+                                  <Button
+                                    className="bg-primary hover:bg-primary/90 text-white shadow-sm flex-1 text-[10px] px-1 h-9"
+                                    onClick={() =>
+                                      handlePurchaseTheme(
+                                        theme.id,
+                                        theme.globalPrice,
+                                        theme.name,
+                                        "global"
+                                      )
+                                    }
+                                    disabled={!!isPurchasingTheme}
+                                  >
+                                    {isPurchasingTheme ===
+                                    `${theme.id}-global` ? (
+                                      <Loader2 className="w-3 h-3 animate-spin mr-1" />
+                                    ) : null}
+                                    All Sites ({theme.globalPrice})
+                                  </Button>
+                                </div>
                               )}
                             </div>
                           </CardContent>
@@ -1532,156 +1693,204 @@ const PortfolioBuilderPage = () => {
                       </Button>
                     </div>
 
-                    {/* THE PREMIUM PREVIEW WARNING BANNER */}
-                    {!ownedThemes.includes(themeConfig.templateId) && (
-                      <div className="bg-amber-50 border border-amber-200 p-3 rounded-lg flex flex-col gap-2 animate-in fade-in">
-                        <div className="flex items-center gap-2 text-amber-800 text-sm font-bold">
-                          <Eye size={16} className="text-amber-600" /> You are
-                          previewing a Premium Theme.
-                        </div>
-                        <p className="text-xs text-amber-700/80">
-                          To publish or save these changes, you must unlock this
-                          theme.
-                        </p>
-                        <Button
-                          size="sm"
-                          className="w-full bg-amber-500 hover:bg-amber-600 text-white font-bold mt-1"
-                        >
-                          Unlock for 500 Coins
-                        </Button>
-                      </div>
-                    )}
-                  </div>
+                    {/* 🚀 THE TIERED PREMIUM PREVIEW WARNING BANNER */}
+                    {!hasThemeAccess(themeConfig.templateId) &&
+                      (() => {
+                        const activePremiumTheme = VISUAL_THEMES.find(
+                          (t) => t.id === themeConfig.templateId
+                        );
 
-                  {/* --- COLOR PICKER --- */}
-                  <div className="space-y-3">
-                    <div className="flex items-center gap-2 text-sm font-bold text-muted-foreground uppercase tracking-wider">
-                      <PaintBucket size={14} /> Brand Color
-                    </div>
-                    <div className="flex items-center gap-4 bg-background p-3 rounded-xl border">
-                      <div
-                        className="relative w-12 h-12 rounded-full overflow-hidden border-2 shadow-sm shrink-0 cursor-pointer"
-                        style={{
-                          borderColor: themeConfig.primaryColor || "#8b5cf6",
-                        }}
-                      >
-                        <input
-                          type="color"
-                          value={themeConfig.primaryColor || "#8b5cf6"}
-                          onChange={(e) =>
-                            updateThemeConfig({ primaryColor: e.target.value })
-                          }
-                          className="absolute -top-4 -left-4 w-20 h-20 cursor-pointer"
-                        />
+                        // Safety check just in case it can't find the theme
+                        if (!activePremiumTheme) return null;
+
+                        return (
+                          <div className="bg-amber-50 border border-amber-200 p-3 rounded-lg flex flex-col gap-2 animate-in fade-in">
+                            <div className="flex items-center gap-2 text-amber-800 text-sm font-bold">
+                              <Eye size={16} className="text-amber-600" />{" "}
+                              Previewing Premium Theme
+                            </div>
+                            <p className="text-xs text-amber-700/80">
+                              You must unlock this theme to save your changes.
+                            </p>
+
+                            <div className="grid grid-cols-2 gap-2 mt-1">
+                              <Button
+                                size="sm"
+                                className="w-full bg-amber-500 hover:bg-amber-600 text-white font-bold text-[10px] h-8"
+                                onClick={() =>
+                                  handlePurchaseTheme(
+                                    activePremiumTheme.id,
+                                    activePremiumTheme.sitePrice,
+                                    activePremiumTheme.name,
+                                    "site"
+                                  )
+                                }
+                                disabled={!!isPurchasingTheme}
+                              >
+                                {isPurchasingTheme ===
+                                `${activePremiumTheme.id}-site` ? (
+                                  <Loader2 className="w-3 h-3 animate-spin mr-1" />
+                                ) : null}
+                                This Site ({activePremiumTheme.sitePrice})
+                              </Button>
+                              <Button
+                                size="sm"
+                                className="w-full bg-primary hover:bg-primary/90 text-white font-bold text-[10px] h-8"
+                                onClick={() =>
+                                  handlePurchaseTheme(
+                                    activePremiumTheme.id,
+                                    activePremiumTheme.globalPrice,
+                                    activePremiumTheme.name,
+                                    "global"
+                                  )
+                                }
+                                disabled={!!isPurchasingTheme}
+                              >
+                                {isPurchasingTheme ===
+                                `${activePremiumTheme.id}-global` ? (
+                                  <Loader2 className="w-3 h-3 animate-spin mr-1" />
+                                ) : null}
+                                All Sites ({activePremiumTheme.globalPrice})
+                              </Button>
+                            </div>
+                          </div>
+                        );
+                      })()}
+
+                    {/* --- COLOR PICKER --- */}
+                    <div className="space-y-3">
+                      <div className="flex items-center gap-2 text-sm font-bold text-muted-foreground uppercase tracking-wider">
+                        <PaintBucket size={14} /> Brand Color
                       </div>
-                      <div className="flex-grow">
-                        <Label className="text-[10px] text-muted-foreground uppercase">
-                          Hex Code
-                        </Label>
-                        <div className="relative">
-                          <span className="absolute left-3 top-2.5 text-muted-foreground font-bold">
-                            #
-                          </span>
-                          <Input
-                            value={(
-                              themeConfig.primaryColor || "8b5cf6"
-                            ).replace("#", "")}
+                      <div className="flex items-center gap-4 bg-background p-3 rounded-xl border">
+                        <div
+                          className="relative w-12 h-12 rounded-full overflow-hidden border-2 shadow-sm shrink-0 cursor-pointer"
+                          style={{
+                            borderColor: themeConfig.primaryColor || "#8b5cf6",
+                          }}
+                        >
+                          <input
+                            type="color"
+                            value={themeConfig.primaryColor || "#8b5cf6"}
                             onChange={(e) =>
                               updateThemeConfig({
-                                primaryColor: `#${e.target.value}`,
+                                primaryColor: e.target.value,
                               })
                             }
-                            className="pl-7 font-mono uppercase font-semibold h-10"
-                            maxLength={7}
+                            className="absolute -top-4 -left-4 w-20 h-20 cursor-pointer"
                           />
+                        </div>
+                        <div className="flex-grow">
+                          <Label className="text-[10px] text-muted-foreground uppercase">
+                            Hex Code
+                          </Label>
+                          <div className="relative">
+                            <span className="absolute left-3 top-2.5 text-muted-foreground font-bold">
+                              #
+                            </span>
+                            <Input
+                              value={(
+                                themeConfig.primaryColor || "8b5cf6"
+                              ).replace("#", "")}
+                              onChange={(e) =>
+                                updateThemeConfig({
+                                  primaryColor: `#${e.target.value}`,
+                                })
+                              }
+                              className="pl-7 font-mono uppercase font-semibold h-10"
+                              maxLength={7}
+                            />
+                          </div>
                         </div>
                       </div>
                     </div>
-                  </div>
 
-                  {/* --- TYPOGRAPHY --- */}
-                  <div className="space-y-3">
-                    <div className="flex items-center gap-2 text-sm font-bold text-muted-foreground uppercase tracking-wider">
-                      <Type size={14} /> Typography
-                    </div>
-                    <Select
-                      value={themeConfig.font}
-                      onValueChange={(val) => updateThemeConfig({ font: val })}
-                    >
-                      <SelectTrigger className="h-10 bg-background">
-                        <SelectValue placeholder="Select a font" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {LOCAL_FONT_OPTIONS.map((font) => (
-                          <SelectItem key={font.id} value={font.id}>
-                            {/* 🚀 Removed the broken className="font.value" */}
-                            <span>{font.name}</span>
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  {/* --- INTERFACE (Border Radius & Buttons) --- */}
-                  <div className="space-y-4 pt-4 border-t border-dashed">
-                    <div className="flex items-center gap-2 text-sm font-bold text-muted-foreground uppercase tracking-wider">
-                      <ComponentIcon size={14} /> Interface
-                    </div>
-                    <div className="space-y-3 bg-background p-3 rounded-xl border">
-                      <div className="flex justify-between text-xs font-medium">
-                        <span className="flex items-center gap-1">
-                          <Square size={12} /> Sharp
-                        </span>
-                        <span className="flex items-center gap-1">
-                          <Circle size={12} /> Round
-                        </span>
+                    {/* --- TYPOGRAPHY --- */}
+                    <div className="space-y-3">
+                      <div className="flex items-center gap-2 text-sm font-bold text-muted-foreground uppercase tracking-wider">
+                        <Type size={14} /> Typography
                       </div>
-                      <Slider
-                        defaultValue={[0.5]}
-                        max={1}
-                        step={0.1}
-                        value={[
-                          themeConfig.radius !== undefined
-                            ? themeConfig.radius
-                            : 0.5,
-                        ]}
+                      <Select
+                        value={themeConfig.font}
                         onValueChange={(val) =>
-                          updateThemeConfig({ radius: val[0] })
+                          updateThemeConfig({ font: val })
                         }
-                        className="py-1"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label className="text-xs text-muted-foreground">
-                        Button Style
-                      </Label>
-                      <ToggleGroup
-                        type="single"
-                        value={themeConfig.buttonStyle || "solid"}
-                        onValueChange={(val) =>
-                          val && updateThemeConfig({ buttonStyle: val })
-                        }
-                        className="justify-start gap-3"
                       >
-                        <ToggleGroupItem
-                          value="solid"
-                          className="border px-4 py-2 h-auto data-[state=on]:bg-primary data-[state=on]:text-white"
+                        <SelectTrigger className="h-10 bg-background">
+                          <SelectValue placeholder="Select a font" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {LOCAL_FONT_OPTIONS.map((font) => (
+                            <SelectItem key={font.id} value={font.id}>
+                              {/* 🚀 Removed the broken className="font.value" */}
+                              <span>{font.name}</span>
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    {/* --- INTERFACE (Border Radius & Buttons) --- */}
+                    <div className="space-y-4 pt-4 border-t border-dashed">
+                      <div className="flex items-center gap-2 text-sm font-bold text-muted-foreground uppercase tracking-wider">
+                        <ComponentIcon size={14} /> Interface
+                      </div>
+                      <div className="space-y-3 bg-background p-3 rounded-xl border">
+                        <div className="flex justify-between text-xs font-medium">
+                          <span className="flex items-center gap-1">
+                            <Square size={12} /> Sharp
+                          </span>
+                          <span className="flex items-center gap-1">
+                            <Circle size={12} /> Round
+                          </span>
+                        </div>
+                        <Slider
+                          defaultValue={[0.5]}
+                          max={1}
+                          step={0.1}
+                          value={[
+                            themeConfig.radius !== undefined
+                              ? themeConfig.radius
+                              : 0.5,
+                          ]}
+                          onValueChange={(val) =>
+                            updateThemeConfig({ radius: val[0] })
+                          }
+                          className="py-1"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label className="text-xs text-muted-foreground">
+                          Button Style
+                        </Label>
+                        <ToggleGroup
+                          type="single"
+                          value={themeConfig.buttonStyle || "solid"}
+                          onValueChange={(val) =>
+                            val && updateThemeConfig({ buttonStyle: val })
+                          }
+                          className="justify-start gap-3"
                         >
-                          Solid
-                        </ToggleGroupItem>
-                        <ToggleGroupItem
-                          value="outline"
-                          className="border px-4 py-2 h-auto data-[state=on]:border-primary data-[state=on]:text-primary"
-                        >
-                          Outline
-                        </ToggleGroupItem>
-                        <ToggleGroupItem
-                          value="shadow"
-                          className="border px-4 py-2 h-auto shadow-md data-[state=on]:ring-2 ring-primary"
-                        >
-                          Retro
-                        </ToggleGroupItem>
-                      </ToggleGroup>
+                          <ToggleGroupItem
+                            value="solid"
+                            className="border px-4 py-2 h-auto data-[state=on]:bg-primary data-[state=on]:text-white"
+                          >
+                            Solid
+                          </ToggleGroupItem>
+                          <ToggleGroupItem
+                            value="outline"
+                            className="border px-4 py-2 h-auto data-[state=on]:border-primary data-[state=on]:text-primary"
+                          >
+                            Outline
+                          </ToggleGroupItem>
+                          <ToggleGroupItem
+                            value="shadow"
+                            className="border px-4 py-2 h-auto shadow-md data-[state=on]:ring-2 ring-primary"
+                          >
+                            Retro
+                          </ToggleGroupItem>
+                        </ToggleGroup>
+                      </div>
                     </div>
                   </div>
                 </div>

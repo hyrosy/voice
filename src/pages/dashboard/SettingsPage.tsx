@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { supabase } from "../../supabaseClient";
 import {
   useOutletContext,
@@ -170,7 +170,10 @@ const PLANS = [
 ];
 
 const SettingsPage = () => {
+  // 🚀 WE NOW RELY ENTIRELY ON THE MASTER CONTEXT FOR WALLET BALANCE
   const { actorData } = useOutletContext<ActorDashboardContextType>();
+  const walletBalance = actorData.wallet_balance || 0;
+
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
 
@@ -186,7 +189,6 @@ const SettingsPage = () => {
   const [loading, setLoading] = useState(true);
   const [portfolios, setPortfolios] = useState<any[]>([]);
   const [profile, setProfile] = useState<any>({});
-  const [walletBalance, setWalletBalance] = useState(0);
   const [subscriptions, setSubscriptions] = useState<Record<string, any>>({});
   const [transactions, setTransactions] = useState<any[]>([]);
 
@@ -269,7 +271,6 @@ const SettingsPage = () => {
       .single();
     if (actor) {
       setProfile(actor);
-      setWalletBalance(actor.wallet_balance || 0);
     }
 
     const { data: subs } = await supabase
@@ -287,56 +288,32 @@ const SettingsPage = () => {
       .select("*")
       .eq("actor_id", actorData.id)
       .order("created_at", { ascending: false })
-      .limit(5);
+      .limit(10); // Fetch a bit more to be safe
     if (txs) setTransactions(txs);
 
     setLoading(false);
   };
 
-  // --- PHASE A: REAL-TIME WALLET LISTENER ---
+  // 🚀 NEW: Smart Wallet Tracker
+  // This watches the master context balance. If it goes UP, we know a webhook/crypto top-up succeeded.
+  const prevBalanceRef = useRef<number | undefined>(undefined);
   useEffect(() => {
-    if (!actorData?.id) return;
-
-    const channel = supabase
-      .channel('wallet_updates')
-      .on(
-        'postgres_changes',
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'actors',
-          filter: `id=eq.${actorData.id}`
-        },
-        (payload) => {
-          const newBalance = payload.new.wallet_balance;
-          
-          // If the balance increased (a top-up happened!)
-          if (newBalance > walletBalance) {
-            setWalletBalance(newBalance);
-            setIsTopUpOpen(false); // Instantly close the crypto checkout iframe!
-            
-            notify(
-              "success", 
-              "Top-Up Successful! 🎉", 
-              `Your balance is now ${newBalance.toLocaleString()} Coins.`
-            );
-            
-            // Refresh the transactions list to show the new receipt
-            fetchData(); 
-          } 
-          // If the balance decreased (they bought something)
-          else if (newBalance < walletBalance) {
-             setWalletBalance(newBalance);
-             // We don't need a notification here because the Buy functions handle their own UI alerts
-          }
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [actorData.id, walletBalance]); // Re-bind if balance changes
+    if (
+      actorData.wallet_balance !== undefined &&
+      prevBalanceRef.current !== undefined
+    ) {
+      if (actorData.wallet_balance > prevBalanceRef.current) {
+        setIsTopUpOpen(false); // Close modal automatically if open
+        notify(
+          "success",
+          "Top-Up Successful! 🎉",
+          `Your balance is now ${actorData.wallet_balance.toLocaleString()} Coins.`
+        );
+        fetchData(); // Refresh transaction history instantly
+      }
+    }
+    prevBalanceRef.current = actorData.wallet_balance;
+  }, [actorData.wallet_balance]);
 
   useEffect(() => {
     fetchData();
@@ -832,7 +809,7 @@ const SettingsPage = () => {
         onValueChange={(val) => setSearchParams({ tab: val })}
         className="w-full"
       >
-        {/* --- STICKY SUB NAVIGATION (Sticks right below the new Topbar) --- */}
+        {/* --- STICKY SUB NAVIGATION --- */}
         <div className="sticky top-14 z-40 bg-zinc-50/90 dark:bg-zinc-950/90 backdrop-blur-md border-b border-border/40 px-4 md:px-8 py-2 mb-6">
           <TabsList className="w-full flex h-auto p-1 bg-muted/50 rounded-xl overflow-x-auto no-scrollbar justify-start sm:justify-between gap-1">
             <TabsTrigger
