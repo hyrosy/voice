@@ -81,6 +81,7 @@ import PublicCheckoutPage from "./pages/PublicCheckoutPage.tsx";
 import CheckoutLayout from "./themes/modern/CheckoutLayout.tsx";
 import StripeCallbackPage from "./pages/dashboard/StripeCallbackPage.tsx";
 import ThemeStudioPage from "./pages/dashboard/ThemeStudioPage.tsx";
+import DeveloperHubPage from "./pages/dashboard/DeveloperHubPage.tsx";
 
 // Define main domains globally
 const MAIN_DOMAINS = [
@@ -275,6 +276,10 @@ function App() {
                       <Route path="collections" element={<CollectionsPage />} />
                       <Route path="payments" element={<PaymentsPage />} />
                       <Route path="studio" element={<ThemeStudioPage />} />
+                      <Route
+                        path="creator-hub"
+                        element={<DeveloperHubPage />}
+                      />
                     </Route>
 
                     {/* 🚀 3. THE NEW ADMIN DASHBOARD ROUTING */}
