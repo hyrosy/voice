@@ -6,7 +6,7 @@ import {
 } from "react-router-dom";
 import { ActorDashboardContextType } from "../../layouts/ActorDashboardLayout";
 import { supabase } from "../../supabaseClient";
-import Editor from "@monaco-editor/react";
+import Editor, { useMonaco } from "@monaco-editor/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -39,13 +39,16 @@ import { cn } from "@/lib/utils";
 
 import * as Babel from "@babel/standalone";
 import SdkDocsModal from "@/components/dashboard/SdkDocsModal";
+// At the top of ThemeStudioPage.tsx
+import cupertinoHeaderRaw from "../../themes/cupertino/Header.tsx?raw";
+import cupertinoHeroRaw from "../../themes/cupertino/Hero.tsx?raw";
+import cupertinoGalleryRaw from "../../themes/cupertino/Gallery.tsx?raw";
 
 const INITIAL_FILES: Record<string, string> = {
-  "Header.tsx": `import React from 'react';\nimport { cn } from "@/lib/utils";\n\nexport default function CustomHeader({ data }: any) {\n  return (\n    <header className={cn("p-6 bg-zinc-950 text-white border-b border-zinc-800 flex justify-between items-center")}>\n      <h1 className="font-black text-xl text-indigo-400">{data.logoText || "Cyber Theme"}</h1>\n      <nav className="flex gap-4 text-sm font-bold text-zinc-400 uppercase tracking-widest">\n         <a href="#" className="hover:text-white">Home</a>\n         <a href="#" className="hover:text-white">Work</a>\n      </nav>\n    </header>\n  );\n}\nCustomHeader.schema = {\n  logoText: { type: "string", label: "Logo Text", default: "Cyber Theme" }\n};`,
-  "Hero.tsx": `import React from 'react';\nimport { cn } from "@/lib/utils";\nimport { motion } from "framer-motion";\n\nexport default function CustomHero({ data }: any) {\n  return (\n    <section className="w-full min-h-[500px] flex flex-col items-center justify-center p-8 text-center relative overflow-hidden transition-colors duration-500" style={{ backgroundColor: data.bgColor || '#09090b', color: data.textColor || '#ffffff' }}>\n      <div className="absolute inset-0 bg-indigo-500/10 blur-[100px] rounded-full"></div>\n      <motion.h2 \n        initial={{ opacity: 0, y: 20 }} \n        animate={{ opacity: 1, y: 0 }} \n        className="text-6xl font-black mb-4 relative z-10"\n      >\n        {data.title || "The Future is Now"}\n      </motion.h2>\n      <p className="text-xl max-w-2xl relative z-10 opacity-80">{data.subtitle || "A dark, immersive theme."}</p>\n      <button className="mt-8 px-8 py-4 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-full relative z-10 transition-all">{data.ctaText || "Get Started"}</button>\n    </section>\n  );\n}\nCustomHero.schema = [\n  { id: 'title', type: "string", label: "Hero Title", defaultValue: "The Future is Now" },\n  { id: 'subtitle', type: "string", label: "Subtitle", defaultValue: "A dark, immersive theme." },\n  { id: 'ctaText', type: "string", label: "Button Text", defaultValue: "Get Started" },\n  { id: 'bgColor', type: "color", label: "Background Color", defaultValue: "#09090b" },\n  { id: 'textColor', type: "color", label: "Text Color", defaultValue: "#ffffff" }\n];`,
-  "Footer.tsx": `import React from 'react';\nimport { ArrowRight } from "lucide-react";\n\nexport default function CustomFooter({ data }: any) {\n  return (\n    <footer className="p-12 bg-zinc-950 text-zinc-500 text-center border-t border-zinc-800 text-sm flex items-center justify-center gap-2">\n      {data.copyright || "© 2026 Actor Pro. All rights reserved."} <ArrowRight size={14} />\n    </footer>\n  );\n}\nCustomFooter.schema = {\n  copyright: { type: "string", label: "Copyright Text", default: "© 2026 Actor Pro. All rights reserved." }\n};`,
+  "Header.tsx": cupertinoHeaderRaw,
+  "Hero.tsx": cupertinoHeroRaw,
+  "Gallery.tsx": cupertinoGalleryRaw,
 };
-
 // 🚀 UPGRADED SANDBOX: Now injects Walled Garden SDK (TailwindMerge, Framer Motion, Lucide)
 const IFRAME_TEMPLATE = `
 <!DOCTYPE html>
@@ -79,6 +82,31 @@ const IFRAME_TEMPLATE = `
     let compiledComponents = {}; 
     let isFullPageMode = false;
 
+    const UCP = {
+      // The <UCP.Text /> component simulates the InlineEdit experience
+      Text: function UCPText({ field, default: defaultText, className, as: Tag = "span" }) {
+        // We look for the value in the current props, fallback to default
+        const value = currentProps[field] || defaultText || "";
+        
+        // When they type in the iframe, we send a message up to the Studio to update the mockData!
+        const handleInput = (e) => {
+           const newValue = e.currentTarget.textContent;
+           window.parent.postMessage({
+              type: 'UCP_INLINE_EDIT',
+              field: field,
+              value: newValue
+           }, '*');
+        };
+
+        return React.createElement(Tag, {
+           className: cn(className, "outline-none hover:ring-2 hover:ring-indigo-500/50 hover:bg-indigo-500/5 transition-all cursor-text rounded-sm px-1 -ml-1"),
+           contentEditable: true,
+           suppressContentEditableWarning: true,
+           onBlur: handleInput,
+           onKeyUp: (e) => { if(e.key === 'Enter') e.currentTarget.blur() }
+        }, value);
+      }
+    };
     function renderComponent() {
       if (isFullPageMode) {
          const children = Object.keys(compiledComponents).map(key => {
@@ -108,6 +136,8 @@ const IFRAME_TEMPLATE = `
       if (mod === '@/lib/utils') return { cn };
       if (mod === 'framer-motion') return window.Motion;
       if (mod === 'lucide-react') return window.lucide;
+      // 🚀 NEW: Expose the UCP SDK
+      if (mod === '@ucp/sdk') return { UCP };
       throw new Error('Security Block: Importing external module "' + mod + '" is not permitted. Check the SDK Docs for available libraries.');
     };
 
@@ -205,7 +235,28 @@ export default function ThemeStudioPage() {
   const [activeSchema, setActiveSchema] = useState<Record<string, any>>({});
   const [mockData, setMockData] = useState<Record<string, any>>({});
   const iframeRef = useRef<HTMLIFrameElement>(null);
+  // 🚀 ADD THIS NEW HOOK
+  const monaco = useMonaco();
 
+  // 🚀 ADD THIS USE EFFECT
+  useEffect(() => {
+    if (monaco) {
+      monaco.languages.typescript.typescriptDefaults.setCompilerOptions({
+        jsx: monaco.languages.typescript.JsxEmit.React,
+        jsxFactory: "React.createElement",
+        reactNamespace: "React",
+        allowNonTsExtensions: true,
+        allowJs: true,
+        target: monaco.languages.typescript.ScriptTarget.Latest,
+      });
+
+      // Optional: Ignore the "Cannot find module 'react'" error since we inject it via CDN
+      monaco.languages.typescript.typescriptDefaults.setDiagnosticsOptions({
+        noSemanticValidation: true,
+        noSyntaxValidation: false,
+      });
+    }
+  }, [monaco]);
   useEffect(() => {
     const fetchTheme = async () => {
       if (!themeId || !actorData?.id) return;
@@ -275,6 +326,15 @@ export default function ThemeStudioPage() {
 
       if (e.data.type === "FULL_PAGE_READY") {
         setActiveSchema({});
+      }
+
+      if (e.data.type === "UCP_INLINE_EDIT") {
+        // Update the mockData state, which will automatically re-render the iframe!
+        setMockData((prev) => {
+          const newData = { ...prev, [e.data.field]: e.data.value };
+          updateIframeProps(newData); // Send it right back down
+          return newData;
+        });
       }
     };
     window.addEventListener("message", handleMessage);
