@@ -238,25 +238,6 @@ export default function ThemeStudioPage() {
   // 🚀 ADD THIS NEW HOOK
   const monaco = useMonaco();
 
-  // 🚀 ADD THIS USE EFFECT
-  useEffect(() => {
-    if (monaco) {
-      monaco.languages.typescript.typescriptDefaults.setCompilerOptions({
-        jsx: monaco.languages.typescript.JsxEmit.React,
-        jsxFactory: "React.createElement",
-        reactNamespace: "React",
-        allowNonTsExtensions: true,
-        allowJs: true,
-        target: monaco.languages.typescript.ScriptTarget.Latest,
-      });
-
-      // Optional: Ignore the "Cannot find module 'react'" error since we inject it via CDN
-      monaco.languages.typescript.typescriptDefaults.setDiagnosticsOptions({
-        noSemanticValidation: true,
-        noSyntaxValidation: false,
-      });
-    }
-  }, [monaco]);
   useEffect(() => {
     const fetchTheme = async () => {
       if (!themeId || !actorData?.id) return;
@@ -348,6 +329,26 @@ export default function ThemeStudioPage() {
         "*"
       );
     }
+  };
+  // 🚀 MONACO COMPILER CONFIGURATION
+  // 🚀 MONACO COMPILER CONFIGURATION
+  const handleEditorWillMount = (m: any) => {
+    // Cast to 'any' to completely bypass your local IDE's global type clash
+    const ts = m.languages.typescript as any;
+
+    ts.typescriptDefaults.setCompilerOptions({
+      jsx: ts.JsxEmit.React,
+      jsxFactory: "React.createElement",
+      reactNamespace: "React",
+      allowNonTsExtensions: true,
+      allowJs: true,
+      target: ts.ScriptTarget.Latest,
+    });
+
+    ts.typescriptDefaults.setDiagnosticsOptions({
+      noSemanticValidation: true,
+      noSyntaxValidation: false,
+    });
   };
 
   const handlePropChange = (key: string, value: string | boolean) => {
@@ -541,6 +542,7 @@ export default function ThemeStudioPage() {
               theme="vs-dark"
               value={files[activeFile]}
               onChange={handleEditorChange}
+              beforeMount={handleEditorWillMount} // 🚀 ADD THIS LINE
               options={{
                 minimap: { enabled: false },
                 fontSize: 14,
