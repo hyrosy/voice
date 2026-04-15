@@ -50,19 +50,31 @@ const INITIAL_FILES: Record<string, string> = {
   "Gallery.tsx": cupertinoGalleryRaw,
 };
 // 🚀 UPGRADED SANDBOX: Now injects Walled Garden SDK (TailwindMerge, Framer Motion, Lucide)
+// 🚀 UPGRADED SANDBOX: Bulletproof UMD Polyfills and Proxies
+// 🚀 THE EXPANDED AAA+ SDK SANDBOX
 const IFRAME_TEMPLATE = `
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <script src="https://cdn.tailwindcss.com"></script>
+  
   <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
   
+  <script>
+     window.react = window.React;
+     window['react-dom'] = window.ReactDOM;
+  </script>
+
   <script src="https://unpkg.com/clsx@2.1.1/dist/clsx.min.js"></script>
-  <script src="https://unpkg.com/tailwind-merge@2.2.2/dist/tailwind-merge.global.js"></script>
   <script src="https://unpkg.com/framer-motion@11.0.8/dist/framer-motion.js"></script>
-  <script src="https://unpkg.com/lucide@latest"></script>
+  <script src="https://unpkg.com/lucide-react@0.330.0/dist/umd/lucide-react.min.js"></script>
+  
+  <script src="https://unpkg.com/recharts@2.12.0/umd/Recharts.js"></script>
+  <script src="https://unpkg.com/react-use@17.5.0/lib/index.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.2/dist/confetti.browser.min.js"></script>
+  <script src="https://unpkg.com/date-fns@3.3.1/cdn.min.js"></script>
   
   <style>
     body { margin: 0; background: #ffffff; font-family: sans-serif; }
@@ -72,8 +84,12 @@ const IFRAME_TEMPLATE = `
 <body>
   <div id="preview-root"></div>
   <script>
-    // Setup Fake CN
-    const cn = (...inputs) => tailwindMerge.twMerge(clsx.clsx(inputs));
+    // Bulletproof CN
+    const cn = (...inputs) => {
+       if (typeof window.clsx === 'function') return window.clsx(inputs);
+       if (window.clsx && typeof window.clsx.clsx === 'function') return window.clsx.clsx(inputs);
+       return inputs.flat().filter(Boolean).join(' ');
+    };
 
     window._sandboxRoot = ReactDOM.createRoot(document.getElementById('preview-root'));
     
@@ -82,19 +98,16 @@ const IFRAME_TEMPLATE = `
     let compiledComponents = {}; 
     let isFullPageMode = false;
 
+    // THE UCP SDK
     const UCP = {
-      // The <UCP.Text /> component simulates the InlineEdit experience
       Text: function UCPText({ field, default: defaultText, className, as: Tag = "span" }) {
-        // We look for the value in the current props, fallback to default
-        const value = currentProps[field] || defaultText || "";
+        const value = currentProps[field] !== undefined ? currentProps[field] : (defaultText || "");
         
-        // When they type in the iframe, we send a message up to the Studio to update the mockData!
         const handleInput = (e) => {
-           const newValue = e.currentTarget.textContent;
            window.parent.postMessage({
               type: 'UCP_INLINE_EDIT',
               field: field,
-              value: newValue
+              value: e.currentTarget.textContent
            }, '*');
         };
 
@@ -107,6 +120,7 @@ const IFRAME_TEMPLATE = `
         }, value);
       }
     };
+
     function renderComponent() {
       if (isFullPageMode) {
          const children = Object.keys(compiledComponents).map(key => {
@@ -125,19 +139,35 @@ const IFRAME_TEMPLATE = `
       } else if (CurrentComponent) {
          window._sandboxRoot.render(React.createElement(CurrentComponent, { data: currentProps }));
       }
-      
-      // Auto-initialize Lucide icons after render
-      setTimeout(() => { if (window.lucide) window.lucide.createIcons(); }, 50);
     }
     
-    // 🚀 THE BOUNCER: Enforces Walled Garden Imports
+    // 🚀 THE EXPANDED BOUNCER
     const fakeRequire = (mod) => {
+      // Core
       if (mod === 'react') return window.React;
+      if (mod === 'react-dom') return window.ReactDOM;
       if (mod === '@/lib/utils') return { cn };
-      if (mod === 'framer-motion') return window.Motion;
-      if (mod === 'lucide-react') return window.lucide;
-      // 🚀 NEW: Expose the UCP SDK
       if (mod === '@ucp/sdk') return { UCP };
+      
+      // UI & Styling
+      if (mod === 'framer-motion') return window.Motion || window.FramerMotion;
+      if (mod === 'lucide-react') {
+        const lucideModule = window.lucideReact || window.LucideReact || window.lucide || {};
+        return new Proxy(lucideModule, {
+          get: function(target, prop) {
+            if (prop === 'default' || prop === '__esModule') return target;
+            if (target[prop]) return target[prop];
+            return () => React.createElement('span', { className: 'text-red-500 text-xs font-mono border border-red-500 rounded px-1' }, '[' + prop + ']');
+          }
+        });
+      }
+
+      // 🚀 THE NEW EXPANSION PACK INTERCEPTS
+      if (mod === 'recharts') return window.Recharts;
+      if (mod === 'react-use') return window.reactUse;
+      if (mod === 'canvas-confetti') return window.confetti;
+      if (mod === 'date-fns') return window.dateFns;
+      
       throw new Error('Security Block: Importing external module "' + mod + '" is not permitted. Check the SDK Docs for available libraries.');
     };
 
@@ -182,7 +212,6 @@ const IFRAME_TEMPLATE = `
              throw new Error("You must 'export default' a valid React function component.");
           }
 
-          // Handle array-based schemas vs object-based schemas
           let parsedSchema = CurrentComponent.schema || {};
           if (Array.isArray(parsedSchema)) {
             const objSchema = {};
