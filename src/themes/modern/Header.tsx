@@ -4,10 +4,19 @@ import { Button } from "@/components/ui/button";
 import { Menu, X, ArrowRight, ShoppingBag } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useCartStore } from "@/store/useCartStore";
-// 🚀 1. IMPORT INLINE EDIT
 import { InlineEdit } from "../../components/dashboard/InlineEdit";
 
-// 🚀 2. GRAB id AND isPreview FROM PROPS
+// 🚀 1. ROUTING CAPABILITIES
+import { Link, useNavigate, useParams, useLocation } from "react-router-dom";
+
+// 🚀 Professional Fix: Add Interface for Pages
+interface CustomPage {
+  id: string;
+  title: string;
+  slug: string;
+  isHome: boolean;
+}
+
 const Header: React.FC<any> = ({ data, allSections, isPreview, id }) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
@@ -20,22 +29,103 @@ const Header: React.FC<any> = ({ data, allSections, isPreview, id }) => {
   const { openCart, getCartCount } = useCartStore();
   const cartCount = getCartCount();
 
-  // --- MENU GENERATION ---
-  const menuItems = sections
-    .filter((s: any) => s.isVisible && s.type !== "header")
-    .map((s: any) => {
-      const config = data.menuConfig?.[s.id] || {};
-      const isAuto = data.autoMenu !== false;
-      const isVisible = isAuto ? !!s.data.title : config.visible !== false;
-      if (!isVisible) return null;
-      return {
-        label: isAuto
-          ? s.data.title || s.type
-          : config.label || s.data.title || s.type,
-        id: s.id,
-      };
-    })
-    .filter(Boolean) as { label: string; id: string }[];
+  // Routing State
+  const navigate = useNavigate();
+  const location = useLocation();
+  const { username } = useParams();
+
+  // 🚀 2. GRAB PAGES FROM ENGINE
+  const customPages: CustomPage[] = data.customPages || [];
+
+  // 🚀 3. THE UNIFIED MENU GENERATOR
+  const menuItems = React.useMemo(() => {
+    const items: Array<{
+      label: string;
+      id: string;
+      type: "section" | "page" | "custom_link";
+      url?: string;
+    }> = [];
+
+    const config = data.menuConfig || {};
+
+    // --- A. THE HARDCODED SYSTEM SHOP PAGE ---
+    if (config.page_shop?.visible !== false) {
+      items.push({
+        label: config.page_shop?.label || "Shop",
+        id: "system_shop",
+        type: "page",
+        url: `/${username}/shop`,
+      });
+    }
+
+    // --- B. THE CUSTOM PAGES ---
+    customPages
+      .filter((p) => !p.isHome)
+      .forEach((p) => {
+        const pageConfig = config[`page_${p.id}`];
+        if (pageConfig && pageConfig.visible !== false) {
+          items.push({
+            label: pageConfig.label || p.title,
+            id: p.id,
+            type: "page",
+            url: `/${username}/${p.slug}`,
+          });
+        }
+      });
+
+    // --- C. THE DYNAMIC CUSTOM LINKS ---
+    const customNavLinks = data.customNavLinks || [];
+    customNavLinks.forEach((link: any) => {
+      // Only push if it has a label, a URL, and isn't hidden by the toggle
+      if (link.label && link.url && link.visible !== false) {
+        items.push({
+          label: link.label,
+          id: link.id,
+          type: "custom_link",
+          url: link.url,
+        });
+      }
+    });
+
+    // --- D. ON-PAGE SECTIONS ---
+    if (data.autoMenu !== false) {
+      // AUTO MODE: Pull all visible sections with titles
+      sections
+        .filter((s: any) => s.isVisible && s.type !== "header")
+        .forEach((s: any) => {
+          if (s.data.title) {
+            items.push({
+              label: s.data.title || s.type,
+              id: s.id,
+              type: "section",
+            });
+          }
+        });
+    } else {
+      // MANUAL MODE: Only pull sections the user checked
+      sections
+        .filter((s: any) => s.isVisible && s.type !== "header")
+        .forEach((s: any) => {
+          const secConfig = config[s.id];
+          if (secConfig && secConfig.visible !== false) {
+            items.push({
+              label: secConfig.label || s.data.title || s.type,
+              id: s.id,
+              type: "section",
+            });
+          }
+        });
+    }
+
+    return items;
+  }, [
+    data.autoMenu,
+    data.menuConfig,
+    data.customNavLinks, // 🚀 Watch custom links
+    sections,
+    customPages, // 🚀 Watch pages
+    username,
+  ]);
 
   // --- SCROLL LISTENER ---
   useEffect(() => {
@@ -47,14 +137,50 @@ const Header: React.FC<any> = ({ data, allSections, isPreview, id }) => {
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
-  const scrollToSection = (sectionId: string) => {
-    // 🚀 SAFE SCROLL: Don't jump around inside the builder canvas
+  // 🚀 4. THE UNIFIED NAVIGATION HANDLER
+  const handleNavClick = (item: any) => {
     if (isPreview) return;
 
-    const element = document.getElementById(sectionId);
-    if (element) {
-      const y = element.getBoundingClientRect().top + window.pageYOffset - 80;
-      window.scrollTo({ top: y, behavior: "smooth" });
+    if (item.type === "page" && item.url) {
+      // SYSTEM & CUSTOM PAGES
+      navigate(item.url);
+      setIsMenuOpen(false);
+    } else if (item.type === "custom_link" && item.url) {
+      // DYNAMIC CUSTOM LINKS
+      setIsMenuOpen(false);
+
+      // External links open in a new tab
+      if (item.url.startsWith("http")) {
+        window.open(item.url, "_blank");
+      }
+      // Internal routes (e.g. /shop/item) use React Router
+      else if (item.url.startsWith("/")) {
+        navigate(`/${username}${item.url}`);
+      }
+      // Weirdly formatted internal links fallback
+      else {
+        navigate(`/${username}/${item.url}`);
+      }
+    } else if (item.type === "section") {
+      // ON-PAGE SECTIONS
+      if (location.pathname !== `/${username}`) {
+        navigate(`/${username}`);
+        setTimeout(() => {
+          const element = document.getElementById(item.id);
+          if (element) {
+            const y =
+              element.getBoundingClientRect().top + window.pageYOffset - 80;
+            window.scrollTo({ top: y, behavior: "smooth" });
+          }
+        }, 300);
+      } else {
+        const element = document.getElementById(item.id);
+        if (element) {
+          const y =
+            element.getBoundingClientRect().top + window.pageYOffset - 80;
+          window.scrollTo({ top: y, behavior: "smooth" });
+        }
+      }
       setIsMenuOpen(false);
     }
   };
@@ -88,7 +214,11 @@ const Header: React.FC<any> = ({ data, allSections, isPreview, id }) => {
           e.preventDefault();
           return;
         }
-        window.scrollTo({ top: 0, behavior: "smooth" });
+        if (location.pathname !== `/${username}`) {
+          navigate(`/${username}`);
+        } else {
+          window.scrollTo({ top: 0, behavior: "smooth" });
+        }
       }}
     >
       {data.logoImage ? (
@@ -101,7 +231,6 @@ const Header: React.FC<any> = ({ data, allSections, isPreview, id }) => {
           }
         />
       ) : (
-        // 🚀 3. INLINE EDITABLE LOGO TEXT
         <InlineEdit
           tagName="span"
           className="text-xl md:text-2xl font-bold tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-white to-white/60 block"
@@ -119,7 +248,7 @@ const Header: React.FC<any> = ({ data, allSections, isPreview, id }) => {
       {menuItems.map((item) => (
         <button
           key={item.id}
-          onClick={() => scrollToSection(item.id)}
+          onClick={() => handleNavClick(item)}
           className="relative px-4 py-2 text-sm font-medium text-white/70 hover:text-white transition-colors group rounded-full hover:bg-white/5"
         >
           {item.label}
@@ -137,9 +266,17 @@ const Header: React.FC<any> = ({ data, allSections, isPreview, id }) => {
       >
         <a
           href={data.ctaLink || "#contact"}
-          onClick={(e) => isPreview && e.preventDefault()}
+          onClick={(e) => {
+            if (isPreview) {
+              e.preventDefault();
+              return;
+            }
+            if (data.ctaLink?.startsWith("/")) {
+              e.preventDefault();
+              navigate(`/${username}${data.ctaLink}`);
+            }
+          }}
         >
-          {/* 🚀 4. INLINE EDITABLE CTA BUTTON */}
           <InlineEdit
             tagName="span"
             text={data.ctaText}
@@ -151,13 +288,12 @@ const Header: React.FC<any> = ({ data, allSections, isPreview, id }) => {
       </Button>
     );
 
-  // 🚀 5. FIX: Removed direct mapping of synthetic event to Zustand action
   const CartButton = () => (
     <button
       onClick={(e) => {
         e.preventDefault();
         e.stopPropagation();
-        openCart(); // Now called safely without arguments!
+        openCart();
       }}
       className="relative p-2 text-white/70 hover:text-white transition-colors"
       aria-label="Open cart"
@@ -269,7 +405,7 @@ const Header: React.FC<any> = ({ data, allSections, isPreview, id }) => {
           {menuItems.map((item, idx) => (
             <button
               key={item.id}
-              onClick={() => scrollToSection(item.id)}
+              onClick={() => handleNavClick(item)}
               className={cn(
                 "text-3xl font-bold text-white/90 hover:text-white transition-all duration-300 transform",
                 isMenuOpen
@@ -298,9 +434,18 @@ const Header: React.FC<any> = ({ data, allSections, isPreview, id }) => {
               >
                 <a
                   href={data.ctaLink || "#contact"}
-                  onClick={(e) => isPreview && e.preventDefault()}
+                  onClick={(e) => {
+                    if (isPreview) {
+                      e.preventDefault();
+                      return;
+                    }
+                    if (data.ctaLink?.startsWith("/")) {
+                      e.preventDefault();
+                      navigate(`/${username}${data.ctaLink}`);
+                      setIsMenuOpen(false);
+                    }
+                  }}
                 >
-                  {/* 🚀 6. INLINE EDITABLE CTA BUTTON (MOBILE) */}
                   <InlineEdit
                     tagName="span"
                     text={data.ctaText}
