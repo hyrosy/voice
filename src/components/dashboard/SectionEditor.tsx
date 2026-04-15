@@ -109,9 +109,22 @@ const SectionEditor: React.FC<SectionEditorProps> = ({
 
   if (!section) return null;
 
-  // For convenience, we extract data and settings here so we don't have to keep typing `section.data`
-  const formData = section.data || {};
-  const settingsData = section.settings || {};
+  // =========================================================
+  // THE LOCAL STATE BUFFER (Fixes cursor jumping & freezing!)
+  // =========================================================
+
+  // 1. We keep a local copy of the data so typing is buttery smooth
+  const [formData, setFormData] = useState(section?.data || {});
+  const [settingsData, setSettingsData] = useState(section?.settings || {});
+
+  // 2. If the user clicks a DIFFERENT section, or if the canvas iframe
+  // sends an inline-edit update, we sync the local state to match.
+  useEffect(() => {
+    if (section) {
+      setFormData(section.data || {});
+      setSettingsData(section.settings || {});
+    }
+  }, [section]);
 
   // =========================================================
   // CORE UPDATE HANDLERS (Zustand Connected)
@@ -119,16 +132,25 @@ const SectionEditor: React.FC<SectionEditorProps> = ({
 
   // Update Core Content (Zone A)
   const updateField = (key: string, value: any) => {
-    // We pass ONLY the changed data field. Zustand merges it safely.
+    // 1. Update Local UI instantly
+    const newFormData = { ...formData, [key]: value };
+    setFormData(newFormData);
+
+    // 2. Send to Zustand in the background
     updateSectionInStore(section.id, {
-      data: { ...formData, [key]: value },
+      data: newFormData,
     });
   };
 
   // Update Theme Settings (Zone B)
   const updateSetting = (key: string, value: any) => {
+    // 1. Update Local UI instantly
+    const newSettingsData = { ...settingsData, [key]: value };
+    setSettingsData(newSettingsData);
+
+    // 2. Send to Zustand in the background
     updateSectionInStore(section.id, {
-      settings: { ...settingsData, [key]: value },
+      settings: newSettingsData,
     });
   };
 
@@ -550,7 +572,7 @@ const SectionEditor: React.FC<SectionEditorProps> = ({
                   </Label>
                   <Switch
                     id="autoMenu"
-                    checked={formData.autoMenu === true} // 🚀 Defaults to false if undefined
+                    checked={formData.autoMenu === true}
                     onCheckedChange={(checked) =>
                       updateField("autoMenu", checked)
                     }
@@ -658,8 +680,11 @@ const SectionEditor: React.FC<SectionEditorProps> = ({
                             checked={link.visible !== false}
                             className="mt-2"
                             onCheckedChange={(c) => {
-                              const newLinks = [...formData.customNavLinks];
-                              newLinks[index].visible = c;
+                              // 🚀 FIX: Pure array mapping to prevent mutation bugs!
+                              const newLinks = formData.customNavLinks.map(
+                                (l: any, i: number) =>
+                                  i === index ? { ...l, visible: c } : l
+                              );
                               updateField("customNavLinks", newLinks);
                             }}
                           />
@@ -668,8 +693,13 @@ const SectionEditor: React.FC<SectionEditorProps> = ({
                               value={link.label}
                               placeholder="Link Name (e.g. My IMDb)"
                               onChange={(e) => {
-                                const newLinks = [...formData.customNavLinks];
-                                newLinks[index].label = e.target.value;
+                                // 🚀 FIX: Pure array mapping!
+                                const newLinks = formData.customNavLinks.map(
+                                  (l: any, i: number) =>
+                                    i === index
+                                      ? { ...l, label: e.target.value }
+                                      : l
+                                );
                                 updateField("customNavLinks", newLinks);
                               }}
                               className="h-8 text-sm"
@@ -678,8 +708,13 @@ const SectionEditor: React.FC<SectionEditorProps> = ({
                               value={link.url}
                               placeholder="https:// or /shop/product"
                               onChange={(e) => {
-                                const newLinks = [...formData.customNavLinks];
-                                newLinks[index].url = e.target.value;
+                                // 🚀 FIX: Pure array mapping!
+                                const newLinks = formData.customNavLinks.map(
+                                  (l: any, i: number) =>
+                                    i === index
+                                      ? { ...l, url: e.target.value }
+                                      : l
+                                );
                                 updateField("customNavLinks", newLinks);
                               }}
                               className="h-8 text-sm text-muted-foreground"

@@ -1239,11 +1239,12 @@ const PortfolioBuilderPage = () => {
                     <SectionEditor
                       sections={sections}
                       section={editingSection}
-                      isOpen={true} // Always true when rendered here
+                      isOpen={true}
                       onClose={() => setEditingSection(null)}
                       actorId={actorData?.id || ""}
                       themeId={themeConfig.templateId || "modern"}
-                      isInline={true} // 🚀 Pass a prop so SectionEditor knows it's NOT a modal anymore
+                      isInline={true}
+                      pages={customPages}
                     />
                   </div>
                 </div>
