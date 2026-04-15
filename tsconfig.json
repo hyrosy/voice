@@ -23,7 +23,7 @@
     /* --- ADD THESE TWO LINES --- */
     "baseUrl": ".",
     "paths": {
-      "@/*": ["src/*"]
+      "@/*": ["src/*"],
       "@ucp/sdk": ["./src/lib/ucp-sdk.tsx"]
     }
     /* --- END OF ADDITION --- */
