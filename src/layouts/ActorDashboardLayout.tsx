@@ -36,6 +36,7 @@ import {
   ArrowRightLeft,
   Sparkles,
 } from "lucide-react";
+
 import { cn } from "@/lib/utils";
 import {
   Sheet,
@@ -131,6 +132,18 @@ const NAV_GROUPS = [
         name: "Payments & Integrations",
         icon: CreditCard,
         description: "Stripe & Payouts",
+      },
+      {
+        to: "/dashboard/creator-hub",
+        name: "All Themes",
+        icon: CreditCard,
+        description: "Manage Themes",
+      },
+      {
+        to: "/dashboard/studio",
+        name: "Theme Editor",
+        icon: CreditCard,
+        description: "Build Themes & Earn",
       },
     ],
   },

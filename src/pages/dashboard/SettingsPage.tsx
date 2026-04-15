@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { supabase } from "../../supabaseClient";
 import {
   useOutletContext,
@@ -171,6 +171,8 @@ const PLANS = [
 
 const SettingsPage = () => {
   const { actorData } = useOutletContext<ActorDashboardContextType>();
+  const walletBalance = actorData.wallet_balance || 0;
+
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
 
@@ -186,7 +188,6 @@ const SettingsPage = () => {
   const [loading, setLoading] = useState(true);
   const [portfolios, setPortfolios] = useState<any[]>([]);
   const [profile, setProfile] = useState<any>({});
-  const [walletBalance, setWalletBalance] = useState(0);
   const [subscriptions, setSubscriptions] = useState<Record<string, any>>({});
   const [transactions, setTransactions] = useState<any[]>([]);
 
@@ -267,10 +268,7 @@ const SettingsPage = () => {
       .select("*")
       .eq("id", actorData.id)
       .single();
-    if (actor) {
-      setProfile(actor);
-      setWalletBalance(actor.wallet_balance || 0);
-    }
+    if (actor) setProfile(actor);
 
     const { data: subs } = await supabase
       .from("subscriptions")
@@ -287,56 +285,30 @@ const SettingsPage = () => {
       .select("*")
       .eq("actor_id", actorData.id)
       .order("created_at", { ascending: false })
-      .limit(5);
+      .limit(10);
     if (txs) setTransactions(txs);
 
     setLoading(false);
   };
 
-  // --- PHASE A: REAL-TIME WALLET LISTENER ---
+  const prevBalanceRef = useRef<number | undefined>(undefined);
   useEffect(() => {
-    if (!actorData?.id) return;
-
-    const channel = supabase
-      .channel('wallet_updates')
-      .on(
-        'postgres_changes',
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'actors',
-          filter: `id=eq.${actorData.id}`
-        },
-        (payload) => {
-          const newBalance = payload.new.wallet_balance;
-          
-          // If the balance increased (a top-up happened!)
-          if (newBalance > walletBalance) {
-            setWalletBalance(newBalance);
-            setIsTopUpOpen(false); // Instantly close the crypto checkout iframe!
-            
-            notify(
-              "success", 
-              "Top-Up Successful! 🎉", 
-              `Your balance is now ${newBalance.toLocaleString()} Coins.`
-            );
-            
-            // Refresh the transactions list to show the new receipt
-            fetchData(); 
-          } 
-          // If the balance decreased (they bought something)
-          else if (newBalance < walletBalance) {
-             setWalletBalance(newBalance);
-             // We don't need a notification here because the Buy functions handle their own UI alerts
-          }
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [actorData.id, walletBalance]); // Re-bind if balance changes
+    if (
+      actorData.wallet_balance !== undefined &&
+      prevBalanceRef.current !== undefined
+    ) {
+      if (actorData.wallet_balance > prevBalanceRef.current) {
+        setIsTopUpOpen(false);
+        notify(
+          "success",
+          "Top-Up Successful! 🎉",
+          `Your balance is now ${actorData.wallet_balance.toLocaleString()} Coins.`
+        );
+        fetchData();
+      }
+    }
+    prevBalanceRef.current = actorData.wallet_balance;
+  }, [actorData.wallet_balance]);
 
   useEffect(() => {
     fetchData();
@@ -345,6 +317,7 @@ const SettingsPage = () => {
   const calculateProration = (targetPlanId: string) => {
     if (!selectedPortfolioId || !subscriptions[selectedPortfolioId])
       return { cost: 0, isUpgrade: true, unusedValue: 0, activeDuration: 0 };
+
     const currentSub = subscriptions[selectedPortfolioId];
     if (currentSub.payment_method === "stripe")
       return {
@@ -373,6 +346,7 @@ const SettingsPage = () => {
     const isHigherTier = targetPlan.tier > currentPlan.tier;
     const isSameTier = targetPlan.tier === currentPlan.tier;
     const isLongerDuration = billingDuration > activeDuration;
+
     const isUpgrade = isHigherTier || (isSameTier && isLongerDuration);
     const isDowngrade =
       !isUpgrade && !(isSameTier && billingDuration === activeDuration);
@@ -391,6 +365,7 @@ const SettingsPage = () => {
       0,
       remainingDurationMs / totalDurationMs
     );
+
     const originalPaidCost = currentPlan.pricing[activeDuration]?.coinCost || 0;
     const unusedValue = Math.floor(originalPaidCost * percentageRemaining);
     let finalCost = targetPlan.pricing[billingDuration].coinCost;
@@ -456,106 +431,41 @@ const SettingsPage = () => {
     );
   };
 
-  const handleCreateSite = async () => {
-    if (!newSiteName.trim())
-      return notify("error", "Missing Name", "Please enter a site name");
-    if (!actorData?.id) return;
-    if (siteSlots.remaining <= 0) {
-      notify(
-        "error",
-        "No Slots Available",
-        "You have used all your portfolio slots."
-      );
-      handleBuySlot();
-      return;
-    }
+  // 🚀 NEW: Function to Cancel a Scheduled Downgrade
+  const handleCancelDowngrade = async () => {
+    if (!selectedPortfolioId || !actorData?.id) return;
+    openConfirmation(
+      "Cancel Downgrade",
+      <p>
+        Are you sure you want to cancel the scheduled downgrade and keep your
+        current active plan?
+      </p>,
+      async () => {
+        setConfirmDialog(null);
+        setProcessingPlan("canceling");
+        const sub = subscriptions[selectedPortfolioId];
+        const { error } = await supabase
+          .from("subscriptions")
+          .update({
+            cancel_at_period_end: false,
+            metadata: { ...sub?.metadata, next_plan_id: null },
+          })
+          .eq("portfolio_id", selectedPortfolioId);
 
-    setIsCreating(true);
-    const template =
-      PORTFOLIO_TEMPLATES.find((t) => t.id === selectedTemplate) ||
-      PORTFOLIO_TEMPLATES[0];
-    const baseSlug = newSiteName.toLowerCase().replace(/[^a-z0-9]/g, "-");
-    const uniqueSlug = `${baseSlug}-${Date.now().toString().slice(-4)}`;
-
-    const { error } = await supabase.from("portfolios").insert({
-      actor_id: actorData.id,
-      site_name: newSiteName,
-      public_slug: uniqueSlug,
-      is_published: false,
-      sections: template.sections,
-      theme_config: {
-        templateId: "modern",
-        primaryColor: "violet",
-        font: "sans",
+        if (error) notify("error", "Action Failed", error.message);
+        else {
+          notify(
+            "success",
+            "Downgrade Cancelled",
+            "Your current plan will automatically renew at the end of the cycle."
+          );
+          fetchData();
+          refreshSubscription();
+        }
+        setProcessingPlan(null);
       },
-    });
-
-    if (error)
-      notify(
-        "error",
-        "Creation Failed",
-        "Could not create website. Please try again."
-      );
-    else {
-      notify(
-        "success",
-        "Website Created",
-        `Your new site "${newSiteName}" is ready.`
-      );
-      setIsCreateOpen(false);
-      setNewSiteName("");
-      fetchData();
-      refreshSubscription();
-    }
-    setIsCreating(false);
-  };
-
-  const handleDeleteSite = async () => {
-    if (!selectedPortfolioId) return;
-    const site = portfolios.find((p) => p.id === selectedPortfolioId);
-    if (deleteConfirmationName !== site?.site_name)
-      return notify(
-        "error",
-        "Name Mismatch",
-        "Website name does not match. Please type it exactly."
-      );
-
-    setIsDeleting(true);
-    const { error } = await supabase
-      .from("portfolios")
-      .delete()
-      .eq("id", selectedPortfolioId);
-    if (error) notify("error", "Deletion Failed", error.message);
-    else {
-      notify(
-        "success",
-        "Website Deleted",
-        "The website and its data have been removed."
-      );
-      setIsDeleteOpen(false);
-      setDeleteConfirmationName("");
-      fetchData();
-      refreshSubscription();
-    }
-    setIsDeleting(false);
-  };
-
-  const handleUpdateProfile = async () => {
-    if (!actorData?.id) return;
-    setIsSaving(true);
-    const { error } = await supabase
-      .from("actors")
-      .update({ ActorName: profile.ActorName, bio: profile.bio })
-      .eq("id", actorData.id);
-    if (error)
-      notify("error", "Update Failed", "Could not save profile changes.");
-    else
-      notify(
-        "success",
-        "Profile Updated",
-        "Your changes have been saved successfully."
-      );
-    setIsSaving(false);
+      "Cancel Downgrade"
+    );
   };
 
   const handleBuyWithWallet = async (plan: (typeof PLANS)[0]) => {
@@ -687,6 +597,108 @@ const SettingsPage = () => {
     );
   };
 
+  const handleCreateSite = async () => {
+    if (!newSiteName.trim())
+      return notify("error", "Missing Name", "Please enter a site name");
+    if (!actorData?.id) return;
+    if (siteSlots.remaining <= 0) {
+      notify(
+        "error",
+        "No Slots Available",
+        "You have used all your portfolio slots."
+      );
+      handleBuySlot();
+      return;
+    }
+
+    setIsCreating(true);
+    const template =
+      PORTFOLIO_TEMPLATES.find((t) => t.id === selectedTemplate) ||
+      PORTFOLIO_TEMPLATES[0];
+    const baseSlug = newSiteName.toLowerCase().replace(/[^a-z0-9]/g, "-");
+    const uniqueSlug = `${baseSlug}-${Date.now().toString().slice(-4)}`;
+
+    const { error } = await supabase.from("portfolios").insert({
+      actor_id: actorData.id,
+      site_name: newSiteName,
+      public_slug: uniqueSlug,
+      is_published: false,
+      sections: template.sections,
+      theme_config: {
+        templateId: "modern",
+        primaryColor: "violet",
+        font: "sans",
+      },
+    });
+
+    if (error)
+      notify(
+        "error",
+        "Creation Failed",
+        "Could not create website. Please try again."
+      );
+    else {
+      notify(
+        "success",
+        "Website Created",
+        `Your new site "${newSiteName}" is ready.`
+      );
+      setIsCreateOpen(false);
+      setNewSiteName("");
+      fetchData();
+      refreshSubscription();
+    }
+    setIsCreating(false);
+  };
+
+  const handleDeleteSite = async () => {
+    if (!selectedPortfolioId) return;
+    const site = portfolios.find((p) => p.id === selectedPortfolioId);
+    if (deleteConfirmationName !== site?.site_name)
+      return notify(
+        "error",
+        "Name Mismatch",
+        "Website name does not match. Please type it exactly."
+      );
+
+    setIsDeleting(true);
+    const { error } = await supabase
+      .from("portfolios")
+      .delete()
+      .eq("id", selectedPortfolioId);
+    if (error) notify("error", "Deletion Failed", error.message);
+    else {
+      notify(
+        "success",
+        "Website Deleted",
+        "The website and its data have been removed."
+      );
+      setIsDeleteOpen(false);
+      setDeleteConfirmationName("");
+      fetchData();
+      refreshSubscription();
+    }
+    setIsDeleting(false);
+  };
+
+  const handleUpdateProfile = async () => {
+    if (!actorData?.id) return;
+    setIsSaving(true);
+    const { error } = await supabase
+      .from("actors")
+      .update({ ActorName: profile.ActorName, bio: profile.bio })
+      .eq("id", actorData.id);
+    if (error)
+      notify("error", "Update Failed", "Could not save profile changes.");
+    else
+      notify(
+        "success",
+        "Profile Updated",
+        "Your changes have been saved successfully."
+      );
+    setIsSaving(false);
+  };
+
   const handleDirectStripe = async (plan: (typeof PLANS)[0]) => {
     if (!actorData?.id || !selectedPortfolioId) return;
     const details = plan.pricing[billingDuration as PlanDuration];
@@ -756,13 +768,11 @@ const SettingsPage = () => {
     );
 
   return (
-    <div className="p-4 md:p-8 space-y-8 w-full max-w-8xl mx-auto ">
+    <div className=" md:p-4  w-full max-w-8xl ">
       <NotificationContainer
         notifications={notifications}
         removeNotification={removeNotification}
       />
-
-      {/* --- TOP-UP MODAL EXTACTED --- */}
       <TopUpModal
         isOpen={isTopUpOpen}
         onOpenChange={setIsTopUpOpen}
@@ -832,7 +842,7 @@ const SettingsPage = () => {
         onValueChange={(val) => setSearchParams({ tab: val })}
         className="w-full"
       >
-        {/* --- STICKY SUB NAVIGATION (Sticks right below the new Topbar) --- */}
+        {/* --- STICKY SUB NAVIGATION --- */}
         <div className="sticky top-14 z-40 bg-zinc-50/90 dark:bg-zinc-950/90 backdrop-blur-md border-b border-border/40 px-4 md:px-8 py-2 mb-6">
           <TabsList className="w-full flex h-auto p-1 bg-muted/50 rounded-xl overflow-x-auto no-scrollbar justify-start sm:justify-between gap-1">
             <TabsTrigger
@@ -913,6 +923,10 @@ const SettingsPage = () => {
                   sub &&
                   sub.status === "active" &&
                   new Date(sub.current_period_end) > new Date();
+                const isDowngradingSoon =
+                  sub?.cancel_at_period_end === true &&
+                  sub?.metadata?.next_plan_id;
+
                 let badgeColor = "bg-primary";
                 if (sub?.plan_id === "starter") badgeColor = "bg-blue-500";
                 if (sub?.plan_id === "ecommerce") badgeColor = "bg-indigo-600";
@@ -935,14 +949,25 @@ const SettingsPage = () => {
                             {site.is_published ? "Live" : "Draft"}
                           </Badge>
                           {isPro ? (
-                            <Badge
-                              className={cn(
-                                "border-0 text-white rounded-md h-5 text-[10px] uppercase tracking-wide",
-                                badgeColor
+                            <div className="flex gap-1">
+                              <Badge
+                                className={cn(
+                                  "border-0 text-white rounded-md h-5 text-[10px] uppercase tracking-wide",
+                                  badgeColor
+                                )}
+                              >
+                                {currentPlanObj.name}
+                              </Badge>
+                              {/* 🚀 DOWNGRADING SOON BADGE ADDED HERE */}
+                              {isDowngradingSoon && (
+                                <Badge
+                                  variant="outline"
+                                  className="rounded-md h-5 text-[10px] uppercase tracking-wide text-amber-600 bg-amber-50 border-amber-500"
+                                >
+                                  Downgrading Soon
+                                </Badge>
                               )}
-                            >
-                              {currentPlanObj.name}
-                            </Badge>
+                            </div>
                           ) : (
                             <Badge
                               variant="outline"
@@ -994,6 +1019,7 @@ const SettingsPage = () => {
                       )}
                     </CardContent>
                     <CardFooter className="p-4 pt-2 grid grid-cols-[1fr_auto_auto] gap-2">
+                      {/* 🚀 If it's a Stripe subscription, direct them to Manage */}
                       {isPro && sub?.payment_method === "stripe" ? (
                         <Button
                           variant="secondary"
@@ -1022,7 +1048,7 @@ const SettingsPage = () => {
                             setIsUpgradeOpen(true);
                           }}
                         >
-                          {isPro ? "Extend" : "Upgrade"}
+                          {isPro ? "Manage Plan" : "Upgrade"}
                         </Button>
                       )}
                       <Button
@@ -1288,11 +1314,23 @@ const SettingsPage = () => {
               {PLANS.map((plan) => {
                 const details = plan.pricing[billingDuration as PlanDuration];
                 const proration = calculateProration(plan.id);
-                const isCurrentPlanId =
-                  subscriptions[selectedPortfolioId || ""]?.plan_id === plan.id;
+
+                const sub = subscriptions[selectedPortfolioId || ""];
+                const isCurrentPlanId = sub?.plan_id === plan.id;
                 const isExactlyCurrent =
                   isCurrentPlanId &&
                   billingDuration === proration.activeDuration;
+
+                // 🚀 NEW: Robust State Detection for Down/Up-grades
+                const isDowngradeScheduledToThis =
+                  sub?.cancel_at_period_end === true &&
+                  sub?.metadata?.next_plan_id === plan.id;
+                const isCurrentPlanPendingDowngrade =
+                  isExactlyCurrent &&
+                  sub?.cancel_at_period_end === true &&
+                  sub?.metadata?.next_plan_id;
+                const isStripe =
+                  sub?.payment_method === "stripe" && sub?.status === "active";
 
                 return (
                   <Card
@@ -1339,27 +1377,72 @@ const SettingsPage = () => {
                         ))}
                       </ul>
                     </CardContent>
+
+                    {/* 🚀 THE UPGRADED CARD FOOTER LOGIC */}
                     <CardFooter className="p-5 pt-0 flex flex-col gap-3">
-                      {!isExactlyCurrent && (
+                      {isStripe ? (
                         <Button
-                          className="w-full font-bold h-11"
-                          onClick={() => handleBuyWithWallet(plan)}
-                          disabled={!!processingPlan}
+                          variant="secondary"
+                          className="w-full"
+                          onClick={handleManageStripeSub}
                         >
-                          {processingPlan === plan.id ? (
-                            <Loader2 className="animate-spin" />
-                          ) : (
-                            "Use Coins"
-                          )}
+                          Manage in Stripe
                         </Button>
+                      ) : isDowngradeScheduledToThis ? (
+                        <div className="flex flex-col gap-2 w-full">
+                          <div className="text-xs font-bold text-center text-amber-600 bg-amber-50 py-2 rounded-lg border border-amber-200">
+                            Downgrade Scheduled
+                          </div>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={handleCancelDowngrade}
+                            disabled={processingPlan === "canceling"}
+                          >
+                            {processingPlan === "canceling" ? (
+                              <Loader2 className="animate-spin w-4 h-4 mr-2" />
+                            ) : (
+                              "Cancel Downgrade"
+                            )}
+                          </Button>
+                        </div>
+                      ) : isExactlyCurrent ? (
+                        <Button variant="secondary" className="w-full" disabled>
+                          {isCurrentPlanPendingDowngrade
+                            ? "Ends at billing cycle"
+                            : "Current Plan"}
+                        </Button>
+                      ) : (
+                        <>
+                          <Button
+                            className={cn(
+                              "w-full font-bold h-11",
+                              proration.isDowngrade
+                                ? "bg-muted text-foreground hover:bg-muted/80 border border-border"
+                                : "bg-primary text-primary-foreground"
+                            )}
+                            onClick={() => handleBuyWithWallet(plan)}
+                            disabled={!!processingPlan}
+                          >
+                            {processingPlan === plan.id ? (
+                              <Loader2 className="animate-spin" />
+                            ) : proration.isDowngrade ? (
+                              "Schedule Downgrade"
+                            ) : (
+                              `Upgrade with Coins`
+                            )}
+                          </Button>
+                          {!proration.isDowngrade && (
+                            <Button
+                              variant="ghost"
+                              className="w-full h-8 text-xs"
+                              onClick={() => handleDirectStripe(plan)}
+                            >
+                              Pay with Card
+                            </Button>
+                          )}
+                        </>
                       )}
-                      <Button
-                        variant="ghost"
-                        className="w-full h-8 text-xs"
-                        onClick={() => handleDirectStripe(plan)}
-                      >
-                        Pay with Card
-                      </Button>
                     </CardFooter>
                   </Card>
                 );

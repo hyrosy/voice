@@ -19,6 +19,7 @@ import { Input } from "@/components/ui/input";
 import {
   GripVertical,
   Eye,
+  ArrowLeft,
   EyeOff,
   Save,
   ExternalLink,
@@ -49,6 +50,8 @@ import {
   Monitor,
   Tablet,
   Trash2,
+  Coins,
+  ShoppingBag,
 } from "lucide-react";
 import {
   PortfolioSection,
@@ -88,6 +91,7 @@ import { useSubscription } from "../../context/SubscriptionContext";
 import { Slider } from "@/components/ui/slider";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { PORTFOLIO_TEMPLATES } from "../../lib/templates";
+import { Badge } from "@/components/ui/badge";
 
 // --- AVAILABLE BLOCKS LIST ---
 const AVAILABLE_BLOCKS: {
@@ -114,9 +118,14 @@ const AVAILABLE_BLOCKS: {
 ];
 
 const LOCAL_FONT_OPTIONS = [
-  { id: "sans", name: "Inter (Clean Sans)", value: "font-sans" },
-  { id: "serif", name: "Playfair (Elegant Serif)", value: "font-serif" },
-  { id: "mono", name: "Roboto (Technical Mono)", value: "font-mono" },
+  { id: "Inter", name: "Inter (Clean & Modern)" },
+  { id: "Playfair Display", name: "Playfair (Elegant Serif)" },
+  { id: "Montserrat", name: "Montserrat (Geometric Sans)" },
+  { id: "Merriweather", name: "Merriweather (Classic Serif)" },
+  { id: "Poppins", name: "Poppins (Friendly Sans)" },
+  { id: "Oswald", name: "Oswald (Bold & Condensed)" },
+  { id: "Outfit", name: "Outfit (Tech & Startup)" },
+  { id: "Space Mono", name: "Space Mono (Developer)" },
 ];
 
 const LOCAL_COLOR_PALETTES = [
@@ -134,18 +143,24 @@ const VISUAL_THEMES = [
     name: "Modern Minimal",
     description: "Clean whitespace, classic layout.",
     previewColor: "#f3f4f6",
+    sitePrice: 0,
+    globalPrice: 0,
   },
   {
     id: "cinematic",
     name: "Cinematic Dark",
     description: "Immersive dark mode, dramatic transitions.",
     previewColor: "#1e293b",
+    sitePrice: 200, // 🚀 Cheaper option for one site
+    globalPrice: 500, // 🚀 Expensive option for all sites
   },
   {
     id: "cupertino",
     name: "Cupertino",
     description: "Apple-inspired. Bento grids, glassmorphism.",
     previewColor: "#3b82f6",
+    sitePrice: 300,
+    globalPrice: 800,
   },
 ];
 
@@ -296,6 +311,8 @@ const PortfolioBuilderPage = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const activePortfolioIdParam = searchParams.get("id");
+  const [isBrowsingThemes, setIsBrowsingThemes] = useState(false);
+  const ownedThemes = ["modern"]; // We will make this dynamic later
   // ... rest of the file
   // --- ZUSTAND STORE HOOKS ---
   const {
@@ -355,6 +372,86 @@ const PortfolioBuilderPage = () => {
   const [newPageName, setNewPageName] = useState("");
   const [isCreatingPage, setIsCreatingPage] = useState(false);
   const [isDeletingPage, setIsDeletingPage] = useState(false);
+  const [isPurchasingTheme, setIsPurchasingTheme] = useState<string | null>(
+    null
+  );
+
+  // FETCH GLOBAL INVENTORY (Actor Table)
+  // FETCH GLOBAL INVENTORY (Actor Table)
+  const { data: actorWalletData, refetch: fetchActorWallet } = useQuery({
+    queryKey: ["actorWallet", actorData?.id],
+    queryFn: async () => {
+      if (!actorData?.id) return null;
+      const { data, error } = await supabase
+        .from("actors")
+        .select("purchased_themes") // 🚀 Only fetch themes, we already have the wallet balance!
+        .eq("id", actorData.id)
+        .single();
+
+      if (error) {
+        console.error(
+          "Error fetching themes. Make sure you ran the SQL query! ",
+          error
+        );
+        return null;
+      }
+      return data;
+    },
+    enabled: !!actorData?.id,
+  });
+
+  // Calculate Ownership Arrays
+  const globalOwnedThemes = actorWalletData?.purchased_themes || ["modern"];
+
+  // 🚀 THE FIX: Pull the balance directly from the real-time layout context!
+  const walletBalance = actorData.wallet_balance || 0;
+  // Helper function to check if the active site has access to a theme
+  const hasThemeAccess = (themeId: string) => {
+    return (
+      globalOwnedThemes.includes(themeId) || siteOwnedThemes.includes(themeId)
+    );
+  };
+
+  // 🚀 TIERED PURCHASE FUNCTION
+  const handlePurchaseTheme = async (
+    themeId: string,
+    price: number,
+    themeName: string,
+    scope: "site" | "global"
+  ) => {
+    if (!actorData?.id || !activePortfolioId) return;
+
+    if (walletBalance < price) {
+      alert(
+        `You need ${price} Coins, but you only have ${walletBalance}. Please top up!`
+      );
+      return;
+    }
+
+    const scopeText =
+      scope === "global" ? "all your sites forever" : "this specific site only";
+    if (!confirm(`Unlock ${themeName} for ${scopeText} for ${price} Coins?`))
+      return;
+
+    setIsPurchasingTheme(`${themeId}-${scope}`); // Track which button is loading
+
+    const { data, error } = await supabase.rpc("purchase_theme", {
+      p_actor_id: actorData.id,
+      p_theme_id: themeId,
+      p_cost: price,
+      p_scope: scope,
+      p_portfolio_id: activePortfolioId, // We pass this in case it's a site-level purchase
+    });
+
+    setIsPurchasingTheme(null);
+
+    if (error || (data && !data.success)) {
+      alert(data?.message || error?.message || "Failed to purchase theme.");
+    } else {
+      fetchActorWallet();
+      fetchPortfolio(); // Refresh site data to update local site inventory!
+    }
+  };
 
   // --- DELETE PAGE LOGIC ---
   const handleDeletePage = async () => {
@@ -454,6 +551,7 @@ const PortfolioBuilderPage = () => {
     enabled: !!actorData?.id,
     refetchOnWindowFocus: false, // 🚀 PREVENT RACE CONDITION OVERWRITES
   });
+  const siteOwnedThemes = fetchedPortfolio?.purchased_themes || []; // Pulled directly from your existing fetchedPortfolio!
 
   // C. Sync Fetched Data to Local/Zustand State
   // C. Sync Fetched Data to Local/Zustand State
@@ -1117,110 +1215,180 @@ const PortfolioBuilderPage = () => {
               value="content"
               className="flex-grow flex flex-col overflow-hidden mt-0 data-[state=inactive]:hidden"
             >
-              <div className="flex-grow overflow-y-auto p-4 min-h-[400px] lg:min-h-0 custom-scrollbar">
-                <div className="mb-4 px-1 flex justify-between items-center text-xs text-muted-foreground">
-                  <span>
-                    Sections used: {sections.length} / {limits.maxBlocksPerSite}
-                  </span>
-                  {sections.length >= limits.maxBlocksPerSite && (
-                    <span className="text-amber-600 font-bold">
-                      Limit Reached
+              {/* 🚀 THE DRILL-DOWN LOGIC: If editing, show Editor. Else, show List. */}
+              {editingSection ? (
+                <div className="flex flex-col h-full w-full animate-in slide-in-from-right-4 duration-200">
+                  {/* Back Button Header */}
+                  <div className="p-3 border-b flex items-center justify-between bg-muted/10 shrink-0">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setEditingSection(null)}
+                      className="h-8 px-2 hover:bg-muted"
+                    >
+                      <ArrowLeft className="w-4 h-4 mr-1.5" /> Back
+                    </Button>
+                    <span className="font-bold text-xs uppercase tracking-wider text-muted-foreground mr-2 truncate">
+                      {editingSection.data._label ||
+                        editingSection.type.replace("_", " ")}
                     </span>
-                  )}
+                  </div>
+
+                  {/* The Inline Editor */}
+                  <div className="flex-grow overflow-y-auto custom-scrollbar p-0">
+                    <SectionEditor
+                      sections={sections}
+                      section={editingSection}
+                      isOpen={true} // Always true when rendered here
+                      onClose={() => setEditingSection(null)}
+                      actorId={actorData?.id || ""}
+                      themeId={themeConfig.templateId || "modern"}
+                      isInline={true} // 🚀 Pass a prop so SectionEditor knows it's NOT a modal anymore
+                    />
+                  </div>
                 </div>
+              ) : (
+                <>
+                  {/* ORIGINAL SECTION LIST VIEW */}
+                  <div className="flex-grow overflow-y-auto p-4 min-h-[400px] lg:min-h-0 custom-scrollbar animate-in slide-in-from-left-4 duration-200">
+                    <div className="mb-4 px-1 flex justify-between items-center text-xs text-muted-foreground">
+                      <span>
+                        Sections used: {sections.length} /{" "}
+                        {limits.maxBlocksPerSite}
+                      </span>
+                      {sections.length >= limits.maxBlocksPerSite && (
+                        <span className="text-amber-600 font-bold">
+                          Limit Reached
+                        </span>
+                      )}
+                    </div>
 
-                <DragDropContext onDragEnd={handleDragEnd}>
-                  <Droppable droppableId="sections">
-                    {(provided) => (
-                      <div
-                        {...provided.droppableProps}
-                        ref={provided.innerRef}
-                        className="space-y-3 pb-4"
-                      >
-                        {sections.map((section, index) => (
-                          <Draggable
-                            key={section.id}
-                            draggableId={section.id}
-                            index={index}
+                    <DragDropContext onDragEnd={handleDragEnd}>
+                      <Droppable droppableId="sections">
+                        {(provided) => (
+                          <div
+                            {...provided.droppableProps}
+                            ref={provided.innerRef}
+                            className="space-y-3 pb-4"
                           >
-                            {(provided, snapshot) => (
-                              <Card
-                                ref={provided.innerRef}
-                                {...provided.draggableProps}
-                                className={cn(
-                                  "border-l-4 transition-all cursor-pointer group active:scale-[0.99]",
-                                  section.isVisible
-                                    ? "border-l-primary shadow-sm"
-                                    : "border-l-muted opacity-60 bg-muted/20",
-                                  snapshot.isDragging &&
-                                    "shadow-lg scale-105 rotate-1 opacity-90 z-50"
-                                )}
-                                onClick={() => {
-                                  if (!renamingId) setEditingSection(section);
-                                }}
+                            {sections.map((section, index) => (
+                              <Draggable
+                                key={section.id}
+                                draggableId={section.id}
+                                index={index}
                               >
-                                <CardContent className="p-3 sm:p-4 flex items-center gap-3">
-                                  <div
-                                    {...provided.dragHandleProps}
-                                    className="cursor-grab active:cursor-grabbing text-muted-foreground/50 hover:text-foreground p-1"
+                                {(provided, snapshot) => (
+                                  <Card
+                                    ref={provided.innerRef}
+                                    {...provided.draggableProps}
+                                    className={cn(
+                                      "border-l-4 transition-all cursor-pointer group active:scale-[0.99]",
+                                      section.isVisible
+                                        ? "border-l-primary shadow-sm"
+                                        : "border-l-muted opacity-60 bg-muted/20",
+                                      snapshot.isDragging &&
+                                        "shadow-lg scale-105 rotate-1 opacity-90 z-50"
+                                    )}
+                                    onClick={() => {
+                                      if (!renamingId)
+                                        setEditingSection(section);
+                                    }}
                                   >
-                                    <GripVertical size={22} />
-                                  </div>
+                                    <CardContent className="p-3 sm:p-4 flex items-center gap-3">
+                                      <div
+                                        {...provided.dragHandleProps}
+                                        className="cursor-grab active:cursor-grabbing text-muted-foreground/50 hover:text-foreground p-1"
+                                      >
+                                        <GripVertical size={22} />
+                                      </div>
 
-                                  {renamingId === section.id ? (
-                                    <div
-                                      className="flex-grow flex items-center gap-2"
-                                      onClick={(e) => e.stopPropagation()}
-                                    >
-                                      <Input
-                                        value={tempLabel}
-                                        onChange={(e) =>
-                                          setTempLabel(e.target.value)
-                                        }
-                                        onKeyDown={(e) => {
-                                          if (e.key === "Enter") saveLabel(e);
-                                        }}
-                                        autoFocus
-                                        className="h-8 text-sm"
-                                      />
-                                      <Button
-                                        size="icon"
-                                        variant="ghost"
-                                        className="h-8 w-8 text-green-500 hover:bg-green-500/10"
-                                        onClick={saveLabel}
-                                      >
-                                        <Check size={16} />
-                                      </Button>
-                                      <Button
-                                        size="icon"
-                                        variant="ghost"
-                                        className="h-8 w-8 text-muted-foreground"
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          setRenamingId(null);
-                                        }}
-                                      >
-                                        <X size={16} />
-                                      </Button>
-                                    </div>
-                                  ) : (
-                                    <div
-                                      className="flex-grow min-w-0"
-                                      onDoubleClick={(e) => {
-                                        e.stopPropagation();
-                                        setRenamingId(section.id);
-                                        setTempLabel(
-                                          section.data._label ||
-                                            section.type.replace("_", " ")
-                                        );
-                                      }}
-                                    >
-                                      <div className="flex items-center gap-2">
-                                        <p className="font-semibold text-sm capitalize select-none truncate">
-                                          {section.data._label ||
-                                            section.type.replace("_", " ")}
-                                        </p>
-                                        <button
+                                      {/* ... (Keep your exact existing renamingId logic here) ... */}
+                                      {renamingId === section.id ? (
+                                        <div
+                                          className="flex-grow flex items-center gap-2"
+                                          onClick={(e) => e.stopPropagation()}
+                                        >
+                                          <Input
+                                            value={tempLabel}
+                                            onChange={(e) =>
+                                              setTempLabel(e.target.value)
+                                            }
+                                            onKeyDown={(e) => {
+                                              if (e.key === "Enter")
+                                                saveLabel(e);
+                                            }}
+                                            autoFocus
+                                            className="h-8 text-sm"
+                                          />
+                                          <Button
+                                            size="icon"
+                                            variant="ghost"
+                                            className="h-8 w-8 text-green-500 hover:bg-green-500/10"
+                                            onClick={saveLabel}
+                                          >
+                                            <Check size={16} />
+                                          </Button>
+                                          <Button
+                                            size="icon"
+                                            variant="ghost"
+                                            className="h-8 w-8 text-muted-foreground"
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              setRenamingId(null);
+                                            }}
+                                          >
+                                            <X size={16} />
+                                          </Button>
+                                        </div>
+                                      ) : (
+                                        <div
+                                          className="flex-grow min-w-0"
+                                          onDoubleClick={(e) => {
+                                            e.stopPropagation();
+                                            setRenamingId(section.id);
+                                            setTempLabel(
+                                              section.data._label ||
+                                                section.type.replace("_", " ")
+                                            );
+                                          }}
+                                        >
+                                          <div className="flex items-center gap-2">
+                                            <p className="font-semibold text-sm capitalize select-none truncate">
+                                              {section.data._label ||
+                                                section.type.replace("_", " ")}
+                                            </p>
+                                            <button
+                                              onClick={(e) => {
+                                                e.stopPropagation();
+                                                setRenamingId(section.id);
+                                                setTempLabel(
+                                                  section.data._label ||
+                                                    section.type.replace(
+                                                      "_",
+                                                      " "
+                                                    )
+                                                );
+                                              }}
+                                              className="opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-primary"
+                                            >
+                                              <Pencil size={12} />
+                                            </button>
+                                          </div>
+                                          {section.data.title &&
+                                            section.data.title !==
+                                              section.data._label && (
+                                              <p className="text-xs text-muted-foreground truncate max-w-[150px]">
+                                                {section.data.title}
+                                              </p>
+                                            )}
+                                        </div>
+                                      )}
+
+                                      <div className="flex items-center gap-1 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+                                        <Button
+                                          variant="ghost"
+                                          size="icon"
+                                          className="h-8 w-8 text-muted-foreground hover:text-foreground sm:hidden"
                                           onClick={(e) => {
                                             e.stopPropagation();
                                             setRenamingId(section.id);
@@ -1229,276 +1397,504 @@ const PortfolioBuilderPage = () => {
                                                 section.type.replace("_", " ")
                                             );
                                           }}
-                                          className="opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-primary"
                                         >
-                                          <Pencil size={12} />
-                                        </button>
+                                          <Pencil size={16} />
+                                        </Button>
+                                        <Button
+                                          variant="ghost"
+                                          size="icon"
+                                          className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            updateSection(section.id, {
+                                              isVisible: !section.isVisible,
+                                            });
+                                          }}
+                                        >
+                                          {section.isVisible ? (
+                                            <Eye size={18} />
+                                          ) : (
+                                            <EyeOff size={18} />
+                                          )}
+                                        </Button>
+                                        <Button
+                                          variant="ghost"
+                                          size="icon"
+                                          className="h-8 w-8 text-destructive/70 hover:text-destructive hover:bg-destructive/10"
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            if (confirm("Remove section?"))
+                                              removeSection(section.id);
+                                          }}
+                                        >
+                                          <Plus className="w-5 h-5 rotate-45" />
+                                        </Button>
                                       </div>
-                                      {section.data.title &&
-                                        section.data.title !==
-                                          section.data._label && (
-                                          <p className="text-xs text-muted-foreground truncate max-w-[150px]">
-                                            {section.data.title}
-                                          </p>
-                                        )}
-                                    </div>
-                                  )}
+                                    </CardContent>
+                                  </Card>
+                                )}
+                              </Draggable>
+                            ))}
+                            {provided.placeholder}
+                          </div>
+                        )}
+                      </Droppable>
+                    </DragDropContext>
+                  </div>
 
-                                  <div className="flex items-center gap-1 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
-                                    <Button
-                                      variant="ghost"
-                                      size="icon"
-                                      className="h-8 w-8 text-muted-foreground hover:text-foreground sm:hidden"
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        setRenamingId(section.id);
-                                        setTempLabel(
-                                          section.data._label ||
-                                            section.type.replace("_", " ")
-                                        );
-                                      }}
-                                    >
-                                      <Pencil size={16} />
-                                    </Button>
-                                    <Button
-                                      variant="ghost"
-                                      size="icon"
-                                      className="h-8 w-8 text-muted-foreground hover:text-foreground"
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        updateSection(section.id, {
-                                          isVisible: !section.isVisible,
-                                        });
-                                      }}
-                                    >
-                                      {section.isVisible ? (
-                                        <Eye size={18} />
-                                      ) : (
-                                        <EyeOff size={18} />
-                                      )}
-                                    </Button>
-                                    <Button
-                                      variant="ghost"
-                                      size="icon"
-                                      className="h-8 w-8 text-destructive/70 hover:text-destructive hover:bg-destructive/10"
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        if (confirm("Remove section?"))
-                                          removeSection(section.id);
-                                      }}
-                                    >
-                                      <Plus className="w-5 h-5 rotate-45" />
-                                    </Button>
-                                  </div>
-                                </CardContent>
-                              </Card>
-                            )}
-                          </Draggable>
-                        ))}
-                        {provided.placeholder}
-                      </div>
-                    )}
-                  </Droppable>
-                </DragDropContext>
-              </div>
-
-              <div className="p-4 border-t mt-auto shrink-0 z-10 bg-card">
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button
-                      variant="outline"
-                      className="w-full border-dashed h-12 text-foreground hover:text-primary hover:border-primary/50"
-                    >
-                      <Plus className="mr-2 h-5 w-5" /> Add New Section
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent
-                    className="w-64 max-h-[300px] overflow-y-auto"
-                    align="end"
-                  >
-                    {AVAILABLE_BLOCKS.map((block) => {
-                      const isLocked =
-                        block.module && !limits.modules[block.module];
-                      return (
-                        <DropdownMenuItem
-                          key={block.type}
-                          disabled={isLocked}
-                          onClick={() =>
-                            !isLocked && handleAddSectionAction(block.type)
-                          }
-                          className={cn(
-                            "cursor-pointer",
-                            isLocked && "opacity-50 cursor-not-allowed"
-                          )}
+                  {/* Add New Section Dropdown */}
+                  <div className="p-4 border-t mt-auto shrink-0 z-10 bg-card">
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          variant="outline"
+                          className="w-full border-dashed h-12 text-foreground hover:text-primary hover:border-primary/50"
                         >
-                          <Plus className="mr-2 h-4 w-4 opacity-50" />{" "}
-                          {block.label}
-                          {isLocked && (
-                            <Lock className="ml-auto h-3 w-3 text-amber-500" />
-                          )}
-                        </DropdownMenuItem>
-                      );
-                    })}
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </div>
+                          <Plus className="mr-2 h-5 w-5" /> Add New Section
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent
+                        className="w-64 max-h-[300px] overflow-y-auto"
+                        align="end"
+                      >
+                        {AVAILABLE_BLOCKS.map((block) => {
+                          const isLocked =
+                            block.module && !limits.modules[block.module];
+                          return (
+                            <DropdownMenuItem
+                              key={block.type}
+                              disabled={isLocked}
+                              onClick={() =>
+                                !isLocked && handleAddSectionAction(block.type)
+                              }
+                              className={cn(
+                                "cursor-pointer",
+                                isLocked && "opacity-50 cursor-not-allowed"
+                              )}
+                            >
+                              <Plus className="mr-2 h-4 w-4 opacity-50" />{" "}
+                              {block.label}
+                              {isLocked && (
+                                <Lock className="ml-auto h-3 w-3 text-amber-500" />
+                              )}
+                            </DropdownMenuItem>
+                          );
+                        })}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
+                </>
+              )}
             </TabsContent>
 
             {/* DESIGN TAB */}
             <TabsContent
               value="design"
-              className="flex-grow flex flex-col overflow-y-auto overflow-x-hidden mt-0 data-[state=inactive]:hidden custom-scrollbar pb-20"
+              className="flex-grow flex flex-col overflow-hidden mt-0 data-[state=inactive]:hidden"
             >
-              <div className="space-y-8 p-4">
-                <div className="space-y-3">
-                  <div className="flex items-center gap-2 text-sm font-bold text-muted-foreground uppercase tracking-wider">
-                    <LayoutTemplate size={14} /> Active Theme
+              {isBrowsingThemes ? (
+                /* 🚀 THE INLINE THEME MARKETPLACE */
+                <div className="flex flex-col h-full w-full animate-in slide-in-from-right-4 duration-200">
+                  <div className="p-3 border-b flex items-center justify-between bg-muted/10 shrink-0">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setIsBrowsingThemes(false)}
+                      className="h-8 px-2 hover:bg-muted"
+                    >
+                      <ArrowLeft className="w-4 h-4 mr-1.5" /> Back to Design
+                    </Button>
+                    <span className="font-bold text-xs uppercase tracking-wider text-primary mr-2 flex items-center">
+                      <ShoppingBag size={12} className="mr-1" /> Theme Store
+                    </span>
                   </div>
-                  <div className="grid grid-cols-1 gap-3">
-                    {VISUAL_THEMES.map((theme) => (
-                      <div
-                        key={theme.id}
-                        className={cn(
-                          "cursor-pointer border-2 rounded-xl p-3 transition-all hover:border-primary/50 flex items-center gap-4 relative overflow-hidden",
-                          themeConfig.templateId === theme.id
-                            ? "border-primary bg-primary/5"
-                            : "border-muted bg-background"
-                        )}
-                        onClick={() =>
-                          updateThemeConfig({ templateId: theme.id })
-                        }
-                      >
-                        <div
-                          className="w-12 h-12 rounded-lg border shadow-sm shrink-0"
-                          style={{ backgroundColor: theme.previewColor }}
-                        />
-                        <div className="flex-grow min-w-0">
-                          <div className="flex justify-between items-center mb-1">
-                            <h4 className="font-bold text-sm truncate">
-                              {theme.name}
-                            </h4>
-                            {themeConfig.templateId === theme.id && (
-                              <div className="text-primary bg-primary/10 p-1 rounded-full">
-                                <CheckCircle2 size={14} />
-                              </div>
+
+                  <div className="flex-grow overflow-y-auto p-4 space-y-4 custom-scrollbar bg-muted/5">
+                    {VISUAL_THEMES.map((theme) => {
+                      const isOwned = hasThemeAccess(theme.id);
+                      const isPreviewing = themeConfig.templateId === theme.id;
+
+                      return (
+                        <Card
+                          key={theme.id}
+                          className={cn(
+                            "overflow-hidden border-2 transition-all",
+                            isPreviewing
+                              ? "border-primary shadow-md"
+                              : "hover:border-primary/30"
+                          )}
+                        >
+                          <div
+                            className="h-32 w-full relative"
+                            style={{ backgroundColor: theme.previewColor }}
+                          >
+                            {/* Add a beautiful mockup image of the theme here later */}
+                            {isOwned && (
+                              <Badge className="absolute top-2 right-2 bg-green-500">
+                                Owned
+                              </Badge>
                             )}
                           </div>
-                          <p className="text-xs text-muted-foreground line-clamp-2 leading-tight">
-                            {theme.description}
-                          </p>
+                          <CardContent className="p-4">
+                            <div className="flex justify-between items-start mb-2">
+                              <div>
+                                <h4 className="font-bold text-lg">
+                                  {theme.name}
+                                </h4>
+                                <p className="text-xs text-muted-foreground">
+                                  {theme.description}
+                                </p>
+                              </div>
+                              {/* Price Display */}
+                              {!isOwned && (
+                                <div className="flex flex-col items-end gap-1">
+                                  <div className="flex items-center gap-1 font-black text-amber-600 bg-amber-50 px-2 py-0.5 rounded text-[10px] whitespace-nowrap">
+                                    <Coins size={10} /> {theme.sitePrice} / Site
+                                  </div>
+                                  <div className="flex items-center gap-1 font-black text-primary bg-primary/10 px-2 py-0.5 rounded text-[10px] whitespace-nowrap">
+                                    <Coins size={10} /> {theme.globalPrice} /
+                                    Global
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+
+                            <div className="flex flex-col gap-2 mt-4">
+                              {/* 🚀 THE SMART ACTIVATE / PREVIEW BUTTON */}
+                              <Button
+                                variant={
+                                  isPreviewing && isOwned
+                                    ? "default"
+                                    : isOwned
+                                    ? "outline"
+                                    : isPreviewing
+                                    ? "secondary"
+                                    : "outline"
+                                }
+                                className={cn(
+                                  "w-full transition-all",
+                                  isPreviewing &&
+                                    isOwned &&
+                                    "bg-green-600 hover:bg-green-700 text-white"
+                                )}
+                                onClick={() =>
+                                  updateThemeConfig({ templateId: theme.id })
+                                }
+                                disabled={isPreviewing && isOwned} // Disable if it's already their active theme
+                              >
+                                {isPreviewing && isOwned ? (
+                                  <>
+                                    <CheckCircle2 size={16} className="mr-2" />{" "}
+                                    Active Theme
+                                  </>
+                                ) : isOwned ? (
+                                  <>
+                                    <LayoutTemplate
+                                      size={16}
+                                      className="mr-2"
+                                    />{" "}
+                                    Activate Theme
+                                  </>
+                                ) : isPreviewing ? (
+                                  <>
+                                    <Eye size={16} className="mr-2" />{" "}
+                                    Previewing...
+                                  </>
+                                ) : (
+                                  <>
+                                    <Eye
+                                      size={16}
+                                      className="mr-2 text-muted-foreground"
+                                    />{" "}
+                                    Preview in Canvas
+                                  </>
+                                )}
+                              </Button>
+
+                              {/* 🚀 THE TIERED PURCHASE BUTTONS (Hidden if Owned) */}
+                              {!isOwned && (
+                                <div className="flex gap-2 w-full mt-1 border-t pt-3">
+                                  <Button
+                                    className="bg-amber-500 hover:bg-amber-600 text-white shadow-sm flex-1 text-[10px] px-1 h-9"
+                                    onClick={() =>
+                                      handlePurchaseTheme(
+                                        theme.id,
+                                        theme.sitePrice,
+                                        theme.name,
+                                        "site"
+                                      )
+                                    }
+                                    disabled={!!isPurchasingTheme}
+                                  >
+                                    {isPurchasingTheme ===
+                                    `${theme.id}-site` ? (
+                                      <Loader2 className="w-3 h-3 animate-spin mr-1" />
+                                    ) : null}
+                                    1 Site ({theme.sitePrice})
+                                  </Button>
+                                  <Button
+                                    className="bg-primary hover:bg-primary/90 text-white shadow-sm flex-1 text-[10px] px-1 h-9"
+                                    onClick={() =>
+                                      handlePurchaseTheme(
+                                        theme.id,
+                                        theme.globalPrice,
+                                        theme.name,
+                                        "global"
+                                      )
+                                    }
+                                    disabled={!!isPurchasingTheme}
+                                  >
+                                    {isPurchasingTheme ===
+                                    `${theme.id}-global` ? (
+                                      <Loader2 className="w-3 h-3 animate-spin mr-1" />
+                                    ) : null}
+                                    All Sites ({theme.globalPrice})
+                                  </Button>
+                                </div>
+                              )}
+                            </div>
+                          </CardContent>
+                        </Card>
+                      );
+                    })}
+                  </div>
+                </div>
+              ) : (
+                /* 🚀 THE STANDARD DESIGN SETTINGS VIEW */
+                <div className="flex-grow overflow-y-auto p-4 space-y-8 custom-scrollbar pb-20 animate-in slide-in-from-left-4 duration-200">
+                  {/* Active Theme Display */}
+                  <div className="space-y-3">
+                    <div className="flex justify-between items-center">
+                      <Label className="text-sm font-bold text-muted-foreground uppercase tracking-wider">
+                        Active Theme
+                      </Label>
+                    </div>
+
+                    <div className="border-2 border-primary bg-primary/5 rounded-xl p-3 flex items-center gap-4 relative overflow-hidden">
+                      <div className="w-12 h-12 rounded-lg border shadow-sm shrink-0 bg-primary/20 flex items-center justify-center">
+                        <LayoutTemplate className="text-primary" />
+                      </div>
+                      <div className="flex-grow">
+                        <h4 className="font-bold text-sm">
+                          {VISUAL_THEMES.find(
+                            (t) => t.id === themeConfig.templateId
+                          )?.name || "Modern Minimal"}
+                        </h4>
+                        <p className="text-xs text-muted-foreground">
+                          Currently applied to your site.
+                        </p>
+                      </div>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => setIsBrowsingThemes(true)}
+                      >
+                        Change Theme
+                      </Button>
+                    </div>
+
+                    {/* 🚀 THE TIERED PREMIUM PREVIEW WARNING BANNER */}
+                    {!hasThemeAccess(themeConfig.templateId) &&
+                      (() => {
+                        const activePremiumTheme = VISUAL_THEMES.find(
+                          (t) => t.id === themeConfig.templateId
+                        );
+
+                        // Safety check just in case it can't find the theme
+                        if (!activePremiumTheme) return null;
+
+                        return (
+                          <div className="bg-amber-50 border border-amber-200 p-3 rounded-lg flex flex-col gap-2 animate-in fade-in">
+                            <div className="flex items-center gap-2 text-amber-800 text-sm font-bold">
+                              <Eye size={16} className="text-amber-600" />{" "}
+                              Previewing Premium Theme
+                            </div>
+                            <p className="text-xs text-amber-700/80">
+                              You must unlock this theme to save your changes.
+                            </p>
+
+                            <div className="grid grid-cols-2 gap-2 mt-1">
+                              <Button
+                                size="sm"
+                                className="w-full bg-amber-500 hover:bg-amber-600 text-white font-bold text-[10px] h-8"
+                                onClick={() =>
+                                  handlePurchaseTheme(
+                                    activePremiumTheme.id,
+                                    activePremiumTheme.sitePrice,
+                                    activePremiumTheme.name,
+                                    "site"
+                                  )
+                                }
+                                disabled={!!isPurchasingTheme}
+                              >
+                                {isPurchasingTheme ===
+                                `${activePremiumTheme.id}-site` ? (
+                                  <Loader2 className="w-3 h-3 animate-spin mr-1" />
+                                ) : null}
+                                This Site ({activePremiumTheme.sitePrice})
+                              </Button>
+                              <Button
+                                size="sm"
+                                className="w-full bg-primary hover:bg-primary/90 text-white font-bold text-[10px] h-8"
+                                onClick={() =>
+                                  handlePurchaseTheme(
+                                    activePremiumTheme.id,
+                                    activePremiumTheme.globalPrice,
+                                    activePremiumTheme.name,
+                                    "global"
+                                  )
+                                }
+                                disabled={!!isPurchasingTheme}
+                              >
+                                {isPurchasingTheme ===
+                                `${activePremiumTheme.id}-global` ? (
+                                  <Loader2 className="w-3 h-3 animate-spin mr-1" />
+                                ) : null}
+                                All Sites ({activePremiumTheme.globalPrice})
+                              </Button>
+                            </div>
+                          </div>
+                        );
+                      })()}
+
+                    {/* --- COLOR PICKER --- */}
+                    <div className="space-y-3">
+                      <div className="flex items-center gap-2 text-sm font-bold text-muted-foreground uppercase tracking-wider">
+                        <PaintBucket size={14} /> Brand Color
+                      </div>
+                      <div className="flex items-center gap-4 bg-background p-3 rounded-xl border">
+                        <div
+                          className="relative w-12 h-12 rounded-full overflow-hidden border-2 shadow-sm shrink-0 cursor-pointer"
+                          style={{
+                            borderColor: themeConfig.primaryColor || "#8b5cf6",
+                          }}
+                        >
+                          <input
+                            type="color"
+                            value={themeConfig.primaryColor || "#8b5cf6"}
+                            onChange={(e) =>
+                              updateThemeConfig({
+                                primaryColor: e.target.value,
+                              })
+                            }
+                            className="absolute -top-4 -left-4 w-20 h-20 cursor-pointer"
+                          />
+                        </div>
+                        <div className="flex-grow">
+                          <Label className="text-[10px] text-muted-foreground uppercase">
+                            Hex Code
+                          </Label>
+                          <div className="relative">
+                            <span className="absolute left-3 top-2.5 text-muted-foreground font-bold">
+                              #
+                            </span>
+                            <Input
+                              value={(
+                                themeConfig.primaryColor || "8b5cf6"
+                              ).replace("#", "")}
+                              onChange={(e) =>
+                                updateThemeConfig({
+                                  primaryColor: `#${e.target.value}`,
+                                })
+                              }
+                              className="pl-7 font-mono uppercase font-semibold h-10"
+                              maxLength={7}
+                            />
+                          </div>
                         </div>
                       </div>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="space-y-3">
-                  <div className="flex items-center gap-2 text-sm font-bold text-muted-foreground uppercase tracking-wider">
-                    <PaintBucket size={14} /> Brand Color
-                  </div>
-                  <div className="flex flex-wrap gap-3">
-                    {LOCAL_COLOR_PALETTES.map((color) => (
-                      <button
-                        key={color.id}
-                        onClick={() =>
-                          updateThemeConfig({ primaryColor: color.id })
-                        }
-                        className={cn(
-                          "w-8 h-8 rounded-full transition-all ring-offset-2 ring-offset-background hover:scale-110",
-                          themeConfig.primaryColor === color.id
-                            ? "ring-2 ring-primary scale-110 shadow-md"
-                            : "opacity-80 hover:opacity-100"
-                        )}
-                        style={{ backgroundColor: color.value }}
-                        title={color.name}
-                      />
-                    ))}
-                  </div>
-                </div>
-
-                <div className="space-y-3">
-                  <div className="flex items-center gap-2 text-sm font-bold text-muted-foreground uppercase tracking-wider">
-                    <Type size={14} /> Typography
-                  </div>
-                  <Select
-                    value={themeConfig.font}
-                    onValueChange={(val) => updateThemeConfig({ font: val })}
-                  >
-                    <SelectTrigger className="h-10 bg-background">
-                      <SelectValue placeholder="Select a font" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {LOCAL_FONT_OPTIONS.map((font) => (
-                        <SelectItem key={font.id} value={font.id}>
-                          <span className={font.value}>{font.name}</span>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-4 pt-4 border-t border-dashed">
-                  <div className="flex items-center gap-2 text-sm font-bold text-muted-foreground uppercase tracking-wider">
-                    <ComponentIcon size={14} /> Interface
-                  </div>
-                  <div className="space-y-3 bg-background p-3 rounded-xl border">
-                    <div className="flex justify-between text-xs font-medium">
-                      <span className="flex items-center gap-1">
-                        <Square size={12} /> Sharp
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <Circle size={12} /> Round
-                      </span>
                     </div>
-                    <Slider
-                      defaultValue={[0.5]}
-                      max={1}
-                      step={0.1}
-                      value={[
-                        themeConfig.radius !== undefined
-                          ? themeConfig.radius
-                          : 0.5,
-                      ]}
-                      onValueChange={(val) =>
-                        updateThemeConfig({ radius: val[0] })
-                      }
-                      className="py-1"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label className="text-xs text-muted-foreground">
-                      Button Style
-                    </Label>
-                    <ToggleGroup
-                      type="single"
-                      value={themeConfig.buttonStyle || "solid"}
-                      onValueChange={(val) =>
-                        val && updateThemeConfig({ buttonStyle: val })
-                      }
-                      className="justify-start gap-3"
-                    >
-                      <ToggleGroupItem
-                        value="solid"
-                        className="border px-4 py-2 h-auto data-[state=on]:bg-primary data-[state=on]:text-white"
+
+                    {/* --- TYPOGRAPHY --- */}
+                    <div className="space-y-3">
+                      <div className="flex items-center gap-2 text-sm font-bold text-muted-foreground uppercase tracking-wider">
+                        <Type size={14} /> Typography
+                      </div>
+                      <Select
+                        value={themeConfig.font}
+                        onValueChange={(val) =>
+                          updateThemeConfig({ font: val })
+                        }
                       >
-                        Solid
-                      </ToggleGroupItem>
-                      <ToggleGroupItem
-                        value="outline"
-                        className="border px-4 py-2 h-auto data-[state=on]:border-primary data-[state=on]:text-primary"
-                      >
-                        Outline
-                      </ToggleGroupItem>
-                      <ToggleGroupItem
-                        value="shadow"
-                        className="border px-4 py-2 h-auto shadow-md data-[state=on]:ring-2 ring-primary"
-                      >
-                        Retro
-                      </ToggleGroupItem>
-                    </ToggleGroup>
+                        <SelectTrigger className="h-10 bg-background">
+                          <SelectValue placeholder="Select a font" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {LOCAL_FONT_OPTIONS.map((font) => (
+                            <SelectItem key={font.id} value={font.id}>
+                              {/* 🚀 Removed the broken className="font.value" */}
+                              <span>{font.name}</span>
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    {/* --- INTERFACE (Border Radius & Buttons) --- */}
+                    <div className="space-y-4 pt-4 border-t border-dashed">
+                      <div className="flex items-center gap-2 text-sm font-bold text-muted-foreground uppercase tracking-wider">
+                        <ComponentIcon size={14} /> Interface
+                      </div>
+                      <div className="space-y-3 bg-background p-3 rounded-xl border">
+                        <div className="flex justify-between text-xs font-medium">
+                          <span className="flex items-center gap-1">
+                            <Square size={12} /> Sharp
+                          </span>
+                          <span className="flex items-center gap-1">
+                            <Circle size={12} /> Round
+                          </span>
+                        </div>
+                        <Slider
+                          defaultValue={[0.5]}
+                          max={1}
+                          step={0.1}
+                          value={[
+                            themeConfig.radius !== undefined
+                              ? themeConfig.radius
+                              : 0.5,
+                          ]}
+                          onValueChange={(val) =>
+                            updateThemeConfig({ radius: val[0] })
+                          }
+                          className="py-1"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label className="text-xs text-muted-foreground">
+                          Button Style
+                        </Label>
+                        <ToggleGroup
+                          type="single"
+                          value={themeConfig.buttonStyle || "solid"}
+                          onValueChange={(val) =>
+                            val && updateThemeConfig({ buttonStyle: val })
+                          }
+                          className="justify-start gap-3"
+                        >
+                          <ToggleGroupItem
+                            value="solid"
+                            className="border px-4 py-2 h-auto data-[state=on]:bg-primary data-[state=on]:text-white"
+                          >
+                            Solid
+                          </ToggleGroupItem>
+                          <ToggleGroupItem
+                            value="outline"
+                            className="border px-4 py-2 h-auto data-[state=on]:border-primary data-[state=on]:text-primary"
+                          >
+                            Outline
+                          </ToggleGroupItem>
+                          <ToggleGroupItem
+                            value="shadow"
+                            className="border px-4 py-2 h-auto shadow-md data-[state=on]:ring-2 ring-primary"
+                          >
+                            Retro
+                          </ToggleGroupItem>
+                        </ToggleGroup>
+                      </div>
+                    </div>
                   </div>
                 </div>
-              </div>
+              )}
             </TabsContent>
 
             {/* PREVIEW TAB (MOBILE DEVICES ONLY) */}
@@ -1535,17 +1931,6 @@ const PortfolioBuilderPage = () => {
       </div>
       {/* ^^^ END OF GRID ^^^ */}
 
-      {/* --- MODALS & DIALOGS (MOVED OUTSIDE OF THE CSS GRID) --- */}
-      {editingSection && actorData?.id && (
-        <SectionEditor
-          sections={sections}
-          section={editingSection}
-          isOpen={!!editingSection}
-          onClose={() => setEditingSection(null)}
-          actorId={actorData.id || ""}
-          themeId={themeConfig.templateId || "modern"}
-        />
-      )}
       {/* --- CREATE NEW PAGE MODAL --- */}
       <Dialog open={isPageModalOpen} onOpenChange={setIsPageModalOpen}>
         <DialogContent className="sm:max-w-[425px]">

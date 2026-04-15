@@ -24,6 +24,7 @@
     "baseUrl": ".",
     "paths": {
       "@/*": ["src/*"]
+      "@ucp/sdk": ["./src/lib/ucp-sdk.tsx"]
     }
     /* --- END OF ADDITION --- */
   },
