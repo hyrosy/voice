@@ -8,7 +8,7 @@ export default defineConfig({
   base: "/",
   server: {
     allowedHosts: [
-      "sy4pxh-5174.csb.app", // <-- Adds your specific CodeSandbox URL
+      "yztwgh-5174.csb.app", // <-- Adds your specific CodeSandbox URL
     ],
   },
   optimizeDeps: {

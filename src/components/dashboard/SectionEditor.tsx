@@ -67,11 +67,13 @@ interface SectionEditorProps {
   // onSave is no longer needed! Zustand handles it.
   actorId: string;
   themeId?: string;
+  pages?: any[]; // 🚀 1. ADD THIS HERE
 }
 
 const SectionEditor: React.FC<SectionEditorProps> = ({
   section,
   sections,
+  pages = [], // 🚀 2. EXTRACT IT HERE (with a default empty array)
   isOpen,
   isInline, // 🚀 YOU MUST ADD THIS HERE!
   onClose,
@@ -107,9 +109,22 @@ const SectionEditor: React.FC<SectionEditorProps> = ({
 
   if (!section) return null;
 
-  // For convenience, we extract data and settings here so we don't have to keep typing `section.data`
-  const formData = section.data || {};
-  const settingsData = section.settings || {};
+  // =========================================================
+  // THE LOCAL STATE BUFFER (Fixes cursor jumping & freezing!)
+  // =========================================================
+
+  // 1. We keep a local copy of the data so typing is buttery smooth
+  const [formData, setFormData] = useState(section?.data || {});
+  const [settingsData, setSettingsData] = useState(section?.settings || {});
+
+  // 2. If the user clicks a DIFFERENT section, or if the canvas iframe
+  // sends an inline-edit update, we sync the local state to match.
+  useEffect(() => {
+    if (section) {
+      setFormData(section.data || {});
+      setSettingsData(section.settings || {});
+    }
+  }, [section]);
 
   // =========================================================
   // CORE UPDATE HANDLERS (Zustand Connected)
@@ -117,16 +132,25 @@ const SectionEditor: React.FC<SectionEditorProps> = ({
 
   // Update Core Content (Zone A)
   const updateField = (key: string, value: any) => {
-    // We pass ONLY the changed data field. Zustand merges it safely.
+    // 1. Update Local UI instantly
+    const newFormData = { ...formData, [key]: value };
+    setFormData(newFormData);
+
+    // 2. Send to Zustand in the background
     updateSectionInStore(section.id, {
-      data: { ...formData, [key]: value },
+      data: newFormData,
     });
   };
 
   // Update Theme Settings (Zone B)
   const updateSetting = (key: string, value: any) => {
+    // 1. Update Local UI instantly
+    const newSettingsData = { ...settingsData, [key]: value };
+    setSettingsData(newSettingsData);
+
+    // 2. Send to Zustand in the background
     updateSectionInStore(section.id, {
-      settings: { ...settingsData, [key]: value },
+      settings: newSettingsData,
     });
   };
 
@@ -548,7 +572,7 @@ const SectionEditor: React.FC<SectionEditorProps> = ({
                   </Label>
                   <Switch
                     id="autoMenu"
-                    checked={formData.autoMenu !== false}
+                    checked={formData.autoMenu === true}
                     onCheckedChange={(checked) =>
                       updateField("autoMenu", checked)
                     }
@@ -556,39 +580,225 @@ const SectionEditor: React.FC<SectionEditorProps> = ({
                 </div>
               </div>
 
-              {formData.autoMenu === false && (
-                <div className="space-y-2 bg-muted/30 p-3 rounded-md border">
-                  <p className="text-xs text-muted-foreground mb-2">
-                    Select sections to show and rename them.
-                  </p>
-                  {sections
-                    .filter((s) => s.type !== "header" && s.isVisible)
-                    .map((s) => {
-                      const config = formData.menuConfig?.[s.id] || {};
-                      const isSelected = config.visible !== false;
-                      const label = config.label || s.data.title || s.type;
-                      return (
-                        <div key={s.id} className="flex items-center gap-3">
+              {formData.autoMenu !== true && (
+                <div className="space-y-6 bg-muted/30 p-4 rounded-md border">
+                  {/* --- PAGES (System & Custom) --- */}
+                  <div className="space-y-2">
+                    <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
+                      <span className="h-px bg-border flex-grow"></span>
+                      Pages
+                      <span className="h-px bg-border flex-grow"></span>
+                    </Label>
+                    <p className="text-[10px] text-muted-foreground text-center mb-3">
+                      Links to specific pages on your website.
+                    </p>
+
+                    {/* 1. The Hardcoded System Shop Page */}
+                    <div className="flex items-center gap-3">
+                      <Switch
+                        checked={
+                          formData.menuConfig?.page_shop?.visible !== false
+                        }
+                        onCheckedChange={(c) =>
+                          updateMenuConfig("page_shop", "visible", c)
+                        }
+                      />
+                      <Input
+                        value={formData.menuConfig?.page_shop?.label || "Shop"}
+                        onChange={(e) =>
+                          updateMenuConfig("page_shop", "label", e.target.value)
+                        }
+                        disabled={
+                          formData.menuConfig?.page_shop?.visible === false
+                        }
+                        className="h-8 text-sm"
+                      />
+                      <span className="text-[10px] text-indigo-400 font-bold uppercase tracking-widest w-16 text-right">
+                        System
+                      </span>
+                    </div>
+
+                    {/* 2. The Custom Pages Loop */}
+                    {(pages || [])
+                      .filter((p) => !p.isHome)
+                      .map((page) => {
+                        const configKey = `page_${page.id}`;
+                        const config = formData.menuConfig?.[configKey] || {};
+                        const isSelected = config.visible !== false;
+                        const label = config.label || page.title;
+
+                        return (
+                          <div
+                            key={page.id}
+                            className="flex items-center gap-3"
+                          >
+                            <Switch
+                              checked={isSelected}
+                              onCheckedChange={(c) =>
+                                updateMenuConfig(configKey, "visible", c)
+                              }
+                            />
+                            <Input
+                              value={label}
+                              onChange={(e) =>
+                                updateMenuConfig(
+                                  configKey,
+                                  "label",
+                                  e.target.value
+                                )
+                              }
+                              disabled={!isSelected}
+                              className="h-8 text-sm"
+                            />
+                            <span className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest w-16 text-right truncate">
+                              Custom
+                            </span>
+                          </div>
+                        );
+                      })}
+                  </div>
+
+                  {/* --- CUSTOM EXTERNAL LINKS --- */}
+                  <div className="space-y-3">
+                    <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
+                      <span className="h-px bg-border flex-grow"></span>
+                      Custom Links
+                      <span className="h-px bg-border flex-grow"></span>
+                    </Label>
+                    <p className="text-[10px] text-muted-foreground text-center mb-3">
+                      Link to specific products, collections, or external
+                      websites.
+                    </p>
+
+                    {(formData.customNavLinks || []).map(
+                      (link: any, index: number) => (
+                        <div
+                          key={link.id}
+                          className="flex items-start gap-3 bg-background p-2 border rounded-md relative group"
+                        >
                           <Switch
-                            checked={isSelected}
-                            onCheckedChange={(c) =>
-                              updateMenuConfig(s.id, "visible", c)
-                            }
+                            checked={link.visible !== false}
+                            className="mt-2"
+                            onCheckedChange={(c) => {
+                              // 🚀 FIX: Pure array mapping to prevent mutation bugs!
+                              const newLinks = formData.customNavLinks.map(
+                                (l: any, i: number) =>
+                                  i === index ? { ...l, visible: c } : l
+                              );
+                              updateField("customNavLinks", newLinks);
+                            }}
                           />
-                          <Input
-                            value={label}
-                            onChange={(e) =>
-                              updateMenuConfig(s.id, "label", e.target.value)
-                            }
-                            disabled={!isSelected}
-                            className="h-8 text-sm"
-                          />
-                          <span className="text-xs text-muted-foreground whitespace-nowrap capitalize w-16 truncate">
-                            ({s.type})
-                          </span>
+                          <div className="flex-grow space-y-2">
+                            <Input
+                              value={link.label}
+                              placeholder="Link Name (e.g. My IMDb)"
+                              onChange={(e) => {
+                                // 🚀 FIX: Pure array mapping!
+                                const newLinks = formData.customNavLinks.map(
+                                  (l: any, i: number) =>
+                                    i === index
+                                      ? { ...l, label: e.target.value }
+                                      : l
+                                );
+                                updateField("customNavLinks", newLinks);
+                              }}
+                              className="h-8 text-sm"
+                            />
+                            <Input
+                              value={link.url}
+                              placeholder="https:// or /shop/product"
+                              onChange={(e) => {
+                                // 🚀 FIX: Pure array mapping!
+                                const newLinks = formData.customNavLinks.map(
+                                  (l: any, i: number) =>
+                                    i === index
+                                      ? { ...l, url: e.target.value }
+                                      : l
+                                );
+                                updateField("customNavLinks", newLinks);
+                              }}
+                              className="h-8 text-sm text-muted-foreground"
+                            />
+                          </div>
+                          {/* Delete Button */}
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-destructive/50 hover:text-destructive absolute -right-2 -top-2 opacity-0 group-hover:opacity-100 transition-opacity bg-background border shadow-sm rounded-full"
+                            onClick={() => {
+                              const newLinks = formData.customNavLinks.filter(
+                                (l: any) => l.id !== link.id
+                              );
+                              updateField("customNavLinks", newLinks);
+                            }}
+                          >
+                            <X size={14} />
+                          </Button>
                         </div>
-                      );
-                    })}
+                      )
+                    )}
+
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="w-full border-dashed text-xs"
+                      onClick={() => {
+                        const currentLinks = formData.customNavLinks || [];
+                        updateField("customNavLinks", [
+                          ...currentLinks,
+                          {
+                            id: `link_${Date.now()}`,
+                            label: "",
+                            url: "",
+                            visible: true,
+                          },
+                        ]);
+                      }}
+                    >
+                      <Plus className="w-4 h-4 mr-2" /> Add Custom Link
+                    </Button>
+                  </div>
+
+                  {/* --- ON-PAGE SECTIONS --- */}
+                  <div className="space-y-2">
+                    <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
+                      <span className="h-px bg-border flex-grow"></span>
+                      On-Page Sections
+                      <span className="h-px bg-border flex-grow"></span>
+                    </Label>
+                    <p className="text-[10px] text-muted-foreground text-center mb-3">
+                      Links that scroll down to sections on the Home page.
+                    </p>
+
+                    {sections
+                      .filter((s) => s.type !== "header" && s.isVisible)
+                      .map((s) => {
+                        const config = formData.menuConfig?.[s.id] || {};
+                        const isSelected = config.visible !== false;
+                        const label = config.label || s.data.title || s.type;
+                        return (
+                          <div key={s.id} className="flex items-center gap-3">
+                            <Switch
+                              checked={isSelected}
+                              onCheckedChange={(c) =>
+                                updateMenuConfig(s.id, "visible", c)
+                              }
+                            />
+                            <Input
+                              value={label}
+                              onChange={(e) =>
+                                updateMenuConfig(s.id, "label", e.target.value)
+                              }
+                              disabled={!isSelected}
+                              className="h-8 text-sm"
+                            />
+                            <span className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest w-16 text-right truncate">
+                              Section
+                            </span>
+                          </div>
+                        );
+                      })}
+                  </div>
                 </div>
               )}
             </div>
@@ -604,7 +814,7 @@ const SectionEditor: React.FC<SectionEditorProps> = ({
                 <Input
                   value={formData.ctaLink || ""}
                   onChange={(e) => updateField("ctaLink", e.target.value)}
-                  placeholder="#contact"
+                  placeholder="/checkout or #contact"
                 />
               </div>
             </div>
