@@ -1,0 +1,26 @@
+name: Sync Code to Google Cloud Storage
+
+on:
+  push:
+    branches:
+      - main # Change this to 'master' if your default branch is called master
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: "${{ secrets.GCP_CREDENTIALS }}"
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Sync to Cloud Storage Bucket
+        run: |
+          # This syncs your code while ignoring the hidden .git folder
+          gsutil -m rsync -r -x "\.git/.*" ./ gs://ucpmaroc-code-bucket/
