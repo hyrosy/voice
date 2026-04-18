@@ -16,7 +16,6 @@ import Footer from "./components/Footer";
 import ScrollToTop from "./components/ScrollToTop";
 import ProtectedRoute from "./components/ProtectedRoute.tsx";
 import AdminDashboardLayout from "./layouts/AdminDashboardLayout"; // 🚀 1. NEW IMPORT
-
 // --- LAZY LOADED PORTFOLIO ARCHITECTURE ---
 const PortfolioLayout = lazy(() => import("./layouts/PortfolioLayout"));
 const PortfolioHome = lazy(() => import("./pages/PortfolioHome"));
@@ -82,6 +81,7 @@ import CheckoutLayout from "./themes/modern/CheckoutLayout.tsx";
 import StripeCallbackPage from "./pages/dashboard/StripeCallbackPage.tsx";
 import ThemeStudioPage from "./pages/dashboard/ThemeStudioPage.tsx";
 import DeveloperHubPage from "./pages/dashboard/DeveloperHubPage.tsx";
+import { AdminChatSheet } from "./components/dashboard/AdminChatSheet.tsx";
 
 // Define main domains globally
 const MAIN_DOMAINS = [
@@ -332,6 +332,7 @@ function App() {
             </Suspense>
           </Layout>
         </main>
+        <AdminChatSheet />
       </Router>
     </QueryClientProvider>
   );
