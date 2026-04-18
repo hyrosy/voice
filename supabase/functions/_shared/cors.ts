@@ -1,7 +1,7 @@
 // In supabase/functions/_shared/cors.ts
 
 const allowedOrigins = [
-  "http://localhost:5174", // Your local dev environment
+  "http://localhost:5173", // Your local dev environment
   "https://www.ucpmaroc.com", // Your production site
 ];
 

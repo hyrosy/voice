@@ -122,10 +122,28 @@ serve(async (req) => {
 
     const [response] = await gcpClient.detectIntent(request);
 
-    // Extract the AI's answer
-    const aiTextResponse =
-      response.queryResult?.responseMessages?.[0]?.text?.text?.[0] ||
-      "I'm sorry, I encountered an error processing that.";
+    // Vertex AI Agent Builder sometimes puts the response in different properties!
+    const messages = response.queryResult?.responseMessages || [];
+    let aiTextResponse = "";
+
+    for (const msg of messages) {
+      if (msg.text && msg.text.text && msg.text.text.length > 0) {
+        aiTextResponse += msg.text.text[0] + "\n";
+      } else if (
+        msg.payload &&
+        msg.payload.fields &&
+        msg.payload.fields.richContent
+      ) {
+        // Fallback for Agent Builder rich responses
+        aiTextResponse += JSON.stringify(msg.payload.fields.richContent) + "\n";
+      }
+    }
+
+    if (!aiTextResponse.trim()) {
+      aiTextResponse =
+        "I connected to Google Cloud successfully, but the Agent returned an empty text response format. Raw output: " +
+        JSON.stringify(response.queryResult);
+    }
 
     // 8. Save AI Response to Database
     await supabaseAdmin.from("admin_ai_messages").insert({
