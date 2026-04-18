@@ -242,7 +242,7 @@ export function AdminChatSheet() {
         <div className="flex-1 flex flex-col h-full">
           <SheetHeader className="p-4 border-b flex flex-row items-center justify-between space-y-0">
             <SheetTitle className="flex items-center gap-2">
-              <Bot className="text-primary" /> God Mode Co-pilot
+              <Bot className="text-primary" /> Co-pilot
             </SheetTitle>
             <Button
               variant="ghost"
