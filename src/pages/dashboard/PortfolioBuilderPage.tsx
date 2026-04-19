@@ -830,7 +830,8 @@ const PortfolioBuilderPage = () => {
       return;
     }
     addSection({
-      id: `${type}-${Date.now()}`,
+      // 🚀 FIX: Mathematically guarantees a unique ID that will never collide or overwrite custom labels
+      id: `${type}_${crypto.randomUUID()}`,
       type: type,
       isVisible: true,
       data: {
