@@ -36,7 +36,7 @@ export default async function handler(req: Request) {
   }
 
   // Default SEO fallback
-  let seoTitle = "Hyrosy | The Modern Portfolio Builder";
+  let seoTitle = "UCPMAROC | The Modern Portfolio Builder";
   let seoDescription =
     "Create stunning, high-converting portfolios and stores.";
   let seoImage = "https://ucpmaroc.com/default-og-image.jpg"; // Replace with your actual default image
