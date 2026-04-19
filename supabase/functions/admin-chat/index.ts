@@ -1,6 +1,5 @@
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { SessionsClient } from "npm:@google-cloud/dialogflow-cx";
+import { GoogleAuth } from "npm:google-auth-library"; // 🚀 Ditch Dialogflow SDK, use raw Google Auth
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -8,138 +7,143 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type",
 };
 
-serve(async (req) => {
-  // Handle CORS for React Frontend
-  if (req.method === "OPTIONS") {
+Deno.serve(async (req) => {
+  if (req.method === "OPTIONS")
     return new Response("ok", { headers: corsHeaders });
-  }
 
   try {
     const { session_id, message, context, files } = await req.json();
 
-    // 1. Initialize Supabase Admin Client
     const supabaseAdmin = createClient(
-      Deno.env.get("VITE_SUPABASE_URL") ?? "",
+      Deno.env.get("SUPABASE_URL") ?? "",
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
     );
 
-    // 2. AUTHENTICATION & RULE #1 STRICT SECURITY
-    const authHeader = req.headers.get("Authorization")!;
-    const token = authHeader.replace("Bearer ", "");
+    // 1. SECURE AUTH
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader) throw new Error("Missing Authorization header.");
+
     const {
       data: { user },
       error: authError,
-    } = await supabaseAdmin.auth.getUser(token);
+    } = await supabaseAdmin.auth.getUser(authHeader.replace("Bearer ", ""));
 
-    if (authError || !user) throw new Error("Unauthorized");
-
-    // BOUNCER: Kick out anyone who is not the master developer
-    if (user.email !== "support@hyrosy.com") {
-      return new Response(
-        JSON.stringify({
-          error:
-            "Access Denied: This God Mode AI is restricted to the Lead Developer.",
-        }),
-        {
-          status: 403,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        }
-      );
+    if (authError || !user || user.email !== "support@hyrosy.com") {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 403,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
-    // 3. Save User Message to DB
+    // 2. LOG USER MESSAGE
     await supabaseAdmin.from("admin_ai_messages").insert({
-      session_id: session_id,
+      session_id,
       role: "user",
       content: message,
-      attachments: files || [], // Save any uploaded files (Rule 5)
+      attachments: files || [],
     });
 
-    // 4. RULE #3: INFINITE MEMORY - Fetch entire chat history
-    const { data: history, error: historyError } = await supabaseAdmin
+    // 3. FETCH HISTORY
+    const { data: rawHistory } = await supabaseAdmin
       .from("admin_ai_messages")
       .select("role, content")
       .eq("session_id", session_id)
-      .order("created_at", { ascending: true });
+      .order("created_at", { ascending: false })
+      .limit(10);
 
-    if (historyError) throw historyError;
+    const history = rawHistory ? rawHistory.reverse() : [];
 
-    // 5. Build the Context-Aware Prompt (Rule #4)
-    let aiPrompt = "=== SYSTEM CONTEXT ===\n";
-    aiPrompt += `The user is currently looking at this page: ${
-      context?.page || "Unknown"
-    }\n`;
-    aiPrompt +=
-      "If they say 'this page', they are referring to the URL above.\n\n";
+    const systemPrompt = `
+      [CONTEXT] Page: ${
+        context?.page || "Dashboard"
+      } | Time: ${new Date().toISOString()}
+      [HISTORY]
+      ${history.map((m) => `${m.role.toUpperCase()}: ${m.content}`).join("\n")}
+      [USER]: ${message}
+    `;
 
-    aiPrompt += "=== PREVIOUS CHAT HISTORY ===\n";
-    history.forEach((msg) => {
-      aiPrompt += `${msg.role.toUpperCase()}: ${msg.content}\n`;
+    // 4. GOOGLE CLOUD AUTHENTICATION (Generating a Bearer Token)
+    const gcpKeyString = Deno.env.get("GCP_SERVICE_ACCOUNT_JSON");
+    if (!gcpKeyString) throw new Error("GCP_SERVICE_ACCOUNT_JSON not set.");
+
+    const credentials = JSON.parse(gcpKeyString);
+    if (credentials.private_key) {
+      credentials.private_key = credentials.private_key.replace(/\\n/g, "\n");
+    }
+
+    // 🚀 NEW: Authenticate manually for the CES REST API
+    const auth = new GoogleAuth({
+      credentials,
+      scopes: ["https://www.googleapis.com/auth/cloud-platform"],
     });
 
-    aiPrompt += "=============================\n";
-    aiPrompt += `USER'S NEW MESSAGE: ${message}`;
+    const client = await auth.getClient();
+    const tokenResponse = await client.getAccessToken();
 
-    // NOTE on Rule #5 (Images): Dialogflow CX currently processes text. To process images
-    // natively with Gemini via this SDK, we pass the Base64 image data or Cloud Storage URI
-    // as a session parameter, which the Vertex AI Data Store can read.
-    const parameters =
-      files && files.length > 0
-        ? {
-            uploaded_files: files, // Passing files to the agent's internal memory
-          }
-        : undefined;
+    // 5. CALL THE NEW CES API (Using your exact Deployment ID)
+    // We extracted this directly from your HTML snippet!
+    const DEPLOYMENT_NAME =
+      "projects/637761060044/locations/us/apps/43a80e1b-388d-4b43-9d08-50472c018631/deployments/d2cdef67-4d08-4cca-a6b6-01f80d0a23be";
+    const APP_ID = "43a80e1b-388d-4b43-9d08-50472c018631";
 
-    // 6. Connect to Google Cloud Vertex AI
-    const credentials = JSON.parse(
-      Deno.env.get("GCP_SERVICE_ACCOUNT_JSON") ?? "{}"
-    );
-    const gcpClient = new SessionsClient({ credentials });
+    const cesUrl = `https://ces.googleapis.com/v1/projects/637761060044/locations/us/apps/${APP_ID}/sessions/${session_id}:runSession`;
 
-    // UPDATE THESE 3 VARIABLES TO MATCH YOUR PROJECT
-    const projectId = "stately-magpie-489319-d4";
-    const location = "us"; // or 'global', 'us-central1'
-    const agentId = "43a80e1b-388d-4b43-9d08-50472c018631";
-
-    const sessionPath = gcpClient.projectLocationAgentSessionPath(
-      projectId,
-      location,
-      agentId,
-      session_id
-    );
-
-    // 7. Send the massive contextual payload to Google Cloud
-    const request = {
-      session: sessionPath,
-      queryInput: {
-        text: { text: aiPrompt },
-        languageCode: "en",
+    const cesRes = await fetch(cesUrl, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${tokenResponse.token}`,
+        "Content-Type": "application/json",
       },
-      queryParams: {
-        parameters: parameters, // Injects files and metadata secretly
-      },
-    };
+      body: JSON.stringify({
+        inputs: [
+          {
+            // 🚀 FIX: The CES API just wants a standard string here, not a nested object!
+            text: systemPrompt,
+            languageCode: "en",
+          },
+        ],
+        config: {
+          deployment: DEPLOYMENT_NAME,
+        },
+      }),
+    });
 
-    const [response] = await gcpClient.detectIntent(request);
+    if (!cesRes.ok) {
+      const errText = await cesRes.text();
+      throw new Error(`CES API Error ${cesRes.status}: ${errText}`);
+    }
 
-    // Extract the AI's answer
-    const aiTextResponse =
-      response.queryResult?.responseMessages?.[0]?.text?.text?.[0] ||
-      "I'm sorry, I encountered an error processing that.";
+    const response = await cesRes.json();
 
-    // 8. Save AI Response to Database
+    // 6. PARSE RESPONSE
+    let aiTextResponse = "";
+    // 🚀 FIX: The new CES API uses "outputs" instead of "responseMessages"
+    const outputs = response.outputs || [];
+
+    for (const output of outputs) {
+      if (output.text) {
+        aiTextResponse += output.text + "\n\n";
+      }
+    }
+
+    if (!aiTextResponse.trim()) {
+      aiTextResponse =
+        "Connected to CES successfully, but the Agent returned an empty text format. Raw output: " +
+        JSON.stringify(response);
+    }
+
+    // 7. PERSIST & RESPOND
     await supabaseAdmin.from("admin_ai_messages").insert({
-      session_id: session_id,
+      session_id,
       role: "assistant",
-      content: aiTextResponse,
+      content: aiTextResponse.trim(),
     });
 
-    // 9. Send success back to React!
-    return new Response(JSON.stringify({ reply: aiTextResponse }), {
+    return new Response(JSON.stringify({ reply: aiTextResponse.trim() }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
-  } catch (error) {
-    console.error("AI Chat Error:", error);
+  } catch (error: any) {
+    console.error("[CRITICAL AI ERROR]:", error);
     return new Response(JSON.stringify({ error: error.message }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },

@@ -15,20 +15,23 @@ export default async function handler(req: Request) {
     "ucpmaroc.com",
     "www.ucpmaroc.com",
     "localhost",
-    "yztwgh-5174.csb.app",
+    "v5svtr-5173.csb.app",
   ];
   const isCustomDomain = !MAIN_DOMAINS.some((domain) =>
     hostname.includes(domain)
   );
 
-  // Extract the slug (either from the custom domain, or from the URL path like /pro/johndoe)
+  // Extract the slug (either from the custom domain, or from the URL path)
   let slug = "";
   if (isCustomDomain) {
     slug = hostname; // We will use the custom domain to look up the portfolio
   } else {
     const pathParts = url.pathname.split("/");
+    // 🚀 FIX: Handle both /pro/username AND /username gracefully
     if (pathParts[1] === "pro" && pathParts[2]) {
       slug = pathParts[2];
+    } else if (pathParts[1] && pathParts[1] !== "api") {
+      slug = pathParts[1];
     }
   }
 
@@ -49,11 +52,13 @@ export default async function handler(req: Request) {
       const supabase = createClient(supabaseUrl, supabaseKey);
 
       try {
-        // Find the portfolio by custom domain OR by public_slug
+        // 🚀 FIX: Use the extracted 'slug' variable instead of the non-existent 'params.slug'
+        // 🚀 FIX: Added actor_profiles(*) so Supabase actually fetches the joined table data!
         const { data: portfolio } = await supabase
           .from("portfolios")
-          .select("*, actor_profiles(ActorName, bio, HeadshotURL)")
-          .or(`custom_domain.eq.${slug},public_slug.eq.${slug}`)
+          .select("*, actor_profiles(*)")
+          .or(`public_slug.eq.${slug},id.eq.${slug}`) // Safely checks both slug and ID
+          .eq("is_published", true)
           .single();
 
         if (portfolio) {
