@@ -6,7 +6,7 @@ import {
   SheetTrigger,
   SheetHeader,
   SheetTitle,
-  SheetDescription, // 🚀 ADD THIS
+  SheetDescription,
 } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -21,12 +21,15 @@ import {
   Plus,
   MessageSquare,
   Copy,
-  Check,
+  TerminalSquare,
+  Trash2,
+  Mic, // 🚀 NEW: Microphone Icon
+  MicOff, // 🚀 NEW: Mic Off Icon
 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { vscDarkPlus } from "react-syntax-highlighter/dist/esm/styles/prism";
-import { toast } from "sonner"; // Assuming sonner for notifications
+import { toast } from "sonner";
 
 export function AdminChatSheet() {
   const [user, setUser] = useState<any>(null);
@@ -37,18 +40,22 @@ export function AdminChatSheet() {
   const [messages, setMessages] = useState<any[]>([]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+
+  // 🚀 NEW: Voice Dictation States
+  const [isListening, setIsListening] = useState(false);
+  const recognitionRef = useRef<any>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  // 1. AUTH CHECK
+
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => setUser(data.user));
   }, []);
 
-  // 2. AUTO-SCROLL (Smooth scroll to the invisible bottom div)
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, isLoading]);
+    setTimeout(() => {
+      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    }, 100);
+  }, [messages, isLoading, isExpanded]);
 
-  // 3. LOAD DATA
   useEffect(() => {
     if (isOpen) fetchSessions();
   }, [isOpen]);
@@ -62,7 +69,10 @@ export function AdminChatSheet() {
       .from("admin_ai_sessions")
       .select("*")
       .order("created_at", { ascending: false });
-    if (data) setSessions(data);
+    if (data) {
+      setSessions(data);
+      if (!activeSessionId && data.length > 0) setActiveSessionId(data[0].id);
+    }
   };
 
   const fetchMessages = async (sid: string) => {
@@ -72,6 +82,100 @@ export function AdminChatSheet() {
       .eq("session_id", sid)
       .order("created_at", { ascending: true });
     if (data) setMessages(data);
+  };
+
+  const handleNewChat = () => {
+    setActiveSessionId(null);
+    setMessages([]);
+    setInput("");
+  };
+
+  const handleDeleteSession = async (
+    e: React.MouseEvent,
+    sessionId: string
+  ) => {
+    e.stopPropagation();
+    setSessions((prev) => prev.filter((s) => s.id !== sessionId));
+    if (activeSessionId === sessionId) {
+      setActiveSessionId(null);
+      setMessages([]);
+    }
+    try {
+      await supabase
+        .from("admin_ai_messages")
+        .delete()
+        .eq("session_id", sessionId);
+      const { error } = await supabase
+        .from("admin_ai_sessions")
+        .delete()
+        .eq("id", sessionId);
+      if (error) throw error;
+      toast.success("Chat session deleted");
+    } catch (error) {
+      console.error("Delete error:", error);
+      toast.error("Failed to delete chat");
+      fetchSessions();
+    }
+  };
+
+  // 🚀 NEW: Voice Dictation Logic
+  const toggleDictation = () => {
+    if (isListening) {
+      recognitionRef.current?.stop();
+      setIsListening(false);
+      return;
+    }
+
+    const SpeechRecognition =
+      (window as any).SpeechRecognition ||
+      (window as any).webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      toast.error(
+        "Your browser doesn't support voice dictation. Try Google Chrome."
+      );
+      return;
+    }
+
+    const recognition = new SpeechRecognition();
+    recognition.continuous = false; // Stops automatically when you pause
+    recognition.interimResults = true; // Shows text in real-time
+
+    const originalInput = input; // Save whatever was already typed
+
+    recognition.onresult = (event: any) => {
+      let currentTranscript = "";
+      for (let i = event.resultIndex; i < event.results.length; ++i) {
+        currentTranscript += event.results[i][0].transcript;
+      }
+      setInput(originalInput + (originalInput ? " " : "") + currentTranscript);
+    };
+
+    recognition.onerror = (e: any) => {
+      console.error("Detailed Speech Error:", e.error);
+      setIsListening(false);
+
+      if (e.error === "not-allowed") {
+        toast.error(
+          "Microphone blocked! Please click the padlock in your URL bar to allow access."
+        );
+      } else if (e.error === "network") {
+        toast.error(
+          "Network error. Speech recognition requires HTTPS/localhost."
+        );
+      } else if (e.error === "no-speech") {
+        toast.error("No speech detected. Microphone might be muted.");
+      } else {
+        toast.error(`Mic error: ${e.error}`);
+      }
+    };
+
+    recognition.onend = () => {
+      setIsListening(false);
+    };
+
+    recognitionRef.current = recognition;
+    recognition.start();
+    setIsListening(true);
   };
 
   const handleSend = async () => {
@@ -84,7 +188,7 @@ export function AdminChatSheet() {
     if (!sid) {
       const { data: newSess } = await supabase
         .from("admin_ai_sessions")
-        .insert({ admin_id: user.id, title: msg.slice(0, 30) })
+        .insert({ admin_id: user.id, title: msg.slice(0, 30) + "..." })
         .select()
         .single();
       if (newSess) {
@@ -94,7 +198,6 @@ export function AdminChatSheet() {
       }
     }
 
-    // Optimistic UI
     setMessages((prev) => [...prev, { role: "user", content: msg }]);
 
     try {
@@ -118,18 +221,13 @@ export function AdminChatSheet() {
         }
       );
 
-      // 🚀 NEW: Catch server errors before trying to read JSON
       if (!res.ok) {
         const errorText = await res.text();
         throw new Error(`Server returned ${res.status}: ${errorText}`);
       }
 
       const data = await res.json();
-
-      // 🚀 NEW: Handle Google Cloud errors gracefully
-      if (data.error) {
-        throw new Error(data.error);
-      }
+      if (data.error) throw new Error(data.error);
 
       setMessages((prev) => [
         ...prev,
@@ -137,7 +235,6 @@ export function AdminChatSheet() {
       ]);
     } catch (e: any) {
       console.error("AI Fetch Error:", e);
-      // 🚀 NEW: Print the actual error into the chat bubble!
       setMessages((prev) => [
         ...prev,
         {
@@ -147,7 +244,7 @@ export function AdminChatSheet() {
       ]);
       toast.error("Failed to reach AI Co-pilot");
     } finally {
-      setIsLoading(false); // This guarantees it will STOP spinning
+      setIsLoading(false);
     }
   };
 
@@ -167,64 +264,94 @@ export function AdminChatSheet() {
       </SheetTrigger>
 
       <SheetContent
-        className={`p-0 flex transition-all duration-500 ease-in-out ${
-          isExpanded ? "w-screen sm:max-w-full" : "w-full sm:max-w-[500px]"
+        side="right"
+        className={`p-0 flex gap-0 transition-all duration-500 ease-in-out border-l shadow-2xl ${
+          isExpanded ? "!w-[95vw] !max-w-[1200px]" : "!w-[90vw] !max-w-[450px]"
         }`}
       >
         {isExpanded && (
-          <aside className="w-[300px] border-r bg-muted/20 p-4 hidden md:flex flex-col">
-            <Button
-              variant="outline"
-              className="w-full mb-4 border-dashed"
-              onClick={() => {
-                setActiveSessionId(null);
-                setMessages([]);
-              }}
-            >
+          <aside className="w-[300px] border-r bg-muted/20 p-4 flex flex-col shrink-0 overflow-hidden">
+            <Button className="w-full mb-4 shadow-sm" onClick={handleNewChat}>
               <Plus className="mr-2 h-4 w-4" /> New Session
             </Button>
-            <ScrollArea className="flex-1">
-              {sessions.map((s) => (
-                <button
-                  key={s.id}
-                  onClick={() => setActiveSessionId(s.id)}
-                  className={`w-full text-left p-3 rounded-md mb-1 text-sm transition-colors ${
-                    activeSessionId === s.id
-                      ? "bg-primary/10 text-primary font-medium"
-                      : "hover:bg-muted"
-                  }`}
-                >
-                  <MessageSquare size={14} className="inline mr-2 opacity-50" />{" "}
-                  {s.title}
-                </button>
-              ))}
+            <ScrollArea className="flex-1 pr-3">
+              <div className="space-y-1">
+                {sessions.map((s) => (
+                  <div
+                    key={s.id}
+                    className={`group w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-sm transition-all cursor-pointer ${
+                      activeSessionId === s.id
+                        ? "bg-primary text-primary-foreground font-medium shadow-sm"
+                        : "hover:bg-muted text-muted-foreground hover:text-foreground"
+                    }`}
+                    onClick={() => setActiveSessionId(s.id)}
+                  >
+                    <div className="flex items-center gap-2 truncate">
+                      <MessageSquare size={14} className="shrink-0" />
+                      <span className="truncate">{s.title}</span>
+                    </div>
+                    <button
+                      onClick={(e) => handleDeleteSession(e, s.id)}
+                      className={`shrink-0 p-1 rounded hover:bg-destructive/90 hover:text-destructive-foreground transition-opacity ${
+                        activeSessionId === s.id
+                          ? "opacity-100"
+                          : "opacity-0 group-hover:opacity-100"
+                      }`}
+                      title="Delete chat"
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
+                ))}
+              </div>
             </ScrollArea>
           </aside>
         )}
 
-        <div className="flex-1 flex flex-col bg-background">
-          <header className="p-4 border-b flex items-center justify-between bg-background/80 backdrop-blur-md">
-            <div className="flex items-center gap-2">
-              <div className="h-2 w-2 rounded-full bg-green-500 animate-pulse" />
-              {/* 🚀 FIX 1: Use SheetTitle instead of a span */}
-              <SheetTitle className="font-bold tracking-tight m-0 text-base">
-                System Architect AI
-              </SheetTitle>
-            </div>{" "}
+        <div className="flex-1 flex flex-col bg-background min-w-0">
+          <header className="p-4 border-b flex items-center justify-between bg-background/80 backdrop-blur-md z-10 shrink-0">
+            <div className="flex items-center gap-3">
+              <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center text-primary">
+                <TerminalSquare size={16} />
+              </div>
+              <div>
+                <SheetTitle className="font-bold tracking-tight m-0 text-base leading-none">
+                  System Architect AI
+                </SheetTitle>
+                <div className="flex items-center gap-1.5 mt-1">
+                  <div className="h-1.5 w-1.5 rounded-full bg-green-500 animate-pulse" />
+                  <span className="text-[10px] text-muted-foreground uppercase tracking-widest font-semibold">
+                    God Mode
+                  </span>
+                </div>
+              </div>
+            </div>
             <Button
               variant="ghost"
               size="icon"
+              className="hover:bg-muted/50"
               onClick={() => setIsExpanded(!isExpanded)}
             >
               {isExpanded ? <Minimize2 size={18} /> : <Maximize2 size={18} />}
             </Button>
           </header>
-          {/* 🚀 FIX 2: Add a hidden description for Screen Readers to satisfy the second warning */}
+
           <SheetDescription className="sr-only">
-            AI Co-pilot interface for navigating database and codebase
-            architecture.
+            AI Co-pilot interface.
           </SheetDescription>
-          <ScrollArea className="flex-1 p-6">
+
+          <ScrollArea className="flex-1 p-4 sm:p-6 relative">
+            {messages.length === 0 && !isLoading && (
+              <div className="absolute inset-0 flex flex-col items-center justify-center opacity-50 text-center p-8">
+                <Bot size={48} className="mb-4 text-muted-foreground" />
+                <h3 className="font-semibold text-lg">System Ready</h3>
+                <p className="text-sm text-muted-foreground max-w-[250px] mt-2">
+                  I have full access to your codebase and database. Ask me
+                  anything.
+                </p>
+              </div>
+            )}
+
             {messages.map((m, i) => (
               <div
                 key={i}
@@ -233,54 +360,82 @@ export function AdminChatSheet() {
                 }`}
               >
                 <div
-                  className={`group relative p-4 rounded-2xl max-w-[90%] shadow-sm ${
+                  className={`group relative p-4 rounded-2xl max-w-[90%] sm:max-w-[85%] shadow-sm ${
                     m.role === "user"
-                      ? "bg-primary text-primary-foreground"
-                      : "bg-muted border"
+                      ? "bg-primary text-primary-foreground rounded-br-sm"
+                      : "bg-muted/50 border rounded-bl-sm"
                   }`}
                 >
-                  <ReactMarkdown
-                    components={{
-                      code({
-                        node,
-                        inline,
-                        className,
-                        children,
-                        ...props
-                      }: any) {
-                        const match = /language-(\w+)/.exec(className || "");
-                        return !inline && match ? (
-                          <div className="relative mt-2">
-                            <Button
-                              size="icon"
-                              variant="ghost"
-                              className="absolute right-2 top-2 h-8 w-8 text-white opacity-0 group-hover:opacity-100 transition-opacity"
-                              onClick={() => copyCode(String(children))}
-                            >
-                              <Copy size={14} />
-                            </Button>
-                            <SyntaxHighlighter
-                              style={vscDarkPlus}
-                              language={match[1]}
-                              PreTag="div"
-                              className="rounded-lg !mt-0 shadow-inner"
-                            >
-                              {String(children).replace(/\n$/, "")}
-                            </SyntaxHighlighter>
-                          </div>
-                        ) : (
-                          <code
-                            className="bg-primary/20 px-1.5 py-0.5 rounded font-mono text-xs"
+                  <div className="text-sm leading-relaxed space-y-3">
+                    <ReactMarkdown
+                      components={{
+                        p: ({ node, ...props }) => (
+                          <p className="mb-2 last:mb-0" {...props} />
+                        ),
+                        ul: ({ node, ...props }) => (
+                          <ul
+                            className="list-disc pl-4 mb-2 space-y-1"
                             {...props}
-                          >
-                            {children}
-                          </code>
-                        );
-                      },
-                    }}
-                  >
-                    {m.content}
-                  </ReactMarkdown>
+                          />
+                        ),
+                        ol: ({ node, ...props }) => (
+                          <ol
+                            className="list-decimal pl-4 mb-2 space-y-1"
+                            {...props}
+                          />
+                        ),
+                        li: ({ node, ...props }) => (
+                          <li className="pl-1" {...props} />
+                        ),
+                        strong: ({ node, ...props }) => (
+                          <strong className="font-semibold" {...props} />
+                        ),
+                        code({
+                          node,
+                          inline,
+                          className,
+                          children,
+                          ...props
+                        }: any) {
+                          const match = /language-(\w+)/.exec(className || "");
+                          return !inline && match ? (
+                            <div className="relative mt-3 mb-3 group/code">
+                              <Button
+                                size="icon"
+                                variant="secondary"
+                                className="absolute right-2 top-2 h-7 w-7 opacity-0 group-hover/code:opacity-100 transition-opacity z-10"
+                                onClick={() => copyCode(String(children))}
+                              >
+                                <Copy size={12} />
+                              </Button>
+                              <SyntaxHighlighter
+                                style={vscDarkPlus}
+                                language={match[1]}
+                                PreTag="div"
+                                className="rounded-lg !mt-0 !bg-neutral-950 shadow-inner text-[13px] border border-neutral-800"
+                              >
+                                {String(children).replace(/\n$/, "")}
+                              </SyntaxHighlighter>
+                            </div>
+                          ) : (
+                            <code
+                              className={`px-1.5 py-0.5 rounded font-mono text-[12px] ${
+                                m.role === "user"
+                                  ? "bg-primary-foreground/20"
+                                  : "bg-primary/10 text-primary"
+                              }`}
+                              {...props}
+                            >
+                              {children}
+                            </code>
+                          );
+                        },
+                      }}
+                    >
+                      {m.content}
+                    </ReactMarkdown>
+                  </div>
+
                   {m.role === "assistant" && (
                     <button
                       onClick={() =>
@@ -288,27 +443,58 @@ export function AdminChatSheet() {
                           new SpeechSynthesisUtterance(m.content)
                         )
                       }
-                      className="mt-3 opacity-0 group-hover:opacity-50 transition-opacity flex items-center gap-1 text-[10px] uppercase font-bold tracking-widest"
+                      className="mt-3 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1 text-[10px] uppercase font-bold tracking-widest text-muted-foreground hover:text-foreground"
                     >
-                      <Volume2 size={10} /> Read Response
+                      <Volume2 size={12} /> Read Response
                     </button>
                   )}
                 </div>
               </div>
             ))}
+
             {isLoading && (
-              <div className="flex items-center gap-3 text-muted-foreground animate-pulse">
-                <Bot size={18} className="animate-bounce" />
-                <span className="text-sm italic">Synthesizing solution...</span>
+              <div className="flex items-center gap-3 text-muted-foreground mb-6 bg-muted/30 w-fit p-3 rounded-2xl rounded-bl-sm border">
+                <div className="flex gap-1">
+                  <div
+                    className="h-2 w-2 rounded-full bg-primary/40 animate-bounce"
+                    style={{ animationDelay: "0ms" }}
+                  />
+                  <div
+                    className="h-2 w-2 rounded-full bg-primary/60 animate-bounce"
+                    style={{ animationDelay: "150ms" }}
+                  />
+                  <div
+                    className="h-2 w-2 rounded-full bg-primary/80 animate-bounce"
+                    style={{ animationDelay: "300ms" }}
+                  />
+                </div>
+                <span className="text-xs font-medium">Synthesizing...</span>
               </div>
             )}
-            {/* 🚀 ADD THIS DUMMY DIV HERE */}
-            <div ref={messagesEndRef} />
+            <div ref={messagesEndRef} className="h-1" />
           </ScrollArea>
 
-          <footer className="p-4 border-t bg-muted/30">
-            <div className="flex gap-2 items-center bg-background p-2 rounded-xl border shadow-sm focus-within:ring-2 ring-primary/20 transition-all">
-              {/* 1. ADD THE HIDDEN FILE INPUT BACK */}
+          <footer className="p-4 border-t bg-muted/10 shrink-0">
+            <div className="flex gap-2 items-end bg-background p-2 rounded-2xl border shadow-sm focus-within:ring-2 ring-primary/20 transition-all">
+              {/* 🚀 NEW: Voice Dictation Button */}
+              <Button
+                variant="ghost"
+                size="icon"
+                className={`shrink-0 mb-0.5 transition-colors ${
+                  isListening
+                    ? "text-red-500 bg-red-500/10 hover:text-red-600 hover:bg-red-500/20"
+                    : "hover:text-primary"
+                }`}
+                onClick={toggleDictation}
+                title={isListening ? "Stop listening" : "Dictate message"}
+              >
+                {isListening ? (
+                  <MicOff size={18} className="animate-pulse" />
+                ) : (
+                  <Mic size={18} />
+                )}
+              </Button>
+
               <input
                 type="file"
                 id="file-upload"
@@ -319,36 +505,44 @@ export function AdminChatSheet() {
                   if (file) toast.success(`Attached: ${file.name}`);
                 }}
               />
-              {/* 2. MAKE THE PAPERCLIP TRIGGER IT */}
               <Button
                 variant="ghost"
                 size="icon"
-                className="shrink-0 hover:text-primary"
+                className="shrink-0 hover:text-primary mb-0.5"
                 onClick={() => document.getElementById("file-upload")?.click()}
               >
-                <Paperclip size={20} />
+                <Paperclip size={18} />
               </Button>
 
-              <Input
-                placeholder="Ask anything..."
-                className="border-0 focus-visible:ring-0 px-2"
+              <textarea
+                placeholder="Ask anything about the architecture..."
+                className="flex-1 bg-transparent border-0 focus:ring-0 resize-none min-h-[40px] max-h-[120px] py-2.5 px-2 text-sm text-foreground placeholder:text-muted-foreground"
+                rows={1}
                 value={input}
-                onChange={(e) => setInput(e.target.value)}
+                onChange={(e) => {
+                  setInput(e.target.value);
+                  e.target.style.height = "auto";
+                  e.target.style.height = `${Math.min(
+                    e.target.scrollHeight,
+                    120
+                  )}px`;
+                }}
                 onKeyDown={(e) => {
-                  if (e.key === "Enter" && !e.shiftKey) handleSend();
+                  if (e.key === "Enter" && !e.shiftKey) {
+                    e.preventDefault();
+                    handleSend();
+                  }
                 }}
               />
               <Button
                 onClick={handleSend}
                 disabled={!input.trim() || isLoading}
-                className="shrink-0 rounded-lg"
+                size="icon"
+                className="shrink-0 rounded-xl mb-0.5"
               >
-                <Send size={18} />
+                <Send size={16} />
               </Button>
             </div>
-            <p className="text-[10px] text-center text-muted-foreground mt-2 uppercase tracking-tighter opacity-50">
-              Super Admin Mode Active • Authorized Access Only
-            </p>
           </footer>
         </div>
       </SheetContent>

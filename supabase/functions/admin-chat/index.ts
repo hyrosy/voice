@@ -1,5 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { SessionsClient } from "npm:@google-cloud/dialogflow-cx";
+import { GoogleAuth } from "npm:google-auth-library"; // 🚀 Ditch Dialogflow SDK, use raw Google Auth
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -62,59 +62,77 @@ Deno.serve(async (req) => {
       [USER]: ${message}
     `;
 
-    // 4. GOOGLE CLOUD INITIALIZATION
+    // 4. GOOGLE CLOUD AUTHENTICATION (Generating a Bearer Token)
     const gcpKeyString = Deno.env.get("GCP_SERVICE_ACCOUNT_JSON");
     if (!gcpKeyString) throw new Error("GCP_SERVICE_ACCOUNT_JSON not set.");
 
     const credentials = JSON.parse(gcpKeyString);
-    // Fix private key formatting
     if (credentials.private_key) {
       credentials.private_key = credentials.private_key.replace(/\\n/g, "\n");
     }
 
-    // Initialize Client with fallback: true for Edge compatibility
-    const gcpClient = new SessionsClient({
+    // 🚀 NEW: Authenticate manually for the CES REST API
+    const auth = new GoogleAuth({
       credentials,
-      fallback: true,
-      apiEndpoint: "us-dialogflow.googleapis.com", // 🚀 ADD THIS ONE LINE!
+      scopes: ["https://www.googleapis.com/auth/cloud-platform"],
     });
 
-    const sessionPath = gcpClient.projectLocationAgentSessionPath(
-      "stately-magpie-489319-d4",
-      "us",
-      "43a80e1b-388d-4b43-9d08-50472c018631",
-      session_id
-    );
+    const client = await auth.getClient();
+    const tokenResponse = await client.getAccessToken();
 
-    const [response] = await gcpClient.detectIntent({
-      session: sessionPath,
-      queryInput: {
-        text: { text: systemPrompt },
-        languageCode: "en",
+    // 5. CALL THE NEW CES API (Using your exact Deployment ID)
+    // We extracted this directly from your HTML snippet!
+    const DEPLOYMENT_NAME =
+      "projects/637761060044/locations/us/apps/43a80e1b-388d-4b43-9d08-50472c018631/deployments/d2cdef67-4d08-4cca-a6b6-01f80d0a23be";
+    const APP_ID = "43a80e1b-388d-4b43-9d08-50472c018631";
+
+    const cesUrl = `https://ces.googleapis.com/v1/projects/637761060044/locations/us/apps/${APP_ID}/sessions/${session_id}:runSession`;
+
+    const cesRes = await fetch(cesUrl, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${tokenResponse.token}`,
+        "Content-Type": "application/json",
       },
-      queryParams: {
-        parameters: files?.length ? { uploaded_files: files } : undefined,
-      },
+      body: JSON.stringify({
+        inputs: [
+          {
+            // 🚀 FIX: The CES API just wants a standard string here, not a nested object!
+            text: systemPrompt,
+            languageCode: "en",
+          },
+        ],
+        config: {
+          deployment: DEPLOYMENT_NAME,
+        },
+      }),
     });
 
-    // 5. PARSE RESPONSE
+    if (!cesRes.ok) {
+      const errText = await cesRes.text();
+      throw new Error(`CES API Error ${cesRes.status}: ${errText}`);
+    }
+
+    const response = await cesRes.json();
+
+    // 6. PARSE RESPONSE
     let aiTextResponse = "";
-    const responseMessages = response.queryResult?.responseMessages || [];
+    // 🚀 FIX: The new CES API uses "outputs" instead of "responseMessages"
+    const outputs = response.outputs || [];
 
-    for (const msg of responseMessages) {
-      if (msg.text?.text?.[0]) {
-        aiTextResponse += msg.text.text[0] + "\n";
-      } else if (msg.payload) {
-        aiTextResponse += JSON.stringify(msg.payload) + "\n";
+    for (const output of outputs) {
+      if (output.text) {
+        aiTextResponse += output.text + "\n\n";
       }
     }
 
     if (!aiTextResponse.trim()) {
       aiTextResponse =
-        "Connected to Google Cloud successfully, but the Agent returned an empty text format.";
+        "Connected to CES successfully, but the Agent returned an empty text format. Raw output: " +
+        JSON.stringify(response);
     }
 
-    // 6. PERSIST & RESPOND
+    // 7. PERSIST & RESPOND
     await supabaseAdmin.from("admin_ai_messages").insert({
       session_id,
       role: "assistant",
