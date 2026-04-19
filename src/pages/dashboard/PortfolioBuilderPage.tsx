@@ -173,6 +173,8 @@ const IframePreview = ({
   updateSection,
   activePageId, // 🚀 1. ADD THIS
   globalSections, // 🚀 2. ADD THIS
+  customPages,
+  publicSlug, // 🚀 1. ADD THIS PROP
 }: {
   sections: PortfolioSection[];
   theme: any;
@@ -181,6 +183,8 @@ const IframePreview = ({
   updateSection: (id: string, updates: Partial<PortfolioSection>) => void;
   activePageId: string; // 🚀 1. TYPE THIS
   globalSections: PortfolioSection[]; // 🚀 2. TYPE THIS
+  customPages: any[];
+  publicSlug: string; // 🚀 1. TYPE IT
 }) => {
   const iframeRef = React.useRef<HTMLIFrameElement>(null);
   const [viewport, setViewport] = useState<"desktop" | "tablet" | "mobile">(
@@ -189,15 +193,27 @@ const IframePreview = ({
 
   const sendDataToIframe = useCallback(() => {
     if (iframeRef.current && iframeRef.current.contentWindow) {
-      let previewSections = [...sections];
+      // 🚀 1. INJECT GLOBAL DATA DIRECTLY INTO THE HEADER'S DATA OBJECT
+      let previewSections = sections.map((s) => {
+        if (s.type === "header") {
+          return {
+            ...s,
+            data: { ...s.data, customPages, publicSlug },
+          };
+        }
+        return s;
+      });
 
-      // 🚀 MAGIC STITCHING: If we are on a custom page, inject the global header and footer!
+      // 🚀 2. MAGIC STITCHING: Inject for Custom Pages too!
       if (activePageId !== "home" && globalSections.length > 0) {
         const header = globalSections.find((s) => s.type === "header");
-        //const footer = globalSections.find((s) => s.type === "footer");
 
-        if (header && header.isVisible) previewSections.unshift(header);
-        //if (footer && footer.isVisible) previewSections.push(footer);
+        if (header && header.isVisible) {
+          previewSections.unshift({
+            ...header,
+            data: { ...header.data, customPages, publicSlug },
+          });
+        }
       }
 
       iframeRef.current.contentWindow.postMessage(
@@ -208,7 +224,15 @@ const IframePreview = ({
         "*"
       );
     }
-  }, [sections, theme, actorId, activePageId, globalSections]); // <-- Update dependencies!
+  }, [
+    sections,
+    theme,
+    actorId,
+    activePageId,
+    globalSections,
+    customPages,
+    publicSlug,
+  ]);
 
   useEffect(() => {
     sendDataToIframe();
@@ -1911,6 +1935,8 @@ const PortfolioBuilderPage = () => {
                 updateSection={updateSection} // 🚀 ADD THIS HERE
                 activePageId={activePageId}
                 globalSections={fetchedPortfolio?.sections || []}
+                customPages={customPages}
+                publicSlug={siteIdentity.slug} // 🚀 3. PASS IT DOWN!
               />
             </TabsContent>
           </Tabs>
@@ -1927,6 +1953,8 @@ const PortfolioBuilderPage = () => {
             updateSection={updateSection} // 🚀 AND ADD THIS HERE
             activePageId={activePageId}
             globalSections={fetchedPortfolio?.sections || []}
+            customPages={customPages}
+            publicSlug={siteIdentity.slug} // 🚀 3. PASS IT DOWN!
           />
         </div>
       </div>

@@ -5,11 +5,8 @@ import { Menu, X, ArrowRight, ShoppingBag } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useCartStore } from "@/store/useCartStore";
 import { InlineEdit } from "../../components/dashboard/InlineEdit";
-
-// 🚀 1. ROUTING CAPABILITIES
 import { Link, useNavigate, useParams, useLocation } from "react-router-dom";
 
-// 🚀 Professional Fix: Add Interface for Pages
 interface CustomPage {
   id: string;
   title: string;
@@ -17,7 +14,14 @@ interface CustomPage {
   isHome: boolean;
 }
 
-const Header: React.FC<any> = ({ data, allSections, isPreview, id }) => {
+const Header: React.FC<any> = ({
+  data,
+  allSections,
+  isPreview,
+  id,
+  theme,
+  themeConfig,
+}) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
 
@@ -25,19 +29,24 @@ const Header: React.FC<any> = ({ data, allSections, isPreview, id }) => {
   const variant = data.variant || "transparent";
   const isSticky = data.isSticky !== false;
 
-  // Cart State
   const { openCart, getCartCount } = useCartStore();
   const cartCount = getCartCount();
 
-  // Routing State
   const navigate = useNavigate();
   const location = useLocation();
-  const { username } = useParams();
 
-  // 🚀 2. GRAB PAGES FROM ENGINE
-  const customPages: CustomPage[] = data.customPages || [];
+  // 🚀 1. FIX: TypeScript Error Resolution
+  const params = useParams<{ slug?: string; username?: string }>();
 
-  // 🚀 3. THE UNIFIED MENU GENERATOR
+  const activeTheme = theme || themeConfig || {};
+  const customPages: CustomPage[] =
+    activeTheme.customPages || data.customPages || [];
+  const publicSlug = activeTheme.publicSlug || data.publicSlug || "";
+
+  // 🚀 2. FIX: Unified Username & Dynamic Path Prefix
+  const username = params.slug || params.username || publicSlug || "portfolio";
+  const pathPrefix = location.pathname.startsWith("/pro") ? "/pro" : "";
+
   const menuItems = React.useMemo(() => {
     const items: Array<{
       label: string;
@@ -54,7 +63,7 @@ const Header: React.FC<any> = ({ data, allSections, isPreview, id }) => {
         label: config.page_shop?.label || "Shop",
         id: "system_shop",
         type: "page",
-        url: `/${username}/shop`,
+        url: `${pathPrefix}/${username}/shop`, // 🚀 Respects /pro routing
       });
     }
 
@@ -68,7 +77,7 @@ const Header: React.FC<any> = ({ data, allSections, isPreview, id }) => {
             label: pageConfig.label || p.title,
             id: p.id,
             type: "page",
-            url: `/${username}/${p.slug}`,
+            url: `${pathPrefix}/${username}/${p.slug}`, // 🚀 Respects /pro routing
           });
         }
       });
@@ -76,7 +85,6 @@ const Header: React.FC<any> = ({ data, allSections, isPreview, id }) => {
     // --- C. THE DYNAMIC CUSTOM LINKS ---
     const customNavLinks = data.customNavLinks || [];
     customNavLinks.forEach((link: any) => {
-      // Only push if it has a label, a URL, and isn't hidden by the toggle
       if (link.label && link.url && link.visible !== false) {
         items.push({
           label: link.label,
@@ -89,7 +97,6 @@ const Header: React.FC<any> = ({ data, allSections, isPreview, id }) => {
 
     // --- D. ON-PAGE SECTIONS ---
     if (data.autoMenu !== false) {
-      // AUTO MODE: Pull all visible sections with titles
       sections
         .filter((s: any) => s.isVisible && s.type !== "header")
         .forEach((s: any) => {
@@ -102,7 +109,6 @@ const Header: React.FC<any> = ({ data, allSections, isPreview, id }) => {
           }
         });
     } else {
-      // MANUAL MODE: Only pull sections the user checked
       sections
         .filter((s: any) => s.isVisible && s.type !== "header")
         .forEach((s: any) => {
@@ -121,13 +127,13 @@ const Header: React.FC<any> = ({ data, allSections, isPreview, id }) => {
   }, [
     data.autoMenu,
     data.menuConfig,
-    data.customNavLinks, // 🚀 Watch custom links
+    data.customNavLinks,
     sections,
-    customPages, // 🚀 Watch pages
+    customPages,
     username,
+    pathPrefix, // 🚀 Added to dependencies
   ]);
 
-  // --- SCROLL LISTENER ---
   useEffect(() => {
     const handleScroll = () => {
       const scrollY = window.scrollY || document.documentElement.scrollTop;
@@ -137,34 +143,25 @@ const Header: React.FC<any> = ({ data, allSections, isPreview, id }) => {
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
-  // 🚀 4. THE UNIFIED NAVIGATION HANDLER
   const handleNavClick = (item: any) => {
     if (isPreview) return;
 
     if (item.type === "page" && item.url) {
-      // SYSTEM & CUSTOM PAGES
       navigate(item.url);
       setIsMenuOpen(false);
     } else if (item.type === "custom_link" && item.url) {
-      // DYNAMIC CUSTOM LINKS
       setIsMenuOpen(false);
-
-      // External links open in a new tab
       if (item.url.startsWith("http")) {
         window.open(item.url, "_blank");
-      }
-      // Internal routes (e.g. /shop/item) use React Router
-      else if (item.url.startsWith("/")) {
-        navigate(`/${username}${item.url}`);
-      }
-      // Weirdly formatted internal links fallback
-      else {
-        navigate(`/${username}/${item.url}`);
+      } else if (item.url.startsWith("/")) {
+        navigate(`${pathPrefix}/${username}${item.url}`); // 🚀 Fixed
+      } else {
+        navigate(`${pathPrefix}/${username}/${item.url}`); // 🚀 Fixed
       }
     } else if (item.type === "section") {
-      // ON-PAGE SECTIONS
-      if (location.pathname !== `/${username}`) {
-        navigate(`/${username}`);
+      // 🚀 Fixed section navigation to respect pathPrefix
+      if (location.pathname !== `${pathPrefix}/${username}`) {
+        navigate(`${pathPrefix}/${username}`);
         setTimeout(() => {
           const element = document.getElementById(item.id);
           if (element) {
@@ -185,7 +182,6 @@ const Header: React.FC<any> = ({ data, allSections, isPreview, id }) => {
     }
   };
 
-  // --- THE FIXED CLASS LOGIC ---
   const headerClasses = cn(
     "z-50 transition-all duration-500 ease-in-out w-full left-0",
     isPreview
@@ -205,7 +201,6 @@ const Header: React.FC<any> = ({ data, allSections, isPreview, id }) => {
     !isScrolled && variant !== "floating" && "bg-transparent"
   );
 
-  // --- SUB-COMPONENTS ---
   const Logo = () => (
     <div
       className="flex items-center gap-3 cursor-pointer group"
@@ -214,8 +209,9 @@ const Header: React.FC<any> = ({ data, allSections, isPreview, id }) => {
           e.preventDefault();
           return;
         }
-        if (location.pathname !== `/${username}`) {
-          navigate(`/${username}`);
+        // 🚀 Fixed Logo Home Routing
+        if (location.pathname !== `${pathPrefix}/${username}`) {
+          navigate(`${pathPrefix}/${username}`);
         } else {
           window.scrollTo({ top: 0, behavior: "smooth" });
         }
@@ -271,9 +267,10 @@ const Header: React.FC<any> = ({ data, allSections, isPreview, id }) => {
               e.preventDefault();
               return;
             }
+            // 🚀 Fixed CTA Routing
             if (data.ctaLink?.startsWith("/")) {
               e.preventDefault();
-              navigate(`/${username}${data.ctaLink}`);
+              navigate(`${pathPrefix}/${username}${data.ctaLink}`);
             }
           }}
         >
@@ -316,7 +313,6 @@ const Header: React.FC<any> = ({ data, allSections, isPreview, id }) => {
             variant === "floating" ? "px-0" : "px-6"
           )}
         >
-          {/* TRANSPARENT */}
           {variant === "transparent" && (
             <div className="w-full flex items-center justify-between">
               <Logo />
@@ -336,7 +332,6 @@ const Header: React.FC<any> = ({ data, allSections, isPreview, id }) => {
             </div>
           )}
 
-          {/* CENTERED */}
           {variant === "centered" && (
             <div className="w-full grid grid-cols-3 items-center">
               <div className="justify-self-start">
@@ -362,7 +357,6 @@ const Header: React.FC<any> = ({ data, allSections, isPreview, id }) => {
             </div>
           )}
 
-          {/* FLOATING */}
           {variant === "floating" && (
             <div className="w-full flex items-center justify-between">
               <Logo />
@@ -441,7 +435,7 @@ const Header: React.FC<any> = ({ data, allSections, isPreview, id }) => {
                     }
                     if (data.ctaLink?.startsWith("/")) {
                       e.preventDefault();
-                      navigate(`/${username}${data.ctaLink}`);
+                      navigate(`${pathPrefix}/${username}${data.ctaLink}`); // 🚀 Fixed Mobile CTA Routing
                       setIsMenuOpen(false);
                     }
                   }}

@@ -4,12 +4,10 @@ import {
   Sheet,
   SheetContent,
   SheetTrigger,
-  SheetHeader,
   SheetTitle,
   SheetDescription,
 } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Bot,
@@ -23,39 +21,177 @@ import {
   Copy,
   TerminalSquare,
   Trash2,
-  Mic, // 🚀 NEW: Microphone Icon
-  MicOff, // 🚀 NEW: Mic Off Icon
-  Play, // 🚀 NEW
-  Pause, // 🚀 NEW
-  Square, // 🚀 NEW
+  Mic,
+  MicOff,
+  Play,
+  Pause,
+  Square,
 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { vscDarkPlus } from "react-syntax-highlighter/dist/esm/styles/prism";
 import { toast } from "sonner";
 
+// ==========================================
+// 1. ISOLATED INPUT COMPONENT (ZERO TYPING LAG)
+// ==========================================
+function ChatInputArea({
+  handleSend,
+  isLoading,
+}: {
+  handleSend: (msg: string) => void;
+  isLoading: boolean;
+}) {
+  const [input, setInput] = useState("");
+  const [isListening, setIsListening] = useState(false);
+  const recognitionRef = useRef<any>(null);
+
+  const toggleDictation = () => {
+    if (isListening) {
+      recognitionRef.current?.stop();
+      setIsListening(false);
+      return;
+    }
+
+    const SpeechRecognition =
+      (window as any).SpeechRecognition ||
+      (window as any).webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      toast.error(
+        "Your browser doesn't support voice dictation. Try Google Chrome."
+      );
+      return;
+    }
+
+    const recognition = new SpeechRecognition();
+    recognition.continuous = false;
+    recognition.interimResults = true;
+
+    const originalInput = input;
+
+    recognition.onresult = (event: any) => {
+      let currentTranscript = "";
+      for (let i = event.resultIndex; i < event.results.length; ++i) {
+        currentTranscript += event.results[i][0].transcript;
+      }
+      setInput(originalInput + (originalInput ? " " : "") + currentTranscript);
+    };
+
+    recognition.onerror = (e: any) => {
+      setIsListening(false);
+      if (e.error === "not-allowed")
+        toast.error("Microphone blocked! Check your URL bar.");
+      else if (e.error === "network")
+        toast.error("Network error. Requires HTTPS/localhost.");
+      else if (e.error === "no-speech") toast.error("No speech detected.");
+    };
+
+    recognition.onend = () => setIsListening(false);
+    recognitionRef.current = recognition;
+    recognition.start();
+    setIsListening(true);
+  };
+
+  const onSubmit = () => {
+    if (!input.trim() || isLoading) return;
+    handleSend(input);
+    setInput("");
+  };
+
+  return (
+    <footer className="p-4 border-t bg-muted/10 shrink-0">
+      <div className="flex gap-2 items-end bg-background p-2 rounded-2xl border shadow-sm focus-within:ring-2 ring-primary/20 transition-all">
+        <Button
+          variant="ghost"
+          size="icon"
+          className={`shrink-0 mb-0.5 transition-colors ${
+            isListening
+              ? "text-red-500 bg-red-500/10 hover:text-red-600 hover:bg-red-500/20"
+              : "hover:text-primary"
+          }`}
+          onClick={toggleDictation}
+          title={isListening ? "Stop listening" : "Dictate message"}
+        >
+          {isListening ? (
+            <MicOff size={18} className="animate-pulse" />
+          ) : (
+            <Mic size={18} />
+          )}
+        </Button>
+
+        <input
+          type="file"
+          id="file-upload"
+          className="hidden"
+          accept="image/*,.pdf,.txt"
+          onChange={(e) => {
+            const file = e.target.files?.[0];
+            if (file) toast.success(`Attached: ${file.name}`);
+          }}
+        />
+        <Button
+          variant="ghost"
+          size="icon"
+          className="shrink-0 hover:text-primary mb-0.5"
+          onClick={() => document.getElementById("file-upload")?.click()}
+        >
+          <Paperclip size={18} />
+        </Button>
+
+        <textarea
+          placeholder="Ask anything about the architecture..."
+          className="flex-1 bg-transparent border-0 focus:ring-0 resize-none min-h-[40px] max-h-[120px] py-2.5 px-2 text-sm text-foreground placeholder:text-muted-foreground"
+          rows={1}
+          value={input}
+          onChange={(e) => {
+            setInput(e.target.value);
+            e.target.style.height = "auto";
+            e.target.style.height = `${Math.min(e.target.scrollHeight, 120)}px`;
+          }}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && !e.shiftKey) {
+              e.preventDefault();
+              onSubmit();
+            }
+          }}
+        />
+        <Button
+          onClick={onSubmit}
+          disabled={!input.trim() || isLoading}
+          size="icon"
+          className="shrink-0 rounded-xl mb-0.5"
+        >
+          <Send size={16} />
+        </Button>
+      </div>
+    </footer>
+  );
+}
+
+// ==========================================
+// 2. MAIN APPLICATION COMPONENT
+// ==========================================
 export function AdminChatSheet() {
   const [user, setUser] = useState<any>(null);
   const [isOpen, setIsOpen] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
+
   const [sessions, setSessions] = useState<any[]>([]);
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
   const [messages, setMessages] = useState<any[]>([]);
-  const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
-  // 🚀 NEW: Voice Dictation States
-  const [isListening, setIsListening] = useState(false);
-  const recognitionRef = useRef<any>(null);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
-  // 🚀 NEW: Playback States
   const [speakingIndex, setSpeakingIndex] = useState<number | null>(null);
   const [isSpeechPaused, setIsSpeechPaused] = useState(false);
+
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
   const stopSpeech = () => {
     window.speechSynthesis.cancel();
     setSpeakingIndex(null);
     setIsSpeechPaused(false);
   };
+
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => setUser(data.user));
   }, []);
@@ -71,12 +207,9 @@ export function AdminChatSheet() {
   }, [isOpen]);
 
   useEffect(() => {
-    if (activeSessionId) fetchMessages(activeSessionId);
-  }, [activeSessionId]);
-  useEffect(() => {
-    // Stop reading if the user closes the panel
     if (!isOpen) stopSpeech();
   }, [isOpen]);
+
   const fetchSessions = async () => {
     const { data } = await supabase
       .from("admin_ai_sessions")
@@ -84,7 +217,10 @@ export function AdminChatSheet() {
       .order("created_at", { ascending: false });
     if (data) {
       setSessions(data);
-      if (!activeSessionId && data.length > 0) setActiveSessionId(data[0].id);
+      if (!activeSessionId && data.length > 0) {
+        setActiveSessionId(data[0].id);
+        fetchMessages(data[0].id);
+      }
     }
   };
 
@@ -97,10 +233,16 @@ export function AdminChatSheet() {
     if (data) setMessages(data);
   };
 
+  // 🚀 FIX: Prevent race conditions by explicitly fetching when clicking the sidebar
+  const handleSelectSession = (id: string) => {
+    if (id === activeSessionId) return;
+    setActiveSessionId(id);
+    fetchMessages(id);
+  };
+
   const handleNewChat = () => {
     setActiveSessionId(null);
     setMessages([]);
-    setInput("");
   };
 
   const handleDeleteSession = async (
@@ -125,76 +267,12 @@ export function AdminChatSheet() {
       if (error) throw error;
       toast.success("Chat session deleted");
     } catch (error) {
-      console.error("Delete error:", error);
       toast.error("Failed to delete chat");
       fetchSessions();
     }
   };
 
-  // 🚀 NEW: Voice Dictation Logic
-  const toggleDictation = () => {
-    if (isListening) {
-      recognitionRef.current?.stop();
-      setIsListening(false);
-      return;
-    }
-
-    const SpeechRecognition =
-      (window as any).SpeechRecognition ||
-      (window as any).webkitSpeechRecognition;
-    if (!SpeechRecognition) {
-      toast.error(
-        "Your browser doesn't support voice dictation. Try Google Chrome."
-      );
-      return;
-    }
-
-    const recognition = new SpeechRecognition();
-    recognition.continuous = false; // Stops automatically when you pause
-    recognition.interimResults = true; // Shows text in real-time
-
-    const originalInput = input; // Save whatever was already typed
-
-    recognition.onresult = (event: any) => {
-      let currentTranscript = "";
-      for (let i = event.resultIndex; i < event.results.length; ++i) {
-        currentTranscript += event.results[i][0].transcript;
-      }
-      setInput(originalInput + (originalInput ? " " : "") + currentTranscript);
-    };
-
-    recognition.onerror = (e: any) => {
-      console.error("Detailed Speech Error:", e.error);
-      setIsListening(false);
-
-      if (e.error === "not-allowed") {
-        toast.error(
-          "Microphone blocked! Please click the padlock in your URL bar to allow access."
-        );
-      } else if (e.error === "network") {
-        toast.error(
-          "Network error. Speech recognition requires HTTPS/localhost."
-        );
-      } else if (e.error === "no-speech") {
-        toast.error("No speech detected. Microphone might be muted.");
-      } else {
-        toast.error(`Mic error: ${e.error}`);
-      }
-    };
-
-    recognition.onend = () => {
-      setIsListening(false);
-    };
-
-    recognitionRef.current = recognition;
-    recognition.start();
-    setIsListening(true);
-  };
-
-  const handleSend = async () => {
-    if (!input.trim() || isLoading) return;
-    const msg = input;
-    setInput("");
+  const handleSend = async (msg: string) => {
     setIsLoading(true);
 
     let sid = activeSessionId;
@@ -211,13 +289,13 @@ export function AdminChatSheet() {
       }
     }
 
+    // Optimistic Update is perfectly safe now
     setMessages((prev) => [...prev, { role: "user", content: msg }]);
 
     try {
       const {
         data: { session },
       } = await supabase.auth.getSession();
-
       const res = await fetch(
         "https://eaebtyjhoogzjhbzdvdy.supabase.co/functions/v1/admin-chat",
         {
@@ -234,10 +312,8 @@ export function AdminChatSheet() {
         }
       );
 
-      if (!res.ok) {
-        const errorText = await res.text();
-        throw new Error(`Server returned ${res.status}: ${errorText}`);
-      }
+      if (!res.ok)
+        throw new Error(`Server returned ${res.status}: ${await res.text()}`);
 
       const data = await res.json();
       if (data.error) throw new Error(data.error);
@@ -247,34 +323,26 @@ export function AdminChatSheet() {
         { role: "assistant", content: data.reply },
       ]);
     } catch (e: any) {
-      console.error("AI Fetch Error:", e);
-
       let cleanErrorMessage = e.message;
-
-      // 🚀 Graceful Error Interceptors
       if (
         cleanErrorMessage.includes("429") ||
         cleanErrorMessage.includes("RESOURCE_EXHAUSTED")
       ) {
         cleanErrorMessage =
-          "⚠️ **Rate Limit Reached:** The AI has exhausted its current Google Cloud quota. Please wait a minute before sending another message, or check your GCP billing limits.";
+          "⚠️ **Rate Limit Reached:** Quota exhausted. Please wait a minute.";
       } else if (
         cleanErrorMessage.includes("403") &&
         cleanErrorMessage.includes("Unauthorized")
       ) {
         cleanErrorMessage =
-          "⚠️ **Access Denied:** Your session expired or you are not logged in with the authorized admin account.";
+          "⚠️ **Access Denied:** Session expired or unauthorized.";
       } else {
-        // Fallback for unknown errors
         cleanErrorMessage = `⚠️ **System Error:** \n\n\`\`\`text\n${cleanErrorMessage}\n\`\`\``;
       }
 
       setMessages((prev) => [
         ...prev,
-        {
-          role: "assistant",
-          content: cleanErrorMessage,
-        },
+        { role: "assistant", content: cleanErrorMessage },
       ]);
       toast.error("AI Co-pilot encountered an issue");
     } finally {
@@ -287,13 +355,8 @@ export function AdminChatSheet() {
     toast.success("Code copied to clipboard");
   };
 
-  if (user?.email !== "support@hyrosy.com") return null;
-  // 🚀 NEW: Smart Voice Selector
-  // 🚀 UPGRADED: Smart Voice Controller
   const toggleSpeech = (text: string, index: number) => {
     const synth = window.speechSynthesis;
-
-    // 1. If clicking the same message that is currently active
     if (speakingIndex === index) {
       if (isSpeechPaused) {
         synth.resume();
@@ -305,9 +368,7 @@ export function AdminChatSheet() {
       return;
     }
 
-    // 2. If clicking a new message, stop anything currently playing
     synth.cancel();
-
     const utterance = new SpeechSynthesisUtterance(text);
     const voices = synth.getVoices();
     const selectedVoice =
@@ -321,7 +382,6 @@ export function AdminChatSheet() {
     utterance.rate = 0.95;
     utterance.pitch = 1.0;
 
-    // 3. Setup event listeners to reset UI when done
     utterance.onstart = () => {
       setSpeakingIndex(index);
       setIsSpeechPaused(false);
@@ -337,6 +397,8 @@ export function AdminChatSheet() {
 
     synth.speak(utterance);
   };
+
+  if (user?.email !== "support@hyrosy.com") return null;
 
   return (
     <Sheet open={isOpen} onOpenChange={setIsOpen}>
@@ -367,7 +429,7 @@ export function AdminChatSheet() {
                         ? "bg-primary text-primary-foreground font-medium shadow-sm"
                         : "hover:bg-muted text-muted-foreground hover:text-foreground"
                     }`}
-                    onClick={() => setActiveSessionId(s.id)}
+                    onClick={() => handleSelectSession(s.id)}
                   >
                     <div className="flex items-center gap-2 truncate">
                       <MessageSquare size={14} className="shrink-0" />
@@ -449,75 +511,80 @@ export function AdminChatSheet() {
                       : "bg-muted/50 border rounded-bl-sm"
                   }`}
                 >
-                  <div className="text-sm leading-relaxed space-y-3">
-                    <ReactMarkdown
-                      components={{
-                        p: ({ node, ...props }) => (
-                          <p className="mb-2 last:mb-0" {...props} />
-                        ),
-                        ul: ({ node, ...props }) => (
-                          <ul
-                            className="list-disc pl-4 mb-2 space-y-1"
-                            {...props}
-                          />
-                        ),
-                        ol: ({ node, ...props }) => (
-                          <ol
-                            className="list-decimal pl-4 mb-2 space-y-1"
-                            {...props}
-                          />
-                        ),
-                        li: ({ node, ...props }) => (
-                          <li className="pl-1" {...props} />
-                        ),
-                        strong: ({ node, ...props }) => (
-                          <strong className="font-semibold" {...props} />
-                        ),
-                        code({
-                          node,
-                          inline,
-                          className,
-                          children,
-                          ...props
-                        }: any) {
-                          const match = /language-(\w+)/.exec(className || "");
-                          return !inline && match ? (
-                            <div className="relative mt-3 mb-3 group/code">
-                              <Button
-                                size="icon"
-                                variant="secondary"
-                                className="absolute right-2 top-2 h-7 w-7 opacity-0 group-hover/code:opacity-100 transition-opacity z-10"
-                                onClick={() => copyCode(String(children))}
-                              >
-                                <Copy size={12} />
-                              </Button>
-                              <SyntaxHighlighter
-                                style={vscDarkPlus}
-                                language={match[1]}
-                                PreTag="div"
-                                className="rounded-lg !mt-0 !bg-neutral-950 shadow-inner text-[13px] border border-neutral-800"
-                              >
-                                {String(children).replace(/\n$/, "")}
-                              </SyntaxHighlighter>
-                            </div>
-                          ) : (
-                            <code
-                              className={`px-1.5 py-0.5 rounded font-mono text-[12px] ${
-                                m.role === "user"
-                                  ? "bg-primary-foreground/20"
-                                  : "bg-primary/10 text-primary"
-                              }`}
-                              {...props}
-                            >
-                              {children}
-                            </code>
-                          );
-                        },
-                      }}
-                    >
+                  {/* 🚀 FIX: User messages now bypass Markdown for instant, error-free rendering */}
+                  {m.role === "user" ? (
+                    <div className="text-sm whitespace-pre-wrap leading-relaxed">
                       {m.content}
-                    </ReactMarkdown>
-                  </div>
+                    </div>
+                  ) : (
+                    <div className="text-sm leading-relaxed space-y-3">
+                      <ReactMarkdown
+                        components={{
+                          p: ({ node, ...props }) => (
+                            <p className="mb-2 last:mb-0" {...props} />
+                          ),
+                          ul: ({ node, ...props }) => (
+                            <ul
+                              className="list-disc pl-4 mb-2 space-y-1"
+                              {...props}
+                            />
+                          ),
+                          ol: ({ node, ...props }) => (
+                            <ol
+                              className="list-decimal pl-4 mb-2 space-y-1"
+                              {...props}
+                            />
+                          ),
+                          li: ({ node, ...props }) => (
+                            <li className="pl-1" {...props} />
+                          ),
+                          strong: ({ node, ...props }) => (
+                            <strong className="font-semibold" {...props} />
+                          ),
+                          code({
+                            node,
+                            inline,
+                            className,
+                            children,
+                            ...props
+                          }: any) {
+                            const match = /language-(\w+)/.exec(
+                              className || ""
+                            );
+                            return !inline && match ? (
+                              <div className="relative mt-3 mb-3 group/code">
+                                <Button
+                                  size="icon"
+                                  variant="secondary"
+                                  className="absolute right-2 top-2 h-7 w-7 opacity-0 group-hover/code:opacity-100 transition-opacity z-10"
+                                  onClick={() => copyCode(String(children))}
+                                >
+                                  <Copy size={12} />
+                                </Button>
+                                <SyntaxHighlighter
+                                  style={vscDarkPlus}
+                                  language={match[1]}
+                                  PreTag="div"
+                                  className="rounded-lg !mt-0 !bg-neutral-950 shadow-inner text-[13px] border border-neutral-800"
+                                >
+                                  {String(children).replace(/\n$/, "")}
+                                </SyntaxHighlighter>
+                              </div>
+                            ) : (
+                              <code
+                                className="bg-primary/10 text-primary px-1.5 py-0.5 rounded font-mono text-[12px]"
+                                {...props}
+                              >
+                                {children}
+                              </code>
+                            );
+                          },
+                        }}
+                      >
+                        {m.content}
+                      </ReactMarkdown>
+                    </div>
+                  )}
 
                   {m.role === "assistant" && (
                     <div className="mt-3 flex items-center gap-4 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -543,8 +610,6 @@ export function AdminChatSheet() {
                           </>
                         )}
                       </button>
-
-                      {/* Show the STOP button only if this specific message is playing or paused */}
                       {speakingIndex === i && (
                         <button
                           onClick={stopSpeech}
@@ -581,76 +646,8 @@ export function AdminChatSheet() {
             <div ref={messagesEndRef} className="h-1" />
           </ScrollArea>
 
-          <footer className="p-4 border-t bg-muted/10 shrink-0">
-            <div className="flex gap-2 items-end bg-background p-2 rounded-2xl border shadow-sm focus-within:ring-2 ring-primary/20 transition-all">
-              {/* 🚀 NEW: Voice Dictation Button */}
-              <Button
-                variant="ghost"
-                size="icon"
-                className={`shrink-0 mb-0.5 transition-colors ${
-                  isListening
-                    ? "text-red-500 bg-red-500/10 hover:text-red-600 hover:bg-red-500/20"
-                    : "hover:text-primary"
-                }`}
-                onClick={toggleDictation}
-                title={isListening ? "Stop listening" : "Dictate message"}
-              >
-                {isListening ? (
-                  <MicOff size={18} className="animate-pulse" />
-                ) : (
-                  <Mic size={18} />
-                )}
-              </Button>
-
-              <input
-                type="file"
-                id="file-upload"
-                className="hidden"
-                accept="image/*,.pdf,.txt"
-                onChange={(e) => {
-                  const file = e.target.files?.[0];
-                  if (file) toast.success(`Attached: ${file.name}`);
-                }}
-              />
-              <Button
-                variant="ghost"
-                size="icon"
-                className="shrink-0 hover:text-primary mb-0.5"
-                onClick={() => document.getElementById("file-upload")?.click()}
-              >
-                <Paperclip size={18} />
-              </Button>
-
-              <textarea
-                placeholder="Ask anything about the architecture..."
-                className="flex-1 bg-transparent border-0 focus:ring-0 resize-none min-h-[40px] max-h-[120px] py-2.5 px-2 text-sm text-foreground placeholder:text-muted-foreground"
-                rows={1}
-                value={input}
-                onChange={(e) => {
-                  setInput(e.target.value);
-                  e.target.style.height = "auto";
-                  e.target.style.height = `${Math.min(
-                    e.target.scrollHeight,
-                    120
-                  )}px`;
-                }}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && !e.shiftKey) {
-                    e.preventDefault();
-                    handleSend();
-                  }
-                }}
-              />
-              <Button
-                onClick={handleSend}
-                disabled={!input.trim() || isLoading}
-                size="icon"
-                className="shrink-0 rounded-xl mb-0.5"
-              >
-                <Send size={16} />
-              </Button>
-            </div>
-          </footer>
+          {/* 🚀 Render the blazing fast isolated Input Component */}
+          <ChatInputArea handleSend={handleSend} isLoading={isLoading} />
         </div>
       </SheetContent>
     </Sheet>
