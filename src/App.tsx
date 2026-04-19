@@ -9,7 +9,7 @@ import emailjs from "@emailjs/browser";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Loader2 } from "lucide-react";
 import { supabase } from "./supabaseClient";
-
+import { Toaster } from "sonner";
 // --- LAYOUTS & COMPONENTS ---
 import Navbar from "./components/Navbar";
 import Footer from "./components/Footer";
@@ -333,6 +333,7 @@ function App() {
           </Layout>
         </main>
         <AdminChatSheet />
+        <Toaster theme="dark" position="bottom-right" />
       </Router>
     </QueryClientProvider>
   );

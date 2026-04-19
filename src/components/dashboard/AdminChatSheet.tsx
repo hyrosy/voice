@@ -6,6 +6,7 @@ import {
   SheetTrigger,
   SheetHeader,
   SheetTitle,
+  SheetDescription, // 🚀 ADD THIS
 } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -19,52 +20,35 @@ import {
   Volume2,
   Plus,
   MessageSquare,
+  Copy,
+  Check,
 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { vscDarkPlus } from "react-syntax-highlighter/dist/esm/styles/prism";
-
-interface Message {
-  id: string;
-  role: "user" | "assistant";
-  content: string;
-}
-
-interface Session {
-  id: string;
-  title: string;
-}
+import { toast } from "sonner"; // Assuming sonner for notifications
 
 export function AdminChatSheet() {
   const [user, setUser] = useState<any>(null);
-  const [isAuthChecking, setIsAuthChecking] = useState(true);
-
   const [isOpen, setIsOpen] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
-  const [sessions, setSessions] = useState<Session[]>([]);
+  const [sessions, setSessions] = useState<any[]>([]);
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
-  const [messages, setMessages] = useState<Message[]>([]);
+  const [messages, setMessages] = useState<any[]>([]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-
-  // Auth Hook
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  // 1. AUTH CHECK
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setUser(session?.user ?? null);
-      setIsAuthChecking(false);
-    });
-
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ?? null);
-    });
-
-    return () => subscription.unsubscribe();
+    supabase.auth.getUser().then(({ data }) => setUser(data.user));
   }, []);
 
-  // History Hooks
+  // 2. AUTO-SCROLL (Smooth scroll to the invisible bottom div)
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages, isLoading]);
+
+  // 3. LOAD DATA
   useEffect(() => {
     if (isOpen) fetchSessions();
   }, [isOpen]);
@@ -73,76 +57,52 @@ export function AdminChatSheet() {
     if (activeSessionId) fetchMessages(activeSessionId);
   }, [activeSessionId]);
 
-  // --- FUNCTIONS ---
   const fetchSessions = async () => {
     const { data } = await supabase
       .from("admin_ai_sessions")
       .select("*")
       .order("created_at", { ascending: false });
-    if (data && data.length > 0) {
-      setSessions(data);
-      // 🚀 FIX: Auto-select the most recent chat if none is selected!
-      if (!activeSessionId) setActiveSessionId(data[0].id);
-    }
+    if (data) setSessions(data);
   };
 
-  const fetchMessages = async (sessionId: string) => {
+  const fetchMessages = async (sid: string) => {
     const { data } = await supabase
       .from("admin_ai_messages")
       .select("*")
-      .eq("session_id", sessionId)
+      .eq("session_id", sid)
       .order("created_at", { ascending: true });
     if (data) setMessages(data);
   };
 
-  const createNewChat = async (customTitle?: string) => {
-    const { data } = await supabase
-      .from("admin_ai_sessions")
-      .insert({ admin_id: user.id, title: customTitle || "New Debug Session" })
-      .select()
-      .single();
-    if (data) {
-      setSessions((prev) => [data, ...prev]);
-      setActiveSessionId(data.id);
-      setMessages([]);
-      return data.id;
-    }
-    return null;
-  };
-
   const handleSend = async () => {
     if (!input.trim() || isLoading) return;
-
-    const userMsg = input;
+    const msg = input;
     setInput("");
-
-    // Optimistically show user message
-    setMessages((prev) => [
-      ...prev,
-      { id: Date.now().toString(), role: "user", content: userMsg },
-    ]);
     setIsLoading(true);
 
-    // 🚀 FIX: Auto-create a chat session on-the-fly if one doesn't exist yet!
-    let targetSessionId = activeSessionId;
-    if (!targetSessionId) {
-      targetSessionId = await createNewChat(
-        "Chat: " + userMsg.substring(0, 15) + "..."
-      );
-      if (!targetSessionId) {
-        setIsLoading(false);
-        return; // Failed to create session
+    let sid = activeSessionId;
+    if (!sid) {
+      const { data: newSess } = await supabase
+        .from("admin_ai_sessions")
+        .insert({ admin_id: user.id, title: msg.slice(0, 30) })
+        .select()
+        .single();
+      if (newSess) {
+        sid = newSess.id;
+        setActiveSessionId(sid);
+        setSessions([newSess, ...sessions]);
       }
     }
 
-    const currentPage = window.location.pathname;
+    // Optimistic UI
+    setMessages((prev) => [...prev, { role: "user", content: msg }]);
 
     try {
       const {
         data: { session },
       } = await supabase.auth.getSession();
 
-      const response = await fetch(
+      const res = await fetch(
         "https://eaebtyjhoogzjhbzdvdy.supabase.co/functions/v1/admin-chat",
         {
           method: "POST",
@@ -151,99 +111,106 @@ export function AdminChatSheet() {
             Authorization: `Bearer ${session?.access_token}`,
           },
           body: JSON.stringify({
-            session_id: targetSessionId,
-            message: userMsg,
-            context: { page: currentPage },
+            session_id: sid,
+            message: msg,
+            context: { page: window.location.pathname },
           }),
         }
       );
 
-      const result = await response.json();
+      // 🚀 NEW: Catch server errors before trying to read JSON
+      if (!res.ok) {
+        const errorText = await res.text();
+        throw new Error(`Server returned ${res.status}: ${errorText}`);
+      }
 
-      // 🚀 FIX: Catch empty or missing text from the edge function so it doesn't render invisible bubbles
-      const finalReply =
-        result.reply ||
-        result.error ||
-        "⚠️ Empty response received from AI. Check Edge Function logs.";
+      const data = await res.json();
+
+      // 🚀 NEW: Handle Google Cloud errors gracefully
+      if (data.error) {
+        throw new Error(data.error);
+      }
 
       setMessages((prev) => [
         ...prev,
-        {
-          id: Date.now().toString(),
-          role: "assistant",
-          content: String(finalReply),
-        },
+        { role: "assistant", content: data.reply },
       ]);
-    } catch (error: any) {
-      console.error(error);
+    } catch (e: any) {
+      console.error("AI Fetch Error:", e);
+      // 🚀 NEW: Print the actual error into the chat bubble!
       setMessages((prev) => [
         ...prev,
         {
-          id: Date.now().toString(),
           role: "assistant",
-          content: `⚠️ Network Error: ${error.message}`,
+          content: `⚠️ **Connection Error:** \n\n\`\`\`text\n${e.message}\n\`\`\``,
         },
       ]);
+      toast.error("Failed to reach AI Co-pilot");
     } finally {
-      setIsLoading(false);
+      setIsLoading(false); // This guarantees it will STOP spinning
     }
   };
 
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      console.log("File attached:", file.name);
-    }
+  const copyCode = (code: string) => {
+    navigator.clipboard.writeText(code);
+    toast.success("Code copied to clipboard");
   };
 
-  const speakText = (text: string) => {
-    window.speechSynthesis.cancel();
-    const utterance = new SpeechSynthesisUtterance(text);
-    window.speechSynthesis.speak(utterance);
-  };
-
-  if (isAuthChecking || !user || user.email !== "support@hyrosy.com") {
-    return null;
-  }
+  if (user?.email !== "support@hyrosy.com") return null;
 
   return (
     <Sheet open={isOpen} onOpenChange={setIsOpen}>
       <SheetTrigger asChild>
-        <Button className="fixed bottom-6 right-6 h-14 w-14 rounded-full shadow-2xl z-50">
+        <Button className="fixed bottom-6 right-6 h-14 w-14 rounded-full shadow-2xl z-50 bg-primary hover:scale-110 transition-transform">
           <Bot size={28} />
         </Button>
       </SheetTrigger>
 
       <SheetContent
-        className={`p-0 flex transition-all duration-300 ${
-          isExpanded ? "w-full sm:max-w-[1200px]" : "w-full sm:max-w-[500px]"
+        className={`p-0 flex transition-all duration-500 ease-in-out ${
+          isExpanded ? "w-screen sm:max-w-full" : "w-full sm:max-w-[500px]"
         }`}
       >
         {isExpanded && (
-          <div className="w-[300px] border-r bg-muted/30 p-4 flex flex-col">
-            <Button onClick={() => createNewChat()} className="mb-4">
-              <Plus className="mr-2 h-4 w-4" /> New Chat
+          <aside className="w-[300px] border-r bg-muted/20 p-4 hidden md:flex flex-col">
+            <Button
+              variant="outline"
+              className="w-full mb-4 border-dashed"
+              onClick={() => {
+                setActiveSessionId(null);
+                setMessages([]);
+              }}
+            >
+              <Plus className="mr-2 h-4 w-4" /> New Session
             </Button>
             <ScrollArea className="flex-1">
               {sessions.map((s) => (
-                <Button
+                <button
                   key={s.id}
-                  variant={activeSessionId === s.id ? "secondary" : "ghost"}
-                  className="w-full justify-start mb-1"
                   onClick={() => setActiveSessionId(s.id)}
+                  className={`w-full text-left p-3 rounded-md mb-1 text-sm transition-colors ${
+                    activeSessionId === s.id
+                      ? "bg-primary/10 text-primary font-medium"
+                      : "hover:bg-muted"
+                  }`}
                 >
-                  <MessageSquare className="mr-2 h-4 w-4" /> {s.title}
-                </Button>
+                  <MessageSquare size={14} className="inline mr-2 opacity-50" />{" "}
+                  {s.title}
+                </button>
               ))}
             </ScrollArea>
-          </div>
+          </aside>
         )}
 
-        <div className="flex-1 flex flex-col h-full">
-          <SheetHeader className="p-4 border-b flex flex-row items-center justify-between space-y-0">
-            <SheetTitle className="flex items-center gap-2">
-              <Bot className="text-primary" /> Co-pilot
-            </SheetTitle>
+        <div className="flex-1 flex flex-col bg-background">
+          <header className="p-4 border-b flex items-center justify-between bg-background/80 backdrop-blur-md">
+            <div className="flex items-center gap-2">
+              <div className="h-2 w-2 rounded-full bg-green-500 animate-pulse" />
+              {/* 🚀 FIX 1: Use SheetTitle instead of a span */}
+              <SheetTitle className="font-bold tracking-tight m-0 text-base">
+                System Architect AI
+              </SheetTitle>
+            </div>{" "}
             <Button
               variant="ghost"
               size="icon"
@@ -251,104 +218,138 @@ export function AdminChatSheet() {
             >
               {isExpanded ? <Minimize2 size={18} /> : <Maximize2 size={18} />}
             </Button>
-          </SheetHeader>
-
-          <ScrollArea className="flex-1 p-4">
-            {messages.length === 0 ? (
-              <div className="text-center text-muted-foreground mt-20">
-                Start typing below to begin a new chat!
-              </div>
-            ) : (
-              messages.map((msg) => (
+          </header>
+          {/* 🚀 FIX 2: Add a hidden description for Screen Readers to satisfy the second warning */}
+          <SheetDescription className="sr-only">
+            AI Co-pilot interface for navigating database and codebase
+            architecture.
+          </SheetDescription>
+          <ScrollArea className="flex-1 p-6">
+            {messages.map((m, i) => (
+              <div
+                key={i}
+                className={`mb-6 flex ${
+                  m.role === "user" ? "justify-end" : "justify-start"
+                }`}
+              >
                 <div
-                  key={msg.id}
-                  className={`mb-4 flex ${
-                    msg.role === "user" ? "justify-end" : "justify-start"
+                  className={`group relative p-4 rounded-2xl max-w-[90%] shadow-sm ${
+                    m.role === "user"
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-muted border"
                   }`}
                 >
-                  {/* Moved the text-sm space-y-2 break-words classes up here! */}
-                  <div
-                    className={`p-3 rounded-lg max-w-[85%] text-sm space-y-2 break-words ${
-                      msg.role === "user"
-                        ? "bg-primary text-primary-foreground"
-                        : "bg-muted"
-                    }`}
-                  >
-                    {/* Removed className from here */}
-                    <ReactMarkdown
-                      components={{
-                        code({ node, className, children, ...props }: any) {
-                          const match = /language-(\w+)/.exec(className || "");
-                          return match ? (
+                  <ReactMarkdown
+                    components={{
+                      code({
+                        node,
+                        inline,
+                        className,
+                        children,
+                        ...props
+                      }: any) {
+                        const match = /language-(\w+)/.exec(className || "");
+                        return !inline && match ? (
+                          <div className="relative mt-2">
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              className="absolute right-2 top-2 h-8 w-8 text-white opacity-0 group-hover:opacity-100 transition-opacity"
+                              onClick={() => copyCode(String(children))}
+                            >
+                              <Copy size={14} />
+                            </Button>
                             <SyntaxHighlighter
                               style={vscDarkPlus}
                               language={match[1]}
                               PreTag="div"
-                              {...props}
+                              className="rounded-lg !mt-0 shadow-inner"
                             >
                               {String(children).replace(/\n$/, "")}
                             </SyntaxHighlighter>
-                          ) : (
-                            <code
-                              className="bg-muted-foreground/20 px-1 py-0.5 rounded font-mono"
-                              {...props}
-                            >
-                              {children}
-                            </code>
-                          );
-                        },
-                      }}
+                          </div>
+                        ) : (
+                          <code
+                            className="bg-primary/20 px-1.5 py-0.5 rounded font-mono text-xs"
+                            {...props}
+                          >
+                            {children}
+                          </code>
+                        );
+                      },
+                    }}
+                  >
+                    {m.content}
+                  </ReactMarkdown>
+                  {m.role === "assistant" && (
+                    <button
+                      onClick={() =>
+                        window.speechSynthesis.speak(
+                          new SpeechSynthesisUtterance(m.content)
+                        )
+                      }
+                      className="mt-3 opacity-0 group-hover:opacity-50 transition-opacity flex items-center gap-1 text-[10px] uppercase font-bold tracking-widest"
                     >
-                      {msg.content}
-                    </ReactMarkdown>
-
-                    {msg.role === "assistant" && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="mt-2 h-6 px-2 text-xs opacity-50 hover:opacity-100"
-                        onClick={() => speakText(msg.content)}
-                      >
-                        <Volume2 size={12} className="mr-1" /> Read Aloud
-                      </Button>
-                    )}
-                  </div>
+                      <Volume2 size={10} /> Read Response
+                    </button>
+                  )}
                 </div>
-              ))
-            )}
+              </div>
+            ))}
             {isLoading && (
-              <div className="text-muted-foreground text-sm flex items-center gap-2 mt-4">
-                <Bot size={14} className="animate-bounce" /> Thinking...
+              <div className="flex items-center gap-3 text-muted-foreground animate-pulse">
+                <Bot size={18} className="animate-bounce" />
+                <span className="text-sm italic">Synthesizing solution...</span>
               </div>
             )}
+            {/* 🚀 ADD THIS DUMMY DIV HERE */}
+            <div ref={messagesEndRef} />
           </ScrollArea>
 
-          <div className="p-4 border-t flex items-center gap-2 bg-background">
-            <input
-              type="file"
-              ref={fileInputRef}
-              className="hidden"
-              onChange={handleFileUpload}
-              accept="image/*,.pdf,.txt"
-            />
-            <Button
-              variant="outline"
-              size="icon"
-              onClick={() => fileInputRef.current?.click()}
-            >
-              <Paperclip size={18} />
-            </Button>
-            <Input
-              placeholder="Ask about the codebase, database, or current page..."
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && handleSend()}
-              disabled={isLoading} // 🚀 FIX: You can now type even if no chat is active!
-            />
-            <Button onClick={handleSend} disabled={isLoading || !input.trim()}>
-              <Send size={18} />
-            </Button>
-          </div>
+          <footer className="p-4 border-t bg-muted/30">
+            <div className="flex gap-2 items-center bg-background p-2 rounded-xl border shadow-sm focus-within:ring-2 ring-primary/20 transition-all">
+              {/* 1. ADD THE HIDDEN FILE INPUT BACK */}
+              <input
+                type="file"
+                id="file-upload"
+                className="hidden"
+                accept="image/*,.pdf,.txt"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) toast.success(`Attached: ${file.name}`);
+                }}
+              />
+              {/* 2. MAKE THE PAPERCLIP TRIGGER IT */}
+              <Button
+                variant="ghost"
+                size="icon"
+                className="shrink-0 hover:text-primary"
+                onClick={() => document.getElementById("file-upload")?.click()}
+              >
+                <Paperclip size={20} />
+              </Button>
+
+              <Input
+                placeholder="Ask anything..."
+                className="border-0 focus-visible:ring-0 px-2"
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !e.shiftKey) handleSend();
+                }}
+              />
+              <Button
+                onClick={handleSend}
+                disabled={!input.trim() || isLoading}
+                className="shrink-0 rounded-lg"
+              >
+                <Send size={18} />
+              </Button>
+            </div>
+            <p className="text-[10px] text-center text-muted-foreground mt-2 uppercase tracking-tighter opacity-50">
+              Super Admin Mode Active • Authorized Access Only
+            </p>
+          </footer>
         </div>
       </SheetContent>
     </Sheet>
