@@ -25,6 +25,9 @@ import {
   Trash2,
   Mic, // 🚀 NEW: Microphone Icon
   MicOff, // 🚀 NEW: Mic Off Icon
+  Play, // 🚀 NEW
+  Pause, // 🚀 NEW
+  Square, // 🚀 NEW
 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
@@ -45,7 +48,14 @@ export function AdminChatSheet() {
   const [isListening, setIsListening] = useState(false);
   const recognitionRef = useRef<any>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-
+  // 🚀 NEW: Playback States
+  const [speakingIndex, setSpeakingIndex] = useState<number | null>(null);
+  const [isSpeechPaused, setIsSpeechPaused] = useState(false);
+  const stopSpeech = () => {
+    window.speechSynthesis.cancel();
+    setSpeakingIndex(null);
+    setIsSpeechPaused(false);
+  };
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => setUser(data.user));
   }, []);
@@ -63,7 +73,10 @@ export function AdminChatSheet() {
   useEffect(() => {
     if (activeSessionId) fetchMessages(activeSessionId);
   }, [activeSessionId]);
-
+  useEffect(() => {
+    // Stop reading if the user closes the panel
+    if (!isOpen) stopSpeech();
+  }, [isOpen]);
   const fetchSessions = async () => {
     const { data } = await supabase
       .from("admin_ai_sessions")
@@ -235,14 +248,35 @@ export function AdminChatSheet() {
       ]);
     } catch (e: any) {
       console.error("AI Fetch Error:", e);
+
+      let cleanErrorMessage = e.message;
+
+      // 🚀 Graceful Error Interceptors
+      if (
+        cleanErrorMessage.includes("429") ||
+        cleanErrorMessage.includes("RESOURCE_EXHAUSTED")
+      ) {
+        cleanErrorMessage =
+          "⚠️ **Rate Limit Reached:** The AI has exhausted its current Google Cloud quota. Please wait a minute before sending another message, or check your GCP billing limits.";
+      } else if (
+        cleanErrorMessage.includes("403") &&
+        cleanErrorMessage.includes("Unauthorized")
+      ) {
+        cleanErrorMessage =
+          "⚠️ **Access Denied:** Your session expired or you are not logged in with the authorized admin account.";
+      } else {
+        // Fallback for unknown errors
+        cleanErrorMessage = `⚠️ **System Error:** \n\n\`\`\`text\n${cleanErrorMessage}\n\`\`\``;
+      }
+
       setMessages((prev) => [
         ...prev,
         {
           role: "assistant",
-          content: `⚠️ **Connection Error:** \n\n\`\`\`text\n${e.message}\n\`\`\``,
+          content: cleanErrorMessage,
         },
       ]);
-      toast.error("Failed to reach AI Co-pilot");
+      toast.error("AI Co-pilot encountered an issue");
     } finally {
       setIsLoading(false);
     }
@@ -254,6 +288,55 @@ export function AdminChatSheet() {
   };
 
   if (user?.email !== "support@hyrosy.com") return null;
+  // 🚀 NEW: Smart Voice Selector
+  // 🚀 UPGRADED: Smart Voice Controller
+  const toggleSpeech = (text: string, index: number) => {
+    const synth = window.speechSynthesis;
+
+    // 1. If clicking the same message that is currently active
+    if (speakingIndex === index) {
+      if (isSpeechPaused) {
+        synth.resume();
+        setIsSpeechPaused(false);
+      } else {
+        synth.pause();
+        setIsSpeechPaused(true);
+      }
+      return;
+    }
+
+    // 2. If clicking a new message, stop anything currently playing
+    synth.cancel();
+
+    const utterance = new SpeechSynthesisUtterance(text);
+    const voices = synth.getVoices();
+    const selectedVoice =
+      voices.find((v) => v.name.includes("Google US English")) ||
+      voices.find((v) => v.name.includes("Natural") && v.lang.includes("en")) ||
+      voices.find((v) => v.name === "Samantha") ||
+      voices.find((v) => v.lang === "en-US") ||
+      voices.find((v) => v.lang.startsWith("en"));
+
+    if (selectedVoice) utterance.voice = selectedVoice;
+    utterance.rate = 0.95;
+    utterance.pitch = 1.0;
+
+    // 3. Setup event listeners to reset UI when done
+    utterance.onstart = () => {
+      setSpeakingIndex(index);
+      setIsSpeechPaused(false);
+    };
+    utterance.onend = () => {
+      setSpeakingIndex(null);
+      setIsSpeechPaused(false);
+    };
+    utterance.onerror = () => {
+      setSpeakingIndex(null);
+      setIsSpeechPaused(false);
+    };
+
+    synth.speak(utterance);
+  };
 
   return (
     <Sheet open={isOpen} onOpenChange={setIsOpen}>
@@ -316,12 +399,12 @@ export function AdminChatSheet() {
               </div>
               <div>
                 <SheetTitle className="font-bold tracking-tight m-0 text-base leading-none">
-                  System Architect AI
+                  Bless
                 </SheetTitle>
                 <div className="flex items-center gap-1.5 mt-1">
                   <div className="h-1.5 w-1.5 rounded-full bg-green-500 animate-pulse" />
                   <span className="text-[10px] text-muted-foreground uppercase tracking-widest font-semibold">
-                    God Mode
+                    Co-Pilot
                   </span>
                 </div>
               </div>
@@ -437,16 +520,40 @@ export function AdminChatSheet() {
                   </div>
 
                   {m.role === "assistant" && (
-                    <button
-                      onClick={() =>
-                        window.speechSynthesis.speak(
-                          new SpeechSynthesisUtterance(m.content)
-                        )
-                      }
-                      className="mt-3 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1 text-[10px] uppercase font-bold tracking-widest text-muted-foreground hover:text-foreground"
-                    >
-                      <Volume2 size={12} /> Read Response
-                    </button>
+                    <div className="mt-3 flex items-center gap-4 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <button
+                        onClick={() => toggleSpeech(m.content, i)}
+                        className="flex items-center gap-1.5 text-[10px] uppercase font-bold tracking-widest text-muted-foreground hover:text-foreground transition-colors"
+                      >
+                        {speakingIndex === i ? (
+                          isSpeechPaused ? (
+                            <>
+                              <Play size={12} className="text-green-500" />{" "}
+                              Resume
+                            </>
+                          ) : (
+                            <>
+                              <Pause size={12} className="text-amber-500" />{" "}
+                              Pause
+                            </>
+                          )
+                        ) : (
+                          <>
+                            <Volume2 size={12} /> Read Response
+                          </>
+                        )}
+                      </button>
+
+                      {/* Show the STOP button only if this specific message is playing or paused */}
+                      {speakingIndex === i && (
+                        <button
+                          onClick={stopSpeech}
+                          className="flex items-center gap-1 text-[10px] uppercase font-bold tracking-widest text-red-400 hover:text-red-500 transition-colors"
+                        >
+                          <Square size={10} className="fill-current" /> Stop
+                        </button>
+                      )}
+                    </div>
                   )}
                 </div>
               </div>
