@@ -1,7 +1,16 @@
 import React, { useState, useEffect } from "react";
 import { BlockProps } from "../types";
 import { Button } from "@/components/ui/button";
-import { Menu, X, ArrowRight, ShoppingBag } from "lucide-react";
+import {
+  Menu,
+  X,
+  ArrowRight,
+  ShoppingBag,
+  Instagram,
+  Twitter,
+  Youtube,
+  Film,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useCartStore } from "@/store/useCartStore";
 import { InlineEdit } from "../../components/dashboard/InlineEdit";
@@ -24,6 +33,7 @@ const Header: React.FC<any> = ({
 }) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
+  const [activeAnnIndex, setActiveAnnIndex] = useState(0); // 🚀 NEW: Carousel state
 
   const sections = allSections || [];
   const variant = data.variant || "transparent";
@@ -34,8 +44,6 @@ const Header: React.FC<any> = ({
 
   const navigate = useNavigate();
   const location = useLocation();
-
-  // 🚀 1. FIX: TypeScript Error Resolution
   const params = useParams<{ slug?: string; username?: string }>();
 
   const activeTheme = theme || themeConfig || {};
@@ -43,7 +51,6 @@ const Header: React.FC<any> = ({
     activeTheme.customPages || data.customPages || [];
   const publicSlug = activeTheme.publicSlug || data.publicSlug || "";
 
-  // 🚀 2. FIX: Unified Username & Dynamic Path Prefix
   const username = params.slug || params.username || publicSlug || "portfolio";
   const pathPrefix = location.pathname.startsWith("/pro") ? "/pro" : "";
 
@@ -54,20 +61,17 @@ const Header: React.FC<any> = ({
       type: "section" | "page" | "custom_link";
       url?: string;
     }> = [];
-
     const config = data.menuConfig || {};
 
-    // --- A. THE HARDCODED SYSTEM SHOP PAGE ---
     if (config.page_shop?.visible !== false) {
       items.push({
         label: config.page_shop?.label || "Shop",
         id: "system_shop",
         type: "page",
-        url: `${pathPrefix}/${username}/shop`, // 🚀 Respects /pro routing
+        url: `${pathPrefix}/${username}/shop`,
       });
     }
 
-    // --- B. THE CUSTOM PAGES ---
     customPages
       .filter((p) => !p.isHome)
       .forEach((p) => {
@@ -77,12 +81,11 @@ const Header: React.FC<any> = ({
             label: pageConfig.label || p.title,
             id: p.id,
             type: "page",
-            url: `${pathPrefix}/${username}/${p.slug}`, // 🚀 Respects /pro routing
+            url: `${pathPrefix}/${username}/${p.slug}`,
           });
         }
       });
 
-    // --- C. THE DYNAMIC CUSTOM LINKS ---
     const customNavLinks = data.customNavLinks || [];
     customNavLinks.forEach((link: any) => {
       if (link.label && link.url && link.visible !== false) {
@@ -95,31 +98,28 @@ const Header: React.FC<any> = ({
       }
     });
 
-    // --- D. ON-PAGE SECTIONS ---
     if (data.autoMenu !== false) {
       sections
         .filter((s: any) => s.isVisible && s.type !== "header")
         .forEach((s: any) => {
-          if (s.data.title) {
+          if (s.data.title)
             items.push({
               label: s.data.title || s.type,
               id: s.id,
               type: "section",
             });
-          }
         });
     } else {
       sections
         .filter((s: any) => s.isVisible && s.type !== "header")
         .forEach((s: any) => {
           const secConfig = config[s.id];
-          if (secConfig && secConfig.visible !== false) {
+          if (secConfig && secConfig.visible !== false)
             items.push({
               label: secConfig.label || s.data.title || s.type,
               id: s.id,
               type: "section",
             });
-          }
         });
     }
 
@@ -131,9 +131,10 @@ const Header: React.FC<any> = ({
     sections,
     customPages,
     username,
-    pathPrefix, // 🚀 Added to dependencies
+    pathPrefix,
   ]);
 
+  // Scroll Listener
   useEffect(() => {
     const handleScroll = () => {
       const scrollY = window.scrollY || document.documentElement.scrollTop;
@@ -143,6 +144,38 @@ const Header: React.FC<any> = ({
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
+  // 🚀 AAA+ MULTI-ANNOUNCEMENT LOGIC
+  const announcementsList =
+    data.announcements?.length > 0
+      ? data.announcements
+      : data.announcementText
+      ? [
+          {
+            id: "legacy",
+            text: data.announcementText,
+            link: data.announcementLink,
+          },
+        ]
+      : [];
+
+  const hasAnnouncement = data.showAnnouncement && announcementsList.length > 0;
+  const isMobile = typeof window !== "undefined" && window.innerWidth < 768;
+  const announcementHeight = isMobile ? 36 : 40;
+
+  // Crossfade timer for when Marquee is OFF
+  useEffect(() => {
+    if (
+      hasAnnouncement &&
+      !data.announcementMarquee &&
+      announcementsList.length > 1
+    ) {
+      const timer = setInterval(() => {
+        setActiveAnnIndex((prev) => (prev + 1) % announcementsList.length);
+      }, 4000); // Fades every 4 seconds
+      return () => clearInterval(timer);
+    }
+  }, [hasAnnouncement, data.announcementMarquee, announcementsList.length]);
+
   const handleNavClick = (item: any) => {
     if (isPreview) return;
 
@@ -151,15 +184,11 @@ const Header: React.FC<any> = ({
       setIsMenuOpen(false);
     } else if (item.type === "custom_link" && item.url) {
       setIsMenuOpen(false);
-      if (item.url.startsWith("http")) {
-        window.open(item.url, "_blank");
-      } else if (item.url.startsWith("/")) {
-        navigate(`${pathPrefix}/${username}${item.url}`); // 🚀 Fixed
-      } else {
-        navigate(`${pathPrefix}/${username}/${item.url}`); // 🚀 Fixed
-      }
+      if (item.url.startsWith("http")) window.open(item.url, "_blank");
+      else if (item.url.startsWith("/"))
+        navigate(`${pathPrefix}/${username}${item.url}`);
+      else navigate(`${pathPrefix}/${username}/${item.url}`);
     } else if (item.type === "section") {
-      // 🚀 Fixed section navigation to respect pathPrefix
       if (location.pathname !== `${pathPrefix}/${username}`) {
         navigate(`${pathPrefix}/${username}`);
         setTimeout(() => {
@@ -184,19 +213,18 @@ const Header: React.FC<any> = ({
 
   const headerClasses = cn(
     "z-50 transition-all duration-500 ease-in-out w-full left-0",
-    isPreview
-      ? "sticky top-0 mb-[-80px]"
-      : isSticky
-      ? "fixed top-0"
-      : "absolute top-0",
+    isPreview ? "sticky top-0 mb-[-80px]" : isSticky ? "fixed" : "absolute",
+    !isScrolled && hasAnnouncement && !isPreview
+      ? `top-[${announcementHeight}px]`
+      : "top-0",
     variant === "floating"
       ? cn(
           "right-0 mx-auto max-w-5xl rounded-full border border-white/10 bg-neutral-900/60 backdrop-blur-md px-6 py-3 shadow-2xl w-[95%]",
-          "top-4"
+          !isScrolled && hasAnnouncement && !isPreview ? "mt-4" : "mt-4"
         )
-      : cn("border-b border-transparent py-4", "top-0"),
+      : cn("border-b border-transparent py-4"),
     variant !== "floating" && isSticky && isScrolled
-      ? "bg-neutral-950/80 backdrop-blur-md border-white/10 py-3 shadow-lg"
+      ? "bg-neutral-950/80 backdrop-blur-md border-white/10 py-3 shadow-lg top-0"
       : "",
     !isScrolled && variant !== "floating" && "bg-transparent"
   );
@@ -209,21 +237,21 @@ const Header: React.FC<any> = ({
           e.preventDefault();
           return;
         }
-        // 🚀 Fixed Logo Home Routing
-        if (location.pathname !== `${pathPrefix}/${username}`) {
+        if (location.pathname !== `${pathPrefix}/${username}`)
           navigate(`${pathPrefix}/${username}`);
-        } else {
-          window.scrollTo({ top: 0, behavior: "smooth" });
-        }
+        else window.scrollTo({ top: 0, behavior: "smooth" });
       }}
     >
       {data.logoImage ? (
         <img
           src={data.logoImage}
           alt="Logo"
-          className="w-auto object-contain transition-transform group-hover:scale-105 h-10 md:h-[var(--logo-h)]"
+          className="w-auto object-contain transition-transform group-hover:scale-105 h-[var(--logo-h-mobile)] md:h-[var(--logo-h)]"
           style={
-            { "--logo-h": `${data.logoHeight || 40}px` } as React.CSSProperties
+            {
+              "--logo-h": `${data.logoHeight || 40}px`,
+              "--logo-h-mobile": `${data.mobileLogoHeight || 30}px`,
+            } as React.CSSProperties
           }
         />
       ) : (
@@ -253,6 +281,51 @@ const Header: React.FC<any> = ({
     </nav>
   );
 
+  const SocialLinks = () => (
+    <div className="hidden md:flex items-center gap-3 px-3 text-white/70">
+      {data.socialInstagram && (
+        <a
+          href={data.socialInstagram}
+          target="_blank"
+          rel="noreferrer"
+          className="hover:text-white transition-colors"
+        >
+          <Instagram size={16} />
+        </a>
+      )}
+      {data.socialTwitter && (
+        <a
+          href={data.socialTwitter}
+          target="_blank"
+          rel="noreferrer"
+          className="hover:text-white transition-colors"
+        >
+          <Twitter size={16} />
+        </a>
+      )}
+      {data.socialYoutube && (
+        <a
+          href={data.socialYoutube}
+          target="_blank"
+          rel="noreferrer"
+          className="hover:text-white transition-colors"
+        >
+          <Youtube size={16} />
+        </a>
+      )}
+      {data.socialImdb && (
+        <a
+          href={data.socialImdb}
+          target="_blank"
+          rel="noreferrer"
+          className="hover:text-white transition-colors"
+        >
+          <Film size={16} />
+        </a>
+      )}
+    </div>
+  );
+
   const CTA = () =>
     data.ctaText && (
       <Button
@@ -267,7 +340,6 @@ const Header: React.FC<any> = ({
               e.preventDefault();
               return;
             }
-            // 🚀 Fixed CTA Routing
             if (data.ctaLink?.startsWith("/")) {
               e.preventDefault();
               navigate(`${pathPrefix}/${username}${data.ctaLink}`);
@@ -293,7 +365,6 @@ const Header: React.FC<any> = ({
         openCart();
       }}
       className="relative p-2 text-white/70 hover:text-white transition-colors"
-      aria-label="Open cart"
     >
       <ShoppingBag className="w-5 h-5 md:w-6 md:h-6" />
       {cartCount > 0 && (
@@ -304,20 +375,123 @@ const Header: React.FC<any> = ({
     </button>
   );
 
+  // Helper to render a single text block
+  const RenderAnnouncement = ({ ann }: { ann: any }) =>
+    ann.link ? (
+      <a
+        href={ann.link}
+        className="hover:opacity-80 transition-opacity flex items-center justify-center gap-2 whitespace-nowrap"
+      >
+        <span>{ann.text}</span>
+        <ArrowRight size={12} />
+      </a>
+    ) : (
+      <span className="whitespace-nowrap">{ann.text}</span>
+    );
+
+  const hasSocial =
+    data.socialInstagram ||
+    data.socialTwitter ||
+    data.socialYoutube ||
+    data.socialImdb;
+
   return (
     <>
-      <header className={headerClasses}>
+      {/* 🚀 INJECT MARQUEE CSS */}
+      <style
+        dangerouslySetInnerHTML={{
+          __html: `
+        @keyframes custom-marquee {
+          0% { transform: translateX(0); }
+          100% { transform: translateX(-50%); }
+        }
+        .animate-custom-marquee {
+          display: inline-flex;
+          white-space: nowrap;
+          animation: custom-marquee 20s linear infinite;
+        }
+        .animate-custom-marquee:hover {
+          animation-play-state: paused;
+        }
+      `,
+        }}
+      />
+
+      {/* 🚀 ANNOUNCEMENT BAR (Supports Marquee or Crossfade) */}
+      {hasAnnouncement && (
+        <div
+          className="relative w-full overflow-hidden flex items-center justify-center font-medium z-[60] text-[11px] md:text-[13px] tracking-wide"
+          style={{
+            height: `${announcementHeight}px`,
+            backgroundColor: data.announcementBgColor || "var(--primary)",
+            color: data.announcementTextColor || "#ffffff",
+          }}
+        >
+          {data.announcementMarquee ? (
+            <div className="w-full h-full flex items-center px-4 justify-start">
+              <div className="flex items-center gap-12 animate-custom-marquee pr-12">
+                {/* Render the list multiple times to create a seamless infinite loop */}
+                {[...Array(4)].map((_, arrayIndex) => (
+                  <React.Fragment key={`loop-${arrayIndex}`}>
+                    {announcementsList.map((ann: any, i: number) => (
+                      <div
+                        key={`item-${arrayIndex}-${i}`}
+                        className="flex items-center gap-12"
+                      >
+                        <RenderAnnouncement ann={ann} />
+                        <span className="opacity-50 text-[8px]">•</span>
+                      </div>
+                    ))}
+                  </React.Fragment>
+                ))}
+              </div>
+            </div>
+          ) : (
+            <div className="w-full h-full flex items-center justify-center px-4 relative">
+              {announcementsList.map((ann: any, i: number) => (
+                <div
+                  key={`fade-${i}`}
+                  className={cn(
+                    "absolute transition-opacity duration-500 ease-in-out",
+                    i === activeAnnIndex
+                      ? "opacity-100"
+                      : "opacity-0 pointer-events-none"
+                  )}
+                >
+                  <RenderAnnouncement ann={ann} />
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* 🚀 THE DYNAMIC HEADER */}
+      <header
+        className={headerClasses}
+        style={
+          !isScrolled && hasAnnouncement && !isPreview && !isSticky
+            ? { top: `${announcementHeight}px` }
+            : {}
+        }
+      >
         <div
           className={cn(
             "container mx-auto h-full flex items-center",
             variant === "floating" ? "px-0" : "px-6"
           )}
         >
+          {/* TRANSPARENT VARIANT */}
           {variant === "transparent" && (
             <div className="w-full flex items-center justify-between">
               <Logo />
               <div className="flex items-center gap-2 md:gap-4">
                 <DesktopNav />
+                {hasSocial && (
+                  <div className="border-l border-white/10 pl-1">
+                    <SocialLinks />
+                  </div>
+                )}
                 <CartButton />
                 <div className="pl-4 ml-2 border-l border-white/10 hidden md:block">
                   <CTA />
@@ -332,12 +506,16 @@ const Header: React.FC<any> = ({
             </div>
           )}
 
+          {/* CENTERED VARIANT */}
           {variant === "centered" && (
             <div className="w-full grid grid-cols-3 items-center">
-              <div className="justify-self-start">
-                <div className="hidden md:block">
-                  <DesktopNav />
-                </div>
+              <div className="justify-self-start flex items-center">
+                <DesktopNav />
+                {hasSocial && (
+                  <div className="hidden md:block border-l border-white/10 pl-1 ml-4">
+                    <SocialLinks />
+                  </div>
+                )}
                 <button
                   className="md:hidden p-2 text-white"
                   onClick={() => setIsMenuOpen(true)}
@@ -357,13 +535,15 @@ const Header: React.FC<any> = ({
             </div>
           )}
 
+          {/* FLOATING VARIANT */}
           {variant === "floating" && (
             <div className="w-full flex items-center justify-between">
               <Logo />
-              <div className="hidden md:block absolute left-1/2 -translate-x-1/2">
+              <div className="hidden md:flex absolute left-1/2 -translate-x-1/2 items-center">
                 <DesktopNav />
               </div>
-              <div className="flex items-center gap-2 md:gap-4">
+              <div className="flex items-center gap-1 md:gap-3">
+                {hasSocial && <SocialLinks />}
                 <CartButton />
                 <div className="hidden md:block">
                   <CTA />
@@ -411,6 +591,58 @@ const Header: React.FC<any> = ({
               {item.label}
             </button>
           ))}
+          {hasSocial && (
+            <div
+              className={cn(
+                "flex items-center justify-center gap-6 mt-4 transition-all duration-500",
+                isMenuOpen
+                  ? "translate-y-0 opacity-100"
+                  : "translate-y-8 opacity-0"
+              )}
+              style={{ transitionDelay: `${menuItems.length * 50 + 50}ms` }}
+            >
+              {data.socialInstagram && (
+                <a
+                  href={data.socialInstagram}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-white/70 hover:text-white"
+                >
+                  <Instagram size={24} />
+                </a>
+              )}
+              {data.socialTwitter && (
+                <a
+                  href={data.socialTwitter}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-white/70 hover:text-white"
+                >
+                  <Twitter size={24} />
+                </a>
+              )}
+              {data.socialYoutube && (
+                <a
+                  href={data.socialYoutube}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-white/70 hover:text-white"
+                >
+                  <Youtube size={24} />
+                </a>
+              )}
+              {data.socialImdb && (
+                <a
+                  href={data.socialImdb}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-white/70 hover:text-white"
+                >
+                  <Film size={24} />
+                </a>
+              )}
+            </div>
+          )}
           {data.ctaText && (
             <div
               className={cn(
@@ -435,7 +667,7 @@ const Header: React.FC<any> = ({
                     }
                     if (data.ctaLink?.startsWith("/")) {
                       e.preventDefault();
-                      navigate(`${pathPrefix}/${username}${data.ctaLink}`); // 🚀 Fixed Mobile CTA Routing
+                      navigate(`${pathPrefix}/${username}${data.ctaLink}`);
                       setIsMenuOpen(false);
                     }
                   }}

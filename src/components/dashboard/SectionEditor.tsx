@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { useBuilderStore } from "../../store/useBuilderStore"; // <-- ZUSTAND IMPORT
 import { supabase } from "@/supabaseClient";
-
+import { useSubscription } from "../../context/SubscriptionContext";
 // --- shadcn/ui Imports ---
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -50,6 +50,14 @@ import {
   MessageCircle,
   ExternalLink,
   Package,
+  Monitor,
+  Smartphone,
+  Film,
+  Instagram,
+  Twitter,
+  Youtube,
+  Lock,
+  Layers,
 } from "lucide-react";
 
 import PortfolioMediaManager, {
@@ -57,6 +65,7 @@ import PortfolioMediaManager, {
 } from "./PortfolioMediaManager";
 import { PortfolioSection } from "../../types/portfolio";
 import { THEME_REGISTRY } from "../../themes/registry";
+import { cn } from "@/lib/utils";
 
 interface SectionEditorProps {
   section: PortfolioSection | null;
@@ -89,7 +98,10 @@ const SectionEditor: React.FC<SectionEditorProps> = ({
   const [activeMediaField, setActiveMediaField] = useState<string>("");
   const [isProductManagerOpen, setIsProductManagerOpen] = useState(false);
   const [availableProducts, setAvailableProducts] = useState<any[]>([]);
+  const { limits } = useSubscription();
 
+  // Tier 2 is eCommerce, Tier 3 is Pro
+  const hasMegaMenuAccess = limits?.hasMegaMenu === true;
   useEffect(() => {
     const fetchActorProducts = async () => {
       if (!actorId) return;
@@ -464,6 +476,211 @@ const SectionEditor: React.FC<SectionEditorProps> = ({
       case "header":
         return (
           <div className="space-y-6">
+            {/* --- UPGRADED: AAA+ ANNOUNCEMENT BAR (MULTIPLE MESSAGES) --- */}
+            <div className="space-y-4 p-4 border rounded-lg bg-indigo-500/5 border-indigo-500/20">
+              <div className="flex items-center justify-between">
+                <Label className="text-base font-semibold text-indigo-400">
+                  Announcement Bar
+                </Label>
+                <Switch
+                  checked={formData.showAnnouncement === true}
+                  onCheckedChange={(checked) =>
+                    updateField("showAnnouncement", checked)
+                  }
+                />
+              </div>
+              {formData.showAnnouncement && (
+                <div className="space-y-4 pt-2 animate-in fade-in slide-in-from-top-2">
+                  <div className="space-y-3">
+                    {(
+                      formData.announcements ||
+                      (formData.announcementText
+                        ? [
+                            {
+                              id: "legacy",
+                              text: formData.announcementText,
+                              link: formData.announcementLink,
+                            },
+                          ]
+                        : [])
+                    ).map((ann: any, index: number) => (
+                      <div
+                        key={ann.id || index}
+                        className="grid grid-cols-[1fr_1fr_auto] gap-2 items-start bg-background p-2 rounded-md border shadow-sm relative group"
+                      >
+                        <div className="space-y-1.5">
+                          <Label className="text-[10px] uppercase text-muted-foreground font-bold tracking-wider">
+                            Message {index + 1}
+                          </Label>
+                          <Input
+                            value={ann.text || ""}
+                            onChange={(e) => {
+                              const newAnns = [
+                                ...(formData.announcements || []),
+                              ];
+                              if (!newAnns.length && formData.announcementText)
+                                newAnns.push({
+                                  id: "legacy",
+                                  text: formData.announcementText,
+                                  link: formData.announcementLink,
+                                });
+                              newAnns[index] = {
+                                ...newAnns[index],
+                                text: e.target.value,
+                              };
+                              updateField("announcements", newAnns);
+                            }}
+                            placeholder="e.g. Free shipping!"
+                            className="h-8 text-xs"
+                          />
+                        </div>
+                        <div className="space-y-1.5">
+                          <Label className="text-[10px] uppercase text-muted-foreground font-bold tracking-wider">
+                            Link
+                          </Label>
+                          <Input
+                            value={ann.link || ""}
+                            onChange={(e) => {
+                              const newAnns = [
+                                ...(formData.announcements || []),
+                              ];
+                              if (!newAnns.length && formData.announcementText)
+                                newAnns.push({
+                                  id: "legacy",
+                                  text: formData.announcementText,
+                                  link: formData.announcementLink,
+                                });
+                              newAnns[index] = {
+                                ...newAnns[index],
+                                link: e.target.value,
+                              };
+                              updateField("announcements", newAnns);
+                            }}
+                            placeholder="/shop"
+                            className="h-8 text-xs"
+                          />
+                        </div>
+                        <div className="pt-5">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-destructive/50 hover:text-destructive hover:bg-destructive/10 transition-colors"
+                            onClick={() => {
+                              const currentAnns = formData.announcements || [
+                                {
+                                  id: "legacy",
+                                  text: formData.announcementText,
+                                  link: formData.announcementLink,
+                                },
+                              ];
+                              const newAnns = currentAnns.filter(
+                                (_: any, i: number) => i !== index
+                              );
+                              updateField("announcements", newAnns);
+                            }}
+                          >
+                            <X size={14} />
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+
+                    {(formData.announcements?.length || 0) < 5 && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="w-full border-dashed text-xs h-8 text-indigo-500 hover:text-indigo-600 hover:bg-indigo-50 border-indigo-200"
+                        onClick={() => {
+                          const currentAnns =
+                            formData.announcements ||
+                            (formData.announcementText
+                              ? [
+                                  {
+                                    id: "legacy",
+                                    text: formData.announcementText,
+                                    link: formData.announcementLink,
+                                  },
+                                ]
+                              : []);
+                          updateField("announcements", [
+                            ...currentAnns,
+                            {
+                              id: `ann_${crypto.randomUUID()}`,
+                              text: "",
+                              link: "",
+                            },
+                          ]);
+                        }}
+                      >
+                        <Plus className="w-3 h-3 mr-2" /> Add Message
+                      </Button>
+                    )}
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4 p-3 bg-background rounded-md border mt-2">
+                    <div className="space-y-2">
+                      <Label className="text-xs">Background Color</Label>
+                      <div className="flex gap-2">
+                        <input
+                          type="color"
+                          value={formData.announcementBgColor || "#000000"}
+                          onChange={(e) =>
+                            updateField("announcementBgColor", e.target.value)
+                          }
+                          className="h-8 w-8 rounded cursor-pointer border"
+                        />
+                        <Input
+                          value={formData.announcementBgColor || "#000000"}
+                          onChange={(e) =>
+                            updateField("announcementBgColor", e.target.value)
+                          }
+                          className="h-8 font-mono text-xs uppercase"
+                        />
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-xs">Text Color</Label>
+                      <div className="flex gap-2">
+                        <input
+                          type="color"
+                          value={formData.announcementTextColor || "#ffffff"}
+                          onChange={(e) =>
+                            updateField("announcementTextColor", e.target.value)
+                          }
+                          className="h-8 w-8 rounded cursor-pointer border"
+                        />
+                        <Input
+                          value={formData.announcementTextColor || "#ffffff"}
+                          onChange={(e) =>
+                            updateField("announcementTextColor", e.target.value)
+                          }
+                          className="h-8 font-mono text-xs uppercase"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between border p-3 rounded-md bg-background">
+                    <div className="space-y-0.5">
+                      <Label className="cursor-pointer">
+                        Sliding Animation (Marquee)
+                      </Label>
+                      <p className="text-[10px] text-muted-foreground">
+                        Makes the text scroll continuously.
+                      </p>
+                    </div>
+                    <Switch
+                      checked={formData.announcementMarquee === true}
+                      onCheckedChange={(checked) =>
+                        updateField("announcementMarquee", checked)
+                      }
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* --- BRANDING --- */}
             <div className="space-y-4 p-4 border rounded-lg bg-muted/20">
               <Label className="text-base font-semibold">Branding</Label>
               <div className="space-y-2">
@@ -478,7 +695,7 @@ const SectionEditor: React.FC<SectionEditorProps> = ({
                 <Label>Logo Image</Label>
                 <div className="flex items-center gap-4">
                   {formData.logoImage && (
-                    <div className="h-10 w-10 bg-black rounded border flex items-center justify-center">
+                    <div className="h-10 w-10 bg-black rounded border flex items-center justify-center p-1">
                       <img
                         src={formData.logoImage}
                         alt="Logo"
@@ -499,24 +716,48 @@ const SectionEditor: React.FC<SectionEditorProps> = ({
                 </div>
               </div>
               {formData.logoImage && (
-                <div className="space-y-3 pt-2">
-                  <div className="flex justify-between">
-                    <Label>Logo Size (Desktop)</Label>
-                    <span className="text-xs text-muted-foreground">
-                      {formData.logoHeight || 40}px
-                    </span>
+                <div className="space-y-5 pt-2">
+                  <div className="space-y-3">
+                    <div className="flex justify-between">
+                      <Label className="flex items-center gap-2">
+                        <Monitor size={14} /> Desktop Size
+                      </Label>
+                      <span className="text-xs text-muted-foreground">
+                        {formData.logoHeight || 40}px
+                      </span>
+                    </div>
+                    <Slider
+                      value={[formData.logoHeight || 40]}
+                      min={20}
+                      max={120}
+                      step={2}
+                      onValueChange={([val]) => updateField("logoHeight", val)}
+                    />
                   </div>
-                  <Slider
-                    value={[formData.logoHeight || 40]}
-                    min={20}
-                    max={120}
-                    step={2}
-                    onValueChange={([val]) => updateField("logoHeight", val)}
-                  />
+                  <div className="space-y-3">
+                    <div className="flex justify-between">
+                      <Label className="flex items-center gap-2">
+                        <Smartphone size={14} /> Mobile Size
+                      </Label>
+                      <span className="text-xs text-muted-foreground">
+                        {formData.mobileLogoHeight || 30}px
+                      </span>
+                    </div>
+                    <Slider
+                      value={[formData.mobileLogoHeight || 30]}
+                      min={16}
+                      max={80}
+                      step={2}
+                      onValueChange={([val]) =>
+                        updateField("mobileLogoHeight", val)
+                      }
+                    />
+                  </div>
                 </div>
               )}
             </div>
 
+            {/* --- LAYOUT & STYLE --- */}
             <div className="space-y-4 p-4 border rounded-lg bg-muted/20">
               <Label className="text-base font-semibold">Layout & Style</Label>
               <div className="space-y-2">
@@ -560,245 +801,492 @@ const SectionEditor: React.FC<SectionEditorProps> = ({
               </div>
             </div>
 
-            <div className="space-y-3 pt-4 border-t">
-              <div className="flex items-center justify-between">
-                <Label className="text-base">Navigation Menu</Label>
-                <div className="flex items-center gap-2">
-                  <Label
-                    htmlFor="autoMenu"
-                    className="text-xs font-normal text-muted-foreground"
-                  >
-                    Auto-Generate?
-                  </Label>
-                  <Switch
-                    id="autoMenu"
-                    checked={formData.autoMenu === true}
-                    onCheckedChange={(checked) =>
-                      updateField("autoMenu", checked)
+            {/* --- UPGRADED: SOCIAL ICONS --- */}
+            <div className="space-y-4 p-4 border rounded-lg bg-muted/20">
+              <Label className="text-base font-semibold">Social Icons</Label>
+              <p className="text-[10px] text-muted-foreground mb-2">
+                Leave blank to hide. They will appear next to the navigation
+                links.
+              </p>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div className="relative">
+                  <div className="absolute left-2.5 top-2.5 text-muted-foreground">
+                    <Instagram size={14} />
+                  </div>
+                  <Input
+                    className="pl-8 text-xs"
+                    value={formData.socialInstagram || ""}
+                    onChange={(e) =>
+                      updateField("socialInstagram", e.target.value)
                     }
+                    placeholder="Instagram URL"
+                  />
+                </div>
+                <div className="relative">
+                  <div className="absolute left-2.5 top-2.5 text-muted-foreground">
+                    <Twitter size={14} />
+                  </div>
+                  <Input
+                    className="pl-8 text-xs"
+                    value={formData.socialTwitter || ""}
+                    onChange={(e) =>
+                      updateField("socialTwitter", e.target.value)
+                    }
+                    placeholder="Twitter/X URL"
+                  />
+                </div>
+                <div className="relative">
+                  <div className="absolute left-2.5 top-2.5 text-muted-foreground">
+                    <Youtube size={14} />
+                  </div>
+                  <Input
+                    className="pl-8 text-xs"
+                    value={formData.socialYoutube || ""}
+                    onChange={(e) =>
+                      updateField("socialYoutube", e.target.value)
+                    }
+                    placeholder="YouTube URL"
+                  />
+                </div>
+                <div className="relative">
+                  <div className="absolute left-2.5 top-2.5 text-muted-foreground">
+                    <Film size={14} />
+                  </div>
+                  <Input
+                    className="pl-8 text-xs"
+                    value={formData.socialImdb || ""}
+                    onChange={(e) => updateField("socialImdb", e.target.value)}
+                    placeholder="IMDb URL"
                   />
                 </div>
               </div>
+            </div>
 
-              {formData.autoMenu !== true && (
-                <div className="space-y-6 bg-muted/30 p-4 rounded-md border">
-                  {/* --- PAGES (System & Custom) --- */}
-                  <div className="space-y-2">
-                    <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
-                      <span className="h-px bg-border flex-grow"></span>
-                      Pages
-                      <span className="h-px bg-border flex-grow"></span>
-                    </Label>
-                    <p className="text-[10px] text-muted-foreground text-center mb-3">
-                      Links to specific pages on your website.
-                    </p>
+            <div className="space-y-4 pt-4 border-t">
+              <div className="flex flex-col gap-2">
+                <Label className="text-base font-semibold">
+                  Navigation Menu
+                </Label>
 
-                    {/* 1. The Hardcoded System Shop Page */}
-                    <div className="flex items-center gap-3">
-                      <Switch
-                        checked={
-                          formData.menuConfig?.page_shop?.visible !== false
-                        }
-                        onCheckedChange={(c) =>
-                          updateMenuConfig("page_shop", "visible", c)
-                        }
-                      />
-                      <Input
-                        value={formData.menuConfig?.page_shop?.label || "Shop"}
-                        onChange={(e) =>
-                          updateMenuConfig("page_shop", "label", e.target.value)
-                        }
-                        disabled={
-                          formData.menuConfig?.page_shop?.visible === false
-                        }
-                        className="h-8 text-sm"
-                      />
-                      <span className="text-[10px] text-indigo-400 font-bold uppercase tracking-widest w-16 text-right">
-                        System
-                      </span>
-                    </div>
-
-                    {/* 2. The Custom Pages Loop */}
-                    {(pages || [])
-                      .filter((p) => !p.isHome)
-                      .map((page) => {
-                        const configKey = `page_${page.id}`;
-                        const config = formData.menuConfig?.[configKey] || {};
-                        const isSelected = config.visible !== false;
-                        const label = config.label || page.title;
-
-                        return (
-                          <div
-                            key={page.id}
-                            className="flex items-center gap-3"
-                          >
-                            <Switch
-                              checked={isSelected}
-                              onCheckedChange={(c) =>
-                                updateMenuConfig(configKey, "visible", c)
-                              }
-                            />
-                            <Input
-                              value={label}
-                              onChange={(e) =>
-                                updateMenuConfig(
-                                  configKey,
-                                  "label",
-                                  e.target.value
-                                )
-                              }
-                              disabled={!isSelected}
-                              className="h-8 text-sm"
-                            />
-                            <span className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest w-16 text-right truncate">
-                              Custom
-                            </span>
-                          </div>
-                        );
-                      })}
-                  </div>
-
-                  {/* --- CUSTOM EXTERNAL LINKS --- */}
-                  <div className="space-y-3">
-                    <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
-                      <span className="h-px bg-border flex-grow"></span>
-                      Custom Links
-                      <span className="h-px bg-border flex-grow"></span>
-                    </Label>
-                    <p className="text-[10px] text-muted-foreground text-center mb-3">
-                      Link to specific products, collections, or external
-                      websites.
-                    </p>
-
-                    {(formData.customNavLinks || []).map(
-                      (link: any, index: number) => (
-                        <div
-                          key={link.id}
-                          className="flex items-start gap-3 bg-background p-2 border rounded-md relative group"
-                        >
-                          <Switch
-                            checked={link.visible !== false}
-                            className="mt-2"
-                            onCheckedChange={(c) => {
-                              // 🚀 FIX: Pure array mapping to prevent mutation bugs!
-                              const newLinks = formData.customNavLinks.map(
-                                (l: any, i: number) =>
-                                  i === index ? { ...l, visible: c } : l
-                              );
-                              updateField("customNavLinks", newLinks);
-                            }}
-                          />
-                          <div className="flex-grow space-y-2">
-                            <Input
-                              value={link.label}
-                              placeholder="Link Name (e.g. My IMDb)"
-                              onChange={(e) => {
-                                // 🚀 FIX: Pure array mapping!
-                                const newLinks = formData.customNavLinks.map(
-                                  (l: any, i: number) =>
-                                    i === index
-                                      ? { ...l, label: e.target.value }
-                                      : l
-                                );
-                                updateField("customNavLinks", newLinks);
-                              }}
-                              className="h-8 text-sm"
-                            />
-                            <Input
-                              value={link.url}
-                              placeholder="https:// or /shop/product"
-                              onChange={(e) => {
-                                // 🚀 FIX: Pure array mapping!
-                                const newLinks = formData.customNavLinks.map(
-                                  (l: any, i: number) =>
-                                    i === index
-                                      ? { ...l, url: e.target.value }
-                                      : l
-                                );
-                                updateField("customNavLinks", newLinks);
-                              }}
-                              className="h-8 text-sm text-muted-foreground"
-                            />
-                          </div>
-                          {/* Delete Button */}
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8 text-destructive/50 hover:text-destructive absolute -right-2 -top-2 opacity-0 group-hover:opacity-100 transition-opacity bg-background border shadow-sm rounded-full"
-                            onClick={() => {
-                              const newLinks = formData.customNavLinks.filter(
-                                (l: any) => l.id !== link.id
-                              );
-                              updateField("customNavLinks", newLinks);
-                            }}
-                          >
-                            <X size={14} />
-                          </Button>
-                        </div>
-                      )
+                {/* 🚀 NEW: MEGA MENU SWITCHER (Aware of User Tier) */}
+                <div className="flex bg-muted/50 p-1 rounded-lg border">
+                  <button
+                    className={cn(
+                      "flex-1 text-xs font-semibold py-1.5 rounded-md transition-all",
+                      formData.menuType !== "mega"
+                        ? "bg-background shadow-sm text-foreground"
+                        : "text-muted-foreground hover:text-foreground"
                     )}
+                    onClick={() => updateField("menuType", "simple")}
+                  >
+                    Simple Menu
+                  </button>
+                  <button
+                    className={cn(
+                      "flex-1 text-xs font-semibold py-1.5 rounded-md transition-all flex items-center justify-center gap-1.5",
+                      formData.menuType === "mega"
+                        ? "bg-primary text-primary-foreground shadow-sm"
+                        : "text-muted-foreground hover:text-foreground"
+                    )}
+                    onClick={() => updateField("menuType", "mega")}
+                  >
+                    Mega Menu{" "}
+                    {!hasMegaMenuAccess && (
+                      <Lock
+                        size={10}
+                        className={
+                          formData.menuType === "mega"
+                            ? "text-primary-foreground/70"
+                            : "text-amber-500"
+                        }
+                      />
+                    )}
+                  </button>
+                </div>
+              </div>
 
+              {/* 🚀 LOGIC SPLIT: Render Editor based on Menu Type & Plan Access */}
+              {formData.menuType === "mega" ? (
+                hasMegaMenuAccess ? (
+                  /* --- 🚀 ACTIVE MEGA MENU BUILDER (eCommerce & Pro) --- */
+                  <div className="space-y-4 p-4 border rounded-lg bg-primary/5 animate-in slide-in-from-right-2">
+                    <div className="flex items-center gap-3 border-b border-primary/10 pb-3">
+                      <div className="p-2 bg-primary/10 text-primary rounded-md">
+                        <Layers size={16} />
+                      </div>
+                      <div>
+                        <h4 className="font-bold text-sm text-primary">
+                          Mega Menu Organizer
+                        </h4>
+                        <p className="text-[10px] text-muted-foreground">
+                          eCommerce & Pro feature unlocked.
+                        </p>
+                      </div>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Create folders to group your pages and custom links into
+                      beautiful dropdown menus.
+                      <strong className="block mt-1 text-foreground">
+                        (Drag-and-drop coming in next update).
+                      </strong>
+                    </p>
+
+                    {/* Basic Folder Creation UI to prep data structure */}
+                    <div className="space-y-2">
+                      {(formData.megaMenuFolders || []).map(
+                        (folder: any, i: number) => (
+                          <div
+                            key={folder.id}
+                            className="flex items-center gap-2 p-2 bg-background border rounded-md shadow-sm"
+                          >
+                            <Layers
+                              size={14}
+                              className="text-muted-foreground"
+                            />
+                            <Input
+                              value={folder.label}
+                              onChange={(e) => {
+                                const newF = [...formData.megaMenuFolders];
+                                newF[i].label = e.target.value;
+                                updateField("megaMenuFolders", newF);
+                              }}
+                              className="h-7 text-xs"
+                              placeholder="Folder Name (e.g. Services)"
+                            />
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-7 w-7 text-destructive/70 hover:text-destructive"
+                              onClick={() => {
+                                const newF = formData.megaMenuFolders.filter(
+                                  (_: any, idx: number) => idx !== i
+                                );
+                                updateField("megaMenuFolders", newF);
+                              }}
+                            >
+                              <X size={14} />
+                            </Button>
+                          </div>
+                        )
+                      )}
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="w-full text-xs border-dashed bg-background"
+                        onClick={() => {
+                          const newF = [
+                            ...(formData.megaMenuFolders || []),
+                            { id: `folder_${crypto.randomUUID()}`, label: "" },
+                          ];
+                          updateField("megaMenuFolders", newF);
+                        }}
+                      >
+                        <Plus className="w-3 h-3 mr-2" /> Add Dropdown Folder
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  /* --- 🚀 LOCKED MEGA MENU STATE (Starter / Free) --- */
+                  <div className="bg-amber-50 border border-amber-200 rounded-lg p-6 text-center space-y-3 animate-in slide-in-from-right-2">
+                    <div className="mx-auto w-12 h-12 bg-amber-100 rounded-full flex items-center justify-center mb-2 text-amber-600">
+                      <Layers size={24} />
+                    </div>
+                    <h4 className="font-bold text-amber-900">
+                      Mega Menu unlocked in eCommerce & Pro
+                    </h4>
+                    <p className="text-xs text-amber-700 max-w-[250px] mx-auto">
+                      Upgrade your plan to organize your links into nested
+                      folders, add images to dropdowns, and create rich
+                      navigation experiences.
+                    </p>
                     <Button
+                      asChild
                       variant="outline"
-                      size="sm"
-                      className="w-full border-dashed text-xs"
-                      onClick={() => {
-                        const currentLinks = formData.customNavLinks || [];
-                        updateField("customNavLinks", [
-                          ...currentLinks,
-                          {
-                            id: `link_${Date.now()}`,
-                            label: "",
-                            url: "",
-                            visible: true,
-                          },
-                        ]);
-                      }}
+                      className="bg-white hover:bg-amber-100 text-amber-700 border-amber-300 w-full max-w-[200px] mt-2"
                     >
-                      <Plus className="w-4 h-4 mr-2" /> Add Custom Link
+                      <a href="/dashboard/settings">View Upgrade Plans</a>
                     </Button>
                   </div>
-
-                  {/* --- ON-PAGE SECTIONS --- */}
-                  <div className="space-y-2">
-                    <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
-                      <span className="h-px bg-border flex-grow"></span>
-                      On-Page Sections
-                      <span className="h-px bg-border flex-grow"></span>
+                )
+              ) : (
+                /* --- 🚀 SIMPLE MENU BUILDER --- */
+                <div className="space-y-4 animate-in slide-in-from-left-2">
+                  <div className="flex items-center justify-between bg-muted/30 p-3 rounded-md border">
+                    <Label
+                      htmlFor="autoMenu"
+                      className="text-xs font-bold text-foreground"
+                    >
+                      Auto-Generate Links
                     </Label>
-                    <p className="text-[10px] text-muted-foreground text-center mb-3">
-                      Links that scroll down to sections on the Home page.
-                    </p>
-
-                    {sections
-                      .filter((s) => s.type !== "header" && s.isVisible)
-                      .map((s) => {
-                        const config = formData.menuConfig?.[s.id] || {};
-                        const isSelected = config.visible !== false;
-                        const label = config.label || s.data.title || s.type;
-                        return (
-                          <div key={s.id} className="flex items-center gap-3">
-                            <Switch
-                              checked={isSelected}
-                              onCheckedChange={(c) =>
-                                updateMenuConfig(s.id, "visible", c)
-                              }
-                            />
-                            <Input
-                              value={label}
-                              onChange={(e) =>
-                                updateMenuConfig(s.id, "label", e.target.value)
-                              }
-                              disabled={!isSelected}
-                              className="h-8 text-sm"
-                            />
-                            <span className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest w-16 text-right truncate">
-                              Section
-                            </span>
-                          </div>
-                        );
-                      })}
+                    <Switch
+                      id="autoMenu"
+                      checked={formData.autoMenu !== false}
+                      onCheckedChange={(checked) =>
+                        updateField("autoMenu", checked)
+                      }
+                    />
                   </div>
+
+                  {formData.autoMenu !== false ? (
+                    <div className="bg-muted/10 border border-dashed p-4 rounded-md space-y-3">
+                      <p className="text-xs text-muted-foreground text-center">
+                        Auto-Generate is <strong>ON</strong>. The system is
+                        currently displaying these visible sections:
+                      </p>
+                      <div className="flex flex-wrap gap-2 justify-center pointer-events-none opacity-70">
+                        {sections
+                          .filter(
+                            (s: any) => s.isVisible && s.type !== "header"
+                          )
+                          .map((s: any) => (
+                            <span
+                              key={s.id}
+                              className="px-2 py-1 bg-secondary text-secondary-foreground text-[10px] uppercase font-bold tracking-widest rounded-md shadow-sm"
+                            >
+                              {s.data.title || s.type}
+                            </span>
+                          ))}
+                      </div>
+                      <p className="text-[10px] text-muted-foreground text-center pt-3 border-t border-dashed mt-4">
+                        Turn off Auto-Generate to manually reorder, rename, or
+                        hide links.
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="space-y-6 bg-muted/20 p-4 rounded-md border">
+                      {/* --- PAGES --- */}
+                      <div className="space-y-2">
+                        <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
+                          <span className="h-px bg-border flex-grow"></span>{" "}
+                          Pages{" "}
+                          <span className="h-px bg-border flex-grow"></span>
+                        </Label>
+                        <p className="text-[10px] text-muted-foreground text-center mb-3">
+                          Links to specific pages on your website.
+                        </p>
+
+                        <div className="flex items-center gap-3">
+                          <Switch
+                            checked={
+                              formData.menuConfig?.page_shop?.visible !== false
+                            }
+                            onCheckedChange={(c) =>
+                              updateMenuConfig("page_shop", "visible", c)
+                            }
+                          />
+                          <Input
+                            value={
+                              formData.menuConfig?.page_shop?.label || "Shop"
+                            }
+                            onChange={(e) =>
+                              updateMenuConfig(
+                                "page_shop",
+                                "label",
+                                e.target.value
+                              )
+                            }
+                            disabled={
+                              formData.menuConfig?.page_shop?.visible === false
+                            }
+                            className="h-8 text-sm"
+                          />
+                          <span className="text-[10px] text-indigo-400 font-bold uppercase tracking-widest w-16 text-right">
+                            System
+                          </span>
+                        </div>
+
+                        {(pages || [])
+                          .filter((p) => !p.isHome)
+                          .map((page) => {
+                            const configKey = `page_${page.id}`;
+                            const config =
+                              formData.menuConfig?.[configKey] || {};
+                            const isSelected = config.visible !== false;
+                            const label = config.label || page.title;
+
+                            return (
+                              <div
+                                key={page.id}
+                                className="flex items-center gap-3"
+                              >
+                                <Switch
+                                  checked={isSelected}
+                                  onCheckedChange={(c) =>
+                                    updateMenuConfig(configKey, "visible", c)
+                                  }
+                                />
+                                <Input
+                                  value={label}
+                                  onChange={(e) =>
+                                    updateMenuConfig(
+                                      configKey,
+                                      "label",
+                                      e.target.value
+                                    )
+                                  }
+                                  disabled={!isSelected}
+                                  className="h-8 text-sm"
+                                />
+                                <span className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest w-16 text-right truncate">
+                                  Custom
+                                </span>
+                              </div>
+                            );
+                          })}
+                      </div>
+
+                      {/* --- CUSTOM EXTERNAL LINKS --- */}
+                      <div className="space-y-3">
+                        <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
+                          <span className="h-px bg-border flex-grow"></span>{" "}
+                          Custom Links{" "}
+                          <span className="h-px bg-border flex-grow"></span>
+                        </Label>
+                        <p className="text-[10px] text-muted-foreground text-center mb-3">
+                          Link to specific products, collections, or external
+                          websites.
+                        </p>
+
+                        {(formData.customNavLinks || []).map(
+                          (link: any, index: number) => (
+                            <div
+                              key={link.id}
+                              className="flex items-start gap-3 bg-background p-2 border rounded-md relative group shadow-sm"
+                            >
+                              <Switch
+                                checked={link.visible !== false}
+                                className="mt-2"
+                                onCheckedChange={(c) => {
+                                  const newLinks = formData.customNavLinks.map(
+                                    (l: any, i: number) =>
+                                      i === index ? { ...l, visible: c } : l
+                                  );
+                                  updateField("customNavLinks", newLinks);
+                                }}
+                              />
+                              <div className="flex-grow space-y-2">
+                                <Input
+                                  value={link.label}
+                                  placeholder="Link Name (e.g. My IMDb)"
+                                  onChange={(e) => {
+                                    const newLinks =
+                                      formData.customNavLinks.map(
+                                        (l: any, i: number) =>
+                                          i === index
+                                            ? { ...l, label: e.target.value }
+                                            : l
+                                      );
+                                    updateField("customNavLinks", newLinks);
+                                  }}
+                                  className="h-8 text-sm"
+                                />
+                                <Input
+                                  value={link.url}
+                                  placeholder="https:// or /shop/product"
+                                  onChange={(e) => {
+                                    const newLinks =
+                                      formData.customNavLinks.map(
+                                        (l: any, i: number) =>
+                                          i === index
+                                            ? { ...l, url: e.target.value }
+                                            : l
+                                      );
+                                    updateField("customNavLinks", newLinks);
+                                  }}
+                                  className="h-8 text-sm text-muted-foreground"
+                                />
+                              </div>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 text-destructive/50 hover:text-destructive absolute -right-2 -top-2 opacity-0 group-hover:opacity-100 transition-opacity bg-background border shadow-sm rounded-full"
+                                onClick={() => {
+                                  const newLinks =
+                                    formData.customNavLinks.filter(
+                                      (l: any) => l.id !== link.id
+                                    );
+                                  updateField("customNavLinks", newLinks);
+                                }}
+                              >
+                                <X size={14} />
+                              </Button>
+                            </div>
+                          )
+                        )}
+
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="w-full border-dashed text-xs"
+                          onClick={() => {
+                            const currentLinks = formData.customNavLinks || [];
+                            updateField("customNavLinks", [
+                              ...currentLinks,
+                              {
+                                id: `link_${Date.now()}`,
+                                label: "",
+                                url: "",
+                                visible: true,
+                              },
+                            ]);
+                          }}
+                        >
+                          <Plus className="w-4 h-4 mr-2" /> Add Custom Link
+                        </Button>
+                      </div>
+
+                      {/* --- ON-PAGE SECTIONS --- */}
+                      <div className="space-y-2">
+                        <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
+                          <span className="h-px bg-border flex-grow"></span>{" "}
+                          On-Page Sections{" "}
+                          <span className="h-px bg-border flex-grow"></span>
+                        </Label>
+                        <p className="text-[10px] text-muted-foreground text-center mb-3">
+                          Links that scroll down to sections on the Home page.
+                        </p>
+
+                        {sections
+                          .filter(
+                            (s: any) => s.type !== "header" && s.isVisible
+                          )
+                          .map((s: any) => {
+                            const config = formData.menuConfig?.[s.id] || {};
+                            const isSelected = config.visible !== false;
+                            const label =
+                              config.label || s.data.title || s.type;
+                            return (
+                              <div
+                                key={s.id}
+                                className="flex items-center gap-3"
+                              >
+                                <Switch
+                                  checked={isSelected}
+                                  onCheckedChange={(c) =>
+                                    updateMenuConfig(s.id, "visible", c)
+                                  }
+                                />
+                                <Input
+                                  value={label}
+                                  onChange={(e) =>
+                                    updateMenuConfig(
+                                      s.id,
+                                      "label",
+                                      e.target.value
+                                    )
+                                  }
+                                  disabled={!isSelected}
+                                  className="h-8 text-sm"
+                                />
+                                <span className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest w-16 text-right truncate">
+                                  Section
+                                </span>
+                              </div>
+                            );
+                          })}
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
