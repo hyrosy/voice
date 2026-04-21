@@ -474,6 +474,8 @@ const SectionEditor: React.FC<SectionEditorProps> = ({
   const renderFields = () => {
     switch (section.type) {
       case "header":
+        const megaFolders = formData.megaMenuFolders || []; // Helper for the dropdowns
+
         return (
           <div className="space-y-6">
             {/* --- UPGRADED: AAA+ ANNOUNCEMENT BAR (MULTIPLE MESSAGES) --- */}
@@ -680,7 +682,6 @@ const SectionEditor: React.FC<SectionEditorProps> = ({
               )}
             </div>
 
-            {/* --- BRANDING --- */}
             <div className="space-y-4 p-4 border rounded-lg bg-muted/20">
               <Label className="text-base font-semibold">Branding</Label>
               <div className="space-y-2">
@@ -757,7 +758,6 @@ const SectionEditor: React.FC<SectionEditorProps> = ({
               )}
             </div>
 
-            {/* --- LAYOUT & STYLE --- */}
             <div className="space-y-4 p-4 border rounded-lg bg-muted/20">
               <Label className="text-base font-semibold">Layout & Style</Label>
               <div className="space-y-2">
@@ -801,7 +801,6 @@ const SectionEditor: React.FC<SectionEditorProps> = ({
               </div>
             </div>
 
-            {/* --- UPGRADED: SOCIAL ICONS --- */}
             <div className="space-y-4 p-4 border rounded-lg bg-muted/20">
               <Label className="text-base font-semibold">Social Icons</Label>
               <p className="text-[10px] text-muted-foreground mb-2">
@@ -868,7 +867,6 @@ const SectionEditor: React.FC<SectionEditorProps> = ({
                   Navigation Menu
                 </Label>
 
-                {/* 🚀 NEW: MEGA MENU SWITCHER (Aware of User Tier) */}
                 <div className="flex bg-muted/50 p-1 rounded-lg border">
                   <button
                     className={cn(
@@ -905,10 +903,9 @@ const SectionEditor: React.FC<SectionEditorProps> = ({
                 </div>
               </div>
 
-              {/* 🚀 LOGIC SPLIT: Render Editor based on Menu Type & Plan Access */}
               {formData.menuType === "mega" ? (
                 hasMegaMenuAccess ? (
-                  /* --- 🚀 ACTIVE MEGA MENU BUILDER (eCommerce & Pro) --- */
+                  /* --- 🚀 ACTIVE MEGA MENU BUILDER --- */
                   <div className="space-y-4 p-4 border rounded-lg bg-primary/5 animate-in slide-in-from-right-2">
                     <div className="flex items-center gap-3 border-b border-primary/10 pb-3">
                       <div className="p-2 bg-primary/10 text-primary rounded-md">
@@ -923,16 +920,9 @@ const SectionEditor: React.FC<SectionEditorProps> = ({
                         </p>
                       </div>
                     </div>
-                    <p className="text-xs text-muted-foreground">
-                      Create folders to group your pages and custom links into
-                      beautiful dropdown menus.
-                      <strong className="block mt-1 text-foreground">
-                        (Drag-and-drop coming in next update).
-                      </strong>
-                    </p>
-
-                    {/* Basic Folder Creation UI to prep data structure */}
+                    
                     <div className="space-y-2">
+                      <Label className="text-xs font-bold text-primary">1. Create Folders</Label>
                       {(formData.megaMenuFolders || []).map(
                         (folder: any, i: number) => (
                           <div
@@ -983,6 +973,108 @@ const SectionEditor: React.FC<SectionEditorProps> = ({
                       >
                         <Plus className="w-3 h-3 mr-2" /> Add Dropdown Folder
                       </Button>
+                    </div>
+
+                    {/* 🚀 NEW: LINK ASSIGNMENT UI */}
+                    <div className="pt-4 mt-4 border-t border-primary/10 space-y-4">
+                      <Label className="text-xs font-bold text-primary">2. Assign Links to Folders</Label>
+                      
+                      {/* Mega Menu Pages */}
+                      <div className="space-y-2">
+                        <Label className="text-[10px] uppercase text-muted-foreground">Pages</Label>
+                        <div className="flex items-center gap-2">
+                          <Switch checked={formData.menuConfig?.page_shop?.visible !== false} onCheckedChange={(c) => updateMenuConfig("page_shop", "visible", c)} />
+                          <Input value={formData.menuConfig?.page_shop?.label || "Shop"} onChange={(e) => updateMenuConfig("page_shop", "label", e.target.value)} disabled={formData.menuConfig?.page_shop?.visible === false} className="h-8 text-xs flex-1" />
+                          <Select value={formData.menuConfig?.page_shop?.folderId || "none"} onValueChange={(val) => updateMenuConfig("page_shop", "folderId", val === "none" ? null : val)}>
+                            <SelectTrigger className="w-[130px] h-8 text-xs bg-background"><SelectValue placeholder="Parent" /></SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="none">No Folder</SelectItem>
+                              {megaFolders.map((f: any) => <SelectItem key={f.id} value={f.id}>{f.label || "Unnamed"}</SelectItem>)}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        {(pages || []).filter((p) => !p.isHome).map((page) => {
+                          const configKey = `page_${page.id}`;
+                          const config = formData.menuConfig?.[configKey] || {};
+                          return (
+                            <div key={page.id} className="flex items-center gap-2">
+                              <Switch checked={config.visible !== false} onCheckedChange={(c) => updateMenuConfig(configKey, "visible", c)} />
+                              <Input value={config.label || page.title} onChange={(e) => updateMenuConfig(configKey, "label", e.target.value)} disabled={config.visible === false} className="h-8 text-xs flex-1" />
+                              <Select value={config.folderId || "none"} onValueChange={(val) => updateMenuConfig(configKey, "folderId", val === "none" ? null : val)}>
+                                <SelectTrigger className="w-[130px] h-8 text-xs bg-background"><SelectValue placeholder="Parent" /></SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="none">No Folder</SelectItem>
+                                  {megaFolders.map((f: any) => <SelectItem key={f.id} value={f.id}>{f.label || "Unnamed"}</SelectItem>)}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                          );
+                        })}
+                      </div>
+
+                      {/* Mega Menu Custom Links */}
+                      <div className="space-y-2">
+                        <Label className="text-[10px] uppercase text-muted-foreground">Custom Links</Label>
+                        {(formData.customNavLinks || []).map((link: any, index: number) => (
+                          <div key={link.id} className="flex items-start gap-2 bg-background p-2 border rounded-md relative group shadow-sm">
+                            <Switch checked={link.visible !== false} className="mt-2" onCheckedChange={(c) => {
+                                const newLinks = formData.customNavLinks.map((l: any, i: number) => i === index ? { ...l, visible: c } : l);
+                                updateField("customNavLinks", newLinks);
+                              }} />
+                            <div className="flex-grow space-y-2">
+                              <div className="flex gap-2">
+                                <Input value={link.label} placeholder="Link Name" onChange={(e) => {
+                                    const newLinks = formData.customNavLinks.map((l: any, i: number) => i === index ? { ...l, label: e.target.value } : l);
+                                    updateField("customNavLinks", newLinks);
+                                  }} className="h-8 text-xs" />
+                                <Select value={link.folderId || "none"} onValueChange={(val) => {
+                                    const newLinks = formData.customNavLinks.map((l: any, i: number) => i === index ? { ...l, folderId: val === "none" ? null : val } : l);
+                                    updateField("customNavLinks", newLinks);
+                                  }}>
+                                  <SelectTrigger className="w-[130px] h-8 text-xs"><SelectValue placeholder="Parent" /></SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="none">No Folder</SelectItem>
+                                    {megaFolders.map((f: any) => <SelectItem key={f.id} value={f.id}>{f.label || "Unnamed"}</SelectItem>)}
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                              <Input value={link.url} placeholder="https://..." onChange={(e) => {
+                                  const newLinks = formData.customNavLinks.map((l: any, i: number) => i === index ? { ...l, url: e.target.value } : l);
+                                  updateField("customNavLinks", newLinks);
+                                }} className="h-8 text-xs text-muted-foreground" />
+                            </div>
+                            <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive/50 hover:text-destructive absolute -right-2 -top-2 opacity-0 group-hover:opacity-100 transition-opacity bg-background border shadow-sm rounded-full" onClick={() => {
+                                const newLinks = formData.customNavLinks.filter((l: any) => l.id !== link.id);
+                                updateField("customNavLinks", newLinks);
+                              }}><X size={14} /></Button>
+                          </div>
+                        ))}
+                        <Button variant="outline" size="sm" className="w-full border-dashed text-xs bg-background" onClick={() => {
+                            const currentLinks = formData.customNavLinks || [];
+                            updateField("customNavLinks", [...currentLinks, { id: `link_${Date.now()}`, label: "", url: "", visible: true, folderId: null }]);
+                          }}><Plus className="w-4 h-4 mr-2" /> Add Custom Link</Button>
+                      </div>
+
+                      {/* Mega Menu Sections */}
+                      <div className="space-y-2">
+                        <Label className="text-[10px] uppercase text-muted-foreground">On-Page Sections</Label>
+                        {sections.filter((s: any) => s.type !== "header" && s.isVisible).map((s: any) => {
+                          const config = formData.menuConfig?.[s.id] || {};
+                          return (
+                            <div key={s.id} className="flex items-center gap-2">
+                              <Switch checked={config.visible !== false} onCheckedChange={(c) => updateMenuConfig(s.id, "visible", c)} />
+                              <Input value={config.label || s.data.title || s.type} onChange={(e) => updateMenuConfig(s.id, "label", e.target.value)} disabled={config.visible === false} className="h-8 text-xs flex-1" />
+                              <Select value={config.folderId || "none"} onValueChange={(val) => updateMenuConfig(s.id, "folderId", val === "none" ? null : val)}>
+                                <SelectTrigger className="w-[130px] h-8 text-xs bg-background"><SelectValue placeholder="Parent" /></SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="none">No Folder</SelectItem>
+                                  {megaFolders.map((f: any) => <SelectItem key={f.id} value={f.id}>{f.label || "Unnamed"}</SelectItem>)}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                          );
+                        })}
+                      </div>
                     </div>
                   </div>
                 ) : (
@@ -1196,6 +1288,7 @@ const SectionEditor: React.FC<SectionEditorProps> = ({
                                   className="h-8 text-sm text-muted-foreground"
                                 />
                               </div>
+                              {/* Delete Button */}
                               <Button
                                 variant="ghost"
                                 size="icon"
@@ -1308,7 +1401,6 @@ const SectionEditor: React.FC<SectionEditorProps> = ({
             </div>
           </div>
         );
-
       case "dynamic_store":
         return (
           <div className="space-y-6">

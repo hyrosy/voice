@@ -10,6 +10,7 @@ import {
   Twitter,
   Youtube,
   Film,
+  ChevronDown, // 🚀 NEW: Added for the dropdown arrows
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useCartStore } from "@/store/useCartStore";
@@ -33,7 +34,8 @@ const Header: React.FC<any> = ({
 }) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
-  const [activeAnnIndex, setActiveAnnIndex] = useState(0); // 🚀 NEW: Carousel state
+  const [activeAnnIndex, setActiveAnnIndex] = useState(0);
+  const [expandedFolders, setExpandedFolders] = useState<string[]>([]); // 🚀 NEW: Mobile Accordion State
 
   const sections = allSections || [];
   const variant = data.variant || "transparent";
@@ -54,80 +56,121 @@ const Header: React.FC<any> = ({
   const username = params.slug || params.username || publicSlug || "portfolio";
   const pathPrefix = location.pathname.startsWith("/pro") ? "/pro" : "";
 
+  // 🚀 UPGRADED: 2D Mega Menu Tree Generator & Custom Page Bug Fix
   const menuItems = React.useMemo(() => {
-    const items: Array<{
-      label: string;
-      id: string;
-      type: "section" | "page" | "custom_link";
-      url?: string;
-    }> = [];
+    const flatItems: Array<any> = [];
     const config = data.menuConfig || {};
 
-    if (config.page_shop?.visible !== false) {
-      items.push({
+    // 1. Shop Page
+    if (!config.page_shop || config.page_shop.visible !== false) {
+      flatItems.push({
         label: config.page_shop?.label || "Shop",
         id: "system_shop",
         type: "page",
         url: `${pathPrefix}/${username}/shop`,
+        folderId: config.page_shop?.folderId,
       });
     }
 
+    // 2. Custom Pages (🚀 BUG FIXED: Defaults to visible if config is missing)
     customPages
       .filter((p) => !p.isHome)
       .forEach((p) => {
         const pageConfig = config[`page_${p.id}`];
-        if (pageConfig && pageConfig.visible !== false) {
-          items.push({
-            label: pageConfig.label || p.title,
+        if (!pageConfig || pageConfig.visible !== false) {
+          flatItems.push({
+            label: pageConfig?.label || p.title,
             id: p.id,
             type: "page",
             url: `${pathPrefix}/${username}/${p.slug}`,
+            folderId: pageConfig?.folderId,
           });
         }
       });
 
+    // 3. Custom Links
     const customNavLinks = data.customNavLinks || [];
     customNavLinks.forEach((link: any) => {
       if (link.label && link.url && link.visible !== false) {
-        items.push({
+        flatItems.push({
           label: link.label,
           id: link.id,
           type: "custom_link",
           url: link.url,
+          folderId: link.folderId,
         });
       }
     });
 
-    if (data.autoMenu !== false) {
-      sections
-        .filter((s: any) => s.isVisible && s.type !== "header")
-        .forEach((s: any) => {
+    // 4. On-Page Sections
+    sections
+      .filter((s: any) => s.isVisible && s.type !== "header")
+      .forEach((s: any) => {
+        const secConfig = config[s.id];
+        if (data.autoMenu !== false) {
+          // Auto-menu ignores manual visibility, but still respects mega-menu folders!
           if (s.data.title)
-            items.push({
+            flatItems.push({
               label: s.data.title || s.type,
               id: s.id,
               type: "section",
+              folderId: secConfig?.folderId,
             });
-        });
-    } else {
-      sections
-        .filter((s: any) => s.isVisible && s.type !== "header")
-        .forEach((s: any) => {
-          const secConfig = config[s.id];
-          if (secConfig && secConfig.visible !== false)
-            items.push({
-              label: secConfig.label || s.data.title || s.type,
+        } else {
+          if (!secConfig || secConfig.visible !== false) {
+            flatItems.push({
+              label: secConfig?.label || s.data.title || s.type,
               id: s.id,
               type: "section",
+              folderId: secConfig?.folderId,
             });
-        });
+          }
+        }
+      });
+
+    // 🚀 5. MEGA MENU STITCHING: Convert Flat Array -> 2D Tree Structure
+    if (data.menuType === "mega") {
+      const folders = data.megaMenuFolders || [];
+      const tree: Array<any> = [];
+      const folderMap: Record<string, any> = {};
+
+      // Initialize folders
+      folders.forEach((f: any) => {
+        folderMap[f.id] = {
+          label: f.label,
+          id: f.id,
+          type: "folder",
+          children: [],
+        };
+      });
+
+      // Distribute links into folders or root
+      flatItems.forEach((item) => {
+        if (item.folderId && folderMap[item.folderId]) {
+          folderMap[item.folderId].children.push(item);
+        } else {
+          tree.push(item);
+        }
+      });
+
+      // Add populated folders to the main tree (ignore empty folders)
+      folders.forEach((f: any) => {
+        if (folderMap[f.id].children.length > 0) {
+          tree.push(folderMap[f.id]);
+        }
+      });
+
+      return tree;
     }
 
-    return items;
+    // Standard simple flat menu
+    return flatItems;
   }, [
     data.autoMenu,
     data.menuConfig,
     data.customNavLinks,
+    data.menuType,
+    data.megaMenuFolders,
     sections,
     customPages,
     username,
@@ -144,7 +187,6 @@ const Header: React.FC<any> = ({
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
-  // 🚀 AAA+ MULTI-ANNOUNCEMENT LOGIC
   const announcementsList =
     data.announcements?.length > 0
       ? data.announcements
@@ -162,7 +204,6 @@ const Header: React.FC<any> = ({
   const isMobile = typeof window !== "undefined" && window.innerWidth < 768;
   const announcementHeight = isMobile ? 36 : 40;
 
-  // Crossfade timer for when Marquee is OFF
   useEffect(() => {
     if (
       hasAnnouncement &&
@@ -171,7 +212,7 @@ const Header: React.FC<any> = ({
     ) {
       const timer = setInterval(() => {
         setActiveAnnIndex((prev) => (prev + 1) % announcementsList.length);
-      }, 4000); // Fades every 4 seconds
+      }, 4000);
       return () => clearInterval(timer);
     }
   }, [hasAnnouncement, data.announcementMarquee, announcementsList.length]);
@@ -211,6 +252,14 @@ const Header: React.FC<any> = ({
     }
   };
 
+  const toggleMobileFolder = (folderId: string) => {
+    setExpandedFolders((prev) =>
+      prev.includes(folderId)
+        ? prev.filter((id) => id !== folderId)
+        : [...prev, folderId]
+    );
+  };
+
   const headerClasses = cn(
     "z-50 transition-all duration-500 ease-in-out w-full left-0",
     isPreview ? "sticky top-0 mb-[-80px]" : isSticky ? "fixed" : "absolute",
@@ -231,7 +280,7 @@ const Header: React.FC<any> = ({
 
   const Logo = () => (
     <div
-      className="flex items-center gap-3 cursor-pointer group"
+      className="flex items-center gap-3 cursor-pointer group shrink-0"
       onClick={(e) => {
         if (isPreview) {
           e.preventDefault();
@@ -267,22 +316,54 @@ const Header: React.FC<any> = ({
     </div>
   );
 
+  // 🚀 UPGRADED: Desktop Nav now maps Folders correctly
   const DesktopNav = () => (
     <nav className="hidden md:flex items-center gap-1">
-      {menuItems.map((item) => (
-        <button
-          key={item.id}
-          onClick={() => handleNavClick(item)}
-          className="relative px-4 py-2 text-sm font-medium text-white/70 hover:text-white transition-colors group rounded-full hover:bg-white/5"
-        >
-          {item.label}
-        </button>
-      ))}
+      {menuItems.map((item) => {
+        if (item.type === "folder") {
+          return (
+            <div key={item.id} className="relative group px-1 py-4 -my-4">
+              <button className="flex items-center gap-1 px-3 py-2 text-sm font-medium text-white/70 hover:text-white transition-colors rounded-full hover:bg-white/5">
+                {item.label}
+                <ChevronDown
+                  size={14}
+                  className="group-hover:rotate-180 transition-transform duration-200"
+                />
+              </button>
+              {/* Dropdown Card */}
+              <div className="absolute top-full left-0 mt-2 w-56 rounded-2xl bg-neutral-950/95 backdrop-blur-xl border border-white/10 shadow-2xl opacity-0 translate-y-2 pointer-events-none group-hover:opacity-100 group-hover:translate-y-0 group-hover:pointer-events-auto transition-all duration-200 overflow-hidden z-50">
+                <div className="p-2 flex flex-col gap-1">
+                  {item.children.map((child: any) => (
+                    <button
+                      key={child.id}
+                      onClick={() => handleNavClick(child)}
+                      className="text-left px-4 py-2.5 text-sm font-medium text-white/70 hover:text-white hover:bg-white/10 rounded-xl transition-colors"
+                    >
+                      {child.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          );
+        }
+
+        // Standard flat link
+        return (
+          <button
+            key={item.id}
+            onClick={() => handleNavClick(item)}
+            className="relative px-4 py-2 text-sm font-medium text-white/70 hover:text-white transition-colors group rounded-full hover:bg-white/5"
+          >
+            {item.label}
+          </button>
+        );
+      })}
     </nav>
   );
 
   const SocialLinks = () => (
-    <div className="hidden md:flex items-center gap-3 px-3 text-white/70">
+    <div className="hidden md:flex items-center gap-3 px-3 text-white/70 shrink-0">
       {data.socialInstagram && (
         <a
           href={data.socialInstagram}
@@ -331,7 +412,7 @@ const Header: React.FC<any> = ({
       <Button
         size="sm"
         asChild
-        className="rounded-full bg-white text-black hover:bg-neutral-200 px-6 font-semibold h-10 hidden md:flex"
+        className="rounded-full bg-white text-black hover:bg-neutral-200 px-6 font-semibold h-10 hidden md:flex shrink-0"
       >
         <a
           href={data.ctaLink || "#contact"}
@@ -364,7 +445,7 @@ const Header: React.FC<any> = ({
         e.stopPropagation();
         openCart();
       }}
-      className="relative p-2 text-white/70 hover:text-white transition-colors"
+      className="relative p-2 text-white/70 hover:text-white transition-colors shrink-0"
     >
       <ShoppingBag className="w-5 h-5 md:w-6 md:h-6" />
       {cartCount > 0 && (
@@ -375,7 +456,6 @@ const Header: React.FC<any> = ({
     </button>
   );
 
-  // Helper to render a single text block
   const RenderAnnouncement = ({ ann }: { ann: any }) =>
     ann.link ? (
       <a
@@ -397,7 +477,6 @@ const Header: React.FC<any> = ({
 
   return (
     <>
-      {/* 🚀 INJECT MARQUEE CSS */}
       <style
         dangerouslySetInnerHTML={{
           __html: `
@@ -417,7 +496,6 @@ const Header: React.FC<any> = ({
         }}
       />
 
-      {/* 🚀 ANNOUNCEMENT BAR (Supports Marquee or Crossfade) */}
       {hasAnnouncement && (
         <div
           className="relative w-full overflow-hidden flex items-center justify-center font-medium z-[60] text-[11px] md:text-[13px] tracking-wide"
@@ -430,7 +508,6 @@ const Header: React.FC<any> = ({
           {data.announcementMarquee ? (
             <div className="w-full h-full flex items-center px-4 justify-start">
               <div className="flex items-center gap-12 animate-custom-marquee pr-12">
-                {/* Render the list multiple times to create a seamless infinite loop */}
                 {[...Array(4)].map((_, arrayIndex) => (
                   <React.Fragment key={`loop-${arrayIndex}`}>
                     {announcementsList.map((ann: any, i: number) => (
@@ -466,7 +543,6 @@ const Header: React.FC<any> = ({
         </div>
       )}
 
-      {/* 🚀 THE DYNAMIC HEADER */}
       <header
         className={headerClasses}
         style={
@@ -481,7 +557,6 @@ const Header: React.FC<any> = ({
             variant === "floating" ? "px-0" : "px-6"
           )}
         >
-          {/* TRANSPARENT VARIANT */}
           {variant === "transparent" && (
             <div className="w-full flex items-center justify-between">
               <Logo />
@@ -506,7 +581,6 @@ const Header: React.FC<any> = ({
             </div>
           )}
 
-          {/* CENTERED VARIANT */}
           {variant === "centered" && (
             <div className="w-full grid grid-cols-3 items-center">
               <div className="justify-self-start flex items-center">
@@ -535,7 +609,6 @@ const Header: React.FC<any> = ({
             </div>
           )}
 
-          {/* FLOATING VARIANT */}
           {variant === "floating" && (
             <div className="w-full flex items-center justify-between">
               <Logo />
@@ -560,41 +633,93 @@ const Header: React.FC<any> = ({
         </div>
       </header>
 
-      {/* MOBILE MENU */}
+      {/* 🚀 UPGRADED: MOBILE MENU WITH ACCORDIONS */}
       <div
         className={cn(
-          "fixed inset-0 z-[60] bg-neutral-950 md:hidden flex flex-col items-center justify-center space-y-8 transition-all duration-500 ease-in-out",
+          "fixed inset-0 z-[60] bg-neutral-950 md:hidden flex flex-col items-center justify-start transition-all duration-500 ease-in-out overflow-y-auto custom-scrollbar",
           isMenuOpen
             ? "opacity-100 pointer-events-auto"
             : "opacity-0 pointer-events-none"
         )}
       >
         <button
-          className="absolute top-6 right-6 p-2 text-white/50 hover:text-white"
+          className="absolute top-6 right-6 p-2 text-white/50 hover:text-white z-10"
           onClick={() => setIsMenuOpen(false)}
         >
           <X size={32} />
         </button>
-        <div className="flex flex-col items-center gap-6 relative z-10 w-full px-8 pt-10 h-full overflow-y-auto justify-center">
-          {menuItems.map((item, idx) => (
-            <button
-              key={item.id}
-              onClick={() => handleNavClick(item)}
-              className={cn(
-                "text-3xl font-bold text-white/90 hover:text-white transition-all duration-300 transform",
-                isMenuOpen
-                  ? "translate-y-0 opacity-100"
-                  : "translate-y-8 opacity-0"
-              )}
-              style={{ transitionDelay: `${idx * 50}ms` }}
-            >
-              {item.label}
-            </button>
-          ))}
+
+        <div className="flex flex-col items-center w-full px-8 pt-24 pb-20 gap-8 min-h-full">
+          {menuItems.map((item, idx) => {
+            if (item.type === "folder") {
+              const isExpanded = expandedFolders.includes(item.id);
+              return (
+                <div
+                  key={item.id}
+                  className="w-full flex flex-col items-center"
+                  style={{ transitionDelay: `${idx * 50}ms` }}
+                >
+                  <button
+                    onClick={() => toggleMobileFolder(item.id)}
+                    className={cn(
+                      "flex items-center gap-2 text-3xl font-bold text-white/90 hover:text-white transition-all duration-300 transform",
+                      isMenuOpen
+                        ? "translate-y-0 opacity-100"
+                        : "translate-y-8 opacity-0"
+                    )}
+                  >
+                    {item.label}{" "}
+                    <ChevronDown
+                      size={24}
+                      className={cn(
+                        "transition-transform duration-300",
+                        isExpanded && "rotate-180 text-primary"
+                      )}
+                    />
+                  </button>
+                  <div
+                    className={cn(
+                      "flex flex-col items-center gap-5 overflow-hidden transition-all duration-300 ease-in-out",
+                      isExpanded
+                        ? "max-h-[500px] mt-6 opacity-100"
+                        : "max-h-0 mt-0 opacity-0"
+                    )}
+                  >
+                    {item.children.map((child: any) => (
+                      <button
+                        key={child.id}
+                        onClick={() => handleNavClick(child)}
+                        className="text-xl font-medium text-white/60 hover:text-white transition-colors"
+                      >
+                        {child.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              );
+            }
+
+            return (
+              <button
+                key={item.id}
+                onClick={() => handleNavClick(item)}
+                className={cn(
+                  "text-3xl font-bold text-white/90 hover:text-white transition-all duration-300 transform",
+                  isMenuOpen
+                    ? "translate-y-0 opacity-100"
+                    : "translate-y-8 opacity-0"
+                )}
+                style={{ transitionDelay: `${idx * 50}ms` }}
+              >
+                {item.label}
+              </button>
+            );
+          })}
+
           {hasSocial && (
             <div
               className={cn(
-                "flex items-center justify-center gap-6 mt-4 transition-all duration-500",
+                "flex items-center justify-center gap-6 mt-8 pt-8 border-t border-white/10 w-full max-w-[200px] transition-all duration-500",
                 isMenuOpen
                   ? "translate-y-0 opacity-100"
                   : "translate-y-8 opacity-0"
@@ -643,10 +768,11 @@ const Header: React.FC<any> = ({
               )}
             </div>
           )}
+
           {data.ctaText && (
             <div
               className={cn(
-                "mt-8 w-full max-w-xs transition-all duration-500",
+                "mt-4 w-full max-w-xs transition-all duration-500",
                 isMenuOpen
                   ? "translate-y-0 opacity-100"
                   : "translate-y-8 opacity-0"
