@@ -60,7 +60,8 @@ const Header: React.FC<any> = ({
   const menuItems = React.useMemo(() => {
     const flatItems: Array<any> = [];
     const config = data.menuConfig || {};
-
+    const isMegaMenu = data.menuType === "mega";
+    const isAutoMenu = data.autoMenu !== false && !isMegaMenu;
     // 1. Shop Page
     if (!config.page_shop || config.page_shop.visible !== false) {
       flatItems.push({
@@ -129,12 +130,12 @@ const Header: React.FC<any> = ({
       });
 
     // 🚀 5. MEGA MENU STITCHING: Convert Flat Array -> 2D Tree Structure
-    if (data.menuType === "mega") {
+    if (isMegaMenu) {
       const folders = data.megaMenuFolders || [];
       const tree: Array<any> = [];
       const folderMap: Record<string, any> = {};
 
-      // Initialize folders
+      // Initialize empty folders
       folders.forEach((f: any) => {
         folderMap[f.id] = {
           label: f.label,
@@ -144,7 +145,7 @@ const Header: React.FC<any> = ({
         };
       });
 
-      // Distribute links into folders or root
+      // Distribute links into folders or leave them at the root
       flatItems.forEach((item) => {
         if (item.folderId && folderMap[item.folderId]) {
           folderMap[item.folderId].children.push(item);
@@ -153,7 +154,7 @@ const Header: React.FC<any> = ({
         }
       });
 
-      // Add populated folders to the main tree (ignore empty folders)
+      // Add populated folders to the main tree (ignoring empty folders so they don't break the UI)
       folders.forEach((f: any) => {
         if (folderMap[f.id].children.length > 0) {
           tree.push(folderMap[f.id]);
@@ -163,7 +164,7 @@ const Header: React.FC<any> = ({
       return tree;
     }
 
-    // Standard simple flat menu
+    // If simple menu, just return the flat array
     return flatItems;
   }, [
     data.autoMenu,
@@ -176,7 +177,6 @@ const Header: React.FC<any> = ({
     username,
     pathPrefix,
   ]);
-
   // Scroll Listener
   useEffect(() => {
     const handleScroll = () => {
@@ -316,7 +316,7 @@ const Header: React.FC<any> = ({
     </div>
   );
 
-  // 🚀 UPGRADED: Desktop Nav now maps Folders correctly
+  // 🚀 UPGRADED: Desktop Nav now maps Folders correctly WITH an invisible hover bridge
   const DesktopNav = () => (
     <nav className="hidden md:flex items-center gap-1">
       {menuItems.map((item) => {
@@ -330,18 +330,22 @@ const Header: React.FC<any> = ({
                   className="group-hover:rotate-180 transition-transform duration-200"
                 />
               </button>
-              {/* Dropdown Card */}
-              <div className="absolute top-full left-0 mt-2 w-56 rounded-2xl bg-neutral-950/95 backdrop-blur-xl border border-white/10 shadow-2xl opacity-0 translate-y-2 pointer-events-none group-hover:opacity-100 group-hover:translate-y-0 group-hover:pointer-events-auto transition-all duration-200 overflow-hidden z-50">
-                <div className="p-2 flex flex-col gap-1">
-                  {item.children.map((child: any) => (
-                    <button
-                      key={child.id}
-                      onClick={() => handleNavClick(child)}
-                      className="text-left px-4 py-2.5 text-sm font-medium text-white/70 hover:text-white hover:bg-white/10 rounded-xl transition-colors"
-                    >
-                      {child.label}
-                    </button>
-                  ))}
+
+              {/* 🚀 THE FIX: The Invisible Bridge (pt-3 instead of mt-2) */}
+              <div className="absolute top-full left-0 pt-3 w-56 opacity-0 translate-y-2 pointer-events-none group-hover:opacity-100 group-hover:translate-y-0 group-hover:pointer-events-auto transition-all duration-200 z-50">
+                {/* The Actual Visual Card */}
+                <div className="rounded-2xl bg-neutral-950/95 backdrop-blur-xl border border-white/10 shadow-2xl overflow-hidden">
+                  <div className="p-2 flex flex-col gap-1">
+                    {item.children.map((child: any) => (
+                      <button
+                        key={child.id}
+                        onClick={() => handleNavClick(child)}
+                        className="text-left px-4 py-2.5 text-sm font-medium text-white/70 hover:text-white hover:bg-white/10 rounded-xl transition-colors"
+                      >
+                        {child.label}
+                      </button>
+                    ))}
+                  </div>
                 </div>
               </div>
             </div>
@@ -361,7 +365,6 @@ const Header: React.FC<any> = ({
       })}
     </nav>
   );
-
   const SocialLinks = () => (
     <div className="hidden md:flex items-center gap-3 px-3 text-white/70 shrink-0">
       {data.socialInstagram && (

@@ -58,6 +58,9 @@ import {
   Youtube,
   Lock,
   Layers,
+  Star,
+  LayoutTemplate,
+  Palette,
 } from "lucide-react";
 
 import PortfolioMediaManager, {
@@ -271,7 +274,7 @@ const SectionEditor: React.FC<SectionEditorProps> = ({
 
   const updateMenuConfig = (
     targetSectionId: string,
-    field: "visible" | "label",
+    field: "label" | "visible" | "folderId",
     value: any
   ) => {
     const currentConfig = formData.menuConfig || {};
@@ -920,9 +923,11 @@ const SectionEditor: React.FC<SectionEditorProps> = ({
                         </p>
                       </div>
                     </div>
-                    
+
                     <div className="space-y-2">
-                      <Label className="text-xs font-bold text-primary">1. Create Folders</Label>
+                      <Label className="text-xs font-bold text-primary">
+                        1. Create Folders
+                      </Label>
                       {(formData.megaMenuFolders || []).map(
                         (folder: any, i: number) => (
                           <div
@@ -977,103 +982,310 @@ const SectionEditor: React.FC<SectionEditorProps> = ({
 
                     {/* 🚀 NEW: LINK ASSIGNMENT UI */}
                     <div className="pt-4 mt-4 border-t border-primary/10 space-y-4">
-                      <Label className="text-xs font-bold text-primary">2. Assign Links to Folders</Label>
-                      
+                      <Label className="text-xs font-bold text-primary">
+                        2. Assign Links to Folders
+                      </Label>
+
                       {/* Mega Menu Pages */}
                       <div className="space-y-2">
-                        <Label className="text-[10px] uppercase text-muted-foreground">Pages</Label>
+                        <Label className="text-[10px] uppercase text-muted-foreground">
+                          Pages
+                        </Label>
                         <div className="flex items-center gap-2">
-                          <Switch checked={formData.menuConfig?.page_shop?.visible !== false} onCheckedChange={(c) => updateMenuConfig("page_shop", "visible", c)} />
-                          <Input value={formData.menuConfig?.page_shop?.label || "Shop"} onChange={(e) => updateMenuConfig("page_shop", "label", e.target.value)} disabled={formData.menuConfig?.page_shop?.visible === false} className="h-8 text-xs flex-1" />
-                          <Select value={formData.menuConfig?.page_shop?.folderId || "none"} onValueChange={(val) => updateMenuConfig("page_shop", "folderId", val === "none" ? null : val)}>
-                            <SelectTrigger className="w-[130px] h-8 text-xs bg-background"><SelectValue placeholder="Parent" /></SelectTrigger>
+                          <Switch
+                            checked={
+                              formData.menuConfig?.page_shop?.visible !== false
+                            }
+                            onCheckedChange={(c) =>
+                              updateMenuConfig("page_shop", "visible", c)
+                            }
+                          />
+                          <Input
+                            value={
+                              formData.menuConfig?.page_shop?.label || "Shop"
+                            }
+                            onChange={(e) =>
+                              updateMenuConfig(
+                                "page_shop",
+                                "label",
+                                e.target.value
+                              )
+                            }
+                            disabled={
+                              formData.menuConfig?.page_shop?.visible === false
+                            }
+                            className="h-8 text-xs flex-1"
+                          />
+                          <Select
+                            value={
+                              formData.menuConfig?.page_shop?.folderId || "none"
+                            }
+                            onValueChange={(val) =>
+                              updateMenuConfig(
+                                "page_shop",
+                                "folderId",
+                                val === "none" ? null : val
+                              )
+                            }
+                          >
+                            <SelectTrigger className="w-[130px] h-8 text-xs bg-background">
+                              <SelectValue placeholder="Parent" />
+                            </SelectTrigger>
                             <SelectContent>
                               <SelectItem value="none">No Folder</SelectItem>
-                              {megaFolders.map((f: any) => <SelectItem key={f.id} value={f.id}>{f.label || "Unnamed"}</SelectItem>)}
+                              {megaFolders.map((f: any) => (
+                                <SelectItem key={f.id} value={f.id}>
+                                  {f.label || "Unnamed"}
+                                </SelectItem>
+                              ))}
                             </SelectContent>
                           </Select>
                         </div>
-                        {(pages || []).filter((p) => !p.isHome).map((page) => {
-                          const configKey = `page_${page.id}`;
-                          const config = formData.menuConfig?.[configKey] || {};
-                          return (
-                            <div key={page.id} className="flex items-center gap-2">
-                              <Switch checked={config.visible !== false} onCheckedChange={(c) => updateMenuConfig(configKey, "visible", c)} />
-                              <Input value={config.label || page.title} onChange={(e) => updateMenuConfig(configKey, "label", e.target.value)} disabled={config.visible === false} className="h-8 text-xs flex-1" />
-                              <Select value={config.folderId || "none"} onValueChange={(val) => updateMenuConfig(configKey, "folderId", val === "none" ? null : val)}>
-                                <SelectTrigger className="w-[130px] h-8 text-xs bg-background"><SelectValue placeholder="Parent" /></SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="none">No Folder</SelectItem>
-                                  {megaFolders.map((f: any) => <SelectItem key={f.id} value={f.id}>{f.label || "Unnamed"}</SelectItem>)}
-                                </SelectContent>
-                              </Select>
-                            </div>
-                          );
-                        })}
+                        {(pages || [])
+                          .filter((p) => !p.isHome)
+                          .map((page) => {
+                            const configKey = `page_${page.id}`;
+                            const config =
+                              formData.menuConfig?.[configKey] || {};
+                            return (
+                              <div
+                                key={page.id}
+                                className="flex items-center gap-2"
+                              >
+                                <Switch
+                                  checked={config.visible !== false}
+                                  onCheckedChange={(c) =>
+                                    updateMenuConfig(configKey, "visible", c)
+                                  }
+                                />
+                                <Input
+                                  value={config.label || page.title}
+                                  onChange={(e) =>
+                                    updateMenuConfig(
+                                      configKey,
+                                      "label",
+                                      e.target.value
+                                    )
+                                  }
+                                  disabled={config.visible === false}
+                                  className="h-8 text-xs flex-1"
+                                />
+                                <Select
+                                  value={config.folderId || "none"}
+                                  onValueChange={(val) =>
+                                    updateMenuConfig(
+                                      configKey,
+                                      "folderId",
+                                      val === "none" ? null : val
+                                    )
+                                  }
+                                >
+                                  <SelectTrigger className="w-[130px] h-8 text-xs bg-background">
+                                    <SelectValue placeholder="Parent" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="none">
+                                      No Folder
+                                    </SelectItem>
+                                    {megaFolders.map((f: any) => (
+                                      <SelectItem key={f.id} value={f.id}>
+                                        {f.label || "Unnamed"}
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                            );
+                          })}
                       </div>
 
                       {/* Mega Menu Custom Links */}
                       <div className="space-y-2">
-                        <Label className="text-[10px] uppercase text-muted-foreground">Custom Links</Label>
-                        {(formData.customNavLinks || []).map((link: any, index: number) => (
-                          <div key={link.id} className="flex items-start gap-2 bg-background p-2 border rounded-md relative group shadow-sm">
-                            <Switch checked={link.visible !== false} className="mt-2" onCheckedChange={(c) => {
-                                const newLinks = formData.customNavLinks.map((l: any, i: number) => i === index ? { ...l, visible: c } : l);
-                                updateField("customNavLinks", newLinks);
-                              }} />
-                            <div className="flex-grow space-y-2">
-                              <div className="flex gap-2">
-                                <Input value={link.label} placeholder="Link Name" onChange={(e) => {
-                                    const newLinks = formData.customNavLinks.map((l: any, i: number) => i === index ? { ...l, label: e.target.value } : l);
-                                    updateField("customNavLinks", newLinks);
-                                  }} className="h-8 text-xs" />
-                                <Select value={link.folderId || "none"} onValueChange={(val) => {
-                                    const newLinks = formData.customNavLinks.map((l: any, i: number) => i === index ? { ...l, folderId: val === "none" ? null : val } : l);
-                                    updateField("customNavLinks", newLinks);
-                                  }}>
-                                  <SelectTrigger className="w-[130px] h-8 text-xs"><SelectValue placeholder="Parent" /></SelectTrigger>
-                                  <SelectContent>
-                                    <SelectItem value="none">No Folder</SelectItem>
-                                    {megaFolders.map((f: any) => <SelectItem key={f.id} value={f.id}>{f.label || "Unnamed"}</SelectItem>)}
-                                  </SelectContent>
-                                </Select>
-                              </div>
-                              <Input value={link.url} placeholder="https://..." onChange={(e) => {
-                                  const newLinks = formData.customNavLinks.map((l: any, i: number) => i === index ? { ...l, url: e.target.value } : l);
+                        <Label className="text-[10px] uppercase text-muted-foreground">
+                          Custom Links
+                        </Label>
+                        {(formData.customNavLinks || []).map(
+                          (link: any, index: number) => (
+                            <div
+                              key={link.id}
+                              className="flex items-start gap-2 bg-background p-2 border rounded-md relative group shadow-sm"
+                            >
+                              <Switch
+                                checked={link.visible !== false}
+                                className="mt-2"
+                                onCheckedChange={(c) => {
+                                  const newLinks = formData.customNavLinks.map(
+                                    (l: any, i: number) =>
+                                      i === index ? { ...l, visible: c } : l
+                                  );
                                   updateField("customNavLinks", newLinks);
-                                }} className="h-8 text-xs text-muted-foreground" />
+                                }}
+                              />
+                              <div className="flex-grow space-y-2">
+                                <div className="flex gap-2">
+                                  <Input
+                                    value={link.label}
+                                    placeholder="Link Name"
+                                    onChange={(e) => {
+                                      const newLinks =
+                                        formData.customNavLinks.map(
+                                          (l: any, i: number) =>
+                                            i === index
+                                              ? { ...l, label: e.target.value }
+                                              : l
+                                        );
+                                      updateField("customNavLinks", newLinks);
+                                    }}
+                                    className="h-8 text-xs"
+                                  />
+                                  <Select
+                                    value={link.folderId || "none"}
+                                    onValueChange={(val) => {
+                                      const newLinks =
+                                        formData.customNavLinks.map(
+                                          (l: any, i: number) =>
+                                            i === index
+                                              ? {
+                                                  ...l,
+                                                  folderId:
+                                                    val === "none" ? null : val,
+                                                }
+                                              : l
+                                        );
+                                      updateField("customNavLinks", newLinks);
+                                    }}
+                                  >
+                                    <SelectTrigger className="w-[130px] h-8 text-xs">
+                                      <SelectValue placeholder="Parent" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      <SelectItem value="none">
+                                        No Folder
+                                      </SelectItem>
+                                      {megaFolders.map((f: any) => (
+                                        <SelectItem key={f.id} value={f.id}>
+                                          {f.label || "Unnamed"}
+                                        </SelectItem>
+                                      ))}
+                                    </SelectContent>
+                                  </Select>
+                                </div>
+                                <Input
+                                  value={link.url}
+                                  placeholder="https://..."
+                                  onChange={(e) => {
+                                    const newLinks =
+                                      formData.customNavLinks.map(
+                                        (l: any, i: number) =>
+                                          i === index
+                                            ? { ...l, url: e.target.value }
+                                            : l
+                                      );
+                                    updateField("customNavLinks", newLinks);
+                                  }}
+                                  className="h-8 text-xs text-muted-foreground"
+                                />
+                              </div>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 text-destructive/50 hover:text-destructive absolute -right-2 -top-2 opacity-0 group-hover:opacity-100 transition-opacity bg-background border shadow-sm rounded-full"
+                                onClick={() => {
+                                  const newLinks =
+                                    formData.customNavLinks.filter(
+                                      (l: any) => l.id !== link.id
+                                    );
+                                  updateField("customNavLinks", newLinks);
+                                }}
+                              >
+                                <X size={14} />
+                              </Button>
                             </div>
-                            <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive/50 hover:text-destructive absolute -right-2 -top-2 opacity-0 group-hover:opacity-100 transition-opacity bg-background border shadow-sm rounded-full" onClick={() => {
-                                const newLinks = formData.customNavLinks.filter((l: any) => l.id !== link.id);
-                                updateField("customNavLinks", newLinks);
-                              }}><X size={14} /></Button>
-                          </div>
-                        ))}
-                        <Button variant="outline" size="sm" className="w-full border-dashed text-xs bg-background" onClick={() => {
+                          )
+                        )}
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="w-full border-dashed text-xs bg-background"
+                          onClick={() => {
                             const currentLinks = formData.customNavLinks || [];
-                            updateField("customNavLinks", [...currentLinks, { id: `link_${Date.now()}`, label: "", url: "", visible: true, folderId: null }]);
-                          }}><Plus className="w-4 h-4 mr-2" /> Add Custom Link</Button>
+                            updateField("customNavLinks", [
+                              ...currentLinks,
+                              {
+                                id: `link_${Date.now()}`,
+                                label: "",
+                                url: "",
+                                visible: true,
+                                folderId: null,
+                              },
+                            ]);
+                          }}
+                        >
+                          <Plus className="w-4 h-4 mr-2" /> Add Custom Link
+                        </Button>
                       </div>
 
                       {/* Mega Menu Sections */}
                       <div className="space-y-2">
-                        <Label className="text-[10px] uppercase text-muted-foreground">On-Page Sections</Label>
-                        {sections.filter((s: any) => s.type !== "header" && s.isVisible).map((s: any) => {
-                          const config = formData.menuConfig?.[s.id] || {};
-                          return (
-                            <div key={s.id} className="flex items-center gap-2">
-                              <Switch checked={config.visible !== false} onCheckedChange={(c) => updateMenuConfig(s.id, "visible", c)} />
-                              <Input value={config.label || s.data.title || s.type} onChange={(e) => updateMenuConfig(s.id, "label", e.target.value)} disabled={config.visible === false} className="h-8 text-xs flex-1" />
-                              <Select value={config.folderId || "none"} onValueChange={(val) => updateMenuConfig(s.id, "folderId", val === "none" ? null : val)}>
-                                <SelectTrigger className="w-[130px] h-8 text-xs bg-background"><SelectValue placeholder="Parent" /></SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="none">No Folder</SelectItem>
-                                  {megaFolders.map((f: any) => <SelectItem key={f.id} value={f.id}>{f.label || "Unnamed"}</SelectItem>)}
-                                </SelectContent>
-                              </Select>
-                            </div>
-                          );
-                        })}
+                        <Label className="text-[10px] uppercase text-muted-foreground">
+                          On-Page Sections
+                        </Label>
+                        {sections
+                          .filter(
+                            (s: any) => s.type !== "header" && s.isVisible
+                          )
+                          .map((s: any) => {
+                            const config = formData.menuConfig?.[s.id] || {};
+                            return (
+                              <div
+                                key={s.id}
+                                className="flex items-center gap-2"
+                              >
+                                <Switch
+                                  checked={config.visible !== false}
+                                  onCheckedChange={(c) =>
+                                    updateMenuConfig(s.id, "visible", c)
+                                  }
+                                />
+                                <Input
+                                  value={config.label || s.data.title || s.type}
+                                  onChange={(e) =>
+                                    updateMenuConfig(
+                                      s.id,
+                                      "label",
+                                      e.target.value
+                                    )
+                                  }
+                                  disabled={config.visible === false}
+                                  className="h-8 text-xs flex-1"
+                                />
+                                <Select
+                                  value={config.folderId || "none"}
+                                  onValueChange={(val) =>
+                                    updateMenuConfig(
+                                      s.id,
+                                      "folderId",
+                                      val === "none" ? null : val
+                                    )
+                                  }
+                                >
+                                  <SelectTrigger className="w-[130px] h-8 text-xs bg-background">
+                                    <SelectValue placeholder="Parent" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="none">
+                                      No Folder
+                                    </SelectItem>
+                                    {megaFolders.map((f: any) => (
+                                      <SelectItem key={f.id} value={f.id}>
+                                        {f.label || "Unnamed"}
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                            );
+                          })}
                       </div>
                     </div>
                   </div>
@@ -2068,258 +2280,592 @@ const SectionEditor: React.FC<SectionEditorProps> = ({
           </div>
         );
 
-      case "hero":
-        return (
-          <div className="space-y-6">
-            <div className="space-y-3 p-4 border rounded-lg bg-muted/20">
-              <Label>Hero Layout Style</Label>
-              <Select
-                value={formData.variant || "static"}
-                onValueChange={(val) => updateField("variant", val)}
-              >
-                <SelectTrigger className="bg-background">
-                  <SelectValue placeholder="Select Layout" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="static">Standard Image</SelectItem>
-                  <SelectItem value="video">
-                    Cinematic Video Background
-                  </SelectItem>
-                  <SelectItem value="slider" disabled>
-                    Vertical Slider (Coming Soon)
-                  </SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-4">
-              <div className="grid gap-2">
-                <Label>Eyebrow Label</Label>
-                <Input
-                  value={formData.label || ""}
-                  onChange={(e) => updateField("label", e.target.value)}
-                  placeholder="e.g. Welcome"
-                />
+        case "hero":
+          return (
+            <div className="space-y-6">
+              {/* --- LAYOUT & STYLE --- */}
+              <div className="space-y-4 p-4 border rounded-lg bg-muted/20">
+                <div className="flex items-center gap-2 mb-2 border-b pb-2">
+                  <LayoutTemplate size={16} className="text-primary" />
+                  <Label className="text-base font-semibold text-primary">
+                    Layout Architecture
+                  </Label>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>Hero Structure</Label>
+                    <Select
+                      value={formData.layout || "center"}
+                      onValueChange={(val) => updateField("layout", val)}
+                    >
+                      <SelectTrigger className="bg-background">
+                        <SelectValue placeholder="Select Layout" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="center">Immersive Center</SelectItem>
+                        <SelectItem value="split-left">
+                          Split (Text Left)
+                        </SelectItem>
+                        <SelectItem value="split-right">
+                          Split (Text Right)
+                        </SelectItem>
+                        <SelectItem value="bottom">Bottom Aligned</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Text Alignment</Label>
+                    <Select
+                      value={formData.alignment || "center"}
+                      onValueChange={(val) => updateField("alignment", val)}
+                    >
+                      <SelectTrigger className="bg-background">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="left">Left Aligned</SelectItem>
+                        <SelectItem value="center">Center Aligned</SelectItem>
+                        <SelectItem value="right">Right Aligned</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
               </div>
-              <div className="grid gap-2">
-                <Label>Main Headline</Label>
-                <Textarea
-                  value={formData.headline || ""}
-                  onChange={(e) => updateField("headline", e.target.value)}
-                  placeholder="Creative & Voice Actor"
-                  className="font-bold text-lg"
-                />
-              </div>
-              <div className="grid gap-2">
-                <Label>Subheadline</Label>
-                <Textarea
-                  value={formData.subheadline || ""}
-                  onChange={(e) => updateField("subheadline", e.target.value)}
-                  placeholder="Based in Los Angeles..."
-                />
-              </div>
-            </div>
-
-            <div className="space-y-4 pt-4 border-t">
-              <Label className="text-base font-semibold">
-                Background Media
-              </Label>
-
-              {formData.variant === "video" ? (
-                <div className="space-y-4 animate-in fade-in slide-in-from-top-2">
-                  <div className="grid gap-2">
-                    <Label>Video Source</Label>
-                    <div className="flex gap-2">
-                      <div className="relative flex-grow">
-                        <LinkIcon className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                        <Input
-                          value={formData.videoUrl || ""}
-                          onChange={(e) =>
-                            updateField("videoUrl", e.target.value)
-                          }
-                          placeholder="Paste link or select from library..."
-                          className="pl-9"
-                        />
-                      </div>
-                      <Button
-                        variant="secondary"
-                        type="button"
-                        onClick={() => {
-                          setActiveMediaField("videoUrl");
-                          setIsMediaPickerOpen(true);
-                        }}
-                        title="Select from Library"
+  
+              {/* --- CONTENT & TYPOGRAPHY --- */}
+              <div className="space-y-4 p-4 border rounded-lg bg-muted/5">
+                <Label className="text-base font-semibold">
+                  Content & Typography
+                </Label>
+                <div className="grid gap-2">
+                  <Label>Eyebrow Label (Small Top Text)</Label>
+                  <Input
+                    value={formData.label || ""}
+                    onChange={(e) => updateField("label", e.target.value)}
+                    placeholder="e.g. Welcome to my portfolio"
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <div className="flex items-center justify-between">
+                    <Label>Main Headline</Label>
+                    <div className="flex items-center gap-2">
+                      <Label
+                        className="text-[10px] text-muted-foreground cursor-pointer"
+                        htmlFor="typewriter"
                       >
-                        <Video className="h-4 w-4 mr-2" /> Library
-                      </Button>
+                        Typewriter Effect?
+                      </Label>
+                      <Switch
+                        id="typewriter"
+                        checked={formData.animateHeadline === true}
+                        onCheckedChange={(c) => updateField("animateHeadline", c)}
+                      />
                     </div>
-                    <p className="text-[11px] text-muted-foreground">
-                      Supports direct MP4 links or videos uploaded to your
-                      library.
+                  </div>
+                  <Textarea
+                    value={formData.headline || ""}
+                    onChange={(e) => updateField("headline", e.target.value)}
+                    placeholder="Creative & Voice Actor"
+                    className="font-bold text-lg h-20"
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label>Subheadline</Label>
+                  <Textarea
+                    value={formData.subheadline || ""}
+                    onChange={(e) => updateField("subheadline", e.target.value)}
+                    placeholder="Based in Los Angeles. Available for worldwide bookings."
+                    className="h-20"
+                  />
+                </div>
+              </div>
+  
+              {/* --- 🚀 NEW: TRUST SIGNALS (Conversion Booster) --- */}
+              <div className="space-y-4 p-4 border rounded-lg border-amber-500/20 bg-amber-500/5">
+                <div className="flex items-center justify-between border-b border-amber-500/10 pb-2">
+                  <div className="flex items-center gap-2">
+                    <Star size={16} className="text-amber-500 fill-amber-500" />
+                    <Label className="text-base font-semibold text-amber-700">
+                      Trust Badge
+                    </Label>
+                  </div>
+                  <Switch
+                    checked={formData.showTrustBadge === true}
+                    onCheckedChange={(checked) =>
+                      updateField("showTrustBadge", checked)
+                    }
+                  />
+                </div>
+                {formData.showTrustBadge && (
+                  <div className="grid gap-2 animate-in fade-in slide-in-from-top-2 pt-2">
+                    <Label className="text-amber-900">Badge Text</Label>
+                    <Input
+                      value={formData.trustText || "★★★★★ 5.0 from 100+ Reviews"}
+                      onChange={(e) => updateField("trustText", e.target.value)}
+                      placeholder="e.g. Trusted by 50+ Brands"
+                      className="border-amber-200 focus-visible:ring-amber-500"
+                    />
+                    <p className="text-[10px] text-amber-700/70">
+                      Appears directly above or below the primary Call to Action.
                     </p>
                   </div>
-                  <div className="p-3 border rounded-md bg-muted/10">
-                    <div className="flex items-center justify-between mb-2">
-                      <Label className="text-sm">
-                        Fallback Image (Mobile Poster)
-                      </Label>
-                      {formData.backgroundImage && (
-                        <span className="text-[10px] text-green-600 font-medium flex items-center gap-1">
-                          <span className="w-2 h-2 rounded-full bg-green-500" />{" "}
-                          Active
-                        </span>
-                      )}
+                )}
+              </div>
+  
+              {/* --- MEDIA BACKGROUND --- */}
+              <div className="space-y-4 p-4 border rounded-lg bg-muted/20">
+                <Label className="text-base font-semibold">
+                  Background Media
+                </Label>
+  
+                <div className="flex bg-muted/50 p-1 rounded-lg border mb-4">
+                  <button
+                    className={cn(
+                      "flex-1 text-xs font-semibold py-1.5 rounded-md transition-all",
+                      formData.variant !== "video" && formData.variant !== "color"
+                        ? "bg-background shadow-sm text-foreground"
+                        : "text-muted-foreground hover:text-foreground"
+                    )}
+                    onClick={() => updateField("variant", "static")}
+                  >
+                    <ImageIcon size={14} className="inline mr-2" /> Image
+                  </button>
+                  <button
+                    className={cn(
+                      "flex-1 text-xs font-semibold py-1.5 rounded-md transition-all",
+                      formData.variant === "video"
+                        ? "bg-background shadow-sm text-foreground"
+                        : "text-muted-foreground hover:text-foreground"
+                    )}
+                    onClick={() => updateField("variant", "video")}
+                  >
+                    <Video size={14} className="inline mr-2" /> Video
+                  </button>
+                  <button
+                    className={cn(
+                      "flex-1 text-xs font-semibold py-1.5 rounded-md transition-all",
+                      formData.variant === "color"
+                        ? "bg-background shadow-sm text-foreground"
+                        : "text-muted-foreground hover:text-foreground"
+                    )}
+                    onClick={() => updateField("variant", "color")}
+                  >
+                    <Palette size={14} className="inline mr-2" /> Color
+                  </button>
+                </div>
+  
+                {/* 🚀 OPTION 1: VIDEO (Upgraded for Mobile) */}
+                {formData.variant === "video" ? (
+                  <div className="space-y-4 animate-in fade-in slide-in-from-top-2">
+                    
+                    {/* Desktop Video Block */}
+                    <div className="grid gap-4 p-3 border rounded-md bg-background">
+                      <div className="grid gap-2">
+                        <Label className="flex items-center gap-2">
+                          <Monitor size={14} /> Desktop Video Source
+                        </Label>
+                        <div className="flex gap-2">
+                          <div className="relative flex-grow">
+                            <LinkIcon className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                            <Input
+                              value={formData.videoUrl || ""}
+                              onChange={(e) => updateField("videoUrl", e.target.value)}
+                              placeholder="Paste link or select from library..."
+                              className="pl-9"
+                            />
+                          </div>
+                          <Button
+                            variant="secondary"
+                            type="button"
+                            onClick={() => {
+                              setActiveMediaField("videoUrl");
+                              setIsMediaPickerOpen(true);
+                            }}
+                            title="Select from Library"
+                          >
+                            <Video className="h-4 w-4 mr-2" /> Library
+                          </Button>
+                        </div>
+                        <p className="text-[10px] text-muted-foreground">
+                          Supports direct MP4 links or YouTube videos.
+                        </p>
+                      </div>
+  
+                      <div className="grid gap-2 pt-2 border-t">
+                        <Label className="text-xs">Desktop Poster (Fallback)</Label>
+                        <div className="flex gap-2 items-center">
+                          {formData.backgroundImage && (
+                            <div className="h-9 w-9 rounded overflow-hidden border shrink-0 bg-muted relative group">
+                              <img src={formData.backgroundImage} className="h-full w-full object-cover" alt="preview" />
+                            </div>
+                          )}
+                          <Button
+                            variant="outline" size="sm" className="flex-grow justify-start"
+                            onClick={() => {
+                              setActiveMediaField("backgroundImage");
+                              setIsMediaPickerOpen(true);
+                            }}
+                          >
+                            <ImageIcon className="h-4 w-4 mr-2" />{" "}
+                            {formData.backgroundImage ? "Change Poster" : "Select Poster Image"}
+                          </Button>
+                          {formData.backgroundImage && (
+                            <Button
+                              variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:bg-destructive/10 shrink-0"
+                              onClick={() => updateField("backgroundImage", "")}
+                              title="Remove Image"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          )}
+                        </div>
+                      </div>
                     </div>
-                    <div className="flex gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="flex-grow justify-start"
-                        onClick={() => {
-                          setActiveMediaField("backgroundImage");
-                          setIsMediaPickerOpen(true);
-                        }}
-                      >
-                        <ImageIcon className="h-4 w-4 mr-2" />{" "}
-                        {formData.backgroundImage
-                          ? "Change Poster Image"
-                          : "Select Poster Image"}
-                      </Button>
-                      {formData.backgroundImage && (
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-9 w-9 text-destructive hover:bg-destructive/10"
-                          onClick={() => updateField("backgroundImage", "")}
-                          title="Remove Image"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
+  
+                    {/* Mobile Video Block */}
+                    <div className="grid gap-4 p-3 border rounded-md bg-background">
+                      <div className="grid gap-2">
+                        <Label className="flex items-center gap-2">
+                          <Smartphone size={14} /> Mobile Video (Optional)
+                        </Label>
+                        <p className="text-[10px] text-muted-foreground mb-1">
+                          Upload a vertical reel specifically for phones.
+                        </p>
+                        <div className="flex gap-2">
+                          <div className="relative flex-grow">
+                            <LinkIcon className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                            <Input
+                              value={formData.mobileVideoUrl || ""}
+                              onChange={(e) => updateField("mobileVideoUrl", e.target.value)}
+                              placeholder="Vertical video link..."
+                              className="pl-9"
+                            />
+                          </div>
+                          <Button
+                            variant="secondary" type="button"
+                            onClick={() => {
+                              setActiveMediaField("mobileVideoUrl");
+                              setIsMediaPickerOpen(true);
+                            }}
+                          >
+                            <Video className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </div>
+  
+                      {!formData.mobileVideoUrl ? (
+                        <div className="grid gap-2 pt-2 border-t">
+                          <Label className="text-xs">Desktop Video Fit (On Mobile)</Label>
+                          <Select
+                            value={formData.mobileVideoFit || "cover"}
+                            onValueChange={(val) => updateField("mobileVideoFit", val)}
+                          >
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="cover">Crop to Fill Screen (Default)</SelectItem>
+                              <SelectItem value="fill">Stretch to Fill Screen</SelectItem>
+                              <SelectItem value="contain">Show Original (Letterbox)</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      ) : (
+                        <div className="grid gap-2 pt-2 border-t">
+                          <Label className="text-xs">Mobile Poster (Fallback)</Label>
+                          <div className="flex gap-2 items-center">
+                            {formData.mobileBackgroundImage && (
+                              <div className="h-9 w-6 rounded overflow-hidden border shrink-0 bg-muted relative group">
+                                <img src={formData.mobileBackgroundImage} className="h-full w-full object-cover" alt="preview" />
+                              </div>
+                            )}
+                            <Button
+                              variant="outline" size="sm" className="flex-grow justify-start"
+                              onClick={() => {
+                                setActiveMediaField("mobileBackgroundImage");
+                                setIsMediaPickerOpen(true);
+                              }}
+                            >
+                              <ImageIcon className="h-4 w-4 mr-2" />{" "}
+                              {formData.mobileBackgroundImage ? "Change Mobile Poster" : "Select Mobile Poster"}
+                            </Button>
+                            {formData.mobileBackgroundImage && (
+                              <Button
+                                variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:bg-destructive/10 shrink-0"
+                                onClick={() => updateField("mobileBackgroundImage", "")}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            )}
+                          </div>
+                        </div>
                       )}
                     </div>
                   </div>
-                </div>
-              ) : (
-                <div className="grid gap-2 animate-in fade-in slide-in-from-top-2">
-                  <Label>Background Image</Label>
-                  <div className="flex gap-2 items-center">
-                    {formData.backgroundImage && (
-                      <div className="h-9 w-9 rounded overflow-hidden border shrink-0 bg-muted relative group cursor-pointer">
-                        <img
-                          src={formData.backgroundImage}
-                          className="h-full w-full object-cover"
-                          alt="preview"
-                        />
+                ) : /* 🚀 OPTION 2: COLOR / GRADIENT */
+                formData.variant === "color" ? (
+                  <div className="space-y-4 animate-in fade-in slide-in-from-top-2 p-3 border rounded-md bg-background">
+                    <div className="space-y-2">
+                      <Label>Background Type</Label>
+                      <Select
+                        value={formData.colorType || "solid"}
+                        onValueChange={(val) => updateField("colorType", val)}
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="solid">Solid Color</SelectItem>
+                          <SelectItem value="gradient">
+                            Creative Gradient
+                          </SelectItem>
+                          <SelectItem value="mesh">
+                            Animated Glass Mesh
+                          </SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+  
+                    {formData.colorType === "solid" ? (
+                      <div className="space-y-2 pt-2">
+                        <Label className="text-xs">Select Color</Label>
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="color"
+                            value={formData.backgroundColor || "#000000"}
+                            onChange={(e) =>
+                              updateField("backgroundColor", e.target.value)
+                            }
+                            className="h-8 w-8 rounded cursor-pointer border"
+                          />
+                          <Input
+                            value={formData.backgroundColor || "#000000"}
+                            onChange={(e) =>
+                              updateField("backgroundColor", e.target.value)
+                            }
+                            className="h-8 font-mono text-xs uppercase"
+                          />
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="space-y-4 pt-3 border-t">
+                        <Label className="text-xs font-bold text-primary">
+                          Custom Gradient Colors
+                        </Label>
+                        <div className="grid grid-cols-2 gap-4">
+                          <div className="space-y-2">
+                            <Label className="text-[10px] text-muted-foreground uppercase tracking-wider">
+                              Color 1
+                            </Label>
+                            <div className="flex items-center gap-2">
+                              <input
+                                type="color"
+                                value={formData.gradientColor1 || "#0f172a"}
+                                onChange={(e) =>
+                                  updateField("gradientColor1", e.target.value)
+                                }
+                                className="h-8 w-8 rounded cursor-pointer border"
+                              />
+                              <Input
+                                value={formData.gradientColor1 || "#0f172a"}
+                                onChange={(e) =>
+                                  updateField("gradientColor1", e.target.value)
+                                }
+                                className="h-8 font-mono text-[10px] uppercase px-2"
+                              />
+                            </div>
+                          </div>
+                          <div className="space-y-2">
+                            <Label className="text-[10px] text-muted-foreground uppercase tracking-wider">
+                              Color 2
+                            </Label>
+                            <div className="flex items-center gap-2">
+                              <input
+                                type="color"
+                                value={formData.gradientColor2 || "#3b82f6"}
+                                onChange={(e) =>
+                                  updateField("gradientColor2", e.target.value)
+                                }
+                                className="h-8 w-8 rounded cursor-pointer border"
+                              />
+                              <Input
+                                value={formData.gradientColor2 || "#3b82f6"}
+                                onChange={(e) =>
+                                  updateField("gradientColor2", e.target.value)
+                                }
+                                className="h-8 font-mono text-[10px] uppercase px-2"
+                              />
+                            </div>
+                          </div>
+                        </div>
+                        {formData.colorType === "mesh" && (
+                          <p className="text-[10px] text-muted-foreground">
+                            The mesh animation will smoothly loop between these
+                            two colors.
+                          </p>
+                        )}
                       </div>
                     )}
-                    <Button
-                      variant="outline"
-                      className="flex-grow justify-start"
-                      onClick={() => {
-                        setActiveMediaField("backgroundImage");
-                        setIsMediaPickerOpen(true);
-                      }}
-                    >
-                      <ImageIcon className="h-4 w-4 mr-2" />{" "}
-                      {formData.backgroundImage
-                        ? "Change Background Image"
-                        : "Select Background Image"}
-                    </Button>
-                    {formData.backgroundImage && (
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-10 w-10 text-destructive hover:bg-destructive/10 shrink-0"
-                        onClick={() => updateField("backgroundImage", "")}
-                        title="Remove Image"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    )}
                   </div>
-                </div>
-              )}
-
-              <div className="grid gap-4 pt-2">
-                <div className="flex justify-between">
-                  <Label>Overlay Darkness</Label>
-                  <span className="text-xs text-muted-foreground">
-                    {formData.overlayOpacity || 60}%
-                  </span>
-                </div>
-                <Slider
-                  value={[formData.overlayOpacity || 60]}
-                  max={95}
-                  step={5}
-                  onValueChange={([val]: [number]) =>
-                    updateField("overlayOpacity", val)
-                  }
-                />
-              </div>
-            </div>
-
-            <div className="space-y-4 pt-2 border-t">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="grid gap-2">
-                  <Label>Button Text</Label>
-                  <Input
-                    value={formData.ctaText || ""}
-                    onChange={(e) => updateField("ctaText", e.target.value)}
+                ) : (
+                  /* 🚀 OPTION 3: STATIC IMAGE */
+                  <div className="space-y-4 animate-in fade-in slide-in-from-top-2">
+                    <div className="grid gap-2 p-3 border rounded-md bg-background">
+                      <Label className="flex items-center gap-2">
+                        <Monitor size={14} /> Desktop Background Image
+                      </Label>
+                      <div className="flex gap-2 items-center">
+                        {formData.backgroundImage && (
+                          <div className="h-9 w-9 rounded overflow-hidden border shrink-0 bg-muted relative group">
+                            <img
+                              src={formData.backgroundImage}
+                              className="h-full w-full object-cover"
+                              alt="preview"
+                            />
+                          </div>
+                        )}
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="flex-grow justify-start"
+                          onClick={() => {
+                            setActiveMediaField("backgroundImage");
+                            setIsMediaPickerOpen(true);
+                          }}
+                        >
+                          <ImageIcon className="h-4 w-4 mr-2" />{" "}
+                          {formData.backgroundImage
+                            ? "Change Desktop Image"
+                            : "Select Image"}
+                        </Button>
+                        {formData.backgroundImage && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-destructive hover:bg-destructive/10 shrink-0"
+                            onClick={() => updateField("backgroundImage", "")}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+  
+                    <div className="grid gap-2 p-3 border rounded-md bg-background">
+                      <div className="flex justify-between items-center">
+                        <Label className="flex items-center gap-2">
+                          <Smartphone size={14} /> Mobile Background (Optional)
+                        </Label>
+                      </div>
+                      <p className="text-[10px] text-muted-foreground mb-1">
+                        Upload a vertical image so faces/subjects aren't cropped
+                        out on phones.
+                      </p>
+                      <div className="flex gap-2 items-center">
+                        {formData.mobileBackgroundImage && (
+                          <div className="h-9 w-6 rounded overflow-hidden border shrink-0 bg-muted relative group">
+                            <img
+                              src={formData.mobileBackgroundImage}
+                              className="h-full w-full object-cover"
+                              alt="preview"
+                            />
+                          </div>
+                        )}
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="flex-grow justify-start"
+                          onClick={() => {
+                            setActiveMediaField("mobileBackgroundImage");
+                            setIsMediaPickerOpen(true);
+                          }}
+                        >
+                          <ImageIcon className="h-4 w-4 mr-2" />{" "}
+                          {formData.mobileBackgroundImage
+                            ? "Change Mobile Image"
+                            : "Select Mobile Image"}
+                        </Button>
+                        {formData.mobileBackgroundImage && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-destructive hover:bg-destructive/10 shrink-0"
+                            onClick={() =>
+                              updateField("mobileBackgroundImage", "")
+                            }
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
+  
+                <div className="grid gap-4 pt-4 border-t">
+                  <div className="flex justify-between">
+                    <Label>Overlay Darkness</Label>
+                    <span className="text-xs text-muted-foreground">
+                      {formData.overlayOpacity || 60}%
+                    </span>
+                  </div>
+                  <Slider
+                    value={[formData.overlayOpacity || 60]}
+                    max={95}
+                    step={5}
+                    onValueChange={([val]: [number]) =>
+                      updateField("overlayOpacity", val)
+                    }
                   />
                 </div>
-                <div className="grid gap-2">
-                  <Label>Button Link</Label>
-                  <Input
-                    value={formData.ctaLink || ""}
-                    onChange={(e) => updateField("ctaLink", e.target.value)}
-                  />
-                </div>
               </div>
-
-              {formData.variant === "video" && (
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="grid gap-2">
-                    <Label>Secondary Button</Label>
+  
+              {/* --- CALL TO ACTION --- */}
+              <div className="space-y-4 p-4 border rounded-lg bg-muted/5">
+                <Label className="text-base font-semibold">
+                  Call to Action Buttons
+                </Label>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="grid gap-2 border p-3 rounded bg-background">
+                    <Label className="text-xs font-bold text-primary">
+                      Primary Button
+                    </Label>
+                    <Input
+                      value={formData.ctaText || ""}
+                      onChange={(e) => updateField("ctaText", e.target.value)}
+                      placeholder="e.g. Book Me"
+                      className="h-8 text-sm"
+                    />
+                    <Input
+                      value={formData.ctaLink || ""}
+                      onChange={(e) => updateField("ctaLink", e.target.value)}
+                      placeholder="/contact"
+                      className="h-8 text-sm"
+                    />
+                  </div>
+                  <div className="grid gap-2 border p-3 rounded bg-background">
+                    <Label className="text-xs font-bold">Secondary Button</Label>
                     <Input
                       value={formData.secondaryCtaText || ""}
                       onChange={(e) =>
                         updateField("secondaryCtaText", e.target.value)
                       }
                       placeholder="e.g. Watch Reel"
+                      className="h-8 text-sm"
                     />
-                  </div>
-                  <div className="grid gap-2">
-                    <Label>Secondary Link</Label>
                     <Input
                       value={formData.secondaryCtaLink || ""}
                       onChange={(e) =>
                         updateField("secondaryCtaLink", e.target.value)
                       }
+                      placeholder="#reel"
+                      className="h-8 text-sm"
                     />
                   </div>
                 </div>
-              )}
-
-              <div className="grid gap-2">
-                <Label>Text Alignment</Label>
-                <Select
-                  value={formData.alignment || "center"}
-                  onValueChange={(val) => updateField("alignment", val)}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="left">Left Aligned</SelectItem>
-                    <SelectItem value="center">Center Aligned</SelectItem>
-                    <SelectItem value="right">Right Aligned</SelectItem>
-                  </SelectContent>
-                </Select>
               </div>
             </div>
-          </div>
-        );
-
+          );
       case "team":
         return (
           <div className="space-y-6">
