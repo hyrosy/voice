@@ -18,7 +18,7 @@ export default defineConfig({
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
-      "@ucp/sdk": path.resolve(__dirname, "./src/lib/ucp-sdk.tsx"),
+      "@ucp/sdk": path.resolve(__dirname, "./src/lib/ucp-sdk/index.ts"),
     },
   },
   /* --- END OF ADDITION --- */

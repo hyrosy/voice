@@ -24,8 +24,8 @@
     "baseUrl": ".",
     "paths": {
       "@/*": ["src/*"],
-      "@ucp/sdk": ["./src/lib/ucp-sdk.tsx"]
-    }
+      "@ucp/sdk": ["./src/lib/ucp-sdk/index.ts"],
+        }
     /* --- END OF ADDITION --- */
   },
   "include": ["src"]

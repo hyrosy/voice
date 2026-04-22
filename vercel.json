@@ -1,19 +1,24 @@
 {
   "cleanUrls": true,
+  "trailingSlash": false,
   "rewrites": [
+    {
+      "source": "/api/(.*)",
+      "destination": "/api/$1"
+    },
     {
       "source": "/(.*)",
       "has": [
         {
           "type": "header",
           "key": "user-agent",
-          "value": "(.*(?:bot|facebook|twitter|whatsapp|telegram|discord|slack|linkedin|skype|google|bing|applebot|imessage).*)"
+          "value": "(.*(?:bot|facebookexternalhit|twitterbot|whatsapp|telegrambot|discordbot|slackbot|linkedinbot|googlebot|bingbot|applebot).*)"
         }
       ],
       "destination": "/api/edge-seo"
     },
     {
-      "source": "/(.*)",
+      "source": "/((?!api/|assets/|_next/|favicon.ico).* )",
       "destination": "/index.html"
     }
   ],

@@ -3,15 +3,11 @@
 // ==========================================
 // 1. THE BASE CONTRACT (Shared by all)
 // ==========================================
-// Every single section in your app will automatically get these props.
-// "TSettings" allows the developer to define their own custom config types.
 export interface BaseSectionProps<TSettings = Record<string, any>> {
   id: string;
   isVisible: boolean;
-
-  // ZONE B: The "Experience" Data
-  // This is where the developer's custom schema data lives (e.g., "glitchEffect": true)
-  settings: TSettings;
+  isPreview?: boolean; // 🚀 ADDED THIS: Tells the component if it's in the builder!
+  settings: TSettings; // Developer's custom schema data (e.g., "glitchEffect": true)
 }
 
 // ==========================================
@@ -19,29 +15,107 @@ export interface BaseSectionProps<TSettings = Record<string, any>> {
 // ==========================================
 
 // --- HEADER SECTION ---
-// PURPOSE: Navigation and Identity
 export interface HeaderCoreData {
-  title: string; // e.g., "Raja Alem"
-  subtitle?: string; // e.g., "Professional Voice Actor"
-  logoUrl?: string;
-  navLinks: Array<{ label: string; url: string }>;
+  // Branding
+  logoText?: string;
+  logoImage?: string;
+  logoHeight?: number;
+  mobileLogoHeight?: number;
+
+  // Layout & Style
+  variant?: "transparent" | "centered" | "floating";
+  isSticky?: boolean;
+
+  // Announcement Bar
+  showAnnouncement?: boolean;
+  announcements?: Array<{ id: string; text: string; link?: string }>;
+  announcementBgColor?: string;
+  announcementTextColor?: string;
+  announcementMarquee?: boolean;
+
+  // Mega Menu & Navigation
+  autoMenu?: boolean;
+  menuType?: "simple" | "mega";
+  megaMenuFolders?: Array<{ id: string; label: string }>;
+  menuConfig?: Record<
+    string,
+    { label?: string; visible?: boolean; folderId?: string | null }
+  >;
+  customNavLinks?: Array<{
+    id: string;
+    label: string;
+    url: string;
+    visible?: boolean;
+    folderId?: string | null;
+  }>;
+
+  // Social Links
+  socialInstagram?: string;
+  socialTwitter?: string;
+  socialYoutube?: string;
+  socialImdb?: string;
+
+  // Call to Action
+  ctaText?: string;
+  ctaLink?: string;
 }
-// The Type the Developer uses:
 export type HeaderSectionProps = BaseSectionProps & { data: HeaderCoreData };
 
+// --- 🚀 HERO SECTION (NEWLY ADDED) ---
+export interface HeroCoreData {
+  // Layout Architecture
+  layout?: "center" | "split-left" | "split-right" | "bottom";
+  alignment?: "left" | "center" | "right";
+
+  // Content & Typography
+  label?: string; // Eyebrow
+  headline?: string;
+  animateHeadline?: boolean;
+  subheadline?: string;
+
+  // Trust Signals
+  showTrustBadge?: boolean;
+  trustText?: string;
+
+  // Background Media Engine
+  variant?: "static" | "video" | "color";
+
+  // Video Options
+  videoUrl?: string;
+  mobileVideoUrl?: string;
+  mobileVideoFit?: "cover" | "fill" | "contain";
+
+  // Color & Gradient Options
+  colorType?: "solid" | "gradient" | "mesh";
+  backgroundColor?: string;
+  gradientColor1?: string;
+  gradientColor2?: string;
+  gradientTheme?: "aurora" | "sunset" | "ocean" | "cyberpunk";
+
+  // Static Image Options
+  backgroundImage?: string; // Desktop Poster/Image
+  mobileBackgroundImage?: string; // Mobile Art Direction
+  overlayOpacity?: number;
+
+  // Call to Action
+  ctaText?: string;
+  ctaLink?: string;
+  secondaryCtaText?: string;
+  secondaryCtaLink?: string;
+}
+export type HeroSectionProps = BaseSectionProps & { data: HeroCoreData };
+
 // --- BIO SECTION ---
-// PURPOSE: Introduction and Personal Details
 export interface BioCoreData {
   actorName: string;
-  bioText: string; // Rich text or plain text
+  bioText: string;
   headshotUrl: string;
-  resumeUrl?: string; // Optional downloadable resume
-  stats?: Array<{ label: string; value: string }>; // e.g., "Height: 5'9", "Eyes: Brown"
+  resumeUrl?: string;
+  stats?: Array<{ label: string; value: string }>;
 }
 export type BioSectionProps = BaseSectionProps & { data: BioCoreData };
 
 // --- GALLERY SECTION ---
-// PURPOSE: Photo Grid / Carousel
 export interface GalleryItem {
   id: string;
   url: string;
@@ -57,11 +131,10 @@ export interface GalleryCoreData {
 export type GallerySectionProps = BaseSectionProps & { data: GalleryCoreData };
 
 // --- VIDEO / DEMO REEL SECTION ---
-// PURPOSE: Showcasing work
 export interface VideoReelCoreData {
   title: string;
-  videoUrl: string; // YouTube/Vimeo/Supabase URL
-  posterUrl?: string; // Cover image
+  videoUrl: string;
+  posterUrl?: string;
   duration?: string;
 }
 export type VideoReelSectionProps = BaseSectionProps & {
@@ -69,14 +142,13 @@ export type VideoReelSectionProps = BaseSectionProps & {
 };
 
 // --- SERVICES / PRICING SECTION ---
-// PURPOSE: Selling skills or packages
 export interface ServiceItem {
   id: string;
-  title: string; // e.g., "Commercial Voiceover"
-  price?: string; // e.g., "$200/hr"
+  title: string;
+  price?: string;
   description: string;
   features?: string[];
-  bookingUrl?: string; // If this service links to a specific order page
+  bookingUrl?: string;
 }
 export interface ServicesCoreData {
   title: string;
@@ -88,15 +160,12 @@ export type ServicesSectionProps = BaseSectionProps & {
 };
 
 // --- CONTACT SECTION ---
-// PURPOSE: Lead generation
 export interface ContactCoreData {
   title: string;
   email: string;
   phone?: string;
-  location?: string; // e.g., "Marrakesh, Morocco"
+  location?: string;
   socialLinks?: Array<{ platform: string; url: string; icon?: string }>;
-
-  // The Logic Hook: The developer MUST use this to handle form submission
   onSendMessage?: (message: {
     name: string;
     email: string;
@@ -106,7 +175,6 @@ export interface ContactCoreData {
 export type ContactSectionProps = BaseSectionProps & { data: ContactCoreData };
 
 // --- LEGACY SHOP SECTION ---
-// PURPOSE: Simple static products and preset digital downloads
 export interface LegacyShopProduct {
   title: string;
   price: string;
@@ -114,27 +182,21 @@ export interface LegacyShopProduct {
   buttonText: string;
   link: string;
 }
-
 export interface ShopCoreData {
   title: string;
   subheadline?: string;
   variant?: "grid" | "carousel" | "spotlight";
   products: LegacyShopProduct[];
 }
-
 export type ShopSectionProps = BaseSectionProps & { data: ShopCoreData };
 
-// --- DYNAMIC STORE SECTION (NEW) ---
-// PURPOSE: Full E-commerce storefront linked to the pro_products database
+// --- DYNAMIC STORE SECTION ---
 export interface DynamicStoreCoreData {
   title: string;
   subtitle?: string;
   layout?: "grid" | "carousel";
   maxProductsToShow?: number;
 }
-
-// Note: We don't put the actual products in this CoreData because
-// they are fetched dynamically from the Supabase database!
 export type DynamicStoreSectionProps = BaseSectionProps & {
   data: DynamicStoreCoreData;
 };
