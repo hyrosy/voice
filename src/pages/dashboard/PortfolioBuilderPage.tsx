@@ -399,7 +399,27 @@ const PortfolioBuilderPage = () => {
   const [isPurchasingTheme, setIsPurchasingTheme] = useState<string | null>(
     null
   );
+  const handleTogglePublish = async (checked: boolean) => {
+    if (!activePortfolioId) return;
 
+    // 1. Update the UI instantly so it feels responsive
+    setIsPublished(checked);
+
+    // 2. Fire the update directly to Supabase
+    const { error } = await supabase
+      .from("portfolios")
+      .update({
+        is_published: checked,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", activePortfolioId);
+
+    if (error) {
+      console.error("Publish error:", error);
+      alert("Failed to update publish status.");
+      setIsPublished(!checked); // Revert the UI if the database failed
+    }
+  };
   // FETCH GLOBAL INVENTORY (Actor Table)
   // FETCH GLOBAL INVENTORY (Actor Table)
   const { data: actorWalletData, refetch: fetchActorWallet } = useQuery({
@@ -1161,7 +1181,10 @@ const PortfolioBuilderPage = () => {
             <span className="text-xs font-medium uppercase text-muted-foreground">
               Published
             </span>
-            <Switch checked={isPublished} onCheckedChange={setIsPublished} />
+            <Switch
+              checked={isPublished}
+              onCheckedChange={handleTogglePublish}
+            />
           </div>
 
           {/* 🚀 FIXED DIV NESTING HERE */}

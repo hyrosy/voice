@@ -391,8 +391,6 @@ const SectionEditor: React.FC<SectionEditorProps> = ({
       );
     }
 
-    const settingsData = section.settings || {};
-
     return (
       <div className="space-y-6 animate-in fade-in">
         {schema.map((field: any) => (
