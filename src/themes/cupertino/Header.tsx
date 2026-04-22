@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from "react";
-import { Link, useNavigate, useParams, useLocation } from "react-router-dom";
 import {
   Menu,
   X,
@@ -12,14 +11,12 @@ import {
   ChevronDown,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useCartStore } from "@/store/useCartStore";
 import { UCP } from "@ucp/sdk"; // 🚀 The Platform SDK
 import type { HeaderSectionProps } from "@/types/sections";
 
 // ==========================================
 // 1. THEME CUSTOM SCHEMA
 // ==========================================
-// The dev ONLY defines their unique visual tweaks here.
 export const schema = [
   {
     id: "glassStrength",
@@ -54,137 +51,35 @@ export const schema = [
 // ==========================================
 // 2. THE COMPONENT
 // ==========================================
-export default function Header({
+export default function CupertinoHeader({
   data,
-  settings = {}, // 🚀 Developer's custom schema data
+  settings = {},
   allSections,
+  theme,
   isPreview,
   id,
-  theme,
-  themeConfig,
 }: HeaderSectionProps & any) {
-  // '& any' allows standard router props to pass through
+  // --- 🚀 PLATFORM SDK (The Heavy Lifting) ---
+  const { isScrolled } = UCP.useScrollObserver(20);
+  const { cartCount, openCart } = UCP.useCart();
+  const { menuTree, handleNavClick } = UCP.useNavigationTree({
+    data,
+    allSections,
+    theme,
+    isPreview,
+  });
 
-  // --- PLATFORM STATE & HOOKS (Do not modify) ---
+  // --- THEME LOCAL STATE ---
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [isScrolled, setIsScrolled] = useState(false);
-  const [activeAnnIndex, setActiveAnnIndex] = useState(0);
   const [expandedFolders, setExpandedFolders] = useState<string[]>([]);
-
-  // Theme Specific State
   const [isHidden, setIsHidden] = useState(false);
   const [lastScrollY, setLastScrollY] = useState(0);
+  const [activeAnnIndex, setActiveAnnIndex] = useState(0);
 
-  const sections = allSections || [];
-  const { openCart, getCartCount } = useCartStore();
-  const cartCount = getCartCount();
-  const navigate = useNavigate();
-  const location = useLocation();
-  const params = useParams<{ slug?: string; username?: string }>();
-
-  const activeTheme = theme || themeConfig || {};
-  const customPages = activeTheme.customPages || data.customPages || [];
-  const username =
-    params.slug ||
-    params.username ||
-    activeTheme.publicSlug ||
-    data.publicSlug ||
-    "portfolio";
-  const pathPrefix = location.pathname.startsWith("/pro") ? "/pro" : "";
-
-  // --- PLATFORM LOGIC: Mega Menu Compiler ---
-  const menuItems = React.useMemo(() => {
-    const flatItems: Array<any> = [];
-    const config = data.menuConfig || {};
-    const isMegaMenu = data.menuType === "mega";
-
-    if (!config.page_shop || config.page_shop.visible !== false) {
-      flatItems.push({
-        label: config.page_shop?.label || "Shop",
-        id: "system_shop",
-        type: "page",
-        url: `${pathPrefix}/${username}/shop`,
-        folderId: config.page_shop?.folderId,
-      });
-    }
-
-    customPages
-      .filter((p: any) => !p.isHome)
-      .forEach((p: any) => {
-        const pageConfig = config[`page_${p.id}`];
-        if (!pageConfig || pageConfig.visible !== false) {
-          flatItems.push({
-            label: pageConfig?.label || p.title,
-            id: p.id,
-            type: "page",
-            url: `${pathPrefix}/${username}/${p.slug}`,
-            folderId: pageConfig?.folderId,
-          });
-        }
-      });
-
-    const customNavLinks = data.customNavLinks || [];
-    customNavLinks.forEach((link: any) => {
-      if (link.label && link.url && link.visible !== false)
-        flatItems.push({ ...link, type: "custom_link" });
-    });
-
-    sections
-      .filter((s: any) => s.isVisible && s.type !== "header")
-      .forEach((s: any) => {
-        const secConfig = config[s.id];
-        if (data.autoMenu !== false) {
-          if (s.data.title)
-            flatItems.push({
-              label: s.data.title || s.type,
-              id: s.id,
-              type: "section",
-              folderId: secConfig?.folderId,
-            });
-        } else {
-          if (!secConfig || secConfig.visible !== false) {
-            flatItems.push({
-              label: secConfig?.label || s.data.title || s.type,
-              id: s.id,
-              type: "section",
-              folderId: secConfig?.folderId,
-            });
-          }
-        }
-      });
-
-    if (isMegaMenu) {
-      const folders = data.megaMenuFolders || [];
-      const tree: Array<any> = [];
-      const folderMap: Record<string, any> = {};
-      folders.forEach((f: any) => {
-        folderMap[f.id] = {
-          label: f.label,
-          id: f.id,
-          type: "folder",
-          children: [],
-        };
-      });
-      flatItems.forEach((item) => {
-        if (item.folderId && folderMap[item.folderId])
-          folderMap[item.folderId].children.push(item);
-        else tree.push(item);
-      });
-      folders.forEach((f: any) => {
-        if (folderMap[f.id].children.length > 0) tree.push(folderMap[f.id]);
-      });
-      return tree;
-    }
-    return flatItems;
-  }, [data, sections, customPages, username, pathPrefix]);
-
-  // --- PLATFORM LOGIC: Scroll & Interactions ---
+  // --- SMART HIDE LOGIC (Theme Specific) ---
   useEffect(() => {
     const handleScroll = () => {
       const scrollY = window.scrollY || document.documentElement.scrollTop;
-      setIsScrolled(scrollY > 20);
-
-      // 🚀 THEME LOGIC: Smart Hide using settings
       if (
         settings.hideOnScroll !== false &&
         scrollY > lastScrollY &&
@@ -200,39 +95,6 @@ export default function Header({
     return () => window.removeEventListener("scroll", handleScroll);
   }, [lastScrollY, settings.hideOnScroll]);
 
-  const handleNavClick = (item: any) => {
-    if (isPreview) return;
-    if (item.type === "page" && item.url) {
-      navigate(item.url);
-      setIsMenuOpen(false);
-    } else if (item.type === "custom_link" && item.url) {
-      setIsMenuOpen(false);
-      if (item.url.startsWith("http")) window.open(item.url, "_blank");
-      else
-        navigate(
-          item.url.startsWith("/")
-            ? `${pathPrefix}/${username}${item.url}`
-            : `${pathPrefix}/${username}/${item.url}`
-        );
-    } else if (item.type === "section") {
-      const scrollNav = () => {
-        const element = document.getElementById(item.id);
-        if (element) {
-          const y =
-            element.getBoundingClientRect().top + window.pageYOffset - 80;
-          window.scrollTo({ top: y, behavior: "smooth" });
-        }
-      };
-      if (location.pathname !== `${pathPrefix}/${username}`) {
-        navigate(`${pathPrefix}/${username}`);
-        setTimeout(scrollNav, 300);
-      } else {
-        scrollNav();
-      }
-      setIsMenuOpen(false);
-    }
-  };
-
   const toggleMobileFolder = (folderId: string) => {
     setExpandedFolders((prev) =>
       prev.includes(folderId)
@@ -241,7 +103,7 @@ export default function Header({
     );
   };
 
-  // --- ANNOUNCEMENT RENDERERS ---
+  // --- ANNOUNCEMENT COMPILER ---
   const announcementsList =
     data.announcements?.length > 0
       ? data.announcements
@@ -255,6 +117,8 @@ export default function Header({
         ]
       : [];
   const hasAnnouncement = data.showAnnouncement && announcementsList.length > 0;
+  const isMobile = typeof window !== "undefined" && window.innerWidth < 768;
+  const announcementHeight = isMobile ? 36 : 40;
 
   useEffect(() => {
     if (
@@ -295,20 +159,29 @@ export default function Header({
       {/* 🚀 PLATFORM UI: Announcement Bar */}
       {hasAnnouncement && (
         <div
-          className="relative w-full overflow-hidden flex items-center justify-center font-medium z-[60] text-[11px] md:text-[13px] tracking-wide h-9 md:h-10"
+          className="relative w-full overflow-hidden flex items-center justify-center font-medium z-[60] text-[11px] md:text-[13px] tracking-wide"
           style={{
+            height: `${announcementHeight}px`,
             backgroundColor: data.announcementBgColor || "var(--primary)",
             color: data.announcementTextColor || "#ffffff",
           }}
         >
-          {/* Announcement logic remains identical to Modern Header */}
           {data.announcementMarquee ? (
             <div className="w-full h-full flex items-center px-4 justify-start">
               <div className="flex items-center gap-12 animate-custom-marquee pr-12">
-                {/* Re-using Marquee logic... */}
-                <span className="whitespace-nowrap">
-                  {announcementsList[0]?.text}
-                </span>
+                {[...Array(4)].map((_, arrayIndex) => (
+                  <React.Fragment key={`loop-${arrayIndex}`}>
+                    {announcementsList.map((ann: any, i: number) => (
+                      <div
+                        key={`item-${arrayIndex}-${i}`}
+                        className="flex items-center gap-12"
+                      >
+                        <RenderAnnouncement ann={ann} />
+                        <span className="opacity-50 text-[8px]">•</span>
+                      </div>
+                    ))}
+                  </React.Fragment>
+                ))}
               </div>
             </div>
           ) : (
@@ -317,7 +190,7 @@ export default function Header({
                 <div
                   key={`fade-${i}`}
                   className={cn(
-                    "absolute transition-opacity duration-500",
+                    "absolute transition-opacity duration-500 ease-in-out",
                     i === activeAnnIndex
                       ? "opacity-100"
                       : "opacity-0 pointer-events-none"
@@ -336,7 +209,7 @@ export default function Header({
         className={cn(
           "fixed left-0 right-0 z-50 transition-all duration-500 ease-[cubic-bezier(0.32,0.72,0,1)]",
           isHidden ? "-translate-y-[150%]" : "translate-y-0",
-          hasAnnouncement && !isScrolled ? "top-14" : "top-6" // Adjust if announcement bar exists
+          hasAnnouncement && !isScrolled ? "top-14" : "top-6" // Accounts for announcement bar
         )}
       >
         <div
@@ -382,9 +255,9 @@ export default function Header({
             )}
           </div>
 
-          {/* DESKTOP NAV (Light Theme) */}
+          {/* DESKTOP NAV (SDK Powered) */}
           <nav className="hidden md:flex items-center gap-1">
-            {menuItems.map((item) => {
+            {menuTree.map((item: any) => {
               if (item.type === "folder") {
                 return (
                   <div key={item.id} className="relative group px-1 py-4 -my-4">
@@ -447,6 +320,26 @@ export default function Header({
                     <Twitter size={16} />
                   </a>
                 )}
+                {data.socialYoutube && (
+                  <a
+                    href={data.socialYoutube}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="hover:text-slate-900"
+                  >
+                    <Youtube size={16} />
+                  </a>
+                )}
+                {data.socialImdb && (
+                  <a
+                    href={data.socialImdb}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="hover:text-slate-900"
+                  >
+                    <Film size={16} />
+                  </a>
+                )}
               </div>
             )}
 
@@ -464,7 +357,7 @@ export default function Header({
 
             {data.ctaText && (
               <button
-                onClick={(e) =>
+                onClick={() =>
                   handleNavClick({
                     type: "custom_link",
                     url: data.ctaLink || "#contact",
@@ -492,7 +385,7 @@ export default function Header({
         </div>
       </header>
 
-      {/* 🚀 THEME UI: Mobile Menu (Apple Blur Style) */}
+      {/* 🚀 THEME UI: Mobile Menu (Apple Blur Style + Accordions) */}
       <div
         className={cn(
           "fixed inset-0 z-[60] bg-white/90 backdrop-blur-2xl md:hidden flex flex-col items-center justify-start transition-all duration-500 ease-in-out overflow-y-auto",
@@ -509,7 +402,7 @@ export default function Header({
         </button>
 
         <div className="flex flex-col items-center w-full px-8 pt-24 pb-20 gap-8 min-h-full">
-          {menuItems.map((item, idx) => {
+          {menuTree.map((item: any, idx: number) => {
             if (item.type === "folder") {
               const isExpanded = expandedFolders.includes(item.id);
               return (
@@ -573,10 +466,64 @@ export default function Header({
               </button>
             );
           })}
+
+          {/* Mobile Socials Block */}
+          {hasSocial && (
+            <div
+              className={cn(
+                "flex items-center justify-center gap-6 mt-8 pt-8 border-t border-slate-200 w-full max-w-[200px] transition-all duration-500",
+                isMenuOpen
+                  ? "translate-y-0 opacity-100"
+                  : "translate-y-8 opacity-0"
+              )}
+              style={{ transitionDelay: `${menuTree.length * 50 + 50}ms` }}
+            >
+              {data.socialInstagram && (
+                <a
+                  href={data.socialInstagram}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-slate-400 hover:text-slate-900"
+                >
+                  <Instagram size={24} />
+                </a>
+              )}
+              {data.socialTwitter && (
+                <a
+                  href={data.socialTwitter}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-slate-400 hover:text-slate-900"
+                >
+                  <Twitter size={24} />
+                </a>
+              )}
+              {data.socialYoutube && (
+                <a
+                  href={data.socialYoutube}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-slate-400 hover:text-slate-900"
+                >
+                  <Youtube size={24} />
+                </a>
+              )}
+              {data.socialImdb && (
+                <a
+                  href={data.socialImdb}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-slate-400 hover:text-slate-900"
+                >
+                  <Film size={24} />
+                </a>
+              )}
+            </div>
+          )}
         </div>
       </div>
     </>
   );
 }
 
-Header.schema = schema;
+CupertinoHeader.schema = schema;

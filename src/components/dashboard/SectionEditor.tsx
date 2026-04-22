@@ -67,7 +67,11 @@ import PortfolioMediaManager, {
   UnifiedMediaItem,
 } from "./PortfolioMediaManager";
 import { PortfolioSection } from "../../types/portfolio";
-import { THEME_REGISTRY } from "../../themes/registry";
+import {
+  THEME_REGISTRY,
+  SECTION_COMPONENT_MAP,
+  resolveThemeComponent,
+} from "@/themes/registry";
 import { cn } from "@/lib/utils";
 
 interface SectionEditorProps {
@@ -224,9 +228,24 @@ const SectionEditor: React.FC<SectionEditorProps> = ({
         updateField("products", currentProducts);
       }
     }
-    setIsMediaPickerOpen(false);
-  };
+    // 2. Special Case for Header Background (saves to settings instead of data)
+    else if (
+      activeMediaField === "backgroundImage" &&
+      section.type === "header"
+    ) {
+      updateSetting("backgroundImage", item.url);
+    }
+    // 🚀 3. THE MAGIC CATCH-ALL FOR STANDARD FIELDS
+    else if (activeMediaField) {
+      // This automatically handles "logoImage", "image", "backgroundImage",
+      // "videoUrl", "mobileBackgroundImage", "mobileVideoUrl", etc!
+      updateField(activeMediaField, item.url);
+    }
 
+    // 4. Close the modal and reset
+    setIsMediaPickerOpen(false);
+    setActiveMediaField("");
+  };
   // =========================================================
   // ARRAY HELPERS (Adapted to use formData directly)
   // =========================================================
@@ -345,23 +364,34 @@ const SectionEditor: React.FC<SectionEditorProps> = ({
   // DYNAMIC FORM BUILDER (Theme Settings)
   // =========================================================
   const renderThemeSettings = () => {
+    // We now know this is correctly resolving to "cupertino"
     const ActiveTheme = THEME_REGISTRY[themeId];
     if (!ActiveTheme) return <p>Theme not found.</p>;
 
-    const ComponentKey =
-      section.type.charAt(0).toUpperCase() +
-      section.type.slice(1).replace(/_([a-z])/g, (g) => g[1].toUpperCase());
-    const SectionComponent =
-      (ActiveTheme as any)[ComponentKey] || (ActiveTheme as any)["Header"];
-    const schema = (SectionComponent as any)?.schema || [];
+    // 🚀 Look how clean this is using your new helper!
+    const SectionComponent = resolveThemeComponent(ActiveTheme, section.type);
+    const componentKey = SECTION_COMPONENT_MAP[section.type];
 
-    if (schema.length === 0) {
+    // 🚀 THE FIX: Look for the schema in a dedicated schemas object first!
+    // This bypasses the React.lazy() trap entirely.
+    const schema =
+      ActiveTheme.schemas?.[componentKey] ||
+      SectionComponent?.schema ||
+      SectionComponent?.default?.schema ||
+      [];
+
+    if (!schema || schema.length === 0) {
       return (
         <div className="p-8 text-center text-muted-foreground bg-muted/10 rounded-lg">
-          <p>This section has no design settings for the current theme.</p>
+          <p>
+            This section has no design settings for the current theme ({themeId}
+            ).
+          </p>
         </div>
       );
     }
+
+    const settingsData = section.settings || {};
 
     return (
       <div className="space-y-6 animate-in fade-in">
@@ -397,7 +427,7 @@ const SectionEditor: React.FC<SectionEditorProps> = ({
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {field.options.map((opt: string) => (
+                  {field.options?.map((opt: string) => (
                     <SelectItem key={opt} value={opt}>
                       {opt.charAt(0).toUpperCase() + opt.slice(1)}
                     </SelectItem>
@@ -409,60 +439,39 @@ const SectionEditor: React.FC<SectionEditorProps> = ({
             {field.type === "slider" && (
               <div className="pt-2">
                 <Slider
-                  value={[settingsData[field.id] || field.defaultValue]}
+                  value={[settingsData[field.id] ?? field.defaultValue ?? 0]}
                   min={field.min || 0}
                   max={field.max || 100}
                   step={field.step || 1}
                   onValueChange={([val]) => updateSetting(field.id, val)}
                 />
-                <div className="flex justify-between mt-1">
-                  <span className="text-xs text-muted-foreground">
-                    {field.min}
+                <div className="flex justify-between mt-1 text-xs">
+                  <span className="text-muted-foreground">{field.min}</span>
+                  <span className="font-medium text-primary">
+                    {settingsData[field.id] ?? field.defaultValue}
                   </span>
-                  <span className="text-xs font-medium">
-                    {settingsData[field.id] || field.defaultValue}
-                  </span>
-                  <span className="text-xs text-muted-foreground">
-                    {field.max}
-                  </span>
+                  <span className="text-muted-foreground">{field.max}</span>
                 </div>
               </div>
             )}
 
             {field.type === "color" && (
-              <div className="flex gap-2">
-                <Input
+              <div className="flex gap-2 items-center">
+                <input
                   type="color"
-                  className="w-12 h-10 p-1 cursor-pointer"
-                  value={settingsData[field.id] || field.defaultValue}
+                  className="w-10 h-10 p-0.5 cursor-pointer rounded border"
+                  value={
+                    settingsData[field.id] || field.defaultValue || "#000000"
+                  }
                   onChange={(e) => updateSetting(field.id, e.target.value)}
                 />
                 <Input
-                  value={settingsData[field.id] || field.defaultValue}
+                  className="font-mono text-xs uppercase"
+                  value={
+                    settingsData[field.id] || field.defaultValue || "#000000"
+                  }
                   onChange={(e) => updateSetting(field.id, e.target.value)}
                 />
-              </div>
-            )}
-
-            {field.type === "image" && (
-              <div className="flex gap-2">
-                {settingsData[field.id] && (
-                  <img
-                    src={settingsData[field.id]}
-                    className="h-10 w-10 rounded object-cover border"
-                    alt="preview"
-                  />
-                )}
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => {
-                    setActiveMediaField(field.id);
-                    setIsMediaPickerOpen(true);
-                  }}
-                >
-                  <ImageIcon className="w-4 h-4 mr-2" /> Select Image
-                </Button>
               </div>
             )}
           </div>
@@ -470,7 +479,6 @@ const SectionEditor: React.FC<SectionEditorProps> = ({
       </div>
     );
   };
-
   // =========================================================
   // CORE CONTENT FIELDS
   // =========================================================
@@ -2280,439 +2288,222 @@ const SectionEditor: React.FC<SectionEditorProps> = ({
           </div>
         );
 
-        case "hero":
-          return (
-            <div className="space-y-6">
-              {/* --- LAYOUT & STYLE --- */}
-              <div className="space-y-4 p-4 border rounded-lg bg-muted/20">
-                <div className="flex items-center gap-2 mb-2 border-b pb-2">
-                  <LayoutTemplate size={16} className="text-primary" />
-                  <Label className="text-base font-semibold text-primary">
-                    Layout Architecture
+      case "hero":
+        return (
+          <div className="space-y-6">
+            {/* --- LAYOUT & STYLE --- */}
+            <div className="space-y-4 p-4 border rounded-lg bg-muted/20">
+              <div className="flex items-center gap-2 mb-2 border-b pb-2">
+                <LayoutTemplate size={16} className="text-primary" />
+                <Label className="text-base font-semibold text-primary">
+                  Layout Architecture
+                </Label>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Hero Structure</Label>
+                  <Select
+                    value={formData.layout || "center"}
+                    onValueChange={(val) => updateField("layout", val)}
+                  >
+                    <SelectTrigger className="bg-background">
+                      <SelectValue placeholder="Select Layout" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="center">Immersive Center</SelectItem>
+                      <SelectItem value="split-left">
+                        Split (Text Left)
+                      </SelectItem>
+                      <SelectItem value="split-right">
+                        Split (Text Right)
+                      </SelectItem>
+                      <SelectItem value="bottom">Bottom Aligned</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Text Alignment</Label>
+                  <Select
+                    value={formData.alignment || "center"}
+                    onValueChange={(val) => updateField("alignment", val)}
+                  >
+                    <SelectTrigger className="bg-background">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="left">Left Aligned</SelectItem>
+                      <SelectItem value="center">Center Aligned</SelectItem>
+                      <SelectItem value="right">Right Aligned</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            </div>
+
+            {/* --- CONTENT & TYPOGRAPHY --- */}
+            <div className="space-y-4 p-4 border rounded-lg bg-muted/5">
+              <Label className="text-base font-semibold">
+                Content & Typography
+              </Label>
+              <div className="grid gap-2">
+                <Label>Eyebrow Label (Small Top Text)</Label>
+                <Input
+                  value={formData.label || ""}
+                  onChange={(e) => updateField("label", e.target.value)}
+                  placeholder="e.g. Welcome to my portfolio"
+                />
+              </div>
+              <div className="grid gap-2">
+                <div className="flex items-center justify-between">
+                  <Label>Main Headline</Label>
+                  <div className="flex items-center gap-2">
+                    <Label
+                      className="text-[10px] text-muted-foreground cursor-pointer"
+                      htmlFor="typewriter"
+                    >
+                      Typewriter Effect?
+                    </Label>
+                    <Switch
+                      id="typewriter"
+                      checked={formData.animateHeadline === true}
+                      onCheckedChange={(c) => updateField("animateHeadline", c)}
+                    />
+                  </div>
+                </div>
+                <Textarea
+                  value={formData.headline || ""}
+                  onChange={(e) => updateField("headline", e.target.value)}
+                  placeholder="Creative & Voice Actor"
+                  className="font-bold text-lg h-20"
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label>Subheadline</Label>
+                <Textarea
+                  value={formData.subheadline || ""}
+                  onChange={(e) => updateField("subheadline", e.target.value)}
+                  placeholder="Based in Los Angeles. Available for worldwide bookings."
+                  className="h-20"
+                />
+              </div>
+            </div>
+
+            {/* --- 🚀 NEW: TRUST SIGNALS (Conversion Booster) --- */}
+            <div className="space-y-4 p-4 border rounded-lg border-amber-500/20 bg-amber-500/5">
+              <div className="flex items-center justify-between border-b border-amber-500/10 pb-2">
+                <div className="flex items-center gap-2">
+                  <Star size={16} className="text-amber-500 fill-amber-500" />
+                  <Label className="text-base font-semibold text-amber-700">
+                    Trust Badge
                   </Label>
                 </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label>Hero Structure</Label>
-                    <Select
-                      value={formData.layout || "center"}
-                      onValueChange={(val) => updateField("layout", val)}
-                    >
-                      <SelectTrigger className="bg-background">
-                        <SelectValue placeholder="Select Layout" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="center">Immersive Center</SelectItem>
-                        <SelectItem value="split-left">
-                          Split (Text Left)
-                        </SelectItem>
-                        <SelectItem value="split-right">
-                          Split (Text Right)
-                        </SelectItem>
-                        <SelectItem value="bottom">Bottom Aligned</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Text Alignment</Label>
-                    <Select
-                      value={formData.alignment || "center"}
-                      onValueChange={(val) => updateField("alignment", val)}
-                    >
-                      <SelectTrigger className="bg-background">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="left">Left Aligned</SelectItem>
-                        <SelectItem value="center">Center Aligned</SelectItem>
-                        <SelectItem value="right">Right Aligned</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
+                <Switch
+                  checked={formData.showTrustBadge === true}
+                  onCheckedChange={(checked) =>
+                    updateField("showTrustBadge", checked)
+                  }
+                />
               </div>
-  
-              {/* --- CONTENT & TYPOGRAPHY --- */}
-              <div className="space-y-4 p-4 border rounded-lg bg-muted/5">
-                <Label className="text-base font-semibold">
-                  Content & Typography
-                </Label>
-                <div className="grid gap-2">
-                  <Label>Eyebrow Label (Small Top Text)</Label>
+              {formData.showTrustBadge && (
+                <div className="grid gap-2 animate-in fade-in slide-in-from-top-2 pt-2">
+                  <Label className="text-amber-900">Badge Text</Label>
                   <Input
-                    value={formData.label || ""}
-                    onChange={(e) => updateField("label", e.target.value)}
-                    placeholder="e.g. Welcome to my portfolio"
+                    value={formData.trustText || "★★★★★ 5.0 from 100+ Reviews"}
+                    onChange={(e) => updateField("trustText", e.target.value)}
+                    placeholder="e.g. Trusted by 50+ Brands"
+                    className="border-amber-200 focus-visible:ring-amber-500"
                   />
+                  <p className="text-[10px] text-amber-700/70">
+                    Appears directly above or below the primary Call to Action.
+                  </p>
                 </div>
-                <div className="grid gap-2">
-                  <div className="flex items-center justify-between">
-                    <Label>Main Headline</Label>
-                    <div className="flex items-center gap-2">
-                      <Label
-                        className="text-[10px] text-muted-foreground cursor-pointer"
-                        htmlFor="typewriter"
-                      >
-                        Typewriter Effect?
-                      </Label>
-                      <Switch
-                        id="typewriter"
-                        checked={formData.animateHeadline === true}
-                        onCheckedChange={(c) => updateField("animateHeadline", c)}
-                      />
-                    </div>
-                  </div>
-                  <Textarea
-                    value={formData.headline || ""}
-                    onChange={(e) => updateField("headline", e.target.value)}
-                    placeholder="Creative & Voice Actor"
-                    className="font-bold text-lg h-20"
-                  />
-                </div>
-                <div className="grid gap-2">
-                  <Label>Subheadline</Label>
-                  <Textarea
-                    value={formData.subheadline || ""}
-                    onChange={(e) => updateField("subheadline", e.target.value)}
-                    placeholder="Based in Los Angeles. Available for worldwide bookings."
-                    className="h-20"
-                  />
-                </div>
+              )}
+            </div>
+
+            {/* --- MEDIA BACKGROUND --- */}
+            <div className="space-y-4 p-4 border rounded-lg bg-muted/20">
+              <Label className="text-base font-semibold">
+                Background Media
+              </Label>
+
+              <div className="flex bg-muted/50 p-1 rounded-lg border mb-4">
+                <button
+                  className={cn(
+                    "flex-1 text-xs font-semibold py-1.5 rounded-md transition-all",
+                    formData.variant !== "video" && formData.variant !== "color"
+                      ? "bg-background shadow-sm text-foreground"
+                      : "text-muted-foreground hover:text-foreground"
+                  )}
+                  onClick={() => updateField("variant", "static")}
+                >
+                  <ImageIcon size={14} className="inline mr-2" /> Image
+                </button>
+                <button
+                  className={cn(
+                    "flex-1 text-xs font-semibold py-1.5 rounded-md transition-all",
+                    formData.variant === "video"
+                      ? "bg-background shadow-sm text-foreground"
+                      : "text-muted-foreground hover:text-foreground"
+                  )}
+                  onClick={() => updateField("variant", "video")}
+                >
+                  <Video size={14} className="inline mr-2" /> Video
+                </button>
+                <button
+                  className={cn(
+                    "flex-1 text-xs font-semibold py-1.5 rounded-md transition-all",
+                    formData.variant === "color"
+                      ? "bg-background shadow-sm text-foreground"
+                      : "text-muted-foreground hover:text-foreground"
+                  )}
+                  onClick={() => updateField("variant", "color")}
+                >
+                  <Palette size={14} className="inline mr-2" /> Color
+                </button>
               </div>
-  
-              {/* --- 🚀 NEW: TRUST SIGNALS (Conversion Booster) --- */}
-              <div className="space-y-4 p-4 border rounded-lg border-amber-500/20 bg-amber-500/5">
-                <div className="flex items-center justify-between border-b border-amber-500/10 pb-2">
-                  <div className="flex items-center gap-2">
-                    <Star size={16} className="text-amber-500 fill-amber-500" />
-                    <Label className="text-base font-semibold text-amber-700">
-                      Trust Badge
-                    </Label>
-                  </div>
-                  <Switch
-                    checked={formData.showTrustBadge === true}
-                    onCheckedChange={(checked) =>
-                      updateField("showTrustBadge", checked)
-                    }
-                  />
-                </div>
-                {formData.showTrustBadge && (
-                  <div className="grid gap-2 animate-in fade-in slide-in-from-top-2 pt-2">
-                    <Label className="text-amber-900">Badge Text</Label>
-                    <Input
-                      value={formData.trustText || "★★★★★ 5.0 from 100+ Reviews"}
-                      onChange={(e) => updateField("trustText", e.target.value)}
-                      placeholder="e.g. Trusted by 50+ Brands"
-                      className="border-amber-200 focus-visible:ring-amber-500"
-                    />
-                    <p className="text-[10px] text-amber-700/70">
-                      Appears directly above or below the primary Call to Action.
-                    </p>
-                  </div>
-                )}
-              </div>
-  
-              {/* --- MEDIA BACKGROUND --- */}
-              <div className="space-y-4 p-4 border rounded-lg bg-muted/20">
-                <Label className="text-base font-semibold">
-                  Background Media
-                </Label>
-  
-                <div className="flex bg-muted/50 p-1 rounded-lg border mb-4">
-                  <button
-                    className={cn(
-                      "flex-1 text-xs font-semibold py-1.5 rounded-md transition-all",
-                      formData.variant !== "video" && formData.variant !== "color"
-                        ? "bg-background shadow-sm text-foreground"
-                        : "text-muted-foreground hover:text-foreground"
-                    )}
-                    onClick={() => updateField("variant", "static")}
-                  >
-                    <ImageIcon size={14} className="inline mr-2" /> Image
-                  </button>
-                  <button
-                    className={cn(
-                      "flex-1 text-xs font-semibold py-1.5 rounded-md transition-all",
-                      formData.variant === "video"
-                        ? "bg-background shadow-sm text-foreground"
-                        : "text-muted-foreground hover:text-foreground"
-                    )}
-                    onClick={() => updateField("variant", "video")}
-                  >
-                    <Video size={14} className="inline mr-2" /> Video
-                  </button>
-                  <button
-                    className={cn(
-                      "flex-1 text-xs font-semibold py-1.5 rounded-md transition-all",
-                      formData.variant === "color"
-                        ? "bg-background shadow-sm text-foreground"
-                        : "text-muted-foreground hover:text-foreground"
-                    )}
-                    onClick={() => updateField("variant", "color")}
-                  >
-                    <Palette size={14} className="inline mr-2" /> Color
-                  </button>
-                </div>
-  
-                {/* 🚀 OPTION 1: VIDEO (Upgraded for Mobile) */}
-                {formData.variant === "video" ? (
-                  <div className="space-y-4 animate-in fade-in slide-in-from-top-2">
-                    
-                    {/* Desktop Video Block */}
-                    <div className="grid gap-4 p-3 border rounded-md bg-background">
-                      <div className="grid gap-2">
-                        <Label className="flex items-center gap-2">
-                          <Monitor size={14} /> Desktop Video Source
-                        </Label>
-                        <div className="flex gap-2">
-                          <div className="relative flex-grow">
-                            <LinkIcon className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                            <Input
-                              value={formData.videoUrl || ""}
-                              onChange={(e) => updateField("videoUrl", e.target.value)}
-                              placeholder="Paste link or select from library..."
-                              className="pl-9"
-                            />
-                          </div>
-                          <Button
-                            variant="secondary"
-                            type="button"
-                            onClick={() => {
-                              setActiveMediaField("videoUrl");
-                              setIsMediaPickerOpen(true);
-                            }}
-                            title="Select from Library"
-                          >
-                            <Video className="h-4 w-4 mr-2" /> Library
-                          </Button>
-                        </div>
-                        <p className="text-[10px] text-muted-foreground">
-                          Supports direct MP4 links or YouTube videos.
-                        </p>
-                      </div>
-  
-                      <div className="grid gap-2 pt-2 border-t">
-                        <Label className="text-xs">Desktop Poster (Fallback)</Label>
-                        <div className="flex gap-2 items-center">
-                          {formData.backgroundImage && (
-                            <div className="h-9 w-9 rounded overflow-hidden border shrink-0 bg-muted relative group">
-                              <img src={formData.backgroundImage} className="h-full w-full object-cover" alt="preview" />
-                            </div>
-                          )}
-                          <Button
-                            variant="outline" size="sm" className="flex-grow justify-start"
-                            onClick={() => {
-                              setActiveMediaField("backgroundImage");
-                              setIsMediaPickerOpen(true);
-                            }}
-                          >
-                            <ImageIcon className="h-4 w-4 mr-2" />{" "}
-                            {formData.backgroundImage ? "Change Poster" : "Select Poster Image"}
-                          </Button>
-                          {formData.backgroundImage && (
-                            <Button
-                              variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:bg-destructive/10 shrink-0"
-                              onClick={() => updateField("backgroundImage", "")}
-                              title="Remove Image"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-  
-                    {/* Mobile Video Block */}
-                    <div className="grid gap-4 p-3 border rounded-md bg-background">
-                      <div className="grid gap-2">
-                        <Label className="flex items-center gap-2">
-                          <Smartphone size={14} /> Mobile Video (Optional)
-                        </Label>
-                        <p className="text-[10px] text-muted-foreground mb-1">
-                          Upload a vertical reel specifically for phones.
-                        </p>
-                        <div className="flex gap-2">
-                          <div className="relative flex-grow">
-                            <LinkIcon className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                            <Input
-                              value={formData.mobileVideoUrl || ""}
-                              onChange={(e) => updateField("mobileVideoUrl", e.target.value)}
-                              placeholder="Vertical video link..."
-                              className="pl-9"
-                            />
-                          </div>
-                          <Button
-                            variant="secondary" type="button"
-                            onClick={() => {
-                              setActiveMediaField("mobileVideoUrl");
-                              setIsMediaPickerOpen(true);
-                            }}
-                          >
-                            <Video className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </div>
-  
-                      {!formData.mobileVideoUrl ? (
-                        <div className="grid gap-2 pt-2 border-t">
-                          <Label className="text-xs">Desktop Video Fit (On Mobile)</Label>
-                          <Select
-                            value={formData.mobileVideoFit || "cover"}
-                            onValueChange={(val) => updateField("mobileVideoFit", val)}
-                          >
-                            <SelectTrigger>
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="cover">Crop to Fill Screen (Default)</SelectItem>
-                              <SelectItem value="fill">Stretch to Fill Screen</SelectItem>
-                              <SelectItem value="contain">Show Original (Letterbox)</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-                      ) : (
-                        <div className="grid gap-2 pt-2 border-t">
-                          <Label className="text-xs">Mobile Poster (Fallback)</Label>
-                          <div className="flex gap-2 items-center">
-                            {formData.mobileBackgroundImage && (
-                              <div className="h-9 w-6 rounded overflow-hidden border shrink-0 bg-muted relative group">
-                                <img src={formData.mobileBackgroundImage} className="h-full w-full object-cover" alt="preview" />
-                              </div>
-                            )}
-                            <Button
-                              variant="outline" size="sm" className="flex-grow justify-start"
-                              onClick={() => {
-                                setActiveMediaField("mobileBackgroundImage");
-                                setIsMediaPickerOpen(true);
-                              }}
-                            >
-                              <ImageIcon className="h-4 w-4 mr-2" />{" "}
-                              {formData.mobileBackgroundImage ? "Change Mobile Poster" : "Select Mobile Poster"}
-                            </Button>
-                            {formData.mobileBackgroundImage && (
-                              <Button
-                                variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:bg-destructive/10 shrink-0"
-                                onClick={() => updateField("mobileBackgroundImage", "")}
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            )}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                ) : /* 🚀 OPTION 2: COLOR / GRADIENT */
-                formData.variant === "color" ? (
-                  <div className="space-y-4 animate-in fade-in slide-in-from-top-2 p-3 border rounded-md bg-background">
-                    <div className="space-y-2">
-                      <Label>Background Type</Label>
-                      <Select
-                        value={formData.colorType || "solid"}
-                        onValueChange={(val) => updateField("colorType", val)}
-                      >
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="solid">Solid Color</SelectItem>
-                          <SelectItem value="gradient">
-                            Creative Gradient
-                          </SelectItem>
-                          <SelectItem value="mesh">
-                            Animated Glass Mesh
-                          </SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-  
-                    {formData.colorType === "solid" ? (
-                      <div className="space-y-2 pt-2">
-                        <Label className="text-xs">Select Color</Label>
-                        <div className="flex items-center gap-2">
-                          <input
-                            type="color"
-                            value={formData.backgroundColor || "#000000"}
-                            onChange={(e) =>
-                              updateField("backgroundColor", e.target.value)
-                            }
-                            className="h-8 w-8 rounded cursor-pointer border"
-                          />
-                          <Input
-                            value={formData.backgroundColor || "#000000"}
-                            onChange={(e) =>
-                              updateField("backgroundColor", e.target.value)
-                            }
-                            className="h-8 font-mono text-xs uppercase"
-                          />
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="space-y-4 pt-3 border-t">
-                        <Label className="text-xs font-bold text-primary">
-                          Custom Gradient Colors
-                        </Label>
-                        <div className="grid grid-cols-2 gap-4">
-                          <div className="space-y-2">
-                            <Label className="text-[10px] text-muted-foreground uppercase tracking-wider">
-                              Color 1
-                            </Label>
-                            <div className="flex items-center gap-2">
-                              <input
-                                type="color"
-                                value={formData.gradientColor1 || "#0f172a"}
-                                onChange={(e) =>
-                                  updateField("gradientColor1", e.target.value)
-                                }
-                                className="h-8 w-8 rounded cursor-pointer border"
-                              />
-                              <Input
-                                value={formData.gradientColor1 || "#0f172a"}
-                                onChange={(e) =>
-                                  updateField("gradientColor1", e.target.value)
-                                }
-                                className="h-8 font-mono text-[10px] uppercase px-2"
-                              />
-                            </div>
-                          </div>
-                          <div className="space-y-2">
-                            <Label className="text-[10px] text-muted-foreground uppercase tracking-wider">
-                              Color 2
-                            </Label>
-                            <div className="flex items-center gap-2">
-                              <input
-                                type="color"
-                                value={formData.gradientColor2 || "#3b82f6"}
-                                onChange={(e) =>
-                                  updateField("gradientColor2", e.target.value)
-                                }
-                                className="h-8 w-8 rounded cursor-pointer border"
-                              />
-                              <Input
-                                value={formData.gradientColor2 || "#3b82f6"}
-                                onChange={(e) =>
-                                  updateField("gradientColor2", e.target.value)
-                                }
-                                className="h-8 font-mono text-[10px] uppercase px-2"
-                              />
-                            </div>
-                          </div>
-                        </div>
-                        {formData.colorType === "mesh" && (
-                          <p className="text-[10px] text-muted-foreground">
-                            The mesh animation will smoothly loop between these
-                            two colors.
-                          </p>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                ) : (
-                  /* 🚀 OPTION 3: STATIC IMAGE */
-                  <div className="space-y-4 animate-in fade-in slide-in-from-top-2">
-                    <div className="grid gap-2 p-3 border rounded-md bg-background">
+
+              {/* 🚀 OPTION 1: VIDEO (Upgraded for Mobile) */}
+              {formData.variant === "video" ? (
+                <div className="space-y-4 animate-in fade-in slide-in-from-top-2">
+                  {/* Desktop Video Block */}
+                  <div className="grid gap-4 p-3 border rounded-md bg-background">
+                    <div className="grid gap-2">
                       <Label className="flex items-center gap-2">
-                        <Monitor size={14} /> Desktop Background Image
+                        <Monitor size={14} /> Desktop Video Source
+                      </Label>
+                      <div className="flex gap-2">
+                        <div className="relative flex-grow">
+                          <LinkIcon className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                          <Input
+                            value={formData.videoUrl || ""}
+                            onChange={(e) =>
+                              updateField("videoUrl", e.target.value)
+                            }
+                            placeholder="Paste link or select from library..."
+                            className="pl-9"
+                          />
+                        </div>
+                        <Button
+                          variant="secondary"
+                          type="button"
+                          onClick={() => {
+                            setActiveMediaField("videoUrl");
+                            setIsMediaPickerOpen(true);
+                          }}
+                          title="Select from Library"
+                        >
+                          <Video className="h-4 w-4 mr-2" /> Library
+                        </Button>
+                      </div>
+                      <p className="text-[10px] text-muted-foreground">
+                        Supports direct MP4 links, YouTube, Instagram, or
+                        TikTok.
+                      </p>
+                    </div>
+
+                    <div className="grid gap-2 pt-2 border-t">
+                      <Label className="text-xs">
+                        Desktop Poster (Fallback)
                       </Label>
                       <div className="flex gap-2 items-center">
                         {formData.backgroundImage && (
@@ -2735,8 +2526,8 @@ const SectionEditor: React.FC<SectionEditorProps> = ({
                         >
                           <ImageIcon className="h-4 w-4 mr-2" />{" "}
                           {formData.backgroundImage
-                            ? "Change Desktop Image"
-                            : "Select Image"}
+                            ? "Change Poster"
+                            : "Select Poster Image"}
                         </Button>
                         {formData.backgroundImage && (
                           <Button
@@ -2744,128 +2535,386 @@ const SectionEditor: React.FC<SectionEditorProps> = ({
                             size="icon"
                             className="h-8 w-8 text-destructive hover:bg-destructive/10 shrink-0"
                             onClick={() => updateField("backgroundImage", "")}
+                            title="Remove Image"
                           >
                             <Trash2 className="h-4 w-4" />
                           </Button>
                         )}
                       </div>
                     </div>
-  
-                    <div className="grid gap-2 p-3 border rounded-md bg-background">
-                      <div className="flex justify-between items-center">
-                        <Label className="flex items-center gap-2">
-                          <Smartphone size={14} /> Mobile Background (Optional)
-                        </Label>
-                      </div>
+                  </div>
+
+                  {/* Mobile Video Block */}
+                  <div className="grid gap-4 p-3 border rounded-md bg-background">
+                    <div className="grid gap-2">
+                      <Label className="flex items-center gap-2">
+                        <Smartphone size={14} /> Mobile Video (Optional)
+                      </Label>
                       <p className="text-[10px] text-muted-foreground mb-1">
-                        Upload a vertical image so faces/subjects aren't cropped
-                        out on phones.
+                        Upload a vertical reel specifically for phones.
                       </p>
-                      <div className="flex gap-2 items-center">
-                        {formData.mobileBackgroundImage && (
-                          <div className="h-9 w-6 rounded overflow-hidden border shrink-0 bg-muted relative group">
-                            <img
-                              src={formData.mobileBackgroundImage}
-                              className="h-full w-full object-cover"
-                              alt="preview"
-                            />
-                          </div>
-                        )}
+                      <div className="flex gap-2">
+                        <div className="relative flex-grow">
+                          <LinkIcon className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                          <Input
+                            value={formData.mobileVideoUrl || ""}
+                            onChange={(e) =>
+                              updateField("mobileVideoUrl", e.target.value)
+                            }
+                            placeholder="Vertical video link..."
+                            className="pl-9"
+                          />
+                        </div>
                         <Button
-                          variant="outline"
-                          size="sm"
-                          className="flex-grow justify-start"
+                          variant="secondary"
+                          type="button"
                           onClick={() => {
-                            setActiveMediaField("mobileBackgroundImage");
+                            setActiveMediaField("mobileVideoUrl");
                             setIsMediaPickerOpen(true);
                           }}
                         >
-                          <ImageIcon className="h-4 w-4 mr-2" />{" "}
-                          {formData.mobileBackgroundImage
-                            ? "Change Mobile Image"
-                            : "Select Mobile Image"}
+                          <Video className="h-4 w-4" />
                         </Button>
-                        {formData.mobileBackgroundImage && (
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8 text-destructive hover:bg-destructive/10 shrink-0"
-                            onClick={() =>
-                              updateField("mobileBackgroundImage", "")
-                            }
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        )}
                       </div>
                     </div>
+
+                    {!formData.mobileVideoUrl ? (
+                      <div className="grid gap-2 pt-2 border-t">
+                        <Label className="text-xs">
+                          Desktop Video Fit (On Mobile)
+                        </Label>
+                        <Select
+                          value={formData.mobileVideoFit || "cover"}
+                          onValueChange={(val) =>
+                            updateField("mobileVideoFit", val)
+                          }
+                        >
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="cover">
+                              Crop to Fill Screen (Default)
+                            </SelectItem>
+                            <SelectItem value="fill">
+                              Stretch to Fill Screen
+                            </SelectItem>
+                            <SelectItem value="contain">
+                              Show Original (Letterbox)
+                            </SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    ) : (
+                      <div className="grid gap-2 pt-2 border-t">
+                        <Label className="text-xs">
+                          Mobile Poster (Fallback)
+                        </Label>
+                        <div className="flex gap-2 items-center">
+                          {formData.mobileBackgroundImage && (
+                            <div className="h-9 w-6 rounded overflow-hidden border shrink-0 bg-muted relative group">
+                              <img
+                                src={formData.mobileBackgroundImage}
+                                className="h-full w-full object-cover"
+                                alt="preview"
+                              />
+                            </div>
+                          )}
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="flex-grow justify-start"
+                            onClick={() => {
+                              setActiveMediaField("mobileBackgroundImage");
+                              setIsMediaPickerOpen(true);
+                            }}
+                          >
+                            <ImageIcon className="h-4 w-4 mr-2" />{" "}
+                            {formData.mobileBackgroundImage
+                              ? "Change Mobile Poster"
+                              : "Select Mobile Poster"}
+                          </Button>
+                          {formData.mobileBackgroundImage && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 text-destructive hover:bg-destructive/10 shrink-0"
+                              onClick={() =>
+                                updateField("mobileBackgroundImage", "")
+                              }
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                    )}
                   </div>
-                )}
-  
-                <div className="grid gap-4 pt-4 border-t">
-                  <div className="flex justify-between">
-                    <Label>Overlay Darkness</Label>
-                    <span className="text-xs text-muted-foreground">
-                      {formData.overlayOpacity || 60}%
-                    </span>
+                </div>
+              ) : /* 🚀 OPTION 2: COLOR / GRADIENT */
+              formData.variant === "color" ? (
+                <div className="space-y-4 animate-in fade-in slide-in-from-top-2 p-3 border rounded-md bg-background">
+                  <div className="space-y-2">
+                    <Label>Background Type</Label>
+                    <Select
+                      value={formData.colorType || "solid"}
+                      onValueChange={(val) => updateField("colorType", val)}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="solid">Solid Color</SelectItem>
+                        <SelectItem value="gradient">
+                          Creative Gradient
+                        </SelectItem>
+                        <SelectItem value="mesh">
+                          Animated Glass Mesh
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
-                  <Slider
-                    value={[formData.overlayOpacity || 60]}
-                    max={95}
-                    step={5}
-                    onValueChange={([val]: [number]) =>
-                      updateField("overlayOpacity", val)
+
+                  {formData.colorType === "solid" ? (
+                    <div className="space-y-2 pt-2">
+                      <Label className="text-xs">Select Color</Label>
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="color"
+                          value={formData.backgroundColor || "#000000"}
+                          onChange={(e) =>
+                            updateField("backgroundColor", e.target.value)
+                          }
+                          className="h-8 w-8 rounded cursor-pointer border"
+                        />
+                        <Input
+                          value={formData.backgroundColor || "#000000"}
+                          onChange={(e) =>
+                            updateField("backgroundColor", e.target.value)
+                          }
+                          className="h-8 font-mono text-xs uppercase"
+                        />
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="space-y-4 pt-3 border-t">
+                      <Label className="text-xs font-bold text-primary">
+                        Custom Gradient Colors
+                      </Label>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label className="text-[10px] text-muted-foreground uppercase tracking-wider">
+                            Color 1
+                          </Label>
+                          <div className="flex items-center gap-2">
+                            <input
+                              type="color"
+                              value={formData.gradientColor1 || "#0f172a"}
+                              onChange={(e) =>
+                                updateField("gradientColor1", e.target.value)
+                              }
+                              className="h-8 w-8 rounded cursor-pointer border"
+                            />
+                            <Input
+                              value={formData.gradientColor1 || "#0f172a"}
+                              onChange={(e) =>
+                                updateField("gradientColor1", e.target.value)
+                              }
+                              className="h-8 font-mono text-[10px] uppercase px-2"
+                            />
+                          </div>
+                        </div>
+                        <div className="space-y-2">
+                          <Label className="text-[10px] text-muted-foreground uppercase tracking-wider">
+                            Color 2
+                          </Label>
+                          <div className="flex items-center gap-2">
+                            <input
+                              type="color"
+                              value={formData.gradientColor2 || "#3b82f6"}
+                              onChange={(e) =>
+                                updateField("gradientColor2", e.target.value)
+                              }
+                              className="h-8 w-8 rounded cursor-pointer border"
+                            />
+                            <Input
+                              value={formData.gradientColor2 || "#3b82f6"}
+                              onChange={(e) =>
+                                updateField("gradientColor2", e.target.value)
+                              }
+                              className="h-8 font-mono text-[10px] uppercase px-2"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                      {formData.colorType === "mesh" && (
+                        <p className="text-[10px] text-muted-foreground">
+                          The mesh animation will smoothly loop between these
+                          two colors.
+                        </p>
+                      )}
+                    </div>
+                  )}
+                </div>
+              ) : (
+                /* 🚀 OPTION 3: STATIC IMAGE */
+                <div className="space-y-4 animate-in fade-in slide-in-from-top-2">
+                  <div className="grid gap-2 p-3 border rounded-md bg-background">
+                    <Label className="flex items-center gap-2">
+                      <Monitor size={14} /> Desktop Background Image
+                    </Label>
+                    <div className="flex gap-2 items-center">
+                      {formData.backgroundImage && (
+                        <div className="h-9 w-9 rounded overflow-hidden border shrink-0 bg-muted relative group">
+                          <img
+                            src={formData.backgroundImage}
+                            className="h-full w-full object-cover"
+                            alt="preview"
+                          />
+                        </div>
+                      )}
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="flex-grow justify-start"
+                        onClick={() => {
+                          setActiveMediaField("backgroundImage");
+                          setIsMediaPickerOpen(true);
+                        }}
+                      >
+                        <ImageIcon className="h-4 w-4 mr-2" />{" "}
+                        {formData.backgroundImage
+                          ? "Change Desktop Image"
+                          : "Select Image"}
+                      </Button>
+                      {formData.backgroundImage && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-destructive hover:bg-destructive/10 shrink-0"
+                          onClick={() => updateField("backgroundImage", "")}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="grid gap-2 p-3 border rounded-md bg-background">
+                    <div className="flex justify-between items-center">
+                      <Label className="flex items-center gap-2">
+                        <Smartphone size={14} /> Mobile Background (Optional)
+                      </Label>
+                    </div>
+                    <p className="text-[10px] text-muted-foreground mb-1">
+                      Upload a vertical image so faces/subjects aren't cropped
+                      out on phones.
+                    </p>
+                    <div className="flex gap-2 items-center">
+                      {formData.mobileBackgroundImage && (
+                        <div className="h-9 w-6 rounded overflow-hidden border shrink-0 bg-muted relative group">
+                          <img
+                            src={formData.mobileBackgroundImage}
+                            className="h-full w-full object-cover"
+                            alt="preview"
+                          />
+                        </div>
+                      )}
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="flex-grow justify-start"
+                        onClick={() => {
+                          setActiveMediaField("mobileBackgroundImage");
+                          setIsMediaPickerOpen(true);
+                        }}
+                      >
+                        <ImageIcon className="h-4 w-4 mr-2" />{" "}
+                        {formData.mobileBackgroundImage
+                          ? "Change Mobile Image"
+                          : "Select Mobile Image"}
+                      </Button>
+                      {formData.mobileBackgroundImage && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-destructive hover:bg-destructive/10 shrink-0"
+                          onClick={() =>
+                            updateField("mobileBackgroundImage", "")
+                          }
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              <div className="grid gap-4 pt-4 border-t">
+                <div className="flex justify-between">
+                  <Label>Overlay Darkness</Label>
+                  <span className="text-xs text-muted-foreground">
+                    {formData.overlayOpacity || 60}%
+                  </span>
+                </div>
+                <Slider
+                  value={[formData.overlayOpacity || 60]}
+                  max={95}
+                  step={5}
+                  onValueChange={([val]: [number]) =>
+                    updateField("overlayOpacity", val)
+                  }
+                />
+              </div>
+            </div>
+
+            {/* --- CALL TO ACTION --- */}
+            <div className="space-y-4 p-4 border rounded-lg bg-muted/5">
+              <Label className="text-base font-semibold">
+                Call to Action Buttons
+              </Label>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid gap-2 border p-3 rounded bg-background">
+                  <Label className="text-xs font-bold text-primary">
+                    Primary Button
+                  </Label>
+                  <Input
+                    value={formData.ctaText || ""}
+                    onChange={(e) => updateField("ctaText", e.target.value)}
+                    placeholder="e.g. Book Me"
+                    className="h-8 text-sm"
+                  />
+                  <Input
+                    value={formData.ctaLink || ""}
+                    onChange={(e) => updateField("ctaLink", e.target.value)}
+                    placeholder="/contact"
+                    className="h-8 text-sm"
+                  />
+                </div>
+                <div className="grid gap-2 border p-3 rounded bg-background">
+                  <Label className="text-xs font-bold">Secondary Button</Label>
+                  <Input
+                    value={formData.secondaryCtaText || ""}
+                    onChange={(e) =>
+                      updateField("secondaryCtaText", e.target.value)
                     }
+                    placeholder="e.g. Watch Reel"
+                    className="h-8 text-sm"
+                  />
+                  <Input
+                    value={formData.secondaryCtaLink || ""}
+                    onChange={(e) =>
+                      updateField("secondaryCtaLink", e.target.value)
+                    }
+                    placeholder="#reel"
+                    className="h-8 text-sm"
                   />
                 </div>
               </div>
-  
-              {/* --- CALL TO ACTION --- */}
-              <div className="space-y-4 p-4 border rounded-lg bg-muted/5">
-                <Label className="text-base font-semibold">
-                  Call to Action Buttons
-                </Label>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="grid gap-2 border p-3 rounded bg-background">
-                    <Label className="text-xs font-bold text-primary">
-                      Primary Button
-                    </Label>
-                    <Input
-                      value={formData.ctaText || ""}
-                      onChange={(e) => updateField("ctaText", e.target.value)}
-                      placeholder="e.g. Book Me"
-                      className="h-8 text-sm"
-                    />
-                    <Input
-                      value={formData.ctaLink || ""}
-                      onChange={(e) => updateField("ctaLink", e.target.value)}
-                      placeholder="/contact"
-                      className="h-8 text-sm"
-                    />
-                  </div>
-                  <div className="grid gap-2 border p-3 rounded bg-background">
-                    <Label className="text-xs font-bold">Secondary Button</Label>
-                    <Input
-                      value={formData.secondaryCtaText || ""}
-                      onChange={(e) =>
-                        updateField("secondaryCtaText", e.target.value)
-                      }
-                      placeholder="e.g. Watch Reel"
-                      className="h-8 text-sm"
-                    />
-                    <Input
-                      value={formData.secondaryCtaLink || ""}
-                      onChange={(e) =>
-                        updateField("secondaryCtaLink", e.target.value)
-                      }
-                      placeholder="#reel"
-                      className="h-8 text-sm"
-                    />
-                  </div>
-                </div>
-              </div>
             </div>
-          );
+          </div>
+        );
       case "team":
         return (
           <div className="space-y-6">
@@ -4362,8 +4411,8 @@ const SectionEditor: React.FC<SectionEditorProps> = ({
 
       <Tabs defaultValue="content" className="w-full flex-grow flex flex-col">
         <TabsList className="grid w-full grid-cols-2 mb-4 mx-4 w-auto">
-          <TabsTrigger value="content">Content</TabsTrigger>
-          <TabsTrigger value="design">Design</TabsTrigger>
+          <TabsTrigger value="content">Section Content</TabsTrigger>
+          <TabsTrigger value="design">Theme Designs</TabsTrigger>
         </TabsList>
         <TabsContent value="content" className="space-y-4 px-4 pb-8">
           {renderFields()}

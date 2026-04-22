@@ -4,21 +4,31 @@ import { lazy } from "react";
 import { PortfolioThemeDefinition } from "../types";
 import { ModernTheme } from "../modern"; // Inherits the lazy-loaded Modern components
 
-// 🚀 AAA+ LAZY LOADING: Standard dynamic imports!
-// This tells React to automatically look for the "export default" in each file.
-const Header = lazy(() => import("./Header"));
+// 🚀 1. SYNCHRONOUSLY IMPORT SCHEMAS
+// We import JUST the lightweight schema arrays so the Editor can read them instantly.
+import { schema as HeaderSchema } from "./Header";
+import { schema as HeroSchema } from "./Hero";
+// import { schema as GallerySchema } from "./Gallery"; // Add this when you build the Cupertino Gallery!
 
-// Make sure your Cupertino Hero and Gallery files also use "export default Hero;"
-// at the bottom of their files if you update these two as well!
+// 🚀 2. LAZY LOAD COMPONENTS
+// The heavy React code stays lazy to protect performance.
+const Header = lazy(() => import("./Header"));
 const Hero = lazy(() => import("./Hero"));
 const Gallery = lazy(() => import("./Gallery"));
 
 // Define the Theme
-export const CupertinoTheme: PortfolioThemeDefinition = {
+export const CupertinoTheme: PortfolioThemeDefinition & { schemas?: any } = {
   ...ModernTheme, // 1. Fallback to the highly-optimized Modern components
 
   // 2. Overwrite with our new Cupertino lazy-loaded versions
   Header,
   Hero,
   Gallery,
+
+  // 🚀 3. THE FIX: Expose the schemas directly to the Section Editor!
+  schemas: {
+    Header: HeaderSchema,
+    Hero: HeroSchema,
+    // Gallery: GallerySchema,
+  },
 };
