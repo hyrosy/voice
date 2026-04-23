@@ -6,34 +6,27 @@
 export interface BaseSectionProps<TSettings = Record<string, any>> {
   id: string;
   isVisible: boolean;
-  isPreview?: boolean; // 🚀 ADDED THIS: Tells the component if it's in the builder!
-  settings: TSettings; // Developer's custom schema data (e.g., "glitchEffect": true)
+  isPreview?: boolean; // Tells the component if it's in the builder!
+  settings: TSettings; // Developer's custom schema data
 }
 
 // ==========================================
-// 2. SPECIFIC SECTION CONTRACTS (The Purpose)
+// 2. SPECIFIC SECTION CONTRACTS
 // ==========================================
 
 // --- HEADER SECTION ---
 export interface HeaderCoreData {
-  // Branding
   logoText?: string;
   logoImage?: string;
   logoHeight?: number;
   mobileLogoHeight?: number;
-
-  // Layout & Style
   variant?: "transparent" | "centered" | "floating";
   isSticky?: boolean;
-
-  // Announcement Bar
   showAnnouncement?: boolean;
   announcements?: Array<{ id: string; text: string; link?: string }>;
   announcementBgColor?: string;
   announcementTextColor?: string;
   announcementMarquee?: boolean;
-
-  // Mega Menu & Navigation
   autoMenu?: boolean;
   menuType?: "simple" | "mega";
   megaMenuFolders?: Array<{ id: string; label: string }>;
@@ -48,56 +41,36 @@ export interface HeaderCoreData {
     visible?: boolean;
     folderId?: string | null;
   }>;
-
-  // Social Links
   socialInstagram?: string;
   socialTwitter?: string;
   socialYoutube?: string;
   socialImdb?: string;
-
-  // Call to Action
   ctaText?: string;
   ctaLink?: string;
 }
 export type HeaderSectionProps = BaseSectionProps & { data: HeaderCoreData };
 
-// --- 🚀 HERO SECTION (NEWLY ADDED) ---
+// --- HERO SECTION ---
 export interface HeroCoreData {
-  // Layout Architecture
   layout?: "center" | "split-left" | "split-right" | "bottom";
   alignment?: "left" | "center" | "right";
-
-  // Content & Typography
-  label?: string; // Eyebrow
+  label?: string;
   headline?: string;
   animateHeadline?: boolean;
   subheadline?: string;
-
-  // Trust Signals
   showTrustBadge?: boolean;
   trustText?: string;
-
-  // Background Media Engine
   variant?: "static" | "video" | "color";
-
-  // Video Options
   videoUrl?: string;
   mobileVideoUrl?: string;
   mobileVideoFit?: "cover" | "fill" | "contain";
-
-  // Color & Gradient Options
   colorType?: "solid" | "gradient" | "mesh";
   backgroundColor?: string;
   gradientColor1?: string;
   gradientColor2?: string;
-  gradientTheme?: "aurora" | "sunset" | "ocean" | "cyberpunk";
-
-  // Static Image Options
-  backgroundImage?: string; // Desktop Poster/Image
-  mobileBackgroundImage?: string; // Mobile Art Direction
+  backgroundImage?: string;
+  mobileBackgroundImage?: string;
   overlayOpacity?: number;
-
-  // Call to Action
   ctaText?: string;
   ctaLink?: string;
   secondaryCtaText?: string;
@@ -105,55 +78,139 @@ export interface HeroCoreData {
 }
 export type HeroSectionProps = BaseSectionProps & { data: HeroCoreData };
 
-// --- BIO SECTION ---
-export interface BioCoreData {
-  actorName: string;
-  bioText: string;
-  headshotUrl: string;
-  resumeUrl?: string;
+// --- 🚀 ABOUT SECTION (Replaces legacy Bio) ---
+export interface AboutCoreData {
+  variant?: "simple" | "split" | "profile";
+  layout?: "left" | "right";
+  label?: string;
+  title?: string;
+  content?: string;
+  image?: string; // Video or Image URL
+  features?: string[];
   stats?: Array<{ label: string; value: string }>;
+  ctaText?: string;
+  ctaLink?: string;
 }
-export type BioSectionProps = BaseSectionProps & { data: BioCoreData };
+export type AboutSectionProps = BaseSectionProps & { data: AboutCoreData };
 
-// --- GALLERY SECTION ---
-export interface GalleryItem {
-  id: string;
-  url: string;
-  type: "image" | "video";
-  caption?: string;
-  thumbnailUrl?: string;
-}
+// --- 🚀 GALLERY SECTION ---
 export interface GalleryCoreData {
-  title: string;
-  description?: string;
-  items: GalleryItem[];
+  title?: string;
+  variant?: "masonry" | "carousel" | "grid";
+  aspectRatio?: "square" | "portrait" | "landscape";
+  gridColumns?: number;
+  images?: Array<{ url: string; type?: string }>;
 }
 export type GallerySectionProps = BaseSectionProps & { data: GalleryCoreData };
 
-// --- VIDEO / DEMO REEL SECTION ---
-export interface VideoReelCoreData {
-  title: string;
-  videoUrl: string;
-  posterUrl?: string;
-  duration?: string;
+// --- 🚀 IMAGE SLIDER SECTION ---
+export interface ImageSliderCoreData {
+  title?: string;
+  variant?: "standard" | "cinematic" | "cards";
+  height?: "medium" | "large" | "full";
+  interval?: number;
+  images?: Array<{ url: string; caption?: string }>;
 }
-export type VideoReelSectionProps = BaseSectionProps & {
-  data: VideoReelCoreData;
+export type ImageSliderSectionProps = BaseSectionProps & {
+  data: ImageSliderCoreData;
 };
 
-// --- SERVICES / PRICING SECTION ---
-export interface ServiceItem {
-  id: string;
-  title: string;
-  price?: string;
-  description: string;
-  features?: string[];
-  bookingUrl?: string;
+// --- 🚀 VIDEO SLIDER SECTION ---
+export interface VideoSliderCoreData {
+  title?: string;
+  variant?: "cinema" | "carousel" | "grid";
+  height?: "medium" | "large" | "full";
+  gridColumns?: number;
+  videos?: Array<{ url: string; title?: string; caption?: string }>;
 }
+export type VideoSliderSectionProps = BaseSectionProps & {
+  data: VideoSliderCoreData;
+};
+
+// --- 🚀 TEAM SECTION ---
+export interface TeamCoreData {
+  title?: string;
+  variant?: "grid" | "spotlight" | "carousel";
+  members?: Array<{
+    name: string;
+    role: string;
+    bio?: string;
+    image?: string;
+    linkedin?: string;
+    instagram?: string;
+  }>;
+}
+export type TeamSectionProps = BaseSectionProps & { data: TeamCoreData };
+
+// --- 🚀 MAP SECTION ---
+export interface MapCoreData {
+  title?: string;
+  variant?: "standard" | "dark" | "card";
+  height?: "small" | "medium" | "large";
+  mapUrl?: string; // Embed Src
+  directionUrl?: string;
+  address?: string;
+}
+export type MapSectionProps = BaseSectionProps & { data: MapCoreData };
+
+// --- 🚀 PRICING SECTION ---
+export interface PricingCoreData {
+  title?: string;
+  variant?: "cards" | "slider" | "list";
+  plans?: Array<{
+    name: string;
+    price: string;
+    unit?: string;
+    features?: string;
+    cta?: string;
+    buttonUrl?: string;
+    isPopular?: boolean;
+  }>;
+}
+export type PricingSectionProps = BaseSectionProps & { data: PricingCoreData };
+
+// --- 🚀 LEAD FORM SECTION ---
+export interface LeadFormCoreData {
+  title?: string;
+  subheadline?: string;
+  buttonText?: string;
+  variant?: "centered" | "split" | "minimal";
+  image?: string;
+  fields?: Array<{
+    id: string;
+    label: string;
+    type: string;
+    placeholder?: string;
+    required?: boolean;
+    width?: "half" | "full";
+  }>;
+}
+export type LeadFormSectionProps = BaseSectionProps & {
+  data: LeadFormCoreData;
+};
+
+// --- 🚀 STATS SECTION ---
+export interface StatsCoreData {
+  showProjects?: boolean;
+  showExperience?: boolean;
+  customStats?: Array<{ label: string; value: string }>;
+}
+export type StatsSectionProps = BaseSectionProps & { data: StatsCoreData };
+
+// --- 🚀 REVIEWS SECTION ---
+export interface ReviewsCoreData {
+  title?: string;
+  autoScroll?: boolean;
+}
+export type ReviewsSectionProps = BaseSectionProps & { data: ReviewsCoreData };
+
+// --- SERVICES SHOWCASE SECTION ---
 export interface ServicesCoreData {
-  title: string;
-  subtitle?: string;
-  items: ServiceItem[];
+  title?: string;
+  showRates?: boolean;
+  showDemos?: boolean;
+  ctaText?: string;
+  ctaLink?: string;
 }
 export type ServicesSectionProps = BaseSectionProps & {
   data: ServicesCoreData;
@@ -161,41 +218,49 @@ export type ServicesSectionProps = BaseSectionProps & {
 
 // --- CONTACT SECTION ---
 export interface ContactCoreData {
-  title: string;
-  email: string;
+  variant?: "minimal" | "split" | "card";
+  title?: string;
+  subheadline?: string;
+  email?: string;
+  ctaText?: string;
+  ctaLink?: string;
   phone?: string;
-  location?: string;
-  socialLinks?: Array<{ platform: string; url: string; icon?: string }>;
-  onSendMessage?: (message: {
-    name: string;
-    email: string;
-    body: string;
-  }) => Promise<void>;
+  whatsapp?: string;
+  image?: string;
+  linkedin?: string;
+  instagram?: string;
+  twitter?: string;
+  website?: string;
 }
 export type ContactSectionProps = BaseSectionProps & { data: ContactCoreData };
 
-// --- LEGACY SHOP SECTION ---
-export interface LegacyShopProduct {
-  title: string;
-  price: string;
-  description: string;
-  buttonText: string;
-  link: string;
-}
+// --- QUICK SHOP (LEGACY MANUAL PRODUCTS) ---
 export interface ShopCoreData {
-  title: string;
-  subheadline?: string;
+  title?: string;
   variant?: "grid" | "carousel" | "spotlight";
-  products: LegacyShopProduct[];
+  products?: Array<{
+    title: string;
+    price: string;
+    stock?: string;
+    description?: string;
+    actionType?: "whatsapp" | "form_order" | "link";
+    whatsappNumber?: string;
+    checkoutUrl?: string;
+    buttonText?: string;
+    image?: string;
+    images?: string[];
+    variants?: Array<{ name: string; options: string }>;
+  }>;
 }
 export type ShopSectionProps = BaseSectionProps & { data: ShopCoreData };
 
-// --- DYNAMIC STORE SECTION ---
+// --- DYNAMIC STORE (DATABASE PRODUCTS) ---
 export interface DynamicStoreCoreData {
-  title: string;
+  title?: string;
   subtitle?: string;
-  layout?: "grid" | "carousel";
+  variant?: "grid" | "carousel" | "spotlight";
   maxProductsToShow?: number;
+  selectedProductIds?: string[];
 }
 export type DynamicStoreSectionProps = BaseSectionProps & {
   data: DynamicStoreCoreData;

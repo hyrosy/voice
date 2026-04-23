@@ -6,4 +6,10 @@ export const utils = {
     const match = url.match(regExp);
     return match && match[2].length === 11 ? match[2] : null;
   },
+
+  // 🚀 NEW: Universal Video Detector
+  isVideo: (url?: string | null) => {
+    if (!url) return false;
+    return !!url.match(/\.(mp4|webm|mov)$/i);
+  },
 };

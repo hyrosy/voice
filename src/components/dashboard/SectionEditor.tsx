@@ -33,7 +33,20 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
-
+import {
+  DndContext,
+  closestCenter,
+  PointerSensor,
+  useSensor,
+  useSensors,
+} from "@dnd-kit/core";
+import {
+  arrayMove,
+  SortableContext,
+  rectSortingStrategy,
+  useSortable,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 // --- Icons ---
 import {
   Video,
@@ -61,6 +74,11 @@ import {
   Star,
   LayoutTemplate,
   Palette,
+  BarChart,
+  CheckCircle2,
+  Type,
+  List,
+  Play,
 } from "lucide-react";
 
 import PortfolioMediaManager, {
@@ -73,6 +91,8 @@ import {
   resolveThemeComponent,
 } from "@/themes/registry";
 import { cn } from "@/lib/utils";
+import { ToggleGroup, ToggleGroupItem } from "../ui/toggle-group";
+import { DragDropContext, Draggable, Droppable } from "@hello-pangea/dnd";
 
 interface SectionEditorProps {
   section: PortfolioSection | null;
@@ -106,7 +126,9 @@ const SectionEditor: React.FC<SectionEditorProps> = ({
   const [isProductManagerOpen, setIsProductManagerOpen] = useState(false);
   const [availableProducts, setAvailableProducts] = useState<any[]>([]);
   const { limits } = useSubscription();
-
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
+  );
   // Tier 2 is eCommerce, Tier 3 is Pro
   const hasMegaMenuAccess = limits?.hasMegaMenu === true;
   useEffect(() => {
@@ -171,6 +193,84 @@ const SectionEditor: React.FC<SectionEditorProps> = ({
     updateSectionInStore(section.id, {
       settings: newSettingsData,
     });
+  };
+
+  const SortableMediaItem = ({ img, idx, isVid, ytId, onDelete }: any) => {
+    const {
+      attributes,
+      listeners,
+      setNodeRef,
+      transform,
+      transition,
+      isDragging,
+    } = useSortable({ id: img.url }); // Use URL as unique ID
+
+    const style = {
+      transform: CSS.Transform.toString(transform),
+      transition,
+      zIndex: isDragging ? 50 : 0,
+    };
+
+    return (
+      <div
+        ref={setNodeRef}
+        style={style}
+        {...attributes}
+        {...listeners}
+        className={cn(
+          "relative group aspect-square bg-black rounded-lg overflow-hidden border shadow-sm cursor-grab active:cursor-grabbing touch-none",
+          isDragging && "ring-2 ring-primary opacity-50 scale-95"
+        )}
+      >
+        {ytId ? (
+          <>
+            <img
+              src={`https://img.youtube.com/vi/${ytId}/hqdefault.jpg`}
+              className="w-full h-full object-cover opacity-80"
+              alt="YT"
+            />
+            <div className="absolute inset-0 flex items-center justify-center">
+              <div className="bg-red-600 p-1.5 rounded-lg text-white">
+                <Play size={14} fill="currentColor" />
+              </div>
+            </div>
+          </>
+        ) : isVid ? (
+          <>
+            <video
+              src={img.url}
+              className="w-full h-full object-cover opacity-80"
+              muted
+              autoPlay
+              loop
+              playsInline
+            />
+            <div className="absolute top-1 left-1 bg-black/60 p-1 rounded-md text-white">
+              <Video size={12} />
+            </div>
+          </>
+        ) : (
+          <img
+            src={img.url}
+            alt="Gallery"
+            className="w-full h-full object-cover pointer-events-none"
+          />
+        )}
+
+        {/* Delete Button - Needs onPointerDown stopPropagation to allow clicking inside a draggable area */}
+        <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+          <Button
+            variant="destructive"
+            size="icon"
+            className="h-8 w-8 rounded-full shadow-lg"
+            onPointerDown={(e) => e.stopPropagation()}
+            onClick={onDelete}
+          >
+            <Trash2 className="w-4 h-4" />
+          </Button>
+        </div>
+      </div>
+    );
   };
 
   // =========================================================
@@ -3312,41 +3412,63 @@ const SectionEditor: React.FC<SectionEditorProps> = ({
       case "about":
         return (
           <div className="space-y-6">
-            {/* 1. LAYOUT & VARIANT */}
-            <div className="space-y-3 p-4 border rounded-lg bg-muted/20">
-              <Label>Layout Style</Label>
-              <Select
-                value={formData.variant || "split"}
-                onValueChange={(val) => updateField("variant", val)}
-              >
-                <SelectTrigger className="bg-background">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="split">
-                    Standard Split (Bio + Media)
-                  </SelectItem>
-                  <SelectItem value="profile">
-                    Actor Profile (Bio + Media + Stats)
-                  </SelectItem>
-                  <SelectItem value="simple">Minimal (Text Only)</SelectItem>
-                </SelectContent>
-              </Select>
+            {/* 1. LAYOUT ARCHITECTURE */}
+            <div className="space-y-4 p-4 border rounded-lg bg-muted/10">
+              <div className="flex items-center gap-2 mb-2 border-b pb-2">
+                <LayoutTemplate size={16} className="text-primary" />
+                <Label className="text-base font-semibold text-primary">
+                  Layout Architecture
+                </Label>
+              </div>
 
-              {/* Alignment Buttons (Hidden for Simple mode) */}
+              <div className="space-y-2">
+                <Label>About Section Style</Label>
+                <Select
+                  value={formData.variant || "split"}
+                  onValueChange={(val) => updateField("variant", val)}
+                >
+                  <SelectTrigger className="bg-background">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="split">
+                      Standard Split (Bio + Media)
+                    </SelectItem>
+                    <SelectItem value="profile">
+                      Actor Profile (Bio + Media + Stats Grid)
+                    </SelectItem>
+                    <SelectItem value="simple">
+                      Minimal (Centered Text Only)
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-[10px] text-muted-foreground">
+                  Choose how your biography is structured on the page.
+                </p>
+              </div>
+
+              {/* Media Alignment (Hidden for Simple mode) */}
               {formData.variant !== "simple" && (
-                <div className="flex items-center justify-between mt-2">
-                  <Label className="text-xs text-muted-foreground">
-                    Media Position
-                  </Label>
-                  <div className="flex gap-2">
+                <div className="flex items-center justify-between pt-2 border-t border-dashed mt-2">
+                  <div className="space-y-0.5">
+                    <Label className="text-xs text-foreground">
+                      Media Position
+                    </Label>
+                    <p className="text-[10px] text-muted-foreground">
+                      Desktop layout order
+                    </p>
+                  </div>
+                  <div className="flex bg-background rounded-md border p-0.5">
                     <Button
                       size="sm"
                       variant={
-                        formData.layout === "left" ? "default" : "outline"
+                        formData.layout === "left" ? "secondary" : "ghost"
                       }
                       onClick={() => updateField("layout", "left")}
-                      className="h-7 text-xs"
+                      className={cn(
+                        "h-7 text-xs px-3",
+                        formData.layout === "left" && "shadow-sm"
+                      )}
                     >
                       Left
                     </Button>
@@ -3354,11 +3476,15 @@ const SectionEditor: React.FC<SectionEditorProps> = ({
                       size="sm"
                       variant={
                         formData.layout === "right" || !formData.layout
-                          ? "default"
-                          : "outline"
+                          ? "secondary"
+                          : "ghost"
                       }
                       onClick={() => updateField("layout", "right")}
-                      className="h-7 text-xs"
+                      className={cn(
+                        "h-7 text-xs px-3",
+                        (formData.layout === "right" || !formData.layout) &&
+                          "shadow-sm"
+                      )}
                     >
                       Right
                     </Button>
@@ -3368,59 +3494,107 @@ const SectionEditor: React.FC<SectionEditorProps> = ({
             </div>
 
             {/* 2. TEXT CONTENT */}
-            <div className="space-y-4">
+            <div className="space-y-4 p-4 border rounded-lg bg-background shadow-sm">
+              <div className="flex items-center gap-2 mb-2 border-b pb-2">
+                <Type size={16} className="text-primary" />
+                <Label className="text-base font-semibold">
+                  Biography Content
+                </Label>
+              </div>
+
               <div className="grid gap-2">
-                <Label>Eyebrow Label</Label>
+                <Label className="text-xs text-muted-foreground uppercase tracking-wider">
+                  Eyebrow Label
+                </Label>
                 <Input
                   value={formData.label || ""}
                   onChange={(e) => updateField("label", e.target.value)}
-                  placeholder="e.g. Who I Am"
+                  placeholder="e.g. Who I Am / My Story"
                 />
               </div>
               <div className="grid gap-2">
-                <Label>Main Title</Label>
+                <Label className="text-xs text-muted-foreground uppercase tracking-wider">
+                  Main Title
+                </Label>
                 <Input
                   value={formData.title || ""}
                   onChange={(e) => updateField("title", e.target.value)}
                   placeholder="e.g. About Me"
+                  className="font-bold"
                 />
               </div>
               <div className="grid gap-2">
-                <Label>Bio Content</Label>
+                <Label className="text-xs text-muted-foreground uppercase tracking-wider">
+                  Bio Content
+                </Label>
                 <Textarea
                   rows={6}
                   value={formData.content || ""}
                   onChange={(e) => updateField("content", e.target.value)}
-                  placeholder="Write your bio here..."
+                  placeholder="Write your bio here... (Press Enter to create paragraphs)"
+                  className="resize-y"
                 />
               </div>
             </div>
 
             {/* 3. MEDIA PICKER (Hidden in Simple Mode) */}
             {formData.variant !== "simple" && (
-              <div className="space-y-4 pt-4 border-t">
-                <Label>Featured Media</Label>
-                <div className="flex gap-3 items-start p-3 border rounded-md bg-muted/10">
+              <div className="space-y-4 p-4 border rounded-lg bg-muted/10">
+                <div className="flex items-center gap-2 mb-2 border-b pb-2">
+                  <ImageIcon size={16} className="text-primary" />
+                  <Label className="text-base font-semibold">
+                    Featured Media
+                  </Label>
+                </div>
+
+                <div className="flex gap-4 items-center p-3 bg-background border rounded-md">
                   {/* Smart Preview (Video or Image) */}
-                  {formData.image && (
-                    <div className="h-20 w-20 rounded overflow-hidden border shrink-0 bg-black relative">
-                      {formData.image.match(/\.(mp4|webm|mov)$/i) ? (
-                        <video
-                          src={formData.image}
-                          className="w-full h-full object-cover opacity-80"
-                          muted
-                        />
-                      ) : (
-                        <img
-                          src={formData.image}
-                          alt="Preview"
-                          className="w-full h-full object-cover"
-                        />
-                      )}
-                    </div>
-                  )}
+                  <div
+                    className="h-24 w-24 rounded-lg overflow-hidden border-2 border-dashed border-muted-foreground/30 shrink-0 bg-muted/50 relative group cursor-pointer hover:border-primary/50 transition-colors"
+                    onClick={() => {
+                      setActiveMediaField("image");
+                      setIsMediaPickerOpen(true);
+                    }}
+                  >
+                    {formData.image ? (
+                      <>
+                        {formData.image.match(/\.(mp4|webm|mov)$/i) ? (
+                          <video
+                            src={formData.image}
+                            className="w-full h-full object-cover opacity-80"
+                            muted
+                            autoPlay
+                            loop
+                            playsInline
+                          />
+                        ) : (
+                          <img
+                            src={formData.image}
+                            alt="Preview"
+                            className="w-full h-full object-cover"
+                          />
+                        )}
+                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                          <span className="text-[10px] font-bold text-white uppercase tracking-wider">
+                            Change
+                          </span>
+                        </div>
+                      </>
+                    ) : (
+                      <div className="absolute inset-0 flex flex-col items-center justify-center text-muted-foreground group-hover:text-primary transition-colors">
+                        <Plus size={16} className="mb-1" />
+                        <span className="text-[10px] font-bold uppercase tracking-wider">
+                          Add Media
+                        </span>
+                      </div>
+                    )}
+                  </div>
 
                   <div className="flex-grow space-y-2">
+                    <p className="text-xs text-muted-foreground leading-relaxed">
+                      Upload a high-quality portrait, headshot, or a silent
+                      looping video reel to introduce yourself.
+                    </p>
                     <Button
                       variant="outline"
                       size="sm"
@@ -3431,26 +3605,27 @@ const SectionEditor: React.FC<SectionEditorProps> = ({
                       }}
                     >
                       {formData.image
-                        ? "Change Media"
+                        ? "Replace Media"
                         : "Select Image or Video"}
                     </Button>
-                    <p className="text-[10px] text-muted-foreground leading-tight">
-                      Tip: You can use a headshot or a vertical video loop
-                      (reels work great here!).
-                    </p>
                   </div>
                 </div>
               </div>
             )}
 
-            {/* 4. KEY FEATURES (Good for 'Split' Variant) */}
-            <div className="pt-4 border-t space-y-3">
-              <div className="flex justify-between items-center">
-                <Label>Key Highlights / Features</Label>
+            {/* 4. KEY FEATURES LIST */}
+            <div className="space-y-4 p-4 border rounded-lg bg-background shadow-sm">
+              <div className="flex justify-between items-center border-b pb-2">
+                <div className="flex items-center gap-2">
+                  <List size={16} className="text-primary" />
+                  <Label className="text-base font-semibold">
+                    Key Highlights
+                  </Label>
+                </div>
                 <Button
                   size="sm"
-                  variant="ghost"
-                  className="h-6 text-xs"
+                  variant="secondary"
+                  className="h-7 text-xs"
                   onClick={() => {
                     const current = formData.features || [];
                     updateField("features", [...current, "New Highlight"]);
@@ -3459,10 +3634,17 @@ const SectionEditor: React.FC<SectionEditorProps> = ({
                   <Plus className="w-3 h-3 mr-1" /> Add
                 </Button>
               </div>
+
               <div className="space-y-2">
                 {(formData.features || []).map(
                   (feature: string, idx: number) => (
-                    <div key={idx} className="flex gap-2">
+                    <div
+                      key={idx}
+                      className="flex gap-2 items-center bg-muted/20 p-1.5 rounded-md border"
+                    >
+                      <div className="w-6 flex justify-center text-muted-foreground/50">
+                        <CheckCircle2 size={14} />
+                      </div>
                       <Input
                         value={feature}
                         onChange={(e) => {
@@ -3470,12 +3652,13 @@ const SectionEditor: React.FC<SectionEditorProps> = ({
                           newFeatures[idx] = e.target.value;
                           updateField("features", newFeatures);
                         }}
-                        className="h-8 text-sm"
+                        className="h-8 text-sm bg-background border-transparent hover:border-input focus-visible:border-input"
+                        placeholder="e.g. 10+ Years Experience"
                       />
                       <Button
                         size="icon"
                         variant="ghost"
-                        className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                        className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10 shrink-0"
                         onClick={() => {
                           const newFeatures = [...formData.features];
                           newFeatures.splice(idx, 1);
@@ -3487,18 +3670,28 @@ const SectionEditor: React.FC<SectionEditorProps> = ({
                     </div>
                   )
                 )}
+                {(!formData.features || formData.features.length === 0) && (
+                  <p className="text-xs text-muted-foreground text-center py-2 italic">
+                    Add bullet points to highlight your unique skills.
+                  </p>
+                )}
               </div>
             </div>
 
             {/* 5. PROFILE STATS (Only shows for 'Profile' variant) */}
             {formData.variant === "profile" && (
-              <div className="pt-4 border-t space-y-4 animate-in fade-in slide-in-from-top-2">
-                <div className="flex items-center justify-between">
-                  <Label className="text-primary">Actor Stats Grid</Label>
+              <div className="space-y-4 p-4 border rounded-lg bg-primary/5 animate-in fade-in slide-in-from-top-2">
+                <div className="flex justify-between items-center border-b border-primary/10 pb-2">
+                  <div className="flex items-center gap-2">
+                    <BarChart size={16} className="text-primary" />
+                    <Label className="text-base font-semibold text-primary">
+                      Actor Stats Grid
+                    </Label>
+                  </div>
                   <Button
                     size="sm"
                     variant="outline"
-                    className="h-7 text-xs"
+                    className="h-7 text-xs bg-background"
                     onClick={() => {
                       const current = formData.stats || [];
                       updateField("stats", [
@@ -3511,45 +3704,54 @@ const SectionEditor: React.FC<SectionEditorProps> = ({
                   </Button>
                 </div>
 
-                <div className="grid grid-cols-2 gap-2">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   {(formData.stats || []).map((stat: any, idx: number) => (
                     <div
                       key={idx}
-                      className="flex gap-1 items-center bg-muted/30 p-1 rounded border"
+                      className="flex flex-col gap-1.5 bg-background p-2.5 rounded-md border shadow-sm relative group"
                     >
-                      <Input
-                        placeholder="Label"
-                        value={stat.label}
-                        onChange={(e) => {
-                          const newStats = [...formData.stats];
-                          newStats[idx].label = e.target.value;
-                          updateField("stats", newStats);
-                        }}
-                        className="h-7 text-xs border-transparent focus-visible:ring-0 bg-transparent"
-                      />
-                      <div className="h-4 w-px bg-border" />
-                      <Input
-                        placeholder="Value"
-                        value={stat.value}
-                        onChange={(e) => {
-                          const newStats = [...formData.stats];
-                          newStats[idx].value = e.target.value;
-                          updateField("stats", newStats);
-                        }}
-                        className="h-7 text-xs border-transparent focus-visible:ring-0 bg-transparent text-right font-medium"
-                      />
                       <Button
                         size="icon"
                         variant="ghost"
-                        className="h-7 w-7 text-muted-foreground hover:text-destructive shrink-0"
+                        className="h-6 w-6 absolute -top-2 -right-2 bg-background border shadow-sm rounded-full text-destructive opacity-0 group-hover:opacity-100 transition-opacity"
                         onClick={() => {
                           const newStats = [...formData.stats];
                           newStats.splice(idx, 1);
                           updateField("stats", newStats);
                         }}
                       >
-                        <Trash2 className="w-3 h-3" />
+                        <X size={12} />
                       </Button>
+                      <div className="space-y-1">
+                        <Label className="text-[10px] uppercase text-muted-foreground">
+                          Big Number
+                        </Label>
+                        <Input
+                          placeholder="e.g. 50+"
+                          value={stat.value}
+                          onChange={(e) => {
+                            const newStats = [...formData.stats];
+                            newStats[idx].value = e.target.value;
+                            updateField("stats", newStats);
+                          }}
+                          className="h-8 font-bold"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-[10px] uppercase text-muted-foreground">
+                          Small Label
+                        </Label>
+                        <Input
+                          placeholder="e.g. Projects"
+                          value={stat.label}
+                          onChange={(e) => {
+                            const newStats = [...formData.stats];
+                            newStats[idx].label = e.target.value;
+                            updateField("stats", newStats);
+                          }}
+                          className="h-8 text-xs"
+                        />
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -3557,24 +3759,38 @@ const SectionEditor: React.FC<SectionEditorProps> = ({
             )}
 
             {/* 6. CALL TO ACTION */}
-            <div className="pt-4 border-t space-y-2">
-              <Label>Button (Optional)</Label>
-              <div className="grid grid-cols-2 gap-2">
-                <Input
-                  value={formData.ctaText || ""}
-                  onChange={(e) => updateField("ctaText", e.target.value)}
-                  placeholder="Text"
-                />
-                <Input
-                  value={formData.ctaLink || ""}
-                  onChange={(e) => updateField("ctaLink", e.target.value)}
-                  placeholder="Link (#contact)"
-                />
+            <div className="space-y-4 p-4 border rounded-lg bg-muted/10">
+              <div className="flex items-center gap-2 mb-2 border-b pb-2">
+                <LinkIcon size={16} className="text-primary" />
+                <Label className="text-base font-semibold">
+                  Call to Action (Optional)
+                </Label>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label className="text-xs text-muted-foreground uppercase tracking-wider">
+                    Button Text
+                  </Label>
+                  <Input
+                    value={formData.ctaText || ""}
+                    onChange={(e) => updateField("ctaText", e.target.value)}
+                    placeholder="e.g. Download Resume"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs text-muted-foreground uppercase tracking-wider">
+                    Button Link
+                  </Label>
+                  <Input
+                    value={formData.ctaLink || ""}
+                    onChange={(e) => updateField("ctaLink", e.target.value)}
+                    placeholder="e.g. /contact or https://..."
+                  />
+                </div>
               </div>
             </div>
           </div>
         );
-
       case "stats":
         return (
           <div className="space-y-4">
@@ -4085,134 +4301,256 @@ const SectionEditor: React.FC<SectionEditorProps> = ({
       case "gallery":
         return (
           <div className="space-y-6">
-            <div className="space-y-2">
-              <Label>Section Title</Label>
-              <Input
-                value={formData.title || "Gallery"}
-                onChange={(e) => updateField("title", e.target.value)}
-              />
+            {/* 1. TEXT CONTENT */}
+            <div className="space-y-4 p-4 border rounded-lg bg-background shadow-sm">
+              <div className="flex items-center gap-2 mb-2 border-b pb-2">
+                <Type size={16} className="text-primary" />
+                <Label className="text-base font-semibold">
+                  Section Header
+                </Label>
+              </div>
+              <div className="space-y-2">
+                <Label className="text-xs text-muted-foreground uppercase tracking-wider">
+                  Gallery Title
+                </Label>
+                <Input
+                  value={formData.title || ""}
+                  onChange={(e) => updateField("title", e.target.value)}
+                  placeholder="e.g. My Portfolio or Behind the Scenes"
+                  className="font-bold"
+                />
+              </div>
             </div>
 
-            {/* 1. LAYOUT VARIANT */}
-            <div className="space-y-3 p-4 border rounded-lg bg-muted/20">
-              <Label>Layout Style</Label>
-              <Select
-                value={formData.variant || "masonry"}
-                onValueChange={(val) => updateField("variant", val)}
-              >
-                <SelectTrigger className="bg-background">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="masonry">
-                    Masonry (Pinterest Style)
-                  </SelectItem>
-                  <SelectItem value="carousel">
-                    Film Strip (Horizontal Scroll)
-                  </SelectItem>
-                  <SelectItem value="grid">
-                    Uniform Grid (Instagram Style)
-                  </SelectItem>
-                </SelectContent>
-              </Select>
+            {/* 2. LAYOUT ARCHITECTURE */}
+            <div className="space-y-4 p-4 border rounded-lg bg-muted/10">
+              <div className="flex items-center gap-2 mb-2 border-b pb-2">
+                <LayoutTemplate size={16} className="text-primary" />
+                <Label className="text-base font-semibold text-primary">
+                  Layout Architecture
+                </Label>
+              </div>
 
-              {/* Options for Grid Variant Only */}
+              <div className="space-y-2">
+                <Label>Gallery Style</Label>
+                <Select
+                  value={formData.variant || "masonry"}
+                  onValueChange={(val) => updateField("variant", val)}
+                >
+                  <SelectTrigger className="bg-background h-10">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="masonry">
+                      Masonry (Pinterest Style - Auto Heights)
+                    </SelectItem>
+                    <SelectItem value="carousel">
+                      Film Strip (Horizontal Scroll)
+                    </SelectItem>
+                    <SelectItem value="grid">
+                      Uniform Grid (Instagram Style)
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-[10px] text-muted-foreground">
+                  {formData.variant === "masonry" &&
+                    "Best for mixed portrait and landscape images."}
+                  {formData.variant === "carousel" &&
+                    "Best for showing many images in a compact space."}
+                  {formData.variant === "grid" &&
+                    "Best for clean, organized, perfectly aligned thumbnails."}
+                </p>
+              </div>
+
+              {/* Advanced Grid Settings */}
               {formData.variant === "grid" && (
-                <div className="grid grid-cols-2 gap-4 mt-2">
+                <div className="grid gap-5 pt-3 border-t border-dashed animate-in fade-in slide-in-from-top-2">
                   <div className="space-y-2">
-                    <Label className="text-xs">Aspect Ratio</Label>
-                    <Select
+                    <Label className="text-xs text-muted-foreground uppercase tracking-wider">
+                      Crop / Aspect Ratio
+                    </Label>
+                    <ToggleGroup
+                      type="single"
                       value={formData.aspectRatio || "square"}
-                      onValueChange={(val) => updateField("aspectRatio", val)}
+                      onValueChange={(val) =>
+                        val && updateField("aspectRatio", val)
+                      }
+                      className="justify-start"
                     >
-                      <SelectTrigger className="h-8 text-xs">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="square">Square (1:1)</SelectItem>
-                        <SelectItem value="portrait">Portrait (2:3)</SelectItem>
-                        <SelectItem value="landscape">
-                          Landscape (16:9)
-                        </SelectItem>
-                      </SelectContent>
-                    </Select>
+                      <ToggleGroupItem
+                        value="square"
+                        className="border bg-background data-[state=on]:bg-primary data-[state=on]:text-white text-xs h-8 px-3"
+                      >
+                        Square (1:1)
+                      </ToggleGroupItem>
+                      <ToggleGroupItem
+                        value="portrait"
+                        className="border bg-background data-[state=on]:bg-primary data-[state=on]:text-white text-xs h-8 px-3"
+                      >
+                        Portrait (4:5)
+                      </ToggleGroupItem>
+                      <ToggleGroupItem
+                        value="landscape"
+                        className="border bg-background data-[state=on]:bg-primary data-[state=on]:text-white text-xs h-8 px-3"
+                      >
+                        Landscape (16:9)
+                      </ToggleGroupItem>
+                    </ToggleGroup>
                   </div>
+
                   <div className="space-y-2">
-                    <Label className="text-xs">Columns</Label>
-                    <Select
+                    <Label className="text-xs text-muted-foreground uppercase tracking-wider">
+                      Columns (Desktop)
+                    </Label>
+                    <ToggleGroup
+                      type="single"
                       value={String(formData.gridColumns || "3")}
                       onValueChange={(val) =>
-                        updateField("gridColumns", parseInt(val))
+                        val && updateField("gridColumns", parseInt(val))
                       }
+                      className="justify-start"
                     >
-                      <SelectTrigger className="h-8 text-xs">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="2">2 Columns</SelectItem>
-                        <SelectItem value="3">3 Columns</SelectItem>
-                        <SelectItem value="4">4 Columns</SelectItem>
-                      </SelectContent>
-                    </Select>
+                      <ToggleGroupItem
+                        value="2"
+                        className="border bg-background data-[state=on]:bg-primary data-[state=on]:text-white text-xs h-8 w-10"
+                      >
+                        2
+                      </ToggleGroupItem>
+                      <ToggleGroupItem
+                        value="3"
+                        className="border bg-background data-[state=on]:bg-primary data-[state=on]:text-white text-xs h-8 w-10"
+                      >
+                        3
+                      </ToggleGroupItem>
+                      <ToggleGroupItem
+                        value="4"
+                        className="border bg-background data-[state=on]:bg-primary data-[state=on]:text-white text-xs h-8 w-10"
+                      >
+                        4
+                      </ToggleGroupItem>
+                    </ToggleGroup>
                   </div>
                 </div>
               )}
             </div>
 
-            {/* 2. IMAGE MANAGER */}
-            <div className="space-y-3 pt-2">
-              <div className="flex justify-between items-center">
-                <Label>Gallery Images</Label>
+            {/* 3. MEDIA MANAGER */}
+            <div className="space-y-4 p-4 border rounded-lg bg-muted/5">
+              <div className="flex justify-between items-center border-b pb-2">
+                <div className="flex items-center gap-2">
+                  <ImageIcon size={16} className="text-primary" />
+                  <Label className="text-base font-semibold">
+                    Gallery Media
+                  </Label>
+                </div>
                 <Button
                   size="sm"
                   variant="outline"
+                  className="h-8 text-xs bg-background shadow-sm"
                   onClick={() => {
                     setActiveMediaField("gallery");
                     setIsMediaPickerOpen(true);
                   }}
                 >
-                  <Plus className="w-4 h-4 mr-2" /> Add Media
+                  <Plus className="w-3 h-3 mr-1" /> Add from Library
                 </Button>
               </div>
 
-              <div className="grid grid-cols-3 gap-2 mt-2">
-                {(formData.images || []).map((img: any, idx: number) => (
-                  <div
-                    key={idx}
-                    className="relative group aspect-square bg-muted rounded-md overflow-hidden border"
-                  >
-                    {/* Video Indicator */}
-                    {img.url.match(/\.(mp4|webm)$/i) ? (
-                      <video
-                        src={img.url}
-                        className="w-full h-full object-cover opacity-50"
-                      />
-                    ) : (
-                      <img
-                        src={img.url}
-                        alt="Gallery"
-                        className="w-full h-full object-cover"
-                      />
-                    )}
-
-                    <button
-                      className="absolute top-1 right-1 bg-destructive/90 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
-                      onClick={() => {
-                        const newImages = [...formData.images];
-                        newImages.splice(idx, 1);
+              {/* 🚀 QUICK ADD URL */}
+              <div className="flex gap-2 items-center bg-background p-1.5 rounded-md border shadow-sm">
+                <div className="bg-muted/50 p-1.5 rounded text-muted-foreground">
+                  <LinkIcon size={14} />
+                </div>
+                <Input
+                  placeholder="Paste YouTube or Image URL and press Enter..."
+                  className="h-8 text-xs border-0 focus-visible:ring-0 shadow-none bg-transparent"
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      const val = e.currentTarget.value.trim();
+                      if (val) {
+                        const newImages = [
+                          ...(formData.images || []),
+                          { url: val },
+                        ];
                         updateField("images", newImages);
-                      }}
-                    >
-                      <Trash2 className="w-3 h-3" />
-                    </button>
-                  </div>
-                ))}
-                {(!formData.images || formData.images.length === 0) && (
-                  <div className="col-span-3 py-8 text-center border-2 border-dashed rounded-lg text-muted-foreground text-sm">
-                    No images added yet.
-                  </div>
-                )}
+                        e.currentTarget.value = "";
+                      }
+                    }
+                  }}
+                />
               </div>
+
+              {/* 🚀 FLAWLESS DND-KIT GRID */}
+              <DndContext
+                sensors={sensors}
+                collisionDetection={closestCenter}
+                onDragEnd={(event) => {
+                  const { active, over } = event;
+                  if (over && active.id !== over.id) {
+                    const oldIndex = formData.images.findIndex(
+                      (i: any) => i.url === active.id
+                    );
+                    const newIndex = formData.images.findIndex(
+                      (i: any) => i.url === over.id
+                    );
+                    updateField(
+                      "images",
+                      arrayMove(formData.images, oldIndex, newIndex)
+                    );
+                  }
+                }}
+              >
+                <div className="grid grid-cols-3 sm:grid-cols-4 gap-3 pt-2">
+                  <SortableContext
+                    items={(formData.images || []).map((i: any) => i.url)}
+                    strategy={rectSortingStrategy} // 🚀 THIS ENABLES FLAWLESS 2D GRID SORTING
+                  >
+                    {(formData.images || []).map((img: any, idx: number) => {
+                      const isVid = img.url.match(/\.(mp4|webm|mov)$/i);
+                      const ytMatch = img.url.match(
+                        /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/
+                      );
+                      const ytId =
+                        ytMatch && ytMatch[2].length === 11 ? ytMatch[2] : null;
+
+                      return (
+                        <SortableMediaItem
+                          key={img.url}
+                          img={img}
+                          idx={idx}
+                          isVid={isVid}
+                          ytId={ytId}
+                          onDelete={() => {
+                            const newImages = [...formData.images];
+                            newImages.splice(idx, 1);
+                            updateField("images", newImages);
+                          }}
+                        />
+                      );
+                    })}
+                  </SortableContext>
+
+                  {/* Add Button sits cleanly at the end of the CSS grid! */}
+                  <div
+                    className="relative group aspect-square bg-background rounded-lg overflow-hidden border-2 border-dashed flex flex-col items-center justify-center cursor-pointer hover:border-primary/50 hover:bg-primary/5 transition-colors text-muted-foreground hover:text-primary"
+                    onClick={() => {
+                      setActiveMediaField("gallery");
+                      setIsMediaPickerOpen(true);
+                    }}
+                  >
+                    <Plus className="w-6 h-6 mb-1" />
+                    <span className="text-[10px] font-bold uppercase tracking-wider">
+                      Library
+                    </span>
+                  </div>
+                </div>
+              </DndContext>
+
+              <p className="text-[10px] text-muted-foreground text-center pt-2">
+                Tip: Drag and drop to reorder. You can mix images, MP4s, and
+                YouTube links!
+              </p>
             </div>
           </div>
         );
