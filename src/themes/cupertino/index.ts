@@ -9,8 +9,8 @@ import { ModernTheme } from "../modern"; // Inherits the lazy-loaded Modern comp
 import { schema as HeaderSchema } from "./Header";
 import { schema as HeroSchema } from "./Hero";
 import { schema as AboutSchema } from "./About";
-
-// import { schema as GallerySchema } from "./Gallery"; // Add this when you build the Cupertino Gallery!
+import { schema as ContactSchema } from "./Contact";
+import { schema as GallerySchema } from "./Gallery"; // Add this when you build the Cupertino Gallery!
 
 // 🚀 2. LAZY LOAD COMPONENTS
 // The heavy React code stays lazy to protect performance.
@@ -18,7 +18,7 @@ const Header = lazy(() => import("./Header"));
 const Hero = lazy(() => import("./Hero"));
 const Gallery = lazy(() => import("./Gallery"));
 const About = lazy(() => import("./About"));
-
+const Contact = lazy(() => import("./Contact"));
 // Define the Theme
 export const CupertinoTheme: PortfolioThemeDefinition & { schemas?: any } = {
   ...ModernTheme, // 1. Fallback to the highly-optimized Modern components
@@ -28,12 +28,14 @@ export const CupertinoTheme: PortfolioThemeDefinition & { schemas?: any } = {
   Hero,
   Gallery,
   About,
+  Contact,
 
   // 🚀 3. THE FIX: Expose the schemas directly to the Section Editor!
   schemas: {
     Header: HeaderSchema,
     Hero: HeroSchema,
-    // Gallery: GallerySchema,
+    Gallery: GallerySchema,
     About: AboutSchema,
+    Contact: ContactSchema,
   },
 };

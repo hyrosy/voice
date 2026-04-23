@@ -12,4 +12,9 @@ export const utils = {
     if (!url) return false;
     return !!url.match(/\.(mp4|webm|mov)$/i);
   },
+  // 🚀 NEW: Strips everything except numbers (great for WhatsApp/Tel links)
+  cleanPhoneNumber: (num?: string | null) => {
+    if (!num) return "";
+    return num.replace(/[^0-9]/g, "");
+  },
 };

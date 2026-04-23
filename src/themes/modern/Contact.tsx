@@ -1,5 +1,4 @@
 import React from "react";
-import { BlockProps } from "../types";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import {
@@ -11,26 +10,23 @@ import {
   Globe,
   MessageCircle,
 } from "lucide-react";
-// 🚀 1. IMPORT INLINE EDIT
 import { InlineEdit } from "../../components/dashboard/InlineEdit";
 
-// 🚀 2. GRAB id AND isPreview FROM PROPS
 const Contact: React.FC<any> = ({ data, id, isPreview }) => {
-  const variant = data.variant || "minimal"; // minimal, split, card
+  const variant = data.variant || "minimal";
 
-  // Helper to strip non-numeric characters for WhatsApp links
   const cleanNumber = (num: string) => num.replace(/[^0-9]/g, "");
 
-  // Social Icons Helper
+  // --- SUB-COMPONENT: SOCIAL ICONS ---
   const SocialIcons = ({ className }: { className?: string }) => (
-    <div className={cn("flex gap-4", className)}>
+    <div className={cn("flex flex-wrap gap-4", className)}>
       {data.linkedin && (
         <a
           href={data.linkedin}
           target="_blank"
           rel="noopener noreferrer"
           onClick={(e) => isPreview && e.preventDefault()}
-          className="p-2 rounded-full bg-white/5 hover:bg-white/20 hover:text-white hover:scale-110 transition-all text-neutral-400"
+          className="p-3 rounded-full bg-white/5 hover:bg-primary/20 hover:text-primary hover:scale-110 transition-all text-neutral-400 ring-1 ring-white/5 hover:ring-primary/50"
         >
           <Linkedin className="w-5 h-5" />
         </a>
@@ -41,7 +37,7 @@ const Contact: React.FC<any> = ({ data, id, isPreview }) => {
           target="_blank"
           rel="noopener noreferrer"
           onClick={(e) => isPreview && e.preventDefault()}
-          className="p-2 rounded-full bg-white/5 hover:bg-white/20 hover:text-white hover:scale-110 transition-all text-neutral-400"
+          className="p-3 rounded-full bg-white/5 hover:bg-pink-500/20 hover:text-pink-400 hover:scale-110 transition-all text-neutral-400 ring-1 ring-white/5 hover:ring-pink-500/50"
         >
           <Instagram className="w-5 h-5" />
         </a>
@@ -52,7 +48,7 @@ const Contact: React.FC<any> = ({ data, id, isPreview }) => {
           target="_blank"
           rel="noopener noreferrer"
           onClick={(e) => isPreview && e.preventDefault()}
-          className="p-2 rounded-full bg-white/5 hover:bg-white/20 hover:text-white hover:scale-110 transition-all text-neutral-400"
+          className="p-3 rounded-full bg-white/5 hover:bg-white/20 hover:text-white hover:scale-110 transition-all text-neutral-400 ring-1 ring-white/5 hover:ring-white/50"
         >
           <Twitter className="w-5 h-5" />
         </a>
@@ -63,7 +59,7 @@ const Contact: React.FC<any> = ({ data, id, isPreview }) => {
           target="_blank"
           rel="noopener noreferrer"
           onClick={(e) => isPreview && e.preventDefault()}
-          className="p-2 rounded-full bg-white/5 hover:bg-white/20 hover:text-white hover:scale-110 transition-all text-neutral-400"
+          className="p-3 rounded-full bg-white/5 hover:bg-white/20 hover:text-white hover:scale-110 transition-all text-neutral-400 ring-1 ring-white/5 hover:ring-white/50"
         >
           <Globe className="w-5 h-5" />
         </a>
@@ -71,7 +67,7 @@ const Contact: React.FC<any> = ({ data, id, isPreview }) => {
     </div>
   );
 
-  // Button Cluster Helper
+  // --- SUB-COMPONENT: ACTION CLUSTER ---
   const ContactActions = ({
     align = "center",
   }: {
@@ -79,39 +75,37 @@ const Contact: React.FC<any> = ({ data, id, isPreview }) => {
   }) => (
     <div
       className={cn(
-        "flex flex-wrap gap-4 pt-4",
+        "flex flex-wrap gap-4",
         align === "center" ? "justify-center" : "justify-start"
       )}
     >
-      {/* 1. Main Email Button */}
       <Button
         asChild
         size="lg"
-        className="h-12 px-8 rounded-full text-base shadow-[0_0_20px_rgba(255,255,255,0.1)] hover:shadow-[0_0_30px_rgba(255,255,255,0.3)] transition-all bg-white text-black hover:bg-neutral-200"
+        className="h-14 px-8 rounded-full text-base shadow-[0_0_20px_rgba(255,255,255,0.1)] hover:shadow-[0_0_30px_rgba(255,255,255,0.3)] transition-all bg-white text-black hover:bg-neutral-200 hover:scale-105 group"
       >
-        {/* 🚀 3. ADD PREVENT DEFAULT TO LINKS */}
         <a
           href={`mailto:${data.email}`}
           onClick={(e) => isPreview && e.preventDefault()}
         >
-          <Mail className="mr-2 w-4 h-4 inline-block" />
+          <Mail className="mr-2 w-5 h-5 group-hover:-rotate-12 transition-transform" />
           <InlineEdit
             tagName="span"
             text={data.ctaText || "Email Me"}
             sectionId={id}
             fieldKey="ctaText"
             isPreview={isPreview}
+            className="font-bold tracking-wide"
           />
         </a>
       </Button>
 
-      {/* 2. WhatsApp Button (If exists) */}
       {data.whatsapp && (
         <Button
           asChild
           size="lg"
           variant="outline"
-          className="h-12 px-6 rounded-full border-green-500/50 text-green-400 hover:bg-green-500/10 hover:text-green-300 hover:border-green-400"
+          className="h-14 px-8 rounded-full border-green-500/30 text-green-400 hover:bg-green-500/10 hover:text-green-300 hover:border-green-400 hover:scale-105 transition-all text-base"
         >
           <a
             href={`https://wa.me/${cleanNumber(data.whatsapp)}`}
@@ -119,112 +113,114 @@ const Contact: React.FC<any> = ({ data, id, isPreview }) => {
             rel="noopener noreferrer"
             onClick={(e) => isPreview && e.preventDefault()}
           >
-            <MessageCircle className="mr-2 w-4 h-4" /> WhatsApp
+            <MessageCircle className="mr-2 w-5 h-5" /> WhatsApp
           </a>
         </Button>
       )}
 
-      {/* 3. Phone Link (If exists) */}
       {data.phone && (
         <Button
           asChild
           size="lg"
           variant="outline"
-          className="h-12 px-6 rounded-full border-white/10 hover:bg-white/10 hover:text-white hover:border-white/30 text-neutral-400"
+          className="h-14 px-8 rounded-full border-white/10 hover:bg-white/10 hover:text-white hover:border-white/30 text-neutral-300 hover:scale-105 transition-all text-base"
         >
           <a
             href={`tel:${data.phone}`}
             onClick={(e) => isPreview && e.preventDefault()}
           >
-            <Phone className="mr-2 w-4 h-4" /> Call
+            <Phone className="mr-2 w-5 h-5" /> Call
           </a>
         </Button>
       )}
     </div>
   );
 
+  // --- MAIN RENDER ---
   return (
     <section
-      className="relative py-24 md:py-32 bg-neutral-950 overflow-hidden text-white"
+      className="relative py-32 bg-neutral-950 overflow-hidden text-white"
       id="contact"
     >
-      {/* Global Texture & Glow */}
+      {/* Global Atmosphere */}
       <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 brightness-100 contrast-150 mix-blend-overlay pointer-events-none"></div>
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-3/4 h-3/4 bg-primary/5 blur-[120px] rounded-full pointer-events-none" />
 
-      {/* VARIANT 1: MINIMAL (Centered) */}
+      {/* VARIANT 1: MINIMAL */}
       {variant === "minimal" && (
-        <div className="container mx-auto px-4 relative z-10 text-center">
-          <div className="max-w-3xl mx-auto space-y-6 animate-in fade-in slide-in-from-bottom-8 duration-700">
-            {/* Title */}
-            <InlineEdit
-              tagName="h2"
-              className="text-4xl md:text-6xl font-bold tracking-tight block"
-              text={data.title || "Let's Work Together"}
-              sectionId={id}
-              fieldKey="title"
-              isPreview={isPreview}
-            />
-            <div className="h-1 w-20 bg-primary mx-auto rounded-full" />
+        <div className="container mx-auto px-6 relative z-10 max-w-4xl text-center">
+          <div className="space-y-8 animate-in fade-in slide-in-from-bottom-8 duration-1000">
+            <div className="space-y-6">
+              <InlineEdit
+                tagName="h2"
+                className="text-5xl md:text-7xl lg:text-8xl font-black tracking-tighter block leading-none"
+                text={data.title || "Let's Work Together"}
+                sectionId={id}
+                fieldKey="title"
+                isPreview={isPreview}
+              />
+              <div className="h-1 w-24 bg-gradient-to-r from-primary to-transparent mx-auto rounded-full" />
+              <InlineEdit
+                tagName="p"
+                className="text-xl md:text-2xl text-neutral-400 leading-relaxed font-medium block max-w-2xl mx-auto"
+                text={
+                  data.subheadline || "Reach out to discuss your next project."
+                }
+                sectionId={id}
+                fieldKey="subheadline"
+                isPreview={isPreview}
+              />
+            </div>
 
-            {/* Subtitle */}
-            <InlineEdit
-              tagName="p"
-              className="text-lg md:text-xl text-neutral-400 leading-relaxed max-w-2xl mx-auto block"
-              text={
-                data.subheadline || "Reach out to discuss your next project."
-              }
-              sectionId={id}
-              fieldKey="subheadline"
-              isPreview={isPreview}
-            />
-
-            {/* Actions */}
-            <div className="pt-2">
+            <div className="pt-6">
               <ContactActions align="center" />
             </div>
 
-            {/* Socials */}
-            <div className="pt-8 border-t border-white/10 w-full flex justify-center mt-8">
+            <div className="pt-12 flex justify-center border-t border-white/10 w-3/4 mx-auto">
               <SocialIcons />
             </div>
           </div>
         </div>
       )}
 
-      {/* VARIANT 2: SPLIT (Image Left, Info Right) */}
+      {/* VARIANT 2: SPLIT */}
       {variant === "split" && (
-        <div className="container mx-auto px-4 relative z-10">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+        <div className="container mx-auto px-6 relative z-10 max-w-7xl">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 lg:gap-24 items-center">
             {/* Image Side */}
-            <div className="relative aspect-[4/5] lg:aspect-square rounded-2xl overflow-hidden shadow-2xl bg-neutral-900 border border-white/10 group order-2 lg:order-1">
+            <div className="relative aspect-[4/5] rounded-3xl overflow-hidden shadow-2xl bg-neutral-900 border border-white/10 group order-2 lg:order-1 animate-in fade-in slide-in-from-bottom-8 duration-1000">
               {data.image ? (
                 <img
                   src={data.image}
                   alt="Contact"
-                  className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105 opacity-80 group-hover:opacity-100"
+                  className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-105 opacity-90 group-hover:opacity-100"
                 />
               ) : (
-                <div className="w-full h-full flex items-center justify-center bg-neutral-900 text-neutral-700">
-                  <Mail className="w-20 h-20 opacity-20" />
+                <div className="w-full h-full flex flex-col items-center justify-center bg-neutral-900/50 text-neutral-600">
+                  <Mail className="w-24 h-24 mb-4 opacity-20" />
+                  <span className="text-sm font-medium tracking-widest uppercase opacity-40">
+                    No Image Selected
+                  </span>
                 </div>
               )}
+              <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none" />
             </div>
 
             {/* Info Side */}
-            <div className="space-y-8 lg:pl-10 order-1 lg:order-2">
-              <div className="space-y-4">
+            <div className="space-y-10 order-1 lg:order-2 animate-in fade-in slide-in-from-bottom-8 duration-1000 delay-200 fill-mode-both">
+              <div className="space-y-6">
                 <InlineEdit
                   tagName="h2"
-                  className="text-4xl md:text-5xl font-bold tracking-tight leading-tight block"
+                  className="text-5xl md:text-6xl lg:text-7xl font-extrabold tracking-tighter leading-[1.1] block"
                   text={data.title || "Get In Touch"}
                   sectionId={id}
                   fieldKey="title"
                   isPreview={isPreview}
                 />
-                <div className="h-1 w-24 bg-primary rounded-full" />
+                <div className="h-1 w-24 bg-gradient-to-r from-primary to-transparent rounded-full" />
                 <InlineEdit
                   tagName="p"
-                  className="text-lg text-neutral-400 leading-relaxed block"
+                  className="text-xl text-neutral-300 leading-relaxed block font-medium"
                   text={
                     data.subheadline ||
                     "Reach out to discuss your next project."
@@ -237,7 +233,10 @@ const Contact: React.FC<any> = ({ data, id, isPreview }) => {
 
               <ContactActions align="start" />
 
-              <div className="pt-8">
+              <div className="pt-10">
+                <p className="text-xs tracking-widest uppercase text-neutral-500 font-bold mb-4">
+                  Connect Socially
+                </p>
                 <SocialIcons />
               </div>
             </div>
@@ -245,56 +244,58 @@ const Contact: React.FC<any> = ({ data, id, isPreview }) => {
         </div>
       )}
 
-      {/* VARIANT 3: CARD (Floating Glass) */}
+      {/* VARIANT 3: CARD */}
       {variant === "card" && (
-        <>
-          {/* Background Image with Blur */}
+        <div className="relative w-full min-h-[70vh] flex items-center justify-center py-20 px-6">
+          {/* Blurred Background Plate */}
           {data.image && (
-            <div className="absolute inset-0 z-0">
+            <div className="absolute inset-0 z-0 overflow-hidden">
               <img
                 src={data.image}
-                className="w-full h-full object-cover opacity-30 blur-xl scale-110"
+                className="w-full h-full object-cover opacity-40 blur-2xl scale-110 brightness-50"
                 alt="bg"
               />
-              <div className="absolute inset-0 bg-black/60" />
+              <div className="absolute inset-0 bg-gradient-to-b from-neutral-950/50 to-neutral-950/90" />
             </div>
           )}
 
-          <div className="container mx-auto px-4 relative z-10 flex justify-center">
-            <div className="w-full max-w-2xl bg-neutral-900/60 backdrop-blur-xl border border-white/10 rounded-3xl p-8 md:p-12 shadow-2xl text-center space-y-6 animate-in zoom-in-95 duration-700">
-              <InlineEdit
-                tagName="h2"
-                className="text-3xl md:text-5xl font-bold tracking-tight block"
-                text={data.title || "Contact Me"}
-                sectionId={id}
-                fieldKey="title"
-                isPreview={isPreview}
-              />
+          <div className="w-full max-w-3xl relative z-10">
+            <div className="bg-neutral-950/40 backdrop-blur-2xl border border-white/10 rounded-[3rem] p-10 md:p-16 lg:p-20 shadow-2xl text-center space-y-10 animate-in zoom-in-95 duration-1000 ring-1 ring-white/5">
+              <div className="space-y-6">
+                <InlineEdit
+                  tagName="h2"
+                  className="text-4xl md:text-5xl lg:text-6xl font-black tracking-tight block"
+                  text={data.title || "Contact Me"}
+                  sectionId={id}
+                  fieldKey="title"
+                  isPreview={isPreview}
+                />
+                <InlineEdit
+                  tagName="p"
+                  className="text-lg md:text-xl text-neutral-300 leading-relaxed block max-w-xl mx-auto"
+                  text={
+                    data.subheadline ||
+                    "Reach out to discuss your next project."
+                  }
+                  sectionId={id}
+                  fieldKey="subheadline"
+                  isPreview={isPreview}
+                />
+              </div>
 
-              <InlineEdit
-                tagName="p"
-                className="text-neutral-300 leading-relaxed block"
-                text={
-                  data.subheadline || "Reach out to discuss your next project."
-                }
-                sectionId={id}
-                fieldKey="subheadline"
-                isPreview={isPreview}
-              />
-
-              <div className="pt-2">
+              <div className="flex justify-center">
                 <ContactActions align="center" />
               </div>
 
-              <div className="pt-6 border-t border-white/5 flex flex-col items-center gap-4 mt-4">
-                <span className="text-xs uppercase tracking-widest text-neutral-500">
-                  Connect Socially
+              <div className="pt-10 border-t border-white/10 flex flex-col items-center gap-6 mt-10">
+                <span className="text-xs uppercase tracking-widest text-neutral-500 font-bold">
+                  Or Connect On
                 </span>
                 <SocialIcons />
               </div>
             </div>
           </div>
-        </>
+        </div>
       )}
     </section>
   );

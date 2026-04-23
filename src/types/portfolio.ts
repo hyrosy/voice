@@ -245,6 +245,7 @@ export const DEFAULT_PORTFOLIO_SECTIONS: PortfolioSection[] = [
       variant: "minimal",
       title: "Let's Work Together",
       subheadline: "Available for projects worldwide.",
+      email: "hello@example.com", // 🚀 ADDED THIS
       ctaText: "Send Email",
       ctaLink: "mailto:hello@example.com",
     },

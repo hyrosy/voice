@@ -4,6 +4,7 @@ import React, { useState, useEffect } from "react";
 import { useBuilderStore } from "../../store/useBuilderStore"; // <-- ZUSTAND IMPORT
 import { supabase } from "@/supabaseClient";
 import { useSubscription } from "../../context/SubscriptionContext";
+import { verticalListSortingStrategy } from "@dnd-kit/sortable"; // 🚀 Add this next to rectSortingStrategy
 // --- shadcn/ui Imports ---
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -79,6 +80,12 @@ import {
   Type,
   List,
   Play,
+  Camera,
+  Phone,
+  Mail,
+  Share2,
+  UserPlus,
+  GripVertical,
 } from "lucide-react";
 
 import PortfolioMediaManager, {
@@ -272,7 +279,139 @@ const SectionEditor: React.FC<SectionEditorProps> = ({
       </div>
     );
   };
+// 🚀 NEW: Standalone Sortable Item for Team Members
+const SortableTeamMember = ({
+  member,
+  idx,
+  updateMember,
+  removeMember,
+  setActiveMediaField,
+  setIsMediaPickerOpen,
+}: any) => {
+  // Use a fallback ID if the member doesn't have a unique ID yet
+  const sortableId = member.id || `team-member-${idx}`;
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
+    useSortable({ id: sortableId });
 
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    zIndex: isDragging ? 50 : 0,
+  };
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={cn(
+        "flex gap-3 p-4 border rounded-xl bg-background shadow-sm transition-all relative group",
+        isDragging && "ring-2 ring-primary shadow-2xl opacity-90 scale-[0.98]"
+      )}
+    >
+      {/* Drag Handle - Only this part triggers the drag! */}
+      <div
+        {...attributes}
+        {...listeners}
+        className="mt-6 cursor-grab active:cursor-grabbing text-muted-foreground hover:text-primary transition-colors flex-shrink-0 touch-none"
+      >
+        <GripVertical size={20} />
+      </div>
+
+      <div className="flex-1 space-y-4">
+        {/* Remove Button */}
+        <Button
+          size="icon"
+          variant="ghost"
+          className="absolute top-2 right-2 text-muted-foreground hover:text-destructive h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity"
+          onPointerDown={(e) => e.stopPropagation()}
+          onClick={() => removeMember(idx)}
+        >
+          <Trash2 className="w-4 h-4" />
+        </Button>
+
+        <div className="flex gap-4 items-start pr-8">
+          {/* Image Picker */}
+          <div
+            className="w-16 h-16 sm:w-20 sm:h-20 bg-muted rounded-full flex-shrink-0 relative overflow-hidden cursor-pointer border-2 border-transparent hover:border-primary transition-colors group/img"
+            onPointerDown={(e) => e.stopPropagation()}
+            onClick={() => {
+              setActiveMediaField(`member-image-${idx}`);
+              setIsMediaPickerOpen(true);
+            }}
+          >
+            {member.image ? (
+              <img
+                src={member.image}
+                className="w-full h-full object-cover transition-transform duration-500 group-hover/img:scale-110"
+                alt={member.name}
+              />
+            ) : (
+              <Users className="w-6 h-6 text-muted-foreground absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" />
+            )}
+            <div className="absolute inset-0 bg-black/50 opacity-0 group-hover/img:opacity-100 transition-opacity flex items-center justify-center text-[10px] text-white uppercase tracking-wider font-bold">
+              Edit
+            </div>
+          </div>
+
+          {/* Basic Info */}
+          <div className="flex-grow space-y-2">
+            <Input
+              placeholder="Full Name"
+              value={member.name || ""}
+              onChange={(e) => updateMember(idx, "name", e.target.value)}
+              className="font-bold h-9"
+              onPointerDown={(e) => e.stopPropagation()}
+            />
+            <Input
+              placeholder="Role / Title (e.g. Lead Designer)"
+              value={member.role || ""}
+              onChange={(e) => updateMember(idx, "role", e.target.value)}
+              className="text-xs h-8 text-muted-foreground"
+              onPointerDown={(e) => e.stopPropagation()}
+            />
+          </div>
+        </div>
+
+        {/* Bio */}
+        <div className="space-y-1">
+          <Label className="text-[10px] uppercase tracking-widest text-muted-foreground">Short Bio</Label>
+          <Textarea
+            placeholder="A brief introduction..."
+            value={member.bio || ""}
+            onChange={(e) => updateMember(idx, "bio", e.target.value)}
+            rows={2}
+            className="text-xs resize-none"
+            onPointerDown={(e) => e.stopPropagation()}
+          />
+        </div>
+
+        {/* Social Links */}
+        <div className="grid grid-cols-2 gap-3 pt-2 border-t border-dashed">
+          <div className="relative">
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground font-bold text-[10px]">IN</span>
+            <Input
+              placeholder="LinkedIn URL"
+              value={member.linkedin || ""}
+              onChange={(e) => updateMember(idx, "linkedin", e.target.value)}
+              className="pl-8 text-xs h-8 bg-muted/50"
+              onPointerDown={(e) => e.stopPropagation()}
+            />
+          </div>
+          <div className="relative">
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground font-bold text-[10px]">IG</span>
+            <Input
+              placeholder="Instagram URL"
+              value={member.instagram || ""}
+              onChange={(e) => updateMember(idx, "instagram", e.target.value)}
+              className="pl-8 text-xs h-8 bg-muted/50"
+              onPointerDown={(e) => e.stopPropagation()}
+            />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
   // =========================================================
   // MEDIA HANDLER (Adapted to Zustand)
   // =========================================================
@@ -3016,23 +3155,42 @@ const SectionEditor: React.FC<SectionEditorProps> = ({
       case "team":
         return (
           <div className="space-y-6">
-            <div className="space-y-2">
-              <Label>Section Title</Label>
-              <Input
-                value={formData.title || ""}
-                onChange={(e) => updateField("title", e.target.value)}
-              />
+            {/* 1. TEXT CONTENT */}
+            <div className="space-y-4 p-4 border rounded-lg bg-background shadow-sm">
+              <div className="flex items-center gap-2 mb-2 border-b pb-2">
+                <Type size={16} className="text-primary" />
+                <Label className="text-base font-semibold">
+                  Section Header
+                </Label>
+              </div>
+              <div className="space-y-2">
+                <Label className="text-xs text-muted-foreground uppercase tracking-wider">
+                  Team Title
+                </Label>
+                <Input
+                  value={formData.title || ""}
+                  onChange={(e) => updateField("title", e.target.value)}
+                  placeholder="e.g. Meet The Team"
+                  className="font-bold"
+                />
+              </div>
             </div>
 
-            {/* 1. CONFIGURATION */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 border rounded-lg bg-muted/20">
+            {/* 2. LAYOUT ARCHITECTURE */}
+            <div className="space-y-4 p-4 border rounded-lg bg-muted/10">
+              <div className="flex items-center gap-2 mb-2 border-b pb-2">
+                <LayoutTemplate size={16} className="text-primary" />
+                <Label className="text-base font-semibold text-primary">
+                  Layout Architecture
+                </Label>
+              </div>
               <div className="space-y-2">
-                <Label>Layout Style</Label>
+                <Label>Team Display Style</Label>
                 <Select
                   value={formData.variant || "grid"}
                   onValueChange={(val) => updateField("variant", val)}
                 >
-                  <SelectTrigger className="bg-background">
+                  <SelectTrigger className="bg-background h-10">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -3045,123 +3203,98 @@ const SectionEditor: React.FC<SectionEditorProps> = ({
                     </SelectItem>
                   </SelectContent>
                 </Select>
+                <p className="text-[10px] text-muted-foreground pt-1">
+                  {formData.variant === "grid" &&
+                    "A clean, balanced grid for standard team layouts."}
+                  {formData.variant === "spotlight" &&
+                    "Highlights the first member with a larger card. Great for founders/CEOs."}
+                  {formData.variant === "carousel" &&
+                    "A horizontal slider. Perfect for large teams to save vertical space."}
+                </p>
               </div>
             </div>
 
-            {/* 2. MEMBER MANAGER */}
-            <div className="space-y-3 pt-4 border-t">
-              <div className="flex justify-between items-center">
-                <Label>Team Members</Label>
-                <Button size="sm" variant="outline" onClick={handleAddMember}>
-                  <Plus className="w-4 h-4 mr-2" /> Add Member
+            {/* 3. MEMBER MANAGER */}
+            <div className="space-y-4 p-4 border rounded-lg bg-muted/5">
+              <div className="flex justify-between items-center border-b pb-2">
+                <div className="flex items-center gap-2">
+                  <Users size={16} className="text-primary" />
+                  <Label className="text-base font-semibold">
+                    Team Members
+                  </Label>
+                </div>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-8 text-xs bg-background shadow-sm"
+                  onClick={handleAddMember}
+                >
+                  <UserPlus className="w-3 h-3 mr-1" /> Add Member
                 </Button>
               </div>
 
-              <div className="space-y-4">
-                {(formData.members || []).map((member: any, idx: number) => (
-                  <div
-                    key={idx}
-                    className="border p-4 rounded-lg bg-muted/10 space-y-4 relative group"
+              {/* 🚀 DND-KIT LIST */}
+              <div className="space-y-4 pt-2">
+                <DndContext
+                  sensors={sensors}
+                  collisionDetection={closestCenter}
+                  onDragEnd={(event) => {
+                    const { active, over } = event;
+                    if (over && active.id !== over.id) {
+                      // We map by the same ID logic used in the SortableTeamMember
+                      const oldIndex = formData.members.findIndex(
+                        (m: any, idx: number) =>
+                          (m.id || `team-member-${idx}`) === active.id
+                      );
+                      const newIndex = formData.members.findIndex(
+                        (m: any, idx: number) =>
+                          (m.id || `team-member-${idx}`) === over.id
+                      );
+                      updateField(
+                        "members",
+                        arrayMove(formData.members, oldIndex, newIndex)
+                      );
+                    }
+                  }}
+                >
+                  <SortableContext
+                    items={(formData.members || []).map(
+                      (m: any, idx: number) => m.id || `team-member-${idx}`
+                    )}
+                    strategy={verticalListSortingStrategy} // 🚀 1D Vertical list math!
                   >
-                    {/* Remove Button */}
-                    <Button
-                      size="icon"
-                      variant="ghost"
-                      className="absolute top-2 right-2 text-muted-foreground hover:text-destructive h-8 w-8"
-                      onClick={() => removeMember(idx)}
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
-
-                    <div className="flex gap-4 items-start">
-                      {/* Image Picker */}
-                      <div
-                        className="w-20 h-20 bg-muted rounded-full flex-shrink-0 relative overflow-hidden cursor-pointer border border-border group/img"
-                        onClick={() => {
-                          setActiveMediaField(`member-image-${idx}`);
-                          setIsMediaPickerOpen(true);
-                        }}
-                      >
-                        {member.image ? (
-                          <img
-                            src={member.image}
-                            className="w-full h-full object-cover transition-transform group-hover/img:scale-110"
-                            alt={member.name}
-                          />
-                        ) : (
-                          <Users className="w-8 h-8 text-muted-foreground absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" />
-                        )}
-                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover/img:opacity-100 transition-opacity flex items-center justify-center text-[9px] text-white uppercase tracking-wider font-bold">
-                          Change
-                        </div>
-                      </div>
-
-                      {/* Basic Info */}
-                      <div className="flex-grow grid gap-2">
-                        <Input
-                          placeholder="Name"
-                          value={member.name}
-                          onChange={(e) =>
-                            updateMember(idx, "name", e.target.value)
-                          }
-                          className="font-medium"
+                    {(formData.members || []).map(
+                      (member: any, idx: number) => (
+                        <SortableTeamMember
+                          key={member.id || `team-member-${idx}`}
+                          member={member}
+                          idx={idx}
+                          updateMember={updateMember}
+                          removeMember={removeMember}
+                          setActiveMediaField={setActiveMediaField}
+                          setIsMediaPickerOpen={setIsMediaPickerOpen}
                         />
-                        <Input
-                          placeholder="Role / Title"
-                          value={member.role}
-                          onChange={(e) =>
-                            updateMember(idx, "role", e.target.value)
-                          }
-                          className="text-xs text-muted-foreground"
-                        />
-                      </div>
-                    </div>
+                      )
+                    )}
+                  </SortableContext>
+                </DndContext>
 
-                    {/* Bio */}
-                    <Textarea
-                      placeholder="Short Bio..."
-                      value={member.bio}
-                      onChange={(e) => updateMember(idx, "bio", e.target.value)}
-                      rows={2}
-                      className="text-sm resize-none"
-                    />
-
-                    {/* Social Links (Collapsible-ish) */}
-                    <div className="grid grid-cols-2 gap-2">
-                      <div className="relative">
-                        <Input
-                          placeholder="LinkedIn URL"
-                          value={member.linkedin || ""}
-                          onChange={(e) =>
-                            updateMember(idx, "linkedin", e.target.value)
-                          }
-                          className="pl-8 text-xs h-8"
-                        />
-                        <span className="absolute left-2.5 top-2 text-muted-foreground font-bold text-xs">
-                          in
-                        </span>
-                      </div>
-                      <div className="relative">
-                        <Input
-                          placeholder="Instagram URL"
-                          value={member.instagram || ""}
-                          onChange={(e) =>
-                            updateMember(idx, "instagram", e.target.value)
-                          }
-                          className="pl-8 text-xs h-8"
-                        />
-                        <span className="absolute left-2.5 top-2 text-muted-foreground font-bold text-xs">
-                          IG
-                        </span>
-                      </div>
-                    </div>
+                {(!formData.members || formData.members.length === 0) && (
+                  <div
+                    className="w-full py-12 flex flex-col items-center justify-center border-2 border-dashed rounded-xl bg-muted/30 text-muted-foreground hover:bg-muted/50 hover:text-primary hover:border-primary/50 transition-colors cursor-pointer"
+                    onClick={handleAddMember}
+                  >
+                    <UserPlus className="w-8 h-8 mb-3 opacity-50" />
+                    <p className="text-sm font-medium">No team members yet</p>
+                    <p className="text-xs opacity-70">
+                      Click here to add your first member
+                    </p>
                   </div>
-                ))}
+                )}
               </div>
             </div>
           </div>
-        );
-      // --- MAP SECTION EDITOR ---
+        ); // --- MAP SECTION EDITOR ---
       case "map":
         return (
           <div className="space-y-6">
@@ -4557,160 +4690,256 @@ const SectionEditor: React.FC<SectionEditorProps> = ({
       case "contact":
         return (
           <div className="space-y-6">
-            {/* 1. LAYOUT VARIANT */}
-            <div className="space-y-3 p-4 border rounded-lg bg-muted/20">
-              <Label>Layout Style</Label>
-              <Select
-                value={formData.variant || "minimal"}
-                onValueChange={(val) => updateField("variant", val)}
-              >
-                <SelectTrigger className="bg-background">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="minimal">Minimal (Center Text)</SelectItem>
-                  <SelectItem value="split">Split (Image + Info)</SelectItem>
-                  <SelectItem value="card">Floating Card (Premium)</SelectItem>
-                </SelectContent>
-              </Select>
+            {/* 1. LAYOUT ARCHITECTURE */}
+            <div className="space-y-4 p-4 border rounded-lg bg-muted/10">
+              <div className="flex items-center gap-2 mb-2 border-b pb-2">
+                <LayoutTemplate size={16} className="text-primary" />
+                <Label className="text-base font-semibold text-primary">
+                  Layout Architecture
+                </Label>
+              </div>
+              <div className="space-y-2">
+                <Label>Contact Style</Label>
+                <Select
+                  value={formData.variant || "minimal"}
+                  onValueChange={(val) => updateField("variant", val)}
+                >
+                  <SelectTrigger className="bg-background h-10">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="minimal">
+                      Minimal (Center Text)
+                    </SelectItem>
+                    <SelectItem value="split">Split (Image + Info)</SelectItem>
+                    <SelectItem value="card">
+                      Floating Card (Premium)
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-[10px] text-muted-foreground pt-1">
+                  {formData.variant === "minimal" &&
+                    "A clean, distraction-free layout focused entirely on the CTA."}
+                  {formData.variant === "split" &&
+                    "A modern side-by-side layout. Great for showcasing a studio or portrait."}
+                  {formData.variant === "card" &&
+                    "An elevated, high-converting floating card over the background."}
+                </p>
+              </div>
             </div>
 
-            {/* 2. TEXT CONTENT */}
-            <div className="space-y-4">
+            {/* 2. MESSAGING & TYPOGRAPHY */}
+            <div className="space-y-4 p-4 border rounded-lg bg-background shadow-sm">
+              <div className="flex items-center gap-2 mb-2 border-b pb-2">
+                <Type size={16} className="text-primary" />
+                <Label className="text-base font-semibold">Messaging</Label>
+              </div>
+
               <div className="space-y-2">
-                <Label>Section Title</Label>
+                <Label className="text-xs text-muted-foreground uppercase tracking-wider">
+                  Headline
+                </Label>
                 <Input
                   value={formData.title || ""}
                   onChange={(e) => updateField("title", e.target.value)}
-                  placeholder="Let's Work Together"
+                  placeholder="e.g. Let's Work Together"
+                  className="font-bold text-lg h-10"
                 />
               </div>
 
-              {/* NEW: Subtitle/Description */}
               <div className="space-y-2">
-                <Label>Subtitle / Note</Label>
+                <Label className="text-xs text-muted-foreground uppercase tracking-wider">
+                  Subtitle / Note
+                </Label>
                 <Textarea
                   value={formData.subheadline || ""}
                   onChange={(e) => updateField("subheadline", e.target.value)}
                   placeholder="Available for projects worldwide. Reach out for rates and availability."
+                  className="resize-none"
                   rows={3}
                 />
               </div>
+            </div>
 
-              <div className="space-y-2">
-                <Label>Email Address</Label>
-                <Input
-                  value={formData.email || ""}
-                  onChange={(e) => updateField("email", e.target.value)}
-                  placeholder="your@email.com"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Main Button Text</Label>
-                <Input
-                  value={formData.ctaText || "Send Email"}
-                  onChange={(e) => updateField("ctaText", e.target.value)}
-                />
+            {/* 3. DIRECT CONTACT INFO */}
+            <div className="space-y-4 p-4 border rounded-lg bg-muted/5">
+              <div className="flex items-center gap-2 mb-2 border-b pb-2">
+                <Mail size={16} className="text-primary" />
+                <Label className="text-base font-semibold">
+                  Direct Contact
+                </Label>
               </div>
 
-              {/* CONTACT METHODS */}
-              <div className="grid grid-cols-2 gap-4 pt-2">
-                <div className="space-y-2">
-                  <Label className="text-xs">Phone Number</Label>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2 col-span-2 sm:col-span-1">
+                  <Label className="text-xs">Email Address</Label>
+                  <div className="relative">
+                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                    <Input
+                      value={formData.email || ""}
+                      onChange={(e) => updateField("email", e.target.value)}
+                      placeholder="hello@example.com"
+                      className="pl-9 h-9"
+                    />
+                  </div>
+                </div>
+                <div className="space-y-2 col-span-2 sm:col-span-1">
+                  <Label className="text-xs">Button Text</Label>
                   <Input
-                    value={formData.phone || ""}
-                    onChange={(e) => updateField("phone", e.target.value)}
-                    placeholder="+1 555 000 0000"
+                    value={formData.ctaText || "Send Email"}
+                    onChange={(e) => updateField("ctaText", e.target.value)}
+                    className="h-9"
                   />
                 </div>
-                <div className="space-y-2">
-                  <Label className="text-xs">WhatsApp Number</Label>
-                  <Input
-                    value={formData.whatsapp || ""}
-                    onChange={(e) => updateField("whatsapp", e.target.value)}
-                    placeholder="e.g. 15550000000"
-                  />
-                  <p className="text-[10px] text-muted-foreground">
-                    Include country code, no symbols (e.g. 15551234567)
-                  </p>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4 pt-2">
+                <div className="space-y-2 col-span-2 sm:col-span-1">
+                  <Label className="text-xs">Phone (Optional)</Label>
+                  <div className="relative">
+                    <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                    <Input
+                      value={formData.phone || ""}
+                      onChange={(e) => updateField("phone", e.target.value)}
+                      placeholder="+1 555 000 0000"
+                      className="pl-9 h-9"
+                    />
+                  </div>
+                </div>
+                <div className="space-y-2 col-span-2 sm:col-span-1">
+                  <Label className="text-xs">WhatsApp (Optional)</Label>
+                  <div className="relative">
+                    <MessageCircle className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                    <Input
+                      value={formData.whatsapp || ""}
+                      onChange={(e) => updateField("whatsapp", e.target.value)}
+                      placeholder="15550000000"
+                      className="pl-9 h-9"
+                    />
+                  </div>
                 </div>
               </div>
             </div>
 
-            {/* 3. IMAGE PICKER */}
+            {/* 4. MEDIA MANAGER (Hidden if Minimal) */}
             {formData.variant !== "minimal" && (
-              <div className="space-y-4 pt-4 border-t">
-                <Label>Featured Image</Label>
-                <div className="flex gap-3 items-center p-3 border rounded-md bg-muted/10">
+              <div className="space-y-4 p-4 border rounded-lg bg-muted/5 animate-in fade-in slide-in-from-bottom-2">
+                <div className="flex items-center justify-between mb-2 border-b pb-2">
+                  <div className="flex items-center gap-2">
+                    <ImageIcon size={16} className="text-primary" />
+                    <Label className="text-base font-semibold">
+                      Featured Image
+                    </Label>
+                  </div>
                   {formData.image && (
-                    <div className="h-16 w-16 rounded overflow-hidden border shrink-0 bg-muted">
-                      <img
-                        src={formData.image}
-                        alt="Preview"
-                        className="w-full h-full object-cover"
-                      />
-                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 text-xs text-destructive hover:text-destructive hover:bg-destructive/10"
+                      onClick={() => updateField("image", "")}
+                    >
+                      <Trash2 className="w-3 h-3 mr-1" /> Remove
+                    </Button>
                   )}
-                  <Button
-                    variant="outline"
-                    className="w-full"
+                </div>
+
+                {!formData.image ? (
+                  <div
+                    className="w-full py-8 border-2 border-dashed rounded-xl bg-muted/30 flex flex-col items-center justify-center cursor-pointer hover:bg-muted/50 hover:border-primary/50 transition-colors group"
                     onClick={() => {
                       setActiveMediaField("image");
                       setIsMediaPickerOpen(true);
                     }}
                   >
-                    {formData.image ? "Change Image" : "Select Image"}
-                  </Button>
-                </div>
+                    <div className="bg-background p-3 rounded-full shadow-sm mb-3 group-hover:scale-110 transition-transform text-muted-foreground group-hover:text-primary">
+                      <Camera className="w-5 h-5" />
+                    </div>
+                    <p className="text-sm font-medium">Add Featured Image</p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Shown alongside your contact info
+                    </p>
+                  </div>
+                ) : (
+                  <div className="relative w-full aspect-video rounded-xl overflow-hidden border shadow-sm group">
+                    <img
+                      src={formData.image}
+                      alt="Contact Preview"
+                      className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                    />
+                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        className="shadow-xl"
+                        onClick={() => {
+                          setActiveMediaField("image");
+                          setIsMediaPickerOpen(true);
+                        }}
+                      >
+                        <Camera className="w-4 h-4 mr-2" /> Change Image
+                      </Button>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 
-            {/* 4. SOCIAL LINKS */}
-            <div className="pt-4 border-t space-y-4">
-              <Label>Social Profiles</Label>
+            {/* 5. SOCIAL PROFILES */}
+            <div className="space-y-4 p-4 border rounded-lg bg-muted/5">
+              <div className="flex items-center gap-2 mb-2 border-b pb-2">
+                <Share2 size={16} className="text-primary" />
+                <Label className="text-base font-semibold">
+                  Social Profiles
+                </Label>
+              </div>
+              <p className="text-[10px] text-muted-foreground mb-3">
+                Icons will automatically appear on your site for any links
+                provided below.
+              </p>
+
               <div className="grid gap-3">
-                <div className="flex items-center gap-2">
-                  <span className="text-xs w-20 text-muted-foreground">
+                <div className="flex items-center gap-3">
+                  <span className="text-xs font-semibold w-20 text-muted-foreground uppercase tracking-wider">
                     LinkedIn
                   </span>
                   <Input
-                    className="h-8"
+                    className="h-9 flex-1 bg-background"
                     value={formData.linkedin || ""}
                     onChange={(e) => updateField("linkedin", e.target.value)}
-                    placeholder="URL"
+                    placeholder="https://linkedin.com/in/..."
                   />
                 </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-xs w-20 text-muted-foreground">
+                <div className="flex items-center gap-3">
+                  <span className="text-xs font-semibold w-20 text-muted-foreground uppercase tracking-wider">
                     Instagram
                   </span>
                   <Input
-                    className="h-8"
+                    className="h-9 flex-1 bg-background"
                     value={formData.instagram || ""}
                     onChange={(e) => updateField("instagram", e.target.value)}
-                    placeholder="URL"
+                    placeholder="https://instagram.com/..."
                   />
                 </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-xs w-20 text-muted-foreground">
+                <div className="flex items-center gap-3">
+                  <span className="text-xs font-semibold w-20 text-muted-foreground uppercase tracking-wider">
                     Twitter (X)
                   </span>
                   <Input
-                    className="h-8"
+                    className="h-9 flex-1 bg-background"
                     value={formData.twitter || ""}
                     onChange={(e) => updateField("twitter", e.target.value)}
-                    placeholder="URL"
+                    placeholder="https://x.com/..."
                   />
                 </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-xs w-20 text-muted-foreground">
+                <div className="flex items-center gap-3">
+                  <span className="text-xs font-semibold w-20 text-muted-foreground uppercase tracking-wider">
                     Website
                   </span>
                   <Input
-                    className="h-8"
+                    className="h-9 flex-1 bg-background"
                     value={formData.website || ""}
                     onChange={(e) => updateField("website", e.target.value)}
-                    placeholder="URL"
+                    placeholder="https://..."
                   />
                 </div>
               </div>
