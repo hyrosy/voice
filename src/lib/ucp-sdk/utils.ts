@@ -17,4 +17,20 @@ export const utils = {
     if (!num) return "";
     return num.replace(/[^0-9]/g, "");
   },
+  // 🚀 NEW: Extracts the clean URL from a pasted iframe embed code
+  extractIframeSrc: (input?: string | null) => {
+    if (!input) return "";
+    const srcMatch = input.match(/src="([^"]+)"/);
+    return srcMatch ? srcMatch[1] : input;
+  },
+
+  // 🚀 NEW: Generates a bulletproof Google Maps directions link
+  getGoogleMapsLink: (addressOrTitle?: string, explicitUrl?: string) => {
+    if (explicitUrl) return explicitUrl;
+    if (!addressOrTitle) return "#";
+    // Official Google Maps Search API format
+    return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
+      addressOrTitle
+    )}`;
+  },
 };

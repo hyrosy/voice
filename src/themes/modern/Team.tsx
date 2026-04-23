@@ -1,5 +1,4 @@
 import React, { useRef } from "react";
-import { BlockProps } from "../types";
 import { cn } from "@/lib/utils";
 import {
   Linkedin,
@@ -8,27 +7,22 @@ import {
   ChevronRight,
   Users,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
-// 🚀 1. IMPORT INLINE EDIT
 import { InlineEdit } from "../../components/dashboard/InlineEdit";
 
-// 🚀 2. GRAB id AND isPreview FROM PROPS
 const Team: React.FC<any> = ({ data, id, isPreview }) => {
   const carouselRef = useRef<HTMLDivElement>(null);
 
   const members = data.members || [];
   const hasMembers = members.length > 0;
+  const variant = data.variant || "grid";
 
-  // If there are no members AND we are on the live site, hide it.
-  // (If we are in preview mode, we let it render so the user can see the empty state!)
+  // Hide on live site if empty
   if (!hasMembers && !isPreview) return null;
-
-  const variant = data.variant || "grid"; // grid, spotlight, carousel
 
   // --- SCROLL LOGIC (For Carousel) ---
   const scrollCarousel = (direction: "left" | "right") => {
     if (carouselRef.current) {
-      const amount = 350; // Scroll amount approx one card width
+      const amount = carouselRef.current.clientWidth * 0.8; // Scroll almost a full page
       carouselRef.current.scrollBy({
         left: direction === "left" ? -amount : amount,
         behavior: "smooth",
@@ -48,52 +42,57 @@ const Team: React.FC<any> = ({ data, id, isPreview }) => {
   }) => (
     <div
       className={cn(
-        "group relative rounded-2xl overflow-hidden border border-white/5 bg-neutral-900 shadow-lg transition-all duration-500 hover:-translate-y-2 hover:shadow-2xl hover:border-white/20",
+        "group relative rounded-3xl overflow-hidden border border-white/10 bg-neutral-900 shadow-xl transition-all duration-700 hover:-translate-y-2 hover:shadow-2xl hover:border-white/20 hover:ring-1 hover:ring-white/10",
         className
       )}
     >
       {/* IMAGE LAYER */}
-      <div className="absolute inset-0">
+      <div className="absolute inset-0 bg-neutral-950">
         {member.image ? (
           <img
             src={member.image}
             alt={member.name}
             loading="lazy"
-            className="w-full h-full object-cover transition-all duration-700 ease-out filter grayscale group-hover:grayscale-0 group-hover:scale-105 will-change-transform"
+            className="w-full h-full object-cover transition-transform duration-1000 ease-out filter grayscale-[50%] group-hover:grayscale-0 group-hover:scale-105"
           />
         ) : (
-          <div className="w-full h-full bg-gradient-to-br from-neutral-800 to-neutral-900" />
+          <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-neutral-800 to-neutral-900">
+            <Users className="w-16 h-16 text-white/10" />
+          </div>
         )}
-        {/* Gradient Overlay */}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/50 to-transparent opacity-90 group-hover:opacity-95 transition-opacity" />
+        {/* Cinematic Gradient Overlay */}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/40 to-transparent opacity-80 group-hover:opacity-90 transition-opacity duration-500" />
       </div>
 
       {/* CONTENT LAYER */}
-      <div className="absolute inset-0 p-6 flex flex-col justify-end">
-        <div className="transform transition-transform duration-500 translate-y-4 group-hover:translate-y-0">
-          <p className="text-primary font-mono text-xs uppercase tracking-widest mb-2 flex items-center gap-2">
+      <div className="absolute inset-0 p-6 md:p-8 flex flex-col justify-end z-10">
+        <div className="transform transition-transform duration-500 translate-y-6 group-hover:translate-y-0">
+          
+          {/* Role / Label */}
+          <p className="text-primary font-mono text-xs uppercase tracking-widest mb-2 flex items-center gap-3">
             {member.role || "Team Member"}
-            <span className="w-8 h-px bg-primary/50 hidden group-hover:block transition-all" />
+            <span className="w-12 h-px bg-primary/50 opacity-0 group-hover:opacity-100 transition-all duration-700 delay-100" />
           </p>
 
+          {/* Name */}
           <h3
             className={cn(
-              "font-bold text-white mb-2 leading-tight",
-              isFeatured ? "text-3xl md:text-4xl" : "text-xl md:text-2xl"
+              "font-black text-white mb-2 leading-tight tracking-tight",
+              isFeatured ? "text-4xl md:text-5xl lg:text-6xl" : "text-2xl md:text-3xl"
             )}
           >
-            {member.name || "Unnamed"}
+            {member.name || "Unnamed Member"}
           </h3>
         </div>
 
-        {/* Bio & Socials (Reveal on Hover) */}
+        {/* Bio & Socials (Reveal on Hover via Grid Trick) */}
         <div className="grid grid-rows-[0fr] group-hover:grid-rows-[1fr] transition-all duration-500 ease-in-out">
           <div className="overflow-hidden">
             {member.bio && (
               <p
                 className={cn(
-                  "text-neutral-300 leading-relaxed mt-2 opacity-0 group-hover:opacity-100 transition-opacity duration-700 delay-100",
-                  isFeatured ? "text-base max-w-lg" : "text-sm"
+                  "text-neutral-300 leading-relaxed mt-4 opacity-0 group-hover:opacity-100 transition-opacity duration-700 delay-100",
+                  isFeatured ? "text-lg max-w-lg font-medium" : "text-sm"
                 )}
               >
                 {member.bio}
@@ -101,13 +100,14 @@ const Team: React.FC<any> = ({ data, id, isPreview }) => {
             )}
 
             {/* Social Icons */}
-            <div className="flex gap-3 mt-4 opacity-0 group-hover:opacity-100 transition-opacity duration-700 delay-200">
+            <div className="flex gap-3 mt-6 opacity-0 group-hover:opacity-100 transition-opacity duration-700 delay-200 translate-y-4 group-hover:translate-y-0">
               {member.linkedin && (
                 <a
                   href={member.linkedin}
                   target="_blank"
                   rel="noreferrer"
-                  className="p-2 bg-white/10 rounded-full hover:bg-primary hover:text-black transition-colors"
+                  onClick={(e) => isPreview && e.preventDefault()}
+                  className="p-3 bg-white/10 backdrop-blur-md rounded-full hover:bg-primary hover:text-black transition-all hover:scale-110"
                 >
                   <Linkedin className="w-4 h-4" />
                 </a>
@@ -117,7 +117,8 @@ const Team: React.FC<any> = ({ data, id, isPreview }) => {
                   href={member.instagram}
                   target="_blank"
                   rel="noreferrer"
-                  className="p-2 bg-white/10 rounded-full hover:bg-primary hover:text-black transition-colors"
+                  onClick={(e) => isPreview && e.preventDefault()}
+                  className="p-3 bg-white/10 backdrop-blur-md rounded-full hover:bg-primary hover:text-black transition-all hover:scale-110"
                 >
                   <Instagram className="w-4 h-4" />
                 </a>
@@ -126,140 +127,127 @@ const Team: React.FC<any> = ({ data, id, isPreview }) => {
           </div>
         </div>
       </div>
-
-      {/* Top Right Accent */}
-      <div className="absolute top-4 right-4 w-2 h-2 rounded-full bg-white/20 group-hover:bg-primary transition-colors duration-500" />
     </div>
   );
 
   return (
-    <section className="relative py-24 md:py-32 px-4 bg-neutral-950 overflow-hidden">
-      {/* Background Texture */}
+    <section className="relative py-24 md:py-32 px-6 bg-neutral-950 overflow-hidden">
+      {/* Background Texture & Glow */}
       <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 brightness-100 contrast-150 mix-blend-overlay pointer-events-none"></div>
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[300px] md:w-[800px] h-[300px] md:h-[800px] bg-primary/10 blur-[100px] rounded-full pointer-events-none" />
+      <div className="absolute top-0 right-0 w-1/2 h-1/2 bg-primary/10 blur-[120px] rounded-full pointer-events-none" />
 
       <div className="container max-w-7xl mx-auto relative z-10">
-        {/* Header */}
-        <div className="text-center max-w-3xl mx-auto mb-16 space-y-4">
-          <span className="text-primary font-mono text-xs tracking-[0.2em] uppercase block">
-            {/* 🚀 3. INLINE EDIT LABEL */}
+        
+        {/* HEADER */}
+        <div className="text-center max-w-3xl mx-auto mb-16 space-y-6 animate-in fade-in slide-in-from-bottom-8 duration-700">
+          <div className="space-y-4">
+            {data.label && (
+              <span className="text-primary font-mono text-xs tracking-widest uppercase block">
+                <InlineEdit
+                  tagName="span"
+                  text={data.label}
+                  sectionId={id}
+                  fieldKey="label"
+                  isPreview={isPreview}
+                />
+              </span>
+            )}
             <InlineEdit
-              tagName="span"
-              text={data.label || "The Team"}
+              tagName="h2"
+              className="text-4xl md:text-5xl lg:text-6xl font-black text-white tracking-tight block leading-tight"
+              text={data.title || "Meet Our Team"}
               sectionId={id}
-              fieldKey="label"
+              fieldKey="title"
               isPreview={isPreview}
             />
-          </span>
-          {/* 🚀 4. INLINE EDIT TITLE */}
+          </div>
+          
+          <div className="h-1 w-24 bg-gradient-to-r from-primary to-transparent mx-auto rounded-full" />
+          
+          {/* 🚀 NEW: Subheadline */}
           <InlineEdit
-            tagName="h2"
-            className="text-4xl md:text-5xl font-bold text-white tracking-tight block"
-            text={data.title || "Meet Our Team"}
+            tagName="p"
+            className="text-lg md:text-xl text-neutral-400 font-medium block"
+            text={data.subheadline || "The creative minds behind the magic."}
             sectionId={id}
-            fieldKey="title"
+            fieldKey="subheadline"
             isPreview={isPreview}
           />
         </div>
 
-        {/* 🚀 5. AAA+ UX: EMPTY STATE PLACEHOLDER */}
+        {/* 🚀 EMPTY STATE UX */}
         {!hasMembers && isPreview && (
-          <div className="w-full py-20 border-2 border-dashed border-white/20 rounded-2xl flex flex-col items-center justify-center text-white/50 mt-8">
+          <div className="w-full py-24 border-2 border-dashed border-white/10 rounded-3xl flex flex-col items-center justify-center text-white/40 bg-white/5 backdrop-blur-sm">
             <Users className="w-12 h-12 mb-4 opacity-50" />
-            <p>
-              No team members added yet. Hover over this section and click "Edit
-              Team" to add members.
-            </p>
+            <p className="font-medium tracking-wide">No team members added yet.</p>
+            <p className="text-xs mt-2 opacity-70">Hover over this section and click "Design" to build your team.</p>
           </div>
         )}
 
         {hasMembers && (
           <>
-            {/* === VARIANT 1: GRID (Classic) === */}
+            {/* === VARIANT 1: GRID === */}
             {variant === "grid" && (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 md:gap-8">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 md:gap-8">
                 {members.map((member: any, i: number) => (
-                  <MemberCard key={i} member={member} className="h-[450px]" />
+                  <MemberCard key={member.id || i} member={member} className="h-[450px] lg:h-[500px]" />
                 ))}
               </div>
             )}
 
-            {/* === VARIANT 2: SPOTLIGHT (Founder First) === */}
+            {/* === VARIANT 2: SPOTLIGHT === */}
             {variant === "spotlight" && (
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 md:gap-8">
-                {/* First Member = Big Feature */}
                 <div className="lg:col-span-2">
-                  <MemberCard
-                    member={members[0]}
-                    className="h-[500px] lg:h-[600px]"
-                    isFeatured={true}
-                  />
+                  <MemberCard member={members[0]} className="h-[500px] lg:h-[600px]" isFeatured={true} />
                 </div>
-                {/* Rest of the team */}
                 <div className="lg:col-span-1 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-6">
                   {members.slice(1, 3).map((member: any, i: number) => (
-                    <MemberCard
-                      key={i}
-                      member={member}
-                      className="h-[400px] lg:h-[288px]"
-                    />
+                    <MemberCard key={member.id || i} member={member} className="h-[400px] lg:h-[284px]" />
                   ))}
                 </div>
-                {/* Remaining members */}
                 {members.length > 3 && (
                   <div className="lg:col-span-3 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mt-2">
                     {members.slice(3).map((member: any, i: number) => (
-                      <MemberCard
-                        key={i}
-                        member={member}
-                        className="h-[400px]"
-                      />
+                      <MemberCard key={member.id || i} member={member} className="h-[400px]" />
                     ))}
                   </div>
                 )}
               </div>
             )}
 
-            {/* === VARIANT 3: CAROUSEL (Scroll with Arrows) === */}
+            {/* === VARIANT 3: CAROUSEL === */}
             {variant === "carousel" && (
-              <div className="relative group/carousel">
-                {/* LEFT ARROW (Desktop Only) */}
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="absolute left-0 top-1/2 -translate-y-1/2 z-20 bg-black/50 text-white h-12 w-12 hidden md:flex hover:bg-black/70 rounded-full border border-white/10 backdrop-blur-sm -ml-4 lg:-ml-12 opacity-0 group-hover/carousel:opacity-100 transition-opacity"
+              <div className="relative group/carousel -mx-6 px-6 md:mx-0 md:px-0">
+                {/* 🚀 FIXED: Native buttons to prevent jitter */}
+                <button
+                  className="absolute left-4 top-1/2 -translate-y-1/2 z-20 flex items-center justify-center bg-black/50 hover:bg-black/80 text-white rounded-full h-14 w-14 opacity-0 group-hover/carousel:opacity-100 transition-all duration-300 backdrop-blur-md hidden md:flex border border-white/10 shadow-2xl hover:scale-105"
                   onClick={() => scrollCarousel("left")}
                 >
-                  <ChevronLeft className="w-6 h-6" />
-                </Button>
+                  <ChevronLeft className="w-8 h-8" />
+                </button>
 
-                {/* RIGHT ARROW (Desktop Only) */}
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="absolute right-0 top-1/2 -translate-y-1/2 z-20 bg-black/50 text-white h-12 w-12 hidden md:flex hover:bg-black/70 rounded-full border border-white/10 backdrop-blur-sm -mr-4 lg:-mr-12 opacity-0 group-hover/carousel:opacity-100 transition-opacity"
+                <button
+                  className="absolute right-4 top-1/2 -translate-y-1/2 z-20 flex items-center justify-center bg-black/50 hover:bg-black/80 text-white rounded-full h-14 w-14 opacity-0 group-hover/carousel:opacity-100 transition-all duration-300 backdrop-blur-md hidden md:flex border border-white/10 shadow-2xl hover:scale-105"
                   onClick={() => scrollCarousel("right")}
                 >
-                  <ChevronRight className="w-6 h-6" />
-                </Button>
+                  <ChevronRight className="w-8 h-8" />
+                </button>
 
-                {/* SCROLL CONTAINER */}
                 <div
                   ref={carouselRef}
-                  className="flex overflow-x-auto gap-6 pb-8 snap-x snap-mandatory -mx-4 px-4 md:mx-0 md:px-0 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:'none'] [scrollbar-width:'none']"
+                  className="flex overflow-x-auto gap-6 md:gap-8 pb-12 pt-4 snap-x snap-mandatory [&::-webkit-scrollbar]:hidden [-ms-overflow-style:'none'] [scrollbar-width:'none']"
                 >
                   {members.map((member: any, i: number) => (
-                    <div
-                      key={i}
-                      className="snap-center shrink-0 w-[85vw] sm:w-[350px]"
-                    >
-                      <MemberCard member={member} className="h-[500px]" />
+                    <div key={member.id || i} className="snap-center shrink-0 w-[85vw] sm:w-[400px]">
+                      <MemberCard member={member} className="h-[500px] md:h-[600px]" />
                     </div>
                   ))}
                 </div>
 
-                {/* Fade Edges (Desktop Only) */}
-                <div className="absolute top-0 right-0 h-full w-24 bg-gradient-to-l from-neutral-950 to-transparent pointer-events-none md:block hidden z-10" />
+                {/* Fade Edges */}
+                <div className="absolute top-0 right-0 h-full w-32 bg-gradient-to-l from-neutral-950 to-transparent pointer-events-none md:block hidden z-10" />
+                <div className="absolute top-0 left-0 h-full w-32 bg-gradient-to-r from-neutral-950 to-transparent pointer-events-none md:block hidden z-10" />
               </div>
             )}
           </>

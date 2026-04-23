@@ -86,6 +86,7 @@ import {
   Share2,
   UserPlus,
   GripVertical,
+  MapPinned, MapPin, Settings2,
 } from "lucide-react";
 
 import PortfolioMediaManager, {
@@ -112,7 +113,216 @@ interface SectionEditorProps {
   themeId?: string;
   pages?: any[]; // 🚀 1. ADD THIS HERE
 }
+const SortableMediaItem = ({ img, idx, isVid, ytId, onDelete }: any) => {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: img.url }); // Use URL as unique ID
 
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    zIndex: isDragging ? 50 : 0,
+  };
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      {...attributes}
+      {...listeners}
+      className={cn(
+        "relative group aspect-square bg-black rounded-lg overflow-hidden border shadow-sm cursor-grab active:cursor-grabbing touch-none",
+        isDragging && "ring-2 ring-primary opacity-50 scale-95"
+      )}
+    >
+      {ytId ? (
+        <>
+          <img
+            src={`https://img.youtube.com/vi/${ytId}/hqdefault.jpg`}
+            className="w-full h-full object-cover opacity-80"
+            alt="YT"
+          />
+          <div className="absolute inset-0 flex items-center justify-center">
+            <div className="bg-red-600 p-1.5 rounded-lg text-white">
+              <Play size={14} fill="currentColor" />
+            </div>
+          </div>
+        </>
+      ) : isVid ? (
+        <>
+          <video
+            src={img.url}
+            className="w-full h-full object-cover opacity-80"
+            muted
+            autoPlay
+            loop
+            playsInline
+          />
+          <div className="absolute top-1 left-1 bg-black/60 p-1 rounded-md text-white">
+            <Video size={12} />
+          </div>
+        </>
+      ) : (
+        <img
+          src={img.url}
+          alt="Gallery"
+          className="w-full h-full object-cover pointer-events-none"
+        />
+      )}
+
+      {/* Delete Button - Needs onPointerDown stopPropagation to allow clicking inside a draggable area */}
+      <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+        <Button
+          variant="destructive"
+          size="icon"
+          className="h-8 w-8 rounded-full shadow-lg"
+          onPointerDown={(e) => e.stopPropagation()}
+          onClick={onDelete}
+        >
+          <Trash2 className="w-4 h-4" />
+        </Button>
+      </div>
+    </div>
+  );
+};
+// 🚀 NEW: Standalone Sortable Item for Team Members
+const SortableTeamMember = ({
+member,
+idx,
+updateMember,
+removeMember,
+setActiveMediaField,
+setIsMediaPickerOpen,
+}: any) => {
+// Use a fallback ID if the member doesn't have a unique ID yet
+const sortableId = member.id || `team-member-${idx}`;
+const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
+  useSortable({ id: sortableId });
+
+const style = {
+  transform: CSS.Transform.toString(transform),
+  transition,
+  zIndex: isDragging ? 50 : 0,
+};
+
+return (
+  <div
+    ref={setNodeRef}
+    style={style}
+    className={cn(
+      "flex gap-3 p-4 border rounded-xl bg-background shadow-sm transition-all relative group",
+      isDragging && "ring-2 ring-primary shadow-2xl opacity-90 scale-[0.98]"
+    )}
+  >
+    {/* Drag Handle - Only this part triggers the drag! */}
+    <div
+      {...attributes}
+      {...listeners}
+      className="mt-6 cursor-grab active:cursor-grabbing text-muted-foreground hover:text-primary transition-colors flex-shrink-0 touch-none"
+    >
+      <GripVertical size={20} />
+    </div>
+
+    <div className="flex-1 space-y-4">
+      {/* Remove Button */}
+      <Button
+        size="icon"
+        variant="ghost"
+        className="absolute top-2 right-2 text-muted-foreground hover:text-destructive h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity"
+        onPointerDown={(e) => e.stopPropagation()}
+        onClick={() => removeMember(idx)}
+      >
+        <Trash2 className="w-4 h-4" />
+      </Button>
+
+      <div className="flex gap-4 items-start pr-8">
+        {/* Image Picker */}
+        <div
+          className="w-16 h-16 sm:w-20 sm:h-20 bg-muted rounded-full flex-shrink-0 relative overflow-hidden cursor-pointer border-2 border-transparent hover:border-primary transition-colors group/img"
+          onPointerDown={(e) => e.stopPropagation()}
+          onClick={() => {
+            setActiveMediaField(`member-image-${idx}`);
+            setIsMediaPickerOpen(true);
+          }}
+        >
+          {member.image ? (
+            <img
+              src={member.image}
+              className="w-full h-full object-cover transition-transform duration-500 group-hover/img:scale-110"
+              alt={member.name}
+            />
+          ) : (
+            <Users className="w-6 h-6 text-muted-foreground absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" />
+          )}
+          <div className="absolute inset-0 bg-black/50 opacity-0 group-hover/img:opacity-100 transition-opacity flex items-center justify-center text-[10px] text-white uppercase tracking-wider font-bold">
+            Edit
+          </div>
+        </div>
+
+        {/* Basic Info */}
+        <div className="flex-grow space-y-2">
+          <Input
+            placeholder="Full Name"
+            value={member.name || ""}
+            onChange={(e) => updateMember(idx, "name", e.target.value)}
+            className="font-bold h-9"
+            onPointerDown={(e) => e.stopPropagation()}
+          />
+          <Input
+            placeholder="Role / Title (e.g. Lead Designer)"
+            value={member.role || ""}
+            onChange={(e) => updateMember(idx, "role", e.target.value)}
+            className="text-xs h-8 text-muted-foreground"
+            onPointerDown={(e) => e.stopPropagation()}
+          />
+        </div>
+      </div>
+
+      {/* Bio */}
+      <div className="space-y-1">
+        <Label className="text-[10px] uppercase tracking-widest text-muted-foreground">Short Bio</Label>
+        <Textarea
+          placeholder="A brief introduction..."
+          value={member.bio || ""}
+          onChange={(e) => updateMember(idx, "bio", e.target.value)}
+          rows={2}
+          className="text-xs resize-none"
+          onPointerDown={(e) => e.stopPropagation()}
+        />
+      </div>
+
+      {/* Social Links */}
+      <div className="grid grid-cols-2 gap-3 pt-2 border-t border-dashed">
+        <div className="relative">
+          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground font-bold text-[10px]">IN</span>
+          <Input
+            placeholder="LinkedIn URL"
+            value={member.linkedin || ""}
+            onChange={(e) => updateMember(idx, "linkedin", e.target.value)}
+            className="pl-8 text-xs h-8 bg-muted/50"
+            onPointerDown={(e) => e.stopPropagation()}
+          />
+        </div>
+        <div className="relative">
+          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground font-bold text-[10px]">IG</span>
+          <Input
+            placeholder="Instagram URL"
+            value={member.instagram || ""}
+            onChange={(e) => updateMember(idx, "instagram", e.target.value)}
+            className="pl-8 text-xs h-8 bg-muted/50"
+            onPointerDown={(e) => e.stopPropagation()}
+          />
+        </div>
+      </div>
+    </div>
+  </div>
+);
+};
 const SectionEditor: React.FC<SectionEditorProps> = ({
   section,
   sections,
@@ -202,216 +412,7 @@ const SectionEditor: React.FC<SectionEditorProps> = ({
     });
   };
 
-  const SortableMediaItem = ({ img, idx, isVid, ytId, onDelete }: any) => {
-    const {
-      attributes,
-      listeners,
-      setNodeRef,
-      transform,
-      transition,
-      isDragging,
-    } = useSortable({ id: img.url }); // Use URL as unique ID
 
-    const style = {
-      transform: CSS.Transform.toString(transform),
-      transition,
-      zIndex: isDragging ? 50 : 0,
-    };
-
-    return (
-      <div
-        ref={setNodeRef}
-        style={style}
-        {...attributes}
-        {...listeners}
-        className={cn(
-          "relative group aspect-square bg-black rounded-lg overflow-hidden border shadow-sm cursor-grab active:cursor-grabbing touch-none",
-          isDragging && "ring-2 ring-primary opacity-50 scale-95"
-        )}
-      >
-        {ytId ? (
-          <>
-            <img
-              src={`https://img.youtube.com/vi/${ytId}/hqdefault.jpg`}
-              className="w-full h-full object-cover opacity-80"
-              alt="YT"
-            />
-            <div className="absolute inset-0 flex items-center justify-center">
-              <div className="bg-red-600 p-1.5 rounded-lg text-white">
-                <Play size={14} fill="currentColor" />
-              </div>
-            </div>
-          </>
-        ) : isVid ? (
-          <>
-            <video
-              src={img.url}
-              className="w-full h-full object-cover opacity-80"
-              muted
-              autoPlay
-              loop
-              playsInline
-            />
-            <div className="absolute top-1 left-1 bg-black/60 p-1 rounded-md text-white">
-              <Video size={12} />
-            </div>
-          </>
-        ) : (
-          <img
-            src={img.url}
-            alt="Gallery"
-            className="w-full h-full object-cover pointer-events-none"
-          />
-        )}
-
-        {/* Delete Button - Needs onPointerDown stopPropagation to allow clicking inside a draggable area */}
-        <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-          <Button
-            variant="destructive"
-            size="icon"
-            className="h-8 w-8 rounded-full shadow-lg"
-            onPointerDown={(e) => e.stopPropagation()}
-            onClick={onDelete}
-          >
-            <Trash2 className="w-4 h-4" />
-          </Button>
-        </div>
-      </div>
-    );
-  };
-// 🚀 NEW: Standalone Sortable Item for Team Members
-const SortableTeamMember = ({
-  member,
-  idx,
-  updateMember,
-  removeMember,
-  setActiveMediaField,
-  setIsMediaPickerOpen,
-}: any) => {
-  // Use a fallback ID if the member doesn't have a unique ID yet
-  const sortableId = member.id || `team-member-${idx}`;
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
-    useSortable({ id: sortableId });
-
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-    zIndex: isDragging ? 50 : 0,
-  };
-
-  return (
-    <div
-      ref={setNodeRef}
-      style={style}
-      className={cn(
-        "flex gap-3 p-4 border rounded-xl bg-background shadow-sm transition-all relative group",
-        isDragging && "ring-2 ring-primary shadow-2xl opacity-90 scale-[0.98]"
-      )}
-    >
-      {/* Drag Handle - Only this part triggers the drag! */}
-      <div
-        {...attributes}
-        {...listeners}
-        className="mt-6 cursor-grab active:cursor-grabbing text-muted-foreground hover:text-primary transition-colors flex-shrink-0 touch-none"
-      >
-        <GripVertical size={20} />
-      </div>
-
-      <div className="flex-1 space-y-4">
-        {/* Remove Button */}
-        <Button
-          size="icon"
-          variant="ghost"
-          className="absolute top-2 right-2 text-muted-foreground hover:text-destructive h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity"
-          onPointerDown={(e) => e.stopPropagation()}
-          onClick={() => removeMember(idx)}
-        >
-          <Trash2 className="w-4 h-4" />
-        </Button>
-
-        <div className="flex gap-4 items-start pr-8">
-          {/* Image Picker */}
-          <div
-            className="w-16 h-16 sm:w-20 sm:h-20 bg-muted rounded-full flex-shrink-0 relative overflow-hidden cursor-pointer border-2 border-transparent hover:border-primary transition-colors group/img"
-            onPointerDown={(e) => e.stopPropagation()}
-            onClick={() => {
-              setActiveMediaField(`member-image-${idx}`);
-              setIsMediaPickerOpen(true);
-            }}
-          >
-            {member.image ? (
-              <img
-                src={member.image}
-                className="w-full h-full object-cover transition-transform duration-500 group-hover/img:scale-110"
-                alt={member.name}
-              />
-            ) : (
-              <Users className="w-6 h-6 text-muted-foreground absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" />
-            )}
-            <div className="absolute inset-0 bg-black/50 opacity-0 group-hover/img:opacity-100 transition-opacity flex items-center justify-center text-[10px] text-white uppercase tracking-wider font-bold">
-              Edit
-            </div>
-          </div>
-
-          {/* Basic Info */}
-          <div className="flex-grow space-y-2">
-            <Input
-              placeholder="Full Name"
-              value={member.name || ""}
-              onChange={(e) => updateMember(idx, "name", e.target.value)}
-              className="font-bold h-9"
-              onPointerDown={(e) => e.stopPropagation()}
-            />
-            <Input
-              placeholder="Role / Title (e.g. Lead Designer)"
-              value={member.role || ""}
-              onChange={(e) => updateMember(idx, "role", e.target.value)}
-              className="text-xs h-8 text-muted-foreground"
-              onPointerDown={(e) => e.stopPropagation()}
-            />
-          </div>
-        </div>
-
-        {/* Bio */}
-        <div className="space-y-1">
-          <Label className="text-[10px] uppercase tracking-widest text-muted-foreground">Short Bio</Label>
-          <Textarea
-            placeholder="A brief introduction..."
-            value={member.bio || ""}
-            onChange={(e) => updateMember(idx, "bio", e.target.value)}
-            rows={2}
-            className="text-xs resize-none"
-            onPointerDown={(e) => e.stopPropagation()}
-          />
-        </div>
-
-        {/* Social Links */}
-        <div className="grid grid-cols-2 gap-3 pt-2 border-t border-dashed">
-          <div className="relative">
-            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground font-bold text-[10px]">IN</span>
-            <Input
-              placeholder="LinkedIn URL"
-              value={member.linkedin || ""}
-              onChange={(e) => updateMember(idx, "linkedin", e.target.value)}
-              className="pl-8 text-xs h-8 bg-muted/50"
-              onPointerDown={(e) => e.stopPropagation()}
-            />
-          </div>
-          <div className="relative">
-            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground font-bold text-[10px]">IG</span>
-            <Input
-              placeholder="Instagram URL"
-              value={member.instagram || ""}
-              onChange={(e) => updateMember(idx, "instagram", e.target.value)}
-              className="pl-8 text-xs h-8 bg-muted/50"
-              onPointerDown={(e) => e.stopPropagation()}
-            />
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-};
   // =========================================================
   // MEDIA HANDLER (Adapted to Zustand)
   // =========================================================
@@ -3159,19 +3160,28 @@ const SortableTeamMember = ({
             <div className="space-y-4 p-4 border rounded-lg bg-background shadow-sm">
               <div className="flex items-center gap-2 mb-2 border-b pb-2">
                 <Type size={16} className="text-primary" />
-                <Label className="text-base font-semibold">
-                  Section Header
-                </Label>
+                <Label className="text-base font-semibold">Section Header</Label>
               </div>
+              
               <div className="space-y-2">
-                <Label className="text-xs text-muted-foreground uppercase tracking-wider">
-                  Team Title
-                </Label>
+                <Label className="text-xs text-muted-foreground uppercase tracking-wider">Team Title</Label>
                 <Input
                   value={formData.title || ""}
                   onChange={(e) => updateField("title", e.target.value)}
                   placeholder="e.g. Meet The Team"
                   className="font-bold"
+                />
+              </div>
+
+              {/* 🚀 NEW: Subheadline added here! */}
+              <div className="space-y-2">
+                <Label className="text-xs text-muted-foreground uppercase tracking-wider">Subtitle / Note</Label>
+                <Textarea
+                  value={formData.subheadline || ""}
+                  onChange={(e) => updateField("subheadline", e.target.value)}
+                  placeholder="The creative minds behind the magic..."
+                  className="resize-none"
+                  rows={2}
                 />
               </div>
             </div>
@@ -3295,103 +3305,133 @@ const SortableTeamMember = ({
             </div>
           </div>
         ); // --- MAP SECTION EDITOR ---
-      case "map":
-        return (
-          <div className="space-y-6">
-            <div className="space-y-2">
-              <Label>Section Title</Label>
-              <Input
-                value={formData.title || ""}
-                onChange={(e) => updateField("title", e.target.value)}
-                placeholder="e.g. My Studio"
-              />
-            </div>
-
-            {/* 1. CONFIGURATION */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 border rounded-lg bg-muted/20">
-              <div className="space-y-2">
-                <Label>Map Style</Label>
-                <Select
-                  value={formData.variant || "standard"}
-                  onValueChange={(val) => updateField("variant", val)}
-                >
-                  <SelectTrigger className="bg-background">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="standard">
-                      Standard (Full Width)
-                    </SelectItem>
-                    <SelectItem value="dark">
-                      Cinematic (Full Width Dark)
-                    </SelectItem>
-                    <SelectItem value="card">Overlay Card (Boxed)</SelectItem>
-                  </SelectContent>
-                </Select>
+        case "map":
+          return (
+            <div className="space-y-6">
+              {/* 1. TEXT CONTENT */}
+              <div className="space-y-4 p-4 border rounded-lg bg-background shadow-sm">
+                <div className="flex items-center gap-2 mb-2 border-b pb-2">
+                  <MapPinned size={16} className="text-primary" />
+                  <Label className="text-base font-semibold">Location Details</Label>
+                </div>
+                
+                <div className="space-y-2">
+                  <Label className="text-xs text-muted-foreground uppercase tracking-wider">Map Title</Label>
+                  <Input
+                    value={formData.title || ""}
+                    onChange={(e) => updateField("title", e.target.value)}
+                    placeholder="e.g. Visit Our Studio"
+                    className="font-bold"
+                  />
+                </div>
+  
+                <div className="space-y-2">
+                  <Label className="text-xs text-muted-foreground uppercase tracking-wider">Physical Address</Label>
+                  <Textarea
+                    value={formData.address || ""}
+                    onChange={(e) => updateField("address", e.target.value)}
+                    placeholder="123 Creative Ave, Suite 100&#10;Los Angeles, CA 90028"
+                    rows={2}
+                    className="resize-none"
+                  />
+                  <p className="text-[10px] text-muted-foreground pt-1">
+                    This address will be displayed on the map overlay card.
+                  </p>
+                </div>
               </div>
-
-              <div className="space-y-2">
-                <Label>Height</Label>
-                <Select
-                  value={formData.height || "medium"}
-                  onValueChange={(val) => updateField("height", val)}
-                >
-                  <SelectTrigger className="bg-background">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="small">Small (300px)</SelectItem>
-                    <SelectItem value="medium">Medium (50vh)</SelectItem>
-                    <SelectItem value="large">Large (70vh)</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
-            {/* 2. MAP LINKS */}
-            <div className="space-y-4">
-              {/* Embed Link (For the Visual Map) */}
-              <div className="space-y-2">
-                <Label>Google Maps Embed Link (Src)</Label>
-                <Input
-                  value={formData.mapUrl || ""}
-                  onChange={(e) => updateField("mapUrl", e.target.value)}
-                  placeholder='Paste the "src" from the Embed code'
-                />
-                <p className="text-[11px] text-muted-foreground">
-                  Google Maps → Share → Embed a map → Copy HTML → Paste the{" "}
-                  <strong>src="..."</strong> URL.
+  
+              {/* 2. LAYOUT ARCHITECTURE */}
+              <div className="space-y-4 p-4 border rounded-lg bg-muted/10">
+                <div className="flex items-center gap-2 mb-2 border-b pb-2">
+                  <LayoutTemplate size={16} className="text-primary" />
+                  <Label className="text-base font-semibold text-primary">Map Architecture</Label>
+                </div>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>Map Style</Label>
+                    <Select
+                      value={formData.variant || "standard"}
+                      onValueChange={(val) => updateField("variant", val)}
+                    >
+                      <SelectTrigger className="bg-background h-10">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="standard">Standard (Full Width)</SelectItem>
+                        <SelectItem value="dark">Cinematic (Dark Mode)</SelectItem>
+                        <SelectItem value="card">Overlay Card (Boxed)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+  
+                  <div className="space-y-2">
+                    <Label>Container Height</Label>
+                    <Select
+                      value={formData.height || "medium"}
+                      onValueChange={(val) => updateField("height", val)}
+                    >
+                      <SelectTrigger className="bg-background h-10">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="small">Small (300px)</SelectItem>
+                        <SelectItem value="medium">Medium (50vh)</SelectItem>
+                        <SelectItem value="large">Large (70vh - Immersive)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                
+                <p className="text-[10px] text-muted-foreground">
+                  {formData.variant === "dark" && "Cinematic applies a CSS filter to the Google Map to make it look dark and modern."}
+                  {formData.variant === "card" && "Places the map inside a neat, floating card rather than stretching full-width."}
                 </p>
               </div>
-
-              {/* Direction Link (For the Button) */}
-              <div className="space-y-2">
-                <Label>Get Directions Link</Label>
-                <Input
-                  value={formData.directionUrl || ""}
-                  onChange={(e) => updateField("directionUrl", e.target.value)}
-                  placeholder="https://maps.app.goo.gl/..."
-                />
-                <p className="text-[11px] text-muted-foreground">
-                  Paste the direct "Share Location" link here. If empty, we'll
-                  try to generate one from the address.
-                </p>
-              </div>
-
-              {/* Address (Used for Card Display or Fallback Link) */}
-              <div className="space-y-2 animate-in fade-in">
-                <Label>Address / Label</Label>
-                <Textarea
-                  value={formData.address || ""}
-                  onChange={(e) => updateField("address", e.target.value)}
-                  placeholder="e.g. 123 Hollywood Blvd, Los Angeles"
-                  rows={2}
-                />
+  
+              {/* 3. EMBED CONFIGURATION */}
+              <div className="space-y-4 p-4 border rounded-lg bg-muted/5 border-l-4 border-l-primary">
+                <div className="flex items-center justify-between mb-2 border-b pb-2">
+                  <div className="flex items-center gap-2">
+                    <Settings2 size={16} className="text-primary" />
+                    <Label className="text-base font-semibold">Embed Configuration</Label>
+                  </div>
+                </div>
+  
+                <div className="space-y-3">
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-semibold flex items-center gap-1.5">
+                      <Map size={14} className="text-muted-foreground" /> Google Maps Embed URL (src)
+                    </Label>
+                    <Input
+                      value={formData.mapUrl || ""}
+                      onChange={(e) => updateField("mapUrl", e.target.value)}
+                      placeholder="https://www.google.com/maps/embed?pb=!1m18..."
+                      className="font-mono text-[10px] bg-background"
+                    />
+                    <div className="bg-primary/10 text-primary/80 text-[10px] p-2 rounded border border-primary/20">
+                      <span className="font-bold">How to find this:</span> Go to Google Maps → Click "Share" → Click "Embed a map" → Click "Copy HTML" → Paste it into a text editor and copy <strong className="underline">ONLY</strong> the URL inside the <code>src="..."</code> quotes.
+                    </div>
+                  </div>
+  
+                  <div className="space-y-1.5 pt-3 border-t border-dashed">
+                    <Label className="text-xs font-semibold flex items-center gap-1.5">
+                      <LinkIcon size={14} className="text-muted-foreground" /> 'Get Directions' Button Link
+                    </Label>
+                    <Input
+                      value={formData.directionUrl || ""}
+                      onChange={(e) => updateField("directionUrl", e.target.value)}
+                      placeholder="https://maps.app.goo.gl/..."
+                      className="font-mono text-[10px] bg-background"
+                    />
+                    <p className="text-[10px] text-muted-foreground pl-1">
+                      Paste the direct "Share Link" here. If left empty, the button will try to auto-generate a route based on your address.
+                    </p>
+                  </div>
+                </div>
               </div>
             </div>
-          </div>
-        );
-      // --- PRICING SECTION EDITOR ---
+          );      // --- PRICING SECTION EDITOR ---
       case "pricing":
         return (
           <div className="space-y-6">

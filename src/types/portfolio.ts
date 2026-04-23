@@ -174,9 +174,39 @@ export const DEFAULT_PORTFOLIO_SECTIONS: PortfolioSection[] = [
     type: "team",
     isVisible: true,
     data: {
-      title: "Meet The Team",
       variant: "grid",
-      members: [],
+      label: "The Team", 
+      title: "Meet Our Team",
+      subheadline: "The creative minds behind the magic.", 
+      members: [
+        {
+          id: "member-1",
+          name: "Alex Rivera",
+          role: "Creative Director",
+          bio: "10+ years of experience designing award-winning digital experiences.",
+          image: "https://images.unsplash.com/photo-1560250097-0b93528c311a?auto=format&fit=crop&q=80&w=800",
+          linkedin: "https://linkedin.com",
+          instagram: "https://instagram.com",
+        },
+        {
+          id: "member-2",
+          name: "Sarah Chen",
+          role: "Lead Developer",
+          bio: "Full-stack engineer passionate about building scalable, elegant architecture.",
+          image: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&q=80&w=800",
+          linkedin: "https://linkedin.com",
+          instagram: "https://instagram.com",
+        },
+        {
+          id: "member-3",
+          name: "Marcus Johnson",
+          role: "Product Designer",
+          bio: "Obsessed with user-centric design and pixel-perfect micro-interactions.",
+          image: "https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?auto=format&fit=crop&q=80&w=800",
+          linkedin: "https://linkedin.com",
+          instagram: "https://instagram.com",
+        }
+      ],
     },
   },
   {

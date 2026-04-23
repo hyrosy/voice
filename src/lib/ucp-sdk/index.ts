@@ -5,6 +5,8 @@ import { useNavigationTree } from "./hooks/useNavigationTree";
 import { useDeviceSize } from "./hooks/useDeviceSize";
 import { utils } from "./utils";
 import { useGallery } from "./hooks/useGallery"; // 🚀 1. Import it here
+import { useCarousel } from "./hooks/useCarousel"; // 🚀 Add this
+
 export const UCP = {
   Text,
   useScrollObserver,
@@ -12,5 +14,7 @@ export const UCP = {
   useNavigationTree,
   useDeviceSize, // 🚀 New!
   useGallery, // 🚀 2. Add it to the SDK object
+  useCarousel, // 🚀 Export it here
   utils, // 🚀 New!
+
 };
