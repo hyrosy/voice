@@ -175,16 +175,17 @@ export const DEFAULT_PORTFOLIO_SECTIONS: PortfolioSection[] = [
     isVisible: true,
     data: {
       variant: "grid",
-      label: "The Team", 
+      label: "The Team",
       title: "Meet Our Team",
-      subheadline: "The creative minds behind the magic.", 
+      subheadline: "The creative minds behind the magic.",
       members: [
         {
           id: "member-1",
           name: "Alex Rivera",
           role: "Creative Director",
           bio: "10+ years of experience designing award-winning digital experiences.",
-          image: "https://images.unsplash.com/photo-1560250097-0b93528c311a?auto=format&fit=crop&q=80&w=800",
+          image:
+            "https://images.unsplash.com/photo-1560250097-0b93528c311a?auto=format&fit=crop&q=80&w=800",
           linkedin: "https://linkedin.com",
           instagram: "https://instagram.com",
         },
@@ -193,7 +194,8 @@ export const DEFAULT_PORTFOLIO_SECTIONS: PortfolioSection[] = [
           name: "Sarah Chen",
           role: "Lead Developer",
           bio: "Full-stack engineer passionate about building scalable, elegant architecture.",
-          image: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&q=80&w=800",
+          image:
+            "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&q=80&w=800",
           linkedin: "https://linkedin.com",
           instagram: "https://instagram.com",
         },
@@ -202,10 +204,11 @@ export const DEFAULT_PORTFOLIO_SECTIONS: PortfolioSection[] = [
           name: "Marcus Johnson",
           role: "Product Designer",
           bio: "Obsessed with user-centric design and pixel-perfect micro-interactions.",
-          image: "https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?auto=format&fit=crop&q=80&w=800",
+          image:
+            "https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?auto=format&fit=crop&q=80&w=800",
           linkedin: "https://linkedin.com",
           instagram: "https://instagram.com",
-        }
+        },
       ],
     },
   },
@@ -217,7 +220,11 @@ export const DEFAULT_PORTFOLIO_SECTIONS: PortfolioSection[] = [
       title: "Find Us",
       variant: "standard",
       height: "medium",
-      mapUrl: "https://www.google.com/maps/embed?pb=...",
+      address: "123 Creative Ave\nCupertino, CA 95014",
+      // 🚀 A real, working Google Maps embed link for the starter template
+      mapUrl:
+        "https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3168.6392906210703!2d-122.0838511!3d37.3346061!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x808fba02425def45%3A0x86395f7d498aa2b9!2sApple%20Park!5e0!3m2!1sen!2sus!4v1680000000000!5m2!1sen!2sus",
+      directionUrl: "",
     },
   },
   {
@@ -225,9 +232,45 @@ export const DEFAULT_PORTFOLIO_SECTIONS: PortfolioSection[] = [
     type: "pricing",
     isVisible: true,
     data: {
-      title: "Pricing Plans",
       variant: "cards",
-      plans: [],
+      title: "Simple, Transparent Pricing",
+      subheadline: "No hidden fees. Cancel anytime.", // 🚀 ADDED THIS
+      ctaText: "Contact for Custom Rates", // 🚀 ADDED THIS
+      ctaLink: "#contact", // 🚀 ADDED THIS
+      plans: [
+        {
+          id: "plan-1",
+          name: "Basic",
+          price: "$49",
+          unit: "mo",
+          features: "1 Project, Basic Support, 5GB Storage",
+          cta: "Get Started",
+          buttonUrl: "#contact",
+          isPopular: false,
+        },
+        {
+          id: "plan-2",
+          name: "Pro",
+          price: "$99",
+          unit: "mo",
+          features:
+            "Unlimited Projects, Priority Support, 50GB Storage, Custom Domain",
+          cta: "Start Free Trial",
+          buttonUrl: "#contact",
+          isPopular: true, // This will automatically trigger that gorgeous glow!
+        },
+        {
+          id: "plan-3",
+          name: "Enterprise",
+          price: "$249",
+          unit: "mo",
+          features:
+            "Everything in Pro, Dedicated Account Manager, Custom Integrations, SLA",
+          cta: "Contact Sales",
+          buttonUrl: "#contact",
+          isPopular: false,
+        },
+      ],
     },
   },
   {

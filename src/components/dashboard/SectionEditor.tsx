@@ -86,7 +86,11 @@ import {
   Share2,
   UserPlus,
   GripVertical,
-  MapPinned, MapPin, Settings2,
+  MapPinned,
+  MapPin,
+  Settings2,
+  Tag,
+  CreditCard,
 } from "lucide-react";
 
 import PortfolioMediaManager, {
@@ -113,6 +117,153 @@ interface SectionEditorProps {
   themeId?: string;
   pages?: any[]; // 🚀 1. ADD THIS HERE
 }
+// 🚀 NEW: Standalone Sortable Item for Pricing Plans
+const SortablePricingPlan = ({ plan, idx, updatePlan, removePlan }: any) => {
+  const sortableId = plan.id || `pricing-plan-${idx}`;
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: sortableId });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    zIndex: isDragging ? 50 : 0,
+  };
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={cn(
+        "flex gap-3 p-4 border rounded-xl bg-background shadow-sm transition-all relative group",
+        isDragging && "ring-2 ring-primary shadow-2xl opacity-90 scale-[0.98]",
+        plan.isPopular && "border-primary/50 bg-primary/5"
+      )}
+    >
+      {/* Drag Handle */}
+      <div
+        {...attributes}
+        {...listeners}
+        className="mt-6 cursor-grab active:cursor-grabbing text-muted-foreground hover:text-primary transition-colors flex-shrink-0 touch-none"
+      >
+        <GripVertical size={20} />
+      </div>
+
+      <div className="flex-1 space-y-4">
+        {/* Remove Button */}
+        <Button
+          size="icon"
+          variant="ghost"
+          className="absolute top-2 right-2 text-muted-foreground hover:text-destructive h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity"
+          onPointerDown={(e) => e.stopPropagation()}
+          onClick={() => removePlan(idx)}
+        >
+          <Trash2 className="w-4 h-4" />
+        </Button>
+
+        <div className="grid grid-cols-12 gap-3 pr-8">
+          <div className="col-span-12 md:col-span-5 space-y-1.5">
+            <Label className="text-[10px] uppercase tracking-widest text-muted-foreground">
+              Plan Name
+            </Label>
+            <Input
+              placeholder="e.g. Pro Plan"
+              value={plan.name || ""}
+              onChange={(e) => updatePlan(idx, "name", e.target.value)}
+              className="font-bold h-9"
+              onPointerDown={(e) => e.stopPropagation()}
+            />
+          </div>
+          <div className="col-span-6 md:col-span-4 space-y-1.5">
+            <Label className="text-[10px] uppercase tracking-widest text-muted-foreground">
+              Price
+            </Label>
+            <Input
+              placeholder="e.g. $99"
+              value={plan.price || ""}
+              onChange={(e) => updatePlan(idx, "price", e.target.value)}
+              className="h-9 font-mono"
+              onPointerDown={(e) => e.stopPropagation()}
+            />
+          </div>
+          <div className="col-span-6 md:col-span-3 space-y-1.5">
+            <Label className="text-[10px] uppercase tracking-widest text-muted-foreground">
+              Unit
+            </Label>
+            <Input
+              placeholder="/mo"
+              value={plan.unit || ""}
+              onChange={(e) => updatePlan(idx, "unit", e.target.value)}
+              className="h-9 text-xs"
+              onPointerDown={(e) => e.stopPropagation()}
+            />
+          </div>
+        </div>
+
+        <div className="space-y-1.5">
+          <Label className="text-[10px] uppercase tracking-widest text-muted-foreground">
+            Features (Comma Separated)
+          </Label>
+          <Textarea
+            placeholder="Feature 1, Feature 2, Feature 3..."
+            value={plan.features || ""}
+            onChange={(e) => updatePlan(idx, "features", e.target.value)}
+            rows={2}
+            className="text-xs resize-none"
+            onPointerDown={(e) => e.stopPropagation()}
+          />
+        </div>
+
+        <div className="grid grid-cols-2 gap-3 pt-2 border-t border-dashed">
+          <div className="space-y-1.5">
+            <Label className="text-[10px] uppercase tracking-widest text-muted-foreground">
+              Button Text
+            </Label>
+            <Input
+              placeholder="Get Started"
+              value={plan.cta || ""}
+              onChange={(e) => updatePlan(idx, "cta", e.target.value)}
+              className="h-8 text-xs bg-muted/50"
+              onPointerDown={(e) => e.stopPropagation()}
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label className="text-[10px] uppercase tracking-widest text-muted-foreground">
+              Button Link
+            </Label>
+            <Input
+              placeholder="https://"
+              value={plan.buttonUrl || ""}
+              onChange={(e) => updatePlan(idx, "buttonUrl", e.target.value)}
+              className="h-8 text-xs bg-muted/50"
+              onPointerDown={(e) => e.stopPropagation()}
+            />
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2 pt-1">
+          <Switch
+            id={`pop-${sortableId}`}
+            checked={plan.isPopular || false}
+            onCheckedChange={(c) => updatePlan(idx, "isPopular", c)}
+            onPointerDown={(e) => e.stopPropagation()}
+          />
+          <Label
+            htmlFor={`pop-${sortableId}`}
+            className="text-[11px] font-semibold cursor-pointer text-primary"
+          >
+            Highlight as Popular Plan
+          </Label>
+        </div>
+      </div>
+    </div>
+  );
+};
 const SortableMediaItem = ({ img, idx, isVid, ytId, onDelete }: any) => {
   const {
     attributes,
@@ -192,136 +343,148 @@ const SortableMediaItem = ({ img, idx, isVid, ytId, onDelete }: any) => {
 };
 // 🚀 NEW: Standalone Sortable Item for Team Members
 const SortableTeamMember = ({
-member,
-idx,
-updateMember,
-removeMember,
-setActiveMediaField,
-setIsMediaPickerOpen,
+  member,
+  idx,
+  updateMember,
+  removeMember,
+  setActiveMediaField,
+  setIsMediaPickerOpen,
 }: any) => {
-// Use a fallback ID if the member doesn't have a unique ID yet
-const sortableId = member.id || `team-member-${idx}`;
-const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
-  useSortable({ id: sortableId });
+  // Use a fallback ID if the member doesn't have a unique ID yet
+  const sortableId = member.id || `team-member-${idx}`;
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: sortableId });
 
-const style = {
-  transform: CSS.Transform.toString(transform),
-  transition,
-  zIndex: isDragging ? 50 : 0,
-};
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    zIndex: isDragging ? 50 : 0,
+  };
 
-return (
-  <div
-    ref={setNodeRef}
-    style={style}
-    className={cn(
-      "flex gap-3 p-4 border rounded-xl bg-background shadow-sm transition-all relative group",
-      isDragging && "ring-2 ring-primary shadow-2xl opacity-90 scale-[0.98]"
-    )}
-  >
-    {/* Drag Handle - Only this part triggers the drag! */}
+  return (
     <div
-      {...attributes}
-      {...listeners}
-      className="mt-6 cursor-grab active:cursor-grabbing text-muted-foreground hover:text-primary transition-colors flex-shrink-0 touch-none"
+      ref={setNodeRef}
+      style={style}
+      className={cn(
+        "flex gap-3 p-4 border rounded-xl bg-background shadow-sm transition-all relative group",
+        isDragging && "ring-2 ring-primary shadow-2xl opacity-90 scale-[0.98]"
+      )}
     >
-      <GripVertical size={20} />
-    </div>
-
-    <div className="flex-1 space-y-4">
-      {/* Remove Button */}
-      <Button
-        size="icon"
-        variant="ghost"
-        className="absolute top-2 right-2 text-muted-foreground hover:text-destructive h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity"
-        onPointerDown={(e) => e.stopPropagation()}
-        onClick={() => removeMember(idx)}
+      {/* Drag Handle - Only this part triggers the drag! */}
+      <div
+        {...attributes}
+        {...listeners}
+        className="mt-6 cursor-grab active:cursor-grabbing text-muted-foreground hover:text-primary transition-colors flex-shrink-0 touch-none"
       >
-        <Trash2 className="w-4 h-4" />
-      </Button>
+        <GripVertical size={20} />
+      </div>
 
-      <div className="flex gap-4 items-start pr-8">
-        {/* Image Picker */}
-        <div
-          className="w-16 h-16 sm:w-20 sm:h-20 bg-muted rounded-full flex-shrink-0 relative overflow-hidden cursor-pointer border-2 border-transparent hover:border-primary transition-colors group/img"
+      <div className="flex-1 space-y-4">
+        {/* Remove Button */}
+        <Button
+          size="icon"
+          variant="ghost"
+          className="absolute top-2 right-2 text-muted-foreground hover:text-destructive h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity"
           onPointerDown={(e) => e.stopPropagation()}
-          onClick={() => {
-            setActiveMediaField(`member-image-${idx}`);
-            setIsMediaPickerOpen(true);
-          }}
+          onClick={() => removeMember(idx)}
         >
-          {member.image ? (
-            <img
-              src={member.image}
-              className="w-full h-full object-cover transition-transform duration-500 group-hover/img:scale-110"
-              alt={member.name}
+          <Trash2 className="w-4 h-4" />
+        </Button>
+
+        <div className="flex gap-4 items-start pr-8">
+          {/* Image Picker */}
+          <div
+            className="w-16 h-16 sm:w-20 sm:h-20 bg-muted rounded-full flex-shrink-0 relative overflow-hidden cursor-pointer border-2 border-transparent hover:border-primary transition-colors group/img"
+            onPointerDown={(e) => e.stopPropagation()}
+            onClick={() => {
+              setActiveMediaField(`member-image-${idx}`);
+              setIsMediaPickerOpen(true);
+            }}
+          >
+            {member.image ? (
+              <img
+                src={member.image}
+                className="w-full h-full object-cover transition-transform duration-500 group-hover/img:scale-110"
+                alt={member.name}
+              />
+            ) : (
+              <Users className="w-6 h-6 text-muted-foreground absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" />
+            )}
+            <div className="absolute inset-0 bg-black/50 opacity-0 group-hover/img:opacity-100 transition-opacity flex items-center justify-center text-[10px] text-white uppercase tracking-wider font-bold">
+              Edit
+            </div>
+          </div>
+
+          {/* Basic Info */}
+          <div className="flex-grow space-y-2">
+            <Input
+              placeholder="Full Name"
+              value={member.name || ""}
+              onChange={(e) => updateMember(idx, "name", e.target.value)}
+              className="font-bold h-9"
+              onPointerDown={(e) => e.stopPropagation()}
             />
-          ) : (
-            <Users className="w-6 h-6 text-muted-foreground absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" />
-          )}
-          <div className="absolute inset-0 bg-black/50 opacity-0 group-hover/img:opacity-100 transition-opacity flex items-center justify-center text-[10px] text-white uppercase tracking-wider font-bold">
-            Edit
+            <Input
+              placeholder="Role / Title (e.g. Lead Designer)"
+              value={member.role || ""}
+              onChange={(e) => updateMember(idx, "role", e.target.value)}
+              className="text-xs h-8 text-muted-foreground"
+              onPointerDown={(e) => e.stopPropagation()}
+            />
           </div>
         </div>
 
-        {/* Basic Info */}
-        <div className="flex-grow space-y-2">
-          <Input
-            placeholder="Full Name"
-            value={member.name || ""}
-            onChange={(e) => updateMember(idx, "name", e.target.value)}
-            className="font-bold h-9"
-            onPointerDown={(e) => e.stopPropagation()}
-          />
-          <Input
-            placeholder="Role / Title (e.g. Lead Designer)"
-            value={member.role || ""}
-            onChange={(e) => updateMember(idx, "role", e.target.value)}
-            className="text-xs h-8 text-muted-foreground"
+        {/* Bio */}
+        <div className="space-y-1">
+          <Label className="text-[10px] uppercase tracking-widest text-muted-foreground">
+            Short Bio
+          </Label>
+          <Textarea
+            placeholder="A brief introduction..."
+            value={member.bio || ""}
+            onChange={(e) => updateMember(idx, "bio", e.target.value)}
+            rows={2}
+            className="text-xs resize-none"
             onPointerDown={(e) => e.stopPropagation()}
           />
         </div>
-      </div>
 
-      {/* Bio */}
-      <div className="space-y-1">
-        <Label className="text-[10px] uppercase tracking-widest text-muted-foreground">Short Bio</Label>
-        <Textarea
-          placeholder="A brief introduction..."
-          value={member.bio || ""}
-          onChange={(e) => updateMember(idx, "bio", e.target.value)}
-          rows={2}
-          className="text-xs resize-none"
-          onPointerDown={(e) => e.stopPropagation()}
-        />
-      </div>
-
-      {/* Social Links */}
-      <div className="grid grid-cols-2 gap-3 pt-2 border-t border-dashed">
-        <div className="relative">
-          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground font-bold text-[10px]">IN</span>
-          <Input
-            placeholder="LinkedIn URL"
-            value={member.linkedin || ""}
-            onChange={(e) => updateMember(idx, "linkedin", e.target.value)}
-            className="pl-8 text-xs h-8 bg-muted/50"
-            onPointerDown={(e) => e.stopPropagation()}
-          />
-        </div>
-        <div className="relative">
-          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground font-bold text-[10px]">IG</span>
-          <Input
-            placeholder="Instagram URL"
-            value={member.instagram || ""}
-            onChange={(e) => updateMember(idx, "instagram", e.target.value)}
-            className="pl-8 text-xs h-8 bg-muted/50"
-            onPointerDown={(e) => e.stopPropagation()}
-          />
+        {/* Social Links */}
+        <div className="grid grid-cols-2 gap-3 pt-2 border-t border-dashed">
+          <div className="relative">
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground font-bold text-[10px]">
+              IN
+            </span>
+            <Input
+              placeholder="LinkedIn URL"
+              value={member.linkedin || ""}
+              onChange={(e) => updateMember(idx, "linkedin", e.target.value)}
+              className="pl-8 text-xs h-8 bg-muted/50"
+              onPointerDown={(e) => e.stopPropagation()}
+            />
+          </div>
+          <div className="relative">
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground font-bold text-[10px]">
+              IG
+            </span>
+            <Input
+              placeholder="Instagram URL"
+              value={member.instagram || ""}
+              onChange={(e) => updateMember(idx, "instagram", e.target.value)}
+              className="pl-8 text-xs h-8 bg-muted/50"
+              onPointerDown={(e) => e.stopPropagation()}
+            />
+          </div>
         </div>
       </div>
     </div>
-  </div>
-);
+  );
 };
 const SectionEditor: React.FC<SectionEditorProps> = ({
   section,
@@ -411,7 +574,6 @@ const SectionEditor: React.FC<SectionEditorProps> = ({
       settings: newSettingsData,
     });
   };
-
 
   // =========================================================
   // MEDIA HANDLER (Adapted to Zustand)
@@ -3160,11 +3322,15 @@ const SectionEditor: React.FC<SectionEditorProps> = ({
             <div className="space-y-4 p-4 border rounded-lg bg-background shadow-sm">
               <div className="flex items-center gap-2 mb-2 border-b pb-2">
                 <Type size={16} className="text-primary" />
-                <Label className="text-base font-semibold">Section Header</Label>
+                <Label className="text-base font-semibold">
+                  Section Header
+                </Label>
               </div>
-              
+
               <div className="space-y-2">
-                <Label className="text-xs text-muted-foreground uppercase tracking-wider">Team Title</Label>
+                <Label className="text-xs text-muted-foreground uppercase tracking-wider">
+                  Team Title
+                </Label>
                 <Input
                   value={formData.title || ""}
                   onChange={(e) => updateField("title", e.target.value)}
@@ -3175,7 +3341,9 @@ const SectionEditor: React.FC<SectionEditorProps> = ({
 
               {/* 🚀 NEW: Subheadline added here! */}
               <div className="space-y-2">
-                <Label className="text-xs text-muted-foreground uppercase tracking-wider">Subtitle / Note</Label>
+                <Label className="text-xs text-muted-foreground uppercase tracking-wider">
+                  Subtitle / Note
+                </Label>
                 <Textarea
                   value={formData.subheadline || ""}
                   onChange={(e) => updateField("subheadline", e.target.value)}
@@ -3305,158 +3473,220 @@ const SectionEditor: React.FC<SectionEditorProps> = ({
             </div>
           </div>
         ); // --- MAP SECTION EDITOR ---
-        case "map":
-          return (
-            <div className="space-y-6">
-              {/* 1. TEXT CONTENT */}
-              <div className="space-y-4 p-4 border rounded-lg bg-background shadow-sm">
-                <div className="flex items-center gap-2 mb-2 border-b pb-2">
-                  <MapPinned size={16} className="text-primary" />
-                  <Label className="text-base font-semibold">Location Details</Label>
-                </div>
-                
+      case "map":
+        return (
+          <div className="space-y-6">
+            {/* 1. TEXT CONTENT */}
+            <div className="space-y-4 p-4 border rounded-lg bg-background shadow-sm">
+              <div className="flex items-center gap-2 mb-2 border-b pb-2">
+                <MapPinned size={16} className="text-primary" />
+                <Label className="text-base font-semibold">
+                  Location Details
+                </Label>
+              </div>
+
+              <div className="space-y-2">
+                <Label className="text-xs text-muted-foreground uppercase tracking-wider">
+                  Map Title
+                </Label>
+                <Input
+                  value={formData.title || ""}
+                  onChange={(e) => updateField("title", e.target.value)}
+                  placeholder="e.g. Visit Our Studio"
+                  className="font-bold"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label className="text-xs text-muted-foreground uppercase tracking-wider">
+                  Physical Address
+                </Label>
+                <Textarea
+                  value={formData.address || ""}
+                  onChange={(e) => updateField("address", e.target.value)}
+                  placeholder="123 Creative Ave, Suite 100&#10;Los Angeles, CA 90028"
+                  rows={2}
+                  className="resize-none"
+                />
+                <p className="text-[10px] text-muted-foreground pt-1">
+                  This address will be displayed on the map overlay card.
+                </p>
+              </div>
+            </div>
+
+            {/* 2. LAYOUT ARCHITECTURE */}
+            <div className="space-y-4 p-4 border rounded-lg bg-muted/10">
+              <div className="flex items-center gap-2 mb-2 border-b pb-2">
+                <LayoutTemplate size={16} className="text-primary" />
+                <Label className="text-base font-semibold text-primary">
+                  Map Architecture
+                </Label>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label className="text-xs text-muted-foreground uppercase tracking-wider">Map Title</Label>
+                  <Label>Map Style</Label>
+                  <Select
+                    value={formData.variant || "standard"}
+                    onValueChange={(val) => updateField("variant", val)}
+                  >
+                    <SelectTrigger className="bg-background h-10">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="standard">
+                        Standard (Full Width)
+                      </SelectItem>
+                      <SelectItem value="dark">
+                        Cinematic (Dark Mode)
+                      </SelectItem>
+                      <SelectItem value="card">Overlay Card (Boxed)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Container Height</Label>
+                  <Select
+                    value={formData.height || "medium"}
+                    onValueChange={(val) => updateField("height", val)}
+                  >
+                    <SelectTrigger className="bg-background h-10">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="small">Small (300px)</SelectItem>
+                      <SelectItem value="medium">Medium (50vh)</SelectItem>
+                      <SelectItem value="large">
+                        Large (70vh - Immersive)
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <p className="text-[10px] text-muted-foreground">
+                {formData.variant === "dark" &&
+                  "Cinematic applies a CSS filter to the Google Map to make it look dark and modern."}
+                {formData.variant === "card" &&
+                  "Places the map inside a neat, floating card rather than stretching full-width."}
+              </p>
+            </div>
+
+            {/* 3. EMBED CONFIGURATION */}
+            <div className="space-y-4 p-4 border rounded-lg bg-muted/5 border-l-4 border-l-primary">
+              <div className="flex items-center justify-between mb-2 border-b pb-2">
+                <div className="flex items-center gap-2">
+                  <Settings2 size={16} className="text-primary" />
+                  <Label className="text-base font-semibold">
+                    Embed Configuration
+                  </Label>
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-semibold flex items-center gap-1.5">
+                    <Map size={14} className="text-muted-foreground" /> Google
+                    Maps Embed URL (src)
+                  </Label>
                   <Input
-                    value={formData.title || ""}
-                    onChange={(e) => updateField("title", e.target.value)}
-                    placeholder="e.g. Visit Our Studio"
-                    className="font-bold"
+                    value={formData.mapUrl || ""}
+                    onChange={(e) => updateField("mapUrl", e.target.value)}
+                    placeholder="https://www.google.com/maps/embed?pb=!1m18..."
+                    className="font-mono text-[10px] bg-background"
                   />
+                  <div className="bg-primary/10 text-primary/80 text-[10px] p-2 rounded border border-primary/20">
+                    <span className="font-bold">How to find this:</span> Go to
+                    Google Maps → Click "Share" → Click "Embed a map" → Click
+                    "Copy HTML" → Paste it into a text editor and copy{" "}
+                    <strong className="underline">ONLY</strong> the URL inside
+                    the <code>src="..."</code> quotes.
+                  </div>
                 </div>
-  
-                <div className="space-y-2">
-                  <Label className="text-xs text-muted-foreground uppercase tracking-wider">Physical Address</Label>
-                  <Textarea
-                    value={formData.address || ""}
-                    onChange={(e) => updateField("address", e.target.value)}
-                    placeholder="123 Creative Ave, Suite 100&#10;Los Angeles, CA 90028"
-                    rows={2}
-                    className="resize-none"
+
+                <div className="space-y-1.5 pt-3 border-t border-dashed">
+                  <Label className="text-xs font-semibold flex items-center gap-1.5">
+                    <LinkIcon size={14} className="text-muted-foreground" />{" "}
+                    'Get Directions' Button Link
+                  </Label>
+                  <Input
+                    value={formData.directionUrl || ""}
+                    onChange={(e) =>
+                      updateField("directionUrl", e.target.value)
+                    }
+                    placeholder="https://maps.app.goo.gl/..."
+                    className="font-mono text-[10px] bg-background"
                   />
-                  <p className="text-[10px] text-muted-foreground pt-1">
-                    This address will be displayed on the map overlay card.
+                  <p className="text-[10px] text-muted-foreground pl-1">
+                    Paste the direct "Share Link" here. If left empty, the
+                    button will try to auto-generate a route based on your
+                    address.
                   </p>
                 </div>
               </div>
-  
-              {/* 2. LAYOUT ARCHITECTURE */}
-              <div className="space-y-4 p-4 border rounded-lg bg-muted/10">
-                <div className="flex items-center gap-2 mb-2 border-b pb-2">
-                  <LayoutTemplate size={16} className="text-primary" />
-                  <Label className="text-base font-semibold text-primary">Map Architecture</Label>
-                </div>
-                
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label>Map Style</Label>
-                    <Select
-                      value={formData.variant || "standard"}
-                      onValueChange={(val) => updateField("variant", val)}
-                    >
-                      <SelectTrigger className="bg-background h-10">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="standard">Standard (Full Width)</SelectItem>
-                        <SelectItem value="dark">Cinematic (Dark Mode)</SelectItem>
-                        <SelectItem value="card">Overlay Card (Boxed)</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-  
-                  <div className="space-y-2">
-                    <Label>Container Height</Label>
-                    <Select
-                      value={formData.height || "medium"}
-                      onValueChange={(val) => updateField("height", val)}
-                    >
-                      <SelectTrigger className="bg-background h-10">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="small">Small (300px)</SelectItem>
-                        <SelectItem value="medium">Medium (50vh)</SelectItem>
-                        <SelectItem value="large">Large (70vh - Immersive)</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-                
-                <p className="text-[10px] text-muted-foreground">
-                  {formData.variant === "dark" && "Cinematic applies a CSS filter to the Google Map to make it look dark and modern."}
-                  {formData.variant === "card" && "Places the map inside a neat, floating card rather than stretching full-width."}
-                </p>
-              </div>
-  
-              {/* 3. EMBED CONFIGURATION */}
-              <div className="space-y-4 p-4 border rounded-lg bg-muted/5 border-l-4 border-l-primary">
-                <div className="flex items-center justify-between mb-2 border-b pb-2">
-                  <div className="flex items-center gap-2">
-                    <Settings2 size={16} className="text-primary" />
-                    <Label className="text-base font-semibold">Embed Configuration</Label>
-                  </div>
-                </div>
-  
-                <div className="space-y-3">
-                  <div className="space-y-1.5">
-                    <Label className="text-xs font-semibold flex items-center gap-1.5">
-                      <Map size={14} className="text-muted-foreground" /> Google Maps Embed URL (src)
-                    </Label>
-                    <Input
-                      value={formData.mapUrl || ""}
-                      onChange={(e) => updateField("mapUrl", e.target.value)}
-                      placeholder="https://www.google.com/maps/embed?pb=!1m18..."
-                      className="font-mono text-[10px] bg-background"
-                    />
-                    <div className="bg-primary/10 text-primary/80 text-[10px] p-2 rounded border border-primary/20">
-                      <span className="font-bold">How to find this:</span> Go to Google Maps → Click "Share" → Click "Embed a map" → Click "Copy HTML" → Paste it into a text editor and copy <strong className="underline">ONLY</strong> the URL inside the <code>src="..."</code> quotes.
-                    </div>
-                  </div>
-  
-                  <div className="space-y-1.5 pt-3 border-t border-dashed">
-                    <Label className="text-xs font-semibold flex items-center gap-1.5">
-                      <LinkIcon size={14} className="text-muted-foreground" /> 'Get Directions' Button Link
-                    </Label>
-                    <Input
-                      value={formData.directionUrl || ""}
-                      onChange={(e) => updateField("directionUrl", e.target.value)}
-                      placeholder="https://maps.app.goo.gl/..."
-                      className="font-mono text-[10px] bg-background"
-                    />
-                    <p className="text-[10px] text-muted-foreground pl-1">
-                      Paste the direct "Share Link" here. If left empty, the button will try to auto-generate a route based on your address.
-                    </p>
-                  </div>
-                </div>
-              </div>
             </div>
-          );      // --- PRICING SECTION EDITOR ---
+          </div>
+        ); // --- PRICING SECTION EDITOR ---
       case "pricing":
         return (
           <div className="space-y-6">
-            <div className="space-y-2">
-              <Label>Section Title</Label>
-              <Input
-                value={formData.title || ""}
-                onChange={(e) => updateField("title", e.target.value)}
-                placeholder="Pricing & Rates"
-              />
+            {/* 1. TEXT CONTENT */}
+            <div className="space-y-4 p-4 border rounded-lg bg-background shadow-sm">
+              <div className="flex items-center gap-2 mb-2 border-b pb-2">
+                <Type size={16} className="text-primary" />
+                <Label className="text-base font-semibold">
+                  Section Header
+                </Label>
+              </div>
+
+              <div className="space-y-2">
+                <Label className="text-xs text-muted-foreground uppercase tracking-wider">
+                  Pricing Title
+                </Label>
+                <Input
+                  value={formData.title || ""}
+                  onChange={(e) => updateField("title", e.target.value)}
+                  placeholder="e.g. Simple, Transparent Pricing"
+                  className="font-bold"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label className="text-xs text-muted-foreground uppercase tracking-wider">
+                  Subtitle / Note
+                </Label>
+                <Textarea
+                  value={formData.subheadline || ""}
+                  onChange={(e) => updateField("subheadline", e.target.value)}
+                  placeholder="No hidden fees. Cancel anytime."
+                  className="resize-none"
+                  rows={2}
+                />
+              </div>
             </div>
 
-            {/* 1. CONFIGURATION */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 border rounded-lg bg-muted/20">
+            {/* 2. LAYOUT ARCHITECTURE */}
+            <div className="space-y-4 p-4 border rounded-lg bg-muted/10">
+              <div className="flex items-center gap-2 mb-2 border-b pb-2">
+                <LayoutTemplate size={16} className="text-primary" />
+                <Label className="text-base font-semibold text-primary">
+                  Layout Architecture
+                </Label>
+              </div>
               <div className="space-y-2">
-                <Label>Layout Style</Label>
+                <Label>Display Style</Label>
                 <Select
                   value={formData.variant || "cards"}
                   onValueChange={(val) => updateField("variant", val)}
                 >
-                  <SelectTrigger className="bg-background">
+                  <SelectTrigger className="bg-background h-10">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="cards">Grid Cards (Standard)</SelectItem>
+                    <SelectItem value="cards">
+                      Grid Cards (Standard SaaS)
+                    </SelectItem>
                     <SelectItem value="slider">
                       Carousel (Horizontal Scroll)
                     </SelectItem>
@@ -3465,123 +3695,133 @@ const SectionEditor: React.FC<SectionEditorProps> = ({
                     </SelectItem>
                   </SelectContent>
                 </Select>
+                <p className="text-[10px] text-muted-foreground pt-1">
+                  {formData.variant === "cards" &&
+                    "The standard tiered pricing format. Best for 3 options."}
+                  {formData.variant === "slider" &&
+                    "A swipeable row of pricing cards. Best if you have 4+ options."}
+                  {formData.variant === "list" &&
+                    "A clean, text-based menu. Great for freelancers and service menus."}
+                </p>
               </div>
             </div>
 
-            {/* 2. PLANS MANAGER */}
-            <div className="space-y-3 pt-4 border-t">
-              <div className="flex justify-between items-center">
-                <Label>Packages / Rates</Label>
-                <Button size="sm" variant="outline" onClick={handleAddPlan}>
-                  <Plus className="w-4 h-4 mr-2" /> Add Item
+            {/* 🚀 NEW: RATE CARD FOOTER CTA (Only shows if variant is 'list') */}
+            {formData.variant === "list" && (
+              <div className="space-y-4 p-4 border rounded-lg bg-primary/5 animate-in fade-in slide-in-from-top-2 border-primary/20">
+                <div className="flex items-center gap-2 mb-2 border-b border-primary/20 pb-2">
+                  <ExternalLink size={16} className="text-primary" />
+                  <Label className="text-base font-semibold text-primary">
+                    Rate Card Footer Button
+                  </Label>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label className="text-xs text-muted-foreground uppercase tracking-wider">
+                      Button Text
+                    </Label>
+                    <Input
+                      value={formData.ctaText || ""}
+                      onChange={(e) => updateField("ctaText", e.target.value)}
+                      placeholder="e.g. Contact for Custom Rates"
+                      className="bg-background"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-xs text-muted-foreground uppercase tracking-wider">
+                      Button Link
+                    </Label>
+                    <Input
+                      value={formData.ctaLink || ""}
+                      onChange={(e) => updateField("ctaLink", e.target.value)}
+                      placeholder="e.g. #contact"
+                      className="bg-background"
+                    />
+                  </div>
+                </div>
+                <p className="text-[10px] text-muted-foreground">
+                  This button sits at the bottom of the Rate Card to catch users
+                  who don't see a plan that fits their needs.
+                </p>
+              </div>
+            )}
+
+            {/* 3. PLANS MANAGER */}
+            <div className="space-y-4 p-4 border rounded-lg bg-muted/5">
+              <div className="flex justify-between items-center border-b pb-2">
+                <div className="flex items-center gap-2">
+                  <Tag size={16} className="text-primary" />
+                  <Label className="text-base font-semibold">
+                    Packages & Rates
+                  </Label>
+                </div>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-8 text-xs bg-background shadow-sm"
+                  onClick={handleAddPlan}
+                >
+                  <Plus className="w-3 h-3 mr-1" /> Add Plan
                 </Button>
               </div>
 
-              <div className="space-y-4">
-                {(formData.plans || []).map((plan: any, idx: number) => (
-                  <div
-                    key={idx}
-                    className="border p-4 rounded-lg bg-muted/10 space-y-4 relative group"
+              {/* DND-KIT LIST */}
+              <div className="space-y-4 pt-2">
+                <DndContext
+                  sensors={sensors}
+                  collisionDetection={closestCenter}
+                  onDragEnd={(event) => {
+                    const { active, over } = event;
+                    if (over && active.id !== over.id) {
+                      const oldIndex = formData.plans.findIndex(
+                        (p: any, idx: number) =>
+                          (p.id || `pricing-plan-${idx}`) === active.id
+                      );
+                      const newIndex = formData.plans.findIndex(
+                        (p: any, idx: number) =>
+                          (p.id || `pricing-plan-${idx}`) === over.id
+                      );
+                      updateField(
+                        "plans",
+                        arrayMove(formData.plans, oldIndex, newIndex)
+                      );
+                    }
+                  }}
+                >
+                  <SortableContext
+                    items={(formData.plans || []).map(
+                      (p: any, idx: number) => p.id || `pricing-plan-${idx}`
+                    )}
+                    strategy={verticalListSortingStrategy}
                   >
-                    {/* Remove Button */}
-                    <Button
-                      size="icon"
-                      variant="ghost"
-                      className="absolute top-2 right-2 text-muted-foreground hover:text-destructive h-8 w-8"
-                      onClick={() => removePlan(idx)}
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
-
-                    <div className="grid grid-cols-12 gap-3">
-                      <div className="col-span-12 md:col-span-4 space-y-1">
-                        <Label className="text-xs">Service Name</Label>
-                        <Input
-                          placeholder="e.g. Day Rate"
-                          value={plan.name}
-                          onChange={(e) =>
-                            updatePlan(idx, "name", e.target.value)
-                          }
-                          className="font-medium"
-                        />
-                      </div>
-                      <div className="col-span-8 md:col-span-4 space-y-1">
-                        <Label className="text-xs">Price</Label>
-                        <Input
-                          placeholder="e.g. 500"
-                          value={plan.price}
-                          onChange={(e) =>
-                            updatePlan(idx, "price", e.target.value)
-                          }
-                        />
-                      </div>
-                      <div className="col-span-4 md:col-span-4 space-y-1">
-                        <Label className="text-xs">Unit (Optional)</Label>
-                        <Input
-                          placeholder="/mo"
-                          value={plan.unit}
-                          onChange={(e) =>
-                            updatePlan(idx, "unit", e.target.value)
-                          }
-                        />
-                      </div>
-                    </div>
-
-                    <div className="space-y-1">
-                      <Label className="text-xs">Description / Features</Label>
-                      <Textarea
-                        placeholder="Feature 1, Feature 2, Feature 3..."
-                        value={plan.features}
-                        onChange={(e) =>
-                          updatePlan(idx, "features", e.target.value)
-                        }
-                        rows={2}
+                    {(formData.plans || []).map((plan: any, idx: number) => (
+                      <SortablePricingPlan
+                        key={plan.id || `pricing-plan-${idx}`}
+                        plan={plan}
+                        idx={idx}
+                        updatePlan={updatePlan}
+                        removePlan={removePlan}
                       />
-                    </div>
+                    ))}
+                  </SortableContext>
+                </DndContext>
 
-                    <div className="grid grid-cols-2 gap-3">
-                      <div className="space-y-1">
-                        <Label className="text-xs">Button Text</Label>
-                        <Input
-                          placeholder="e.g. Book Now"
-                          value={plan.cta}
-                          onChange={(e) =>
-                            updatePlan(idx, "cta", e.target.value)
-                          }
-                        />
-                      </div>
-                      <div className="space-y-1">
-                        <Label className="text-xs">Button Link (URL)</Label>
-                        <Input
-                          placeholder="https://..."
-                          value={plan.buttonUrl}
-                          onChange={(e) =>
-                            updatePlan(idx, "buttonUrl", e.target.value)
-                          }
-                        />
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-2 pt-2">
-                      <Switch
-                        id={`pop-${idx}`}
-                        checked={plan.isPopular || false}
-                        onCheckedChange={(c) => updatePlan(idx, "isPopular", c)}
-                      />
-                      <Label
-                        htmlFor={`pop-${idx}`}
-                        className="text-xs cursor-pointer text-muted-foreground"
-                      >
-                        Highlight as Popular
-                      </Label>
-                    </div>
+                {(!formData.plans || formData.plans.length === 0) && (
+                  <div
+                    className="w-full py-12 flex flex-col items-center justify-center border-2 border-dashed rounded-xl bg-muted/30 text-muted-foreground hover:bg-muted/50 hover:text-primary hover:border-primary/50 transition-colors cursor-pointer"
+                    onClick={handleAddPlan}
+                  >
+                    <CreditCard className="w-8 h-8 mb-3 opacity-50" />
+                    <p className="text-sm font-medium">No plans added</p>
+                    <p className="text-xs opacity-70">
+                      Click here to create your first pricing tier
+                    </p>
                   </div>
-                ))}
+                )}
               </div>
             </div>
           </div>
         );
-
       case "about":
         return (
           <div className="space-y-6">
