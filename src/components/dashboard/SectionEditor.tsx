@@ -91,6 +91,7 @@ import {
   Settings2,
   Tag,
   CreditCard,
+  MessageSquare,
 } from "lucide-react";
 
 import PortfolioMediaManager, {
@@ -117,6 +118,146 @@ interface SectionEditorProps {
   themeId?: string;
   pages?: any[]; // 🚀 1. ADD THIS HERE
 }
+
+// 🚀 NEW: Standalone Sortable Item for Form Fields
+const SortableFormField = ({
+  field,
+  idx,
+  updateFieldData,
+  removeField,
+}: any) => {
+  const sortableId = field.id || `form-field-${idx}`;
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: sortableId });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    zIndex: isDragging ? 50 : 0,
+  };
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={cn(
+        "flex gap-3 p-4 border rounded-xl bg-background shadow-sm transition-all relative group",
+        isDragging && "ring-2 ring-primary shadow-2xl opacity-90 scale-[0.98]"
+      )}
+    >
+      {/* Drag Handle */}
+      <div
+        {...attributes}
+        {...listeners}
+        className="mt-6 cursor-grab active:cursor-grabbing text-muted-foreground hover:text-primary transition-colors flex-shrink-0 touch-none"
+      >
+        <GripVertical size={20} />
+      </div>
+
+      <div className="flex-1 space-y-4">
+        {/* Remove Button */}
+        <Button
+          size="icon"
+          variant="ghost"
+          className="absolute top-2 right-2 text-muted-foreground hover:text-destructive h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity"
+          onPointerDown={(e) => e.stopPropagation()}
+          onClick={() => removeField(idx)}
+        >
+          <Trash2 className="w-4 h-4" />
+        </Button>
+
+        <div className="grid grid-cols-12 gap-3 pr-8">
+          <div className="col-span-12 md:col-span-6 space-y-1.5">
+            <Label className="text-[10px] uppercase tracking-widest text-muted-foreground">
+              Field Label
+            </Label>
+            <Input
+              placeholder="e.g. First Name"
+              value={field.label || ""}
+              onChange={(e) => updateFieldData(idx, "label", e.target.value)}
+              className="font-bold h-9"
+              onPointerDown={(e) => e.stopPropagation()}
+            />
+          </div>
+          <div className="col-span-12 md:col-span-6 space-y-1.5">
+            <Label className="text-[10px] uppercase tracking-widest text-muted-foreground">
+              Input Type
+            </Label>
+            <Select
+              value={field.type || "text"}
+              onValueChange={(val) => updateFieldData(idx, "type", val)}
+            >
+              <SelectTrigger className="h-9 bg-background">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="text">Short Text</SelectItem>
+                <SelectItem value="textarea">Long Text (Paragraph)</SelectItem>
+                <SelectItem value="email">Email Address</SelectItem>
+                <SelectItem value="tel">Phone Number</SelectItem>
+                <SelectItem value="date">Date Picker</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+
+        <div className="space-y-1.5">
+          <Label className="text-[10px] uppercase tracking-widest text-muted-foreground">
+            Placeholder Text
+          </Label>
+          <Input
+            placeholder="e.g. Enter your name here..."
+            value={field.placeholder || ""}
+            onChange={(e) =>
+              updateFieldData(idx, "placeholder", e.target.value)
+            }
+            className="h-9 text-xs bg-muted/50"
+            onPointerDown={(e) => e.stopPropagation()}
+          />
+        </div>
+
+        <div className="flex items-center gap-4 pt-2 border-t border-dashed">
+          <div className="flex items-center gap-2">
+            <Switch
+              id={`req-${sortableId}`}
+              checked={field.required || false}
+              onCheckedChange={(c) => updateFieldData(idx, "required", c)}
+              onPointerDown={(e) => e.stopPropagation()}
+            />
+            <Label
+              htmlFor={`req-${sortableId}`}
+              className="text-xs cursor-pointer font-medium"
+            >
+              Required Field
+            </Label>
+          </div>
+          <div className="flex items-center gap-2">
+            <Switch
+              id={`width-${sortableId}`}
+              checked={field.width === "half"}
+              onCheckedChange={(c) =>
+                updateFieldData(idx, "width", c ? "half" : "full")
+              }
+              onPointerDown={(e) => e.stopPropagation()}
+            />
+            <Label
+              htmlFor={`width-${sortableId}`}
+              className="text-xs cursor-pointer font-medium"
+            >
+              50% Width (Side-by-side)
+            </Label>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
 // 🚀 NEW: Standalone Sortable Item for Pricing Plans
 const SortablePricingPlan = ({ plan, idx, updatePlan, removePlan }: any) => {
   const sortableId = plan.id || `pricing-plan-${idx}`;
@@ -2165,85 +2306,128 @@ const SectionEditor: React.FC<SectionEditorProps> = ({
 
       case "lead_form":
         return (
-          <div className="space-y-8">
-            {/* 1. BASIC SETTINGS */}
-            <div className="space-y-4">
+          <div className="space-y-6">
+            {/* 1. TEXT CONTENT */}
+            <div className="space-y-4 p-4 border rounded-lg bg-background shadow-sm">
+              <div className="flex items-center gap-2 mb-2 border-b pb-2">
+                <Type size={16} className="text-primary" />
+                <Label className="text-base font-semibold">
+                  Section Header
+                </Label>
+              </div>
+
               <div className="space-y-2">
-                <Label>Section Title</Label>
+                <Label className="text-xs text-muted-foreground uppercase tracking-wider">
+                  Form Title
+                </Label>
                 <Input
                   value={formData.title || ""}
                   onChange={(e) => updateField("title", e.target.value)}
-                  placeholder="Get in Touch"
+                  placeholder="e.g. Let's Work Together"
+                  className="font-bold"
                 />
               </div>
+
               <div className="space-y-2">
-                <Label>Subheadline</Label>
+                <Label className="text-xs text-muted-foreground uppercase tracking-wider">
+                  Subtitle / Note
+                </Label>
                 <Textarea
                   value={formData.subheadline || ""}
                   onChange={(e) => updateField("subheadline", e.target.value)}
-                  placeholder="Send me a message..."
+                  placeholder="Fill out the form below and we'll get back to you within 24 hours."
+                  className="resize-none"
                   rows={2}
                 />
               </div>
-              <div className="space-y-2">
-                <Label>Button Text</Label>
+
+              <div className="space-y-2 pt-2">
+                <Label className="text-xs text-muted-foreground uppercase tracking-wider">
+                  Submit Button Text
+                </Label>
                 <Input
                   value={formData.buttonText || ""}
                   onChange={(e) => updateField("buttonText", e.target.value)}
-                  placeholder="Send Message"
+                  placeholder="e.g. Send Message"
                 />
               </div>
             </div>
 
-            {/* 2. LAYOUT VARIANT */}
-            <div className="space-y-3 pt-4 border-t">
-              <Label>Layout Style</Label>
-              <Select
-                value={formData.variant || "centered"}
-                onValueChange={(val) => updateField("variant", val)}
-              >
-                <SelectTrigger className="bg-background">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="centered">
-                    Centered Box (Standard)
-                  </SelectItem>
-                  <SelectItem value="split">
-                    Split Screen (Image Left)
-                  </SelectItem>
-                  <SelectItem value="minimal">
-                    Minimal (No Background)
-                  </SelectItem>
-                </SelectContent>
-              </Select>
+            {/* 2. LAYOUT ARCHITECTURE */}
+            <div className="space-y-4 p-4 border rounded-lg bg-muted/10">
+              <div className="flex items-center gap-2 mb-2 border-b pb-2">
+                <LayoutTemplate size={16} className="text-primary" />
+                <Label className="text-base font-semibold text-primary">
+                  Layout Architecture
+                </Label>
+              </div>
+              <div className="space-y-2">
+                <Label>Display Style</Label>
+                <Select
+                  value={formData.variant || "centered"}
+                  onValueChange={(val) => updateField("variant", val)}
+                >
+                  <SelectTrigger className="bg-background h-10">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="centered">
+                      Centered Box (Standard)
+                    </SelectItem>
+                    <SelectItem value="split">
+                      Split Screen (Image + Form)
+                    </SelectItem>
+                    <SelectItem value="minimal">
+                      Minimal (Clean / No Box)
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
 
+              {/* IMAGE PICKER (Only shows if Split is selected) */}
               {formData.variant === "split" && (
-                <div className="mt-2">
-                  <Label className="text-xs">Side Image</Label>
-                  <div className="flex gap-2 mt-1">
-                    <Input
-                      value={formData.image || ""}
-                      onChange={(e) => updateField("image", e.target.value)}
-                      placeholder="https://..."
-                      className="text-xs"
-                    />
-                    {/* You can add the MediaPicker button here if you have it available in scope */}
+                <div className="space-y-3 pt-3 border-t border-dashed animate-in fade-in slide-in-from-top-2">
+                  <Label>Side Cover Image</Label>
+                  <div className="flex gap-3 items-center p-3 border rounded-md bg-background">
+                    {formData.image && (
+                      <div className="h-16 w-16 rounded overflow-hidden border shrink-0 bg-muted">
+                        <img
+                          src={formData.image}
+                          alt="Preview"
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                    )}
+                    <Button
+                      variant="outline"
+                      className="w-full"
+                      onClick={() => {
+                        setActiveMediaField("image");
+                        setIsMediaPickerOpen(true);
+                      }}
+                    >
+                      <ImageIcon className="w-4 h-4 mr-2" />
+                      {formData.image ? "Change Image" : "Select Image"}
+                    </Button>
                   </div>
                 </div>
               )}
             </div>
 
             {/* 3. FORM FIELDS BUILDER */}
-            <div className="space-y-4 pt-4 border-t">
-              <div className="flex justify-between items-center">
-                <Label>Form Fields</Label>
+            <div className="space-y-4 p-4 border rounded-lg bg-muted/5">
+              <div className="flex justify-between items-center border-b pb-2">
+                <div className="flex items-center gap-2">
+                  <MessageSquare size={16} className="text-primary" />
+                  <Label className="text-base font-semibold">Form Fields</Label>
+                </div>
                 <Button
                   size="sm"
                   variant="outline"
+                  className="h-8 text-xs bg-background shadow-sm"
                   onClick={() => {
                     const newField = {
-                      id: `custom_${Date.now()}`,
+                      id: `field_${Date.now()}`,
                       label: "New Field",
                       type: "text",
                       placeholder: "",
@@ -2256,119 +2440,72 @@ const SectionEditor: React.FC<SectionEditorProps> = ({
                     ]);
                   }}
                 >
-                  <Plus className="w-4 h-4 mr-2" /> Add Field
+                  <Plus className="w-3 h-3 mr-1" /> Add Field
                 </Button>
               </div>
 
-              <div className="space-y-3">
-                {(formData.fields || []).map((field: any, idx: number) => (
-                  <div
-                    key={idx}
-                    className="border p-3 rounded-lg bg-muted/10 space-y-3 group relative"
+              {/* 🚀 DND-KIT LIST */}
+              <div className="space-y-4 pt-2">
+                <DndContext
+                  sensors={sensors}
+                  collisionDetection={closestCenter}
+                  onDragEnd={(event) => {
+                    const { active, over } = event;
+                    if (over && active.id !== over.id) {
+                      const oldIndex = formData.fields.findIndex(
+                        (f: any, idx: number) =>
+                          (f.id || `form-field-${idx}`) === active.id
+                      );
+                      const newIndex = formData.fields.findIndex(
+                        (f: any, idx: number) =>
+                          (f.id || `form-field-${idx}`) === over.id
+                      );
+                      updateField(
+                        "fields",
+                        arrayMove(formData.fields, oldIndex, newIndex)
+                      );
+                    }
+                  }}
+                >
+                  <SortableContext
+                    items={(formData.fields || []).map(
+                      (f: any, idx: number) => f.id || `form-field-${idx}`
+                    )}
+                    strategy={verticalListSortingStrategy}
                   >
-                    {/* Remove Button */}
-                    <button
-                      onClick={() => {
-                        const newFields = [...formData.fields];
-                        newFields.splice(idx, 1);
-                        updateField("fields", newFields);
-                      }}
-                      className="absolute top-2 right-2 text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity"
-                    >
-                      <Trash2 size={14} />
-                    </button>
+                    {(formData.fields || []).map((field: any, idx: number) => (
+                      <SortableFormField
+                        key={field.id || `form-field-${idx}`}
+                        field={field}
+                        idx={idx}
+                        updateFieldData={(
+                          index: number,
+                          key: string,
+                          value: any
+                        ) => {
+                          const newFields = [...formData.fields];
+                          newFields[index][key] = value;
+                          updateField("fields", newFields);
+                        }}
+                        removeField={(index: number) => {
+                          const newFields = [...formData.fields];
+                          newFields.splice(index, 1);
+                          updateField("fields", newFields);
+                        }}
+                      />
+                    ))}
+                  </SortableContext>
+                </DndContext>
 
-                    <div className="grid grid-cols-2 gap-2">
-                      <div className="space-y-1">
-                        <Label className="text-[10px] text-muted-foreground uppercase">
-                          Label
-                        </Label>
-                        <Input
-                          value={field.label}
-                          onChange={(e) => {
-                            const newFields = [...formData.fields];
-                            newFields[idx].label = e.target.value;
-                            updateField("fields", newFields);
-                          }}
-                          className="h-8 text-xs"
-                        />
-                      </div>
-                      <div className="space-y-1">
-                        <Label className="text-[10px] text-muted-foreground uppercase">
-                          Type
-                        </Label>
-                        <Select
-                          value={field.type}
-                          onValueChange={(val) => {
-                            const newFields = [...formData.fields];
-                            newFields[idx].type = val;
-                            updateField("fields", newFields);
-                          }}
-                        >
-                          <SelectTrigger className="h-8 text-xs">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="text">Short Text</SelectItem>
-                            <SelectItem value="textarea">Long Text</SelectItem>
-                            <SelectItem value="email">Email</SelectItem>
-                            <SelectItem value="tel">Phone</SelectItem>
-                            <SelectItem value="date">Date</SelectItem>
-                            {/* Future: Select/Dropdown */}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-2">
-                      <div className="space-y-1">
-                        <Label className="text-[10px] text-muted-foreground uppercase">
-                          Placeholder
-                        </Label>
-                        <Input
-                          value={field.placeholder || ""}
-                          onChange={(e) => {
-                            const newFields = [...formData.fields];
-                            newFields[idx].placeholder = e.target.value;
-                            updateField("fields", newFields);
-                          }}
-                          className="h-8 text-xs"
-                          placeholder="e.g. Enter name"
-                        />
-                      </div>
-                      <div className="flex items-end gap-2 pb-1">
-                        <div className="flex items-center gap-2 border rounded px-2 h-8 w-full bg-background">
-                          <input
-                            type="checkbox"
-                            checked={field.required}
-                            onChange={(e) => {
-                              const newFields = [...formData.fields];
-                              newFields[idx].required = e.target.checked;
-                              updateField("fields", newFields);
-                            }}
-                            className="accent-primary"
-                          />
-                          <span className="text-xs">Required</span>
-                        </div>
-                        <div className="flex items-center gap-2 border rounded px-2 h-8 w-full bg-background">
-                          <input
-                            type="checkbox"
-                            checked={field.width === "half"}
-                            onChange={(e) => {
-                              const newFields = [...formData.fields];
-                              newFields[idx].width = e.target.checked
-                                ? "half"
-                                : "full";
-                              updateField("fields", newFields);
-                            }}
-                            className="accent-primary"
-                          />
-                          <span className="text-xs">50% Width</span>
-                        </div>
-                      </div>
-                    </div>
+                {(!formData.fields || formData.fields.length === 0) && (
+                  <div className="w-full py-12 flex flex-col items-center justify-center border-2 border-dashed rounded-xl bg-muted/30 text-muted-foreground">
+                    <MessageSquare className="w-8 h-8 mb-3 opacity-50" />
+                    <p className="text-sm font-medium">No fields added</p>
+                    <p className="text-xs opacity-70">
+                      Click "Add Field" to start building your form.
+                    </p>
                   </div>
-                ))}
+                )}
               </div>
             </div>
           </div>
