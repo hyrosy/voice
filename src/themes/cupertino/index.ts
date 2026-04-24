@@ -14,6 +14,7 @@ import { schema as GallerySchema } from "./Gallery"; // Add this when you build 
 import { schema as TeamSchema } from "./Team"; // Add this when you build the Cupertino Gallery!
 import { schema as MapSchema } from "./Map"; // Add this when you build the Cupertino Gallery!
 import { schema as PricingSchema } from "./Pricing"; // Add this when you build the Cupertino Gallery!
+import { schema as LeadFormSchema } from "./LeadForm"; // Add this when you build the Cupertino Gallery!
 
 // 🚀 2. LAZY LOAD COMPONENTS
 // The heavy React code stays lazy to protect performance.
@@ -25,6 +26,7 @@ const Contact = lazy(() => import("./Contact"));
 const Team = lazy(() => import("./Team"));
 const Map = lazy(() => import("./Map"));
 const Pricing = lazy(() => import("./Pricing"));
+const LeadForm = lazy(() => import("./LeadForm"));
 
 // Define the Theme
 export const CupertinoTheme: PortfolioThemeDefinition & { schemas?: any } = {
@@ -39,6 +41,7 @@ export const CupertinoTheme: PortfolioThemeDefinition & { schemas?: any } = {
   Team,
   Map,
   Pricing,
+  LeadForm,
 
   // 🚀 3. THE FIX: Expose the schemas directly to the Section Editor!
   schemas: {
@@ -50,5 +53,6 @@ export const CupertinoTheme: PortfolioThemeDefinition & { schemas?: any } = {
     Team: TeamSchema,
     Map: MapSchema,
     Pricing: PricingSchema,
+    LeadForm: LeadFormSchema,
   },
 };

@@ -2421,7 +2421,6 @@ const SectionEditor: React.FC<SectionEditorProps> = ({
                   </Label>
                 </div>
 
-                {/* Auto-Save Indicator */}
                 {!isCustomForm && (
                   <div className="flex items-center gap-2 px-2.5 py-1 bg-green-500/10 text-green-600 rounded border border-green-500/20">
                     <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
@@ -2441,9 +2440,13 @@ const SectionEditor: React.FC<SectionEditorProps> = ({
                     value={formData.formId || "custom"}
                     onValueChange={(val) => {
                       if (val === "custom") {
-                        updateField("formId", "custom");
+                        const newFormData = { ...formData, formId: "custom" };
+                        setFormData(newFormData);
+                        if (section)
+                          updateSectionInStore(section.id, {
+                            data: newFormData,
+                          }); // 🚀 INSTANT SYNC
                       } else {
-                        // 🚀 MAGIC: Inject ALL template data into Local UI AND Live Canvas
                         const template = savedForms.find((f) => f.id === val);
                         if (template) {
                           const newFormData = {
@@ -2454,18 +2457,16 @@ const SectionEditor: React.FC<SectionEditorProps> = ({
                             buttonText: template.button_text || "",
                             successTitle: template.success_title || "",
                             successMessage: template.success_message || "",
-                            variant: template.variant || "centered", // 🚀 Pulled from DB
-                            image: template.image || "", // 🚀 Pulled from DB
+                            variant: template.variant || "centered",
+                            image: template.image || "",
                             fields: template.fields || [],
                           };
 
                           setFormData(newFormData);
-
-                          // ✅ TS FIX: Safe check before updating canvas
-                          if (section?.id) {
-                            updateSetting(section.id, { data: newFormData });
-                            // 💡 Note: If you renamed updateSetting back to updateSection, just change the word above!
-                          }
+                          if (section)
+                            updateSectionInStore(section.id, {
+                              data: newFormData,
+                            }); // 🚀 INSTANT SYNC
                         }
                       }
                     }}
@@ -2500,7 +2501,7 @@ const SectionEditor: React.FC<SectionEditorProps> = ({
                         size="sm"
                         onClick={async () => {
                           const templateName = prompt(
-                            "Enter a name for this form template (e.g., 'Main Contact'):"
+                            "Enter a name for this form template (e.g., 'Main Contact Form'):"
                           );
                           if (!templateName) return;
 
@@ -2515,8 +2516,8 @@ const SectionEditor: React.FC<SectionEditorProps> = ({
                                 button_text: formData.buttonText,
                                 success_title: formData.successTitle,
                                 success_message: formData.successMessage,
-                                variant: formData.variant || "centered", // 🚀 Saved to DB
-                                image: formData.image || "", // 🚀 Saved to DB
+                                variant: formData.variant || "centered",
+                                image: formData.image || "",
                                 fields: formData.fields || [],
                               })
                               .select()
@@ -2525,12 +2526,16 @@ const SectionEditor: React.FC<SectionEditorProps> = ({
                             if (error) throw error;
 
                             setSavedForms((prev) => [data, ...prev]);
+
                             const newFormData = {
                               ...formData,
                               formId: data.id,
                             };
                             setFormData(newFormData);
-                            updateSetting(section.id, { data: newFormData });
+                            if (section)
+                              updateSectionInStore(section.id, {
+                                data: newFormData,
+                              }); // 🚀 INSTANT SYNC
 
                             alert("Template saved successfully!");
                           } catch (err: any) {
@@ -2574,8 +2579,9 @@ const SectionEditor: React.FC<SectionEditorProps> = ({
 
                         <Button
                           variant="outline"
-                          size="sm"
-                          className="h-9 bg-background shadow-sm hover:text-primary hover:border-primary/50 transition-colors"
+                          size="icon"
+                          className="h-9 w-9 bg-background shadow-sm hover:text-primary hover:border-primary/50 transition-colors"
+                          title="Duplicate Template"
                           onClick={async () => {
                             const { data, error } = await supabase
                               .from("forms")
@@ -2589,8 +2595,8 @@ const SectionEditor: React.FC<SectionEditorProps> = ({
                                 button_text: formData.buttonText,
                                 success_title: formData.successTitle,
                                 success_message: formData.successMessage,
-                                variant: formData.variant || "centered", // 🚀
-                                image: formData.image || "", // 🚀
+                                variant: formData.variant || "centered",
+                                image: formData.image || "",
                                 fields: formData.fields || [],
                               })
                               .select()
@@ -2603,11 +2609,14 @@ const SectionEditor: React.FC<SectionEditorProps> = ({
                                 formId: data.id,
                               };
                               setFormData(newFormData);
-                              updateSetting(section.id, { data: newFormData });
+                              if (section)
+                                updateSectionInStore(section.id, {
+                                  data: newFormData,
+                                }); // 🚀 INSTANT SYNC
                             }
                           }}
                         >
-                          <Copy className="w-4 h-4 mr-2" /> Duplicate
+                          <Copy className="w-4 h-4" />
                         </Button>
 
                         <Button
@@ -2637,7 +2646,10 @@ const SectionEditor: React.FC<SectionEditorProps> = ({
                                 formId: "custom",
                               };
                               setFormData(newFormData);
-                              updateSetting(section.id, { data: newFormData });
+                              if (section)
+                                updateSectionInStore(section.id, {
+                                  data: newFormData,
+                                }); // 🚀 INSTANT SYNC
                             }
                           }}
                         >
@@ -4141,7 +4153,8 @@ const SectionEditor: React.FC<SectionEditorProps> = ({
               </div>
             </div>
           </div>
-        ); // --- PRICING SECTION EDITOR ---
+        );
+      // --- PRICING SECTION EDITOR ---
       case "pricing":
         return (
           <div className="space-y-6">

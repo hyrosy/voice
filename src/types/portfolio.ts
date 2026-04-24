@@ -274,36 +274,55 @@ export const DEFAULT_PORTFOLIO_SECTIONS: PortfolioSection[] = [
     },
   },
   {
-    id: "contact_form",
+    id: "lead_form-1",
     type: "lead_form",
     isVisible: true,
     data: {
-      title: "Get in Touch",
-      subheadline: "Send me a message for bookings and inquiries.",
-      buttonText: "Send Message",
-      variant: "centered",
+      formId: "custom",
+      variant: "split", // 🚀 Let's make the default the beautiful split screen!
+      image:
+        "https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&q=80&w=1000",
+      title: "Let's Work Together",
+      subheadline:
+        "Fill out the form below and our team will get back to you within 24 hours.",
+      buttonText: "Send Inquiry",
+      successTitle: "Message Received!",
+      successMessage:
+        "Thank you for reaching out. We will review your inquiry and get back to you shortly.",
       fields: [
         {
           id: "name",
-          label: "Name",
+          label: "Full Name",
           type: "text",
-          placeholder: "Your Name",
           required: true,
           width: "half",
         },
         {
           id: "email",
-          label: "Email",
+          label: "Email Address",
           type: "email",
-          placeholder: "your@email.com",
           required: true,
           width: "half",
         },
         {
+          id: "phone",
+          label: "Phone Number",
+          type: "tel",
+          required: false,
+          width: "full",
+        },
+        {
+          id: "service",
+          label: "Interested Service",
+          type: "select",
+          required: true,
+          width: "full",
+          options: "Web Design, Brand Identity, Marketing, Other", // 🚀 Awesome default dropdown
+        },
+        {
           id: "message",
-          label: "Message",
+          label: "Project Details",
           type: "textarea",
-          placeholder: "How can I help you?",
           required: true,
           width: "full",
         },
