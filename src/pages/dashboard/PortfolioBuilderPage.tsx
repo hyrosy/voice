@@ -1330,6 +1330,7 @@ const PortfolioBuilderPage = () => {
                       themeId={themeConfig.templateId || "modern"}
                       isInline={true}
                       pages={customPages}
+                      portfolioId={activePortfolioId || ""} // ✅ FIXED
                     />
                   </div>
                 </div>

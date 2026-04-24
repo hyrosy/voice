@@ -92,6 +92,10 @@ import {
   Tag,
   CreditCard,
   MessageSquare,
+  Save,
+  Library,
+  Copy,
+  Pencil,
 } from "lucide-react";
 
 import PortfolioMediaManager, {
@@ -117,6 +121,7 @@ interface SectionEditorProps {
   actorId: string;
   themeId?: string;
   pages?: any[]; // 🚀 1. ADD THIS HERE
+  portfolioId: string; // 🚀 ADD THIS PROP
 }
 
 // 🚀 UPDATED: Standalone Sortable Item for Form Fields
@@ -660,6 +665,7 @@ const SectionEditor: React.FC<SectionEditorProps> = ({
   onClose,
   actorId,
   themeId = "modern",
+  portfolioId, // 🚀 2. DESTRUCTURE THIS
 }) => {
   // --- ZUSTAND HOOK ---
   // We grab the update action from the store.
@@ -670,12 +676,80 @@ const SectionEditor: React.FC<SectionEditorProps> = ({
   const [activeMediaField, setActiveMediaField] = useState<string>("");
   const [isProductManagerOpen, setIsProductManagerOpen] = useState(false);
   const [availableProducts, setAvailableProducts] = useState<any[]>([]);
+  const [formData, setFormData] = useState(section?.data || {});
+
   const { limits } = useSubscription();
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
   );
   // Tier 2 is eCommerce, Tier 3 is Pro
   const hasMegaMenuAccess = limits?.hasMegaMenu === true;
+  // Put this near the top of your SectionEditor component
+  const [savedForms, setSavedForms] = useState<any[]>([]); // 🚀 STATE FOR FETCHED FORMS
+
+  useEffect(() => {
+    const fetchForms = async () => {
+      if (!portfolioId) return;
+
+      const { data, error } = await supabase
+        .from("forms")
+        .select("*") // 🚀 FIX: We need all the data, not just the name!
+        .eq("portfolio_id", portfolioId)
+        .order("created_at", { ascending: false });
+
+      if (!error && data) {
+        setSavedForms(data);
+      }
+    };
+    fetchForms();
+  }, [portfolioId]);
+  // 🚀 AAA+ GLOBAL TEMPLATE AUTO-SAVE ENGINE
+  useEffect(() => {
+    if (
+      section?.type !== "lead_form" ||
+      !formData.formId ||
+      formData.formId === "custom"
+    )
+      return;
+    const autoSaveTemplate = async () => {
+      await supabase
+        .from("forms")
+        .update({
+          title: formData.title,
+          subheadline: formData.subheadline,
+          button_text: formData.buttonText,
+          success_title: formData.successTitle,
+          success_message: formData.successMessage,
+          variant: formData.variant, // 🚀 Now saving layout
+          image: formData.image, // 🚀 Now saving image
+          fields: formData.fields || [],
+        })
+        .eq("id", formData.formId);
+
+      // Update the local list so the renaming/duplicating uses the freshest data
+      setSavedForms((prev) =>
+        prev.map((f) =>
+          f.id === formData.formId
+            ? {
+                ...f,
+                title: formData.title,
+                subheadline: formData.subheadline,
+                button_text: formData.buttonText,
+                success_title: formData.successTitle,
+                success_message: formData.successMessage,
+                variant: formData.variant,
+                image: formData.image,
+                fields: formData.fields || [],
+              }
+            : f
+        )
+      );
+    };
+
+    const timer = setTimeout(autoSaveTemplate, 1000);
+    return () => clearTimeout(timer);
+  }, [formData, section?.type]); // ✅ Added optional chaining here too
+
   useEffect(() => {
     const fetchActorProducts = async () => {
       if (!actorId) return;
@@ -700,7 +774,6 @@ const SectionEditor: React.FC<SectionEditorProps> = ({
   // =========================================================
 
   // 1. We keep a local copy of the data so typing is buttery smooth
-  const [formData, setFormData] = useState(section?.data || {});
   const [settingsData, setSettingsData] = useState(section?.settings || {});
 
   // 2. If the user clicks a DIFFERENT section, or if the canvas iframe
@@ -2328,9 +2401,261 @@ const SectionEditor: React.FC<SectionEditorProps> = ({
           </div>
         );
 
-      case "lead_form":
+      case "lead_form": {
+        const isCustomForm = !formData.formId || formData.formId === "custom";
+        const selectedFormObj = savedForms.find(
+          (f) => f.id === formData.formId
+        );
+
         return (
           <div className="space-y-6">
+            {/* 🚀 0. GLOBAL TEMPLATE MANAGEMENT */}
+            <div className="space-y-4 p-4 border rounded-xl bg-primary/5 border-primary/20 shadow-sm relative overflow-hidden">
+              <div className="absolute top-0 right-0 w-32 h-32 bg-primary/10 blur-2xl rounded-full pointer-events-none" />
+
+              <div className="flex items-center justify-between mb-2 border-b border-primary/10 pb-3 relative z-10">
+                <div className="flex items-center gap-2">
+                  <Library size={18} className="text-primary" />
+                  <Label className="text-lg font-bold text-primary tracking-tight">
+                    Form Library
+                  </Label>
+                </div>
+
+                {/* Auto-Save Indicator */}
+                {!isCustomForm && (
+                  <div className="flex items-center gap-2 px-2.5 py-1 bg-green-500/10 text-green-600 rounded border border-green-500/20">
+                    <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
+                    <span className="text-[9px] font-bold uppercase tracking-wider">
+                      Auto-Syncing
+                    </span>
+                  </div>
+                )}
+              </div>
+
+              <div className="space-y-3 relative z-10">
+                <Label className="text-xs font-semibold text-primary/80 uppercase tracking-wider">
+                  Selected Template
+                </Label>
+                <div className="flex flex-col gap-3">
+                  <Select
+                    value={formData.formId || "custom"}
+                    onValueChange={(val) => {
+                      if (val === "custom") {
+                        updateField("formId", "custom");
+                      } else {
+                        // 🚀 MAGIC: Inject ALL template data into Local UI AND Live Canvas
+                        const template = savedForms.find((f) => f.id === val);
+                        if (template) {
+                          const newFormData = {
+                            ...formData,
+                            formId: val,
+                            title: template.title || "",
+                            subheadline: template.subheadline || "",
+                            buttonText: template.button_text || "",
+                            successTitle: template.success_title || "",
+                            successMessage: template.success_message || "",
+                            variant: template.variant || "centered", // 🚀 Pulled from DB
+                            image: template.image || "", // 🚀 Pulled from DB
+                            fields: template.fields || [],
+                          };
+
+                          setFormData(newFormData);
+
+                          // ✅ TS FIX: Safe check before updating canvas
+                          if (section?.id) {
+                            updateSetting(section.id, { data: newFormData });
+                            // 💡 Note: If you renamed updateSetting back to updateSection, just change the word above!
+                          }
+                        }
+                      }
+                    }}
+                  >
+                    <SelectTrigger className="bg-background w-full h-10 border-primary/20 shadow-sm">
+                      <SelectValue placeholder="Select a template..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem
+                        value="custom"
+                        className="font-bold text-primary"
+                      >
+                        ✨ Custom Form (This page only)
+                      </SelectItem>
+                      {savedForms.map((form) => (
+                        <SelectItem
+                          key={form.id}
+                          value={form.id}
+                          className="font-medium"
+                        >
+                          {form.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+
+                  {/* 🚀 DYNAMIC ACTION BUTTONS */}
+                  <div className="flex flex-wrap items-center gap-2 pt-1">
+                    {isCustomForm ? (
+                      <Button
+                        className="h-9 shadow-sm"
+                        size="sm"
+                        onClick={async () => {
+                          const templateName = prompt(
+                            "Enter a name for this form template (e.g., 'Main Contact'):"
+                          );
+                          if (!templateName) return;
+
+                          try {
+                            const { data, error } = await supabase
+                              .from("forms")
+                              .insert({
+                                portfolio_id: portfolioId,
+                                name: templateName,
+                                title: formData.title,
+                                subheadline: formData.subheadline,
+                                button_text: formData.buttonText,
+                                success_title: formData.successTitle,
+                                success_message: formData.successMessage,
+                                variant: formData.variant || "centered", // 🚀 Saved to DB
+                                image: formData.image || "", // 🚀 Saved to DB
+                                fields: formData.fields || [],
+                              })
+                              .select()
+                              .single();
+
+                            if (error) throw error;
+
+                            setSavedForms((prev) => [data, ...prev]);
+                            const newFormData = {
+                              ...formData,
+                              formId: data.id,
+                            };
+                            setFormData(newFormData);
+                            updateSetting(section.id, { data: newFormData });
+
+                            alert("Template saved successfully!");
+                          } catch (err: any) {
+                            alert(`Failed to save template: ${err.message}`);
+                          }
+                        }}
+                      >
+                        <Save className="w-4 h-4 mr-2" /> Save as Template
+                      </Button>
+                    ) : (
+                      <>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-9 bg-background shadow-sm hover:text-primary hover:border-primary/50 transition-colors"
+                          onClick={async () => {
+                            const newName = prompt(
+                              "Enter new template name:",
+                              selectedFormObj?.name
+                            );
+                            if (!newName || newName === selectedFormObj?.name)
+                              return;
+
+                            const { error } = await supabase
+                              .from("forms")
+                              .update({ name: newName })
+                              .eq("id", formData.formId);
+                            if (!error) {
+                              setSavedForms((prev) =>
+                                prev.map((f) =>
+                                  f.id === formData.formId
+                                    ? { ...f, name: newName }
+                                    : f
+                                )
+                              );
+                            }
+                          }}
+                        >
+                          <Pencil className="w-4 h-4 mr-2" /> Rename
+                        </Button>
+
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-9 bg-background shadow-sm hover:text-primary hover:border-primary/50 transition-colors"
+                          onClick={async () => {
+                            const { data, error } = await supabase
+                              .from("forms")
+                              .insert({
+                                portfolio_id: portfolioId,
+                                name: `${
+                                  selectedFormObj?.name || "Template"
+                                } (Copy)`,
+                                title: formData.title,
+                                subheadline: formData.subheadline,
+                                button_text: formData.buttonText,
+                                success_title: formData.successTitle,
+                                success_message: formData.successMessage,
+                                variant: formData.variant || "centered", // 🚀
+                                image: formData.image || "", // 🚀
+                                fields: formData.fields || [],
+                              })
+                              .select()
+                              .single();
+
+                            if (!error && data) {
+                              setSavedForms((prev) => [data, ...prev]);
+                              const newFormData = {
+                                ...formData,
+                                formId: data.id,
+                              };
+                              setFormData(newFormData);
+                              updateSetting(section.id, { data: newFormData });
+                            }
+                          }}
+                        >
+                          <Copy className="w-4 h-4 mr-2" /> Duplicate
+                        </Button>
+
+                        <Button
+                          variant="destructive"
+                          size="icon"
+                          className="h-9 w-9 shadow-sm ml-auto"
+                          title="Delete Template"
+                          onClick={async () => {
+                            if (
+                              !confirm(
+                                "Delete this template permanently? Sections using it will keep their current data but will be converted to Custom Forms."
+                              )
+                            )
+                              return;
+
+                            const { error } = await supabase
+                              .from("forms")
+                              .delete()
+                              .eq("id", formData.formId);
+
+                            if (!error) {
+                              setSavedForms((prev) =>
+                                prev.filter((f) => f.id !== formData.formId)
+                              );
+                              const newFormData = {
+                                ...formData,
+                                formId: "custom",
+                              };
+                              setFormData(newFormData);
+                              updateSetting(section.id, { data: newFormData });
+                            }
+                          }}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </>
+                    )}
+                  </div>
+                </div>
+
+                <p className="text-[10px] text-primary/60 font-medium leading-relaxed pt-2 border-t border-primary/10">
+                  {isCustomForm
+                    ? "Save your current setup as a template to reuse it on other pages and connect it to Pricing checkout buttons."
+                    : "Any changes you make below are auto-saved and will apply to ALL sections across your site that are using this specific template."}
+                </p>
+              </div>
+            </div>
+
             {/* 1. TEXT CONTENT */}
             <div className="space-y-4 p-4 border rounded-lg bg-background shadow-sm">
               <div className="flex items-center gap-2 mb-2 border-b pb-2">
@@ -2377,20 +2702,24 @@ const SectionEditor: React.FC<SectionEditorProps> = ({
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4 pt-2 border-t border-dashed">
+            {/* SUCCESS MESSAGE SETTINGS */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 border rounded-lg bg-background shadow-sm">
               <div className="space-y-2">
                 <Label className="text-xs text-muted-foreground uppercase tracking-wider flex items-center gap-1">
-                  <CheckCircle2 size={12} /> Success Title
+                  <CheckCircle2 size={14} className="text-green-500" /> Success
+                  Title
                 </Label>
                 <Input
                   value={formData.successTitle || ""}
                   onChange={(e) => updateField("successTitle", e.target.value)}
                   placeholder="Message Sent!"
+                  className="font-bold"
                 />
               </div>
               <div className="space-y-2">
                 <Label className="text-xs text-muted-foreground uppercase tracking-wider flex items-center gap-1">
-                  <CheckCircle2 size={12} /> Success Note
+                  <CheckCircle2 size={14} className="text-green-500" /> Success
+                  Note
                 </Label>
                 <Textarea
                   value={formData.successMessage || ""}
@@ -2399,7 +2728,7 @@ const SectionEditor: React.FC<SectionEditorProps> = ({
                   }
                   placeholder="Thank you! We will get back to you shortly."
                   rows={2}
-                  className="resize-none"
+                  className="resize-none text-sm"
                 />
               </div>
             </div>
@@ -2435,7 +2764,6 @@ const SectionEditor: React.FC<SectionEditorProps> = ({
                 </Select>
               </div>
 
-              {/* IMAGE PICKER (Only shows if Split is selected) */}
               {formData.variant === "split" && (
                 <div className="space-y-3 pt-3 border-t border-dashed animate-in fade-in slide-in-from-top-2">
                   <Label>Side Cover Image</Label>
@@ -2495,7 +2823,6 @@ const SectionEditor: React.FC<SectionEditorProps> = ({
                 </Button>
               </div>
 
-              {/* 🚀 DND-KIT LIST */}
               <div className="space-y-4 pt-2">
                 <DndContext
                   sensors={sensors}
@@ -2561,8 +2888,7 @@ const SectionEditor: React.FC<SectionEditorProps> = ({
             </div>
           </div>
         );
-
-      // --- SHOP SECTION EDITOR ---
+      }
       case "shop":
         return (
           <div className="space-y-6">
