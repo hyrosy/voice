@@ -117,6 +117,7 @@ const LeadForm: React.FC<any> = ({
   };
 
   // --- SUCCESS STATE UX ---
+  // --- SUCCESS STATE UX ---
   if (isSent) {
     return (
       <section className="py-32 px-6 bg-neutral-950 relative overflow-hidden flex items-center justify-center min-h-[60vh]">
@@ -132,11 +133,11 @@ const LeadForm: React.FC<any> = ({
           </div>
           <div className="space-y-2">
             <h3 className="text-3xl font-bold text-white tracking-tight">
-              Message Sent!
+              {data.successTitle || "Message Sent!"}
             </h3>
             <p className="text-neutral-400 font-medium">
-              Thank you! We have received your message and will get back to you
-              shortly.
+              {data.successMessage ||
+                "Thank you! We have received your message and will get back to you shortly."}
             </p>
           </div>
           <Button
@@ -153,7 +154,14 @@ const LeadForm: React.FC<any> = ({
       </section>
     );
   }
-
+  // Helper to safely parse options
+  const parseOptions = (optString?: string) => {
+    if (!optString) return [];
+    return optString
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean);
+  };
   // --- REUSABLE FORM JSX ---
   const formContentJsx = (
     <form
@@ -163,6 +171,8 @@ const LeadForm: React.FC<any> = ({
       <div className="flex flex-wrap gap-5">
         {fields.map((field: any, idx: number) => {
           const isHalf = field.width === "half";
+          const fieldOptions = parseOptions(field.options);
+
           return (
             <div
               key={idx}
@@ -178,6 +188,7 @@ const LeadForm: React.FC<any> = ({
                 {field.required && <span className="text-primary">*</span>}
               </Label>
 
+              {/* 🚀 FIELD TYPE: TEXTAREA */}
               {field.type === "textarea" ? (
                 <Textarea
                   required={field.required && !isPreview}
@@ -189,7 +200,60 @@ const LeadForm: React.FC<any> = ({
                     setFormState({ ...formState, [field.id]: e.target.value })
                   }
                 />
+              ) : /* 🚀 FIELD TYPE: DROPDOWN (SELECT) */
+              field.type === "select" ? (
+                <select
+                  required={field.required && !isPreview}
+                  disabled={isPreview}
+                  className="w-full bg-white/5 border border-white/10 hover:border-white/20 focus:border-primary focus:ring-1 focus:ring-primary/50 text-white transition-all h-14 rounded-2xl px-4 text-base appearance-none outline-none"
+                  value={formState[field.id] || ""}
+                  onChange={(e) =>
+                    setFormState({ ...formState, [field.id]: e.target.value })
+                  }
+                >
+                  <option value="" disabled className="text-neutral-900">
+                    Select an option...
+                  </option>
+                  {fieldOptions.map((opt, i) => (
+                    <option key={i} value={opt} className="text-neutral-900">
+                      {opt}
+                    </option>
+                  ))}
+                </select>
+              ) : /* 🚀 FIELD TYPE: MULTIPLE CHOICE (RADIO) */
+              field.type === "radio" ? (
+                <div className="flex flex-col gap-3 pt-2">
+                  {fieldOptions.map((opt, i) => (
+                    <label
+                      key={i}
+                      className="flex items-center gap-3 cursor-pointer group"
+                    >
+                      <div className="relative flex items-center justify-center w-5 h-5 rounded-full border border-white/20 group-hover:border-primary transition-colors bg-white/5">
+                        <input
+                          type="radio"
+                          name={field.id}
+                          value={opt}
+                          required={field.required && !isPreview}
+                          disabled={isPreview}
+                          className="peer sr-only"
+                          onChange={(e) =>
+                            setFormState({
+                              ...formState,
+                              [field.id]: e.target.value,
+                            })
+                          }
+                        />
+                        {/* Custom Radio Dot */}
+                        <div className="w-2.5 h-2.5 rounded-full bg-primary opacity-0 peer-checked:opacity-100 transition-opacity" />
+                      </div>
+                      <span className="text-neutral-300 group-hover:text-white transition-colors text-sm font-medium">
+                        {opt}
+                      </span>
+                    </label>
+                  ))}
+                </div>
               ) : (
+                /* 🚀 FIELD TYPE: STANDARD INPUTS (Text, Email, Tel, Date) */
                 <Input
                   required={field.required && !isPreview}
                   readOnly={isPreview}
@@ -203,7 +267,12 @@ const LeadForm: React.FC<any> = ({
                       : "text"
                   }
                   placeholder={field.placeholder}
-                  className="bg-white/5 border-white/10 hover:border-white/20 focus-visible:border-primary focus-visible:ring-1 focus-visible:ring-primary/50 text-white placeholder:text-neutral-600 transition-all h-14 rounded-2xl px-4 text-base"
+                  className={cn(
+                    "bg-white/5 border-white/10 hover:border-white/20 focus-visible:border-primary focus-visible:ring-1 focus-visible:ring-primary/50 text-white placeholder:text-neutral-600 transition-all h-14 rounded-2xl px-4 text-base",
+                    // Fix ugly native date picker icon in dark mode
+                    field.type === "date" &&
+                      "[color-scheme:dark] [&::-webkit-calendar-picker-indicator]:opacity-50 [&::-webkit-calendar-picker-indicator]:hover:opacity-100 cursor-pointer"
+                  )}
                   value={formState[field.id] || ""}
                   onChange={(e) =>
                     setFormState({ ...formState, [field.id]: e.target.value })
@@ -214,7 +283,6 @@ const LeadForm: React.FC<any> = ({
           );
         })}
       </div>
-
       <div className="pt-6">
         <Button
           type={isPreview ? "button" : "submit"}

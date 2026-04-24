@@ -119,7 +119,7 @@ interface SectionEditorProps {
   pages?: any[]; // 🚀 1. ADD THIS HERE
 }
 
-// 🚀 NEW: Standalone Sortable Item for Form Fields
+// 🚀 UPDATED: Standalone Sortable Item for Form Fields
 const SortableFormField = ({
   field,
   idx,
@@ -142,6 +142,8 @@ const SortableFormField = ({
     zIndex: isDragging ? 50 : 0,
   };
 
+  const needsOptions = field.type === "select" || field.type === "radio";
+
   return (
     <div
       ref={setNodeRef}
@@ -151,7 +153,6 @@ const SortableFormField = ({
         isDragging && "ring-2 ring-primary shadow-2xl opacity-90 scale-[0.98]"
       )}
     >
-      {/* Drag Handle */}
       <div
         {...attributes}
         {...listeners}
@@ -161,7 +162,6 @@ const SortableFormField = ({
       </div>
 
       <div className="flex-1 space-y-4">
-        {/* Remove Button */}
         <Button
           size="icon"
           variant="ghost"
@@ -202,23 +202,47 @@ const SortableFormField = ({
                 <SelectItem value="email">Email Address</SelectItem>
                 <SelectItem value="tel">Phone Number</SelectItem>
                 <SelectItem value="date">Date Picker</SelectItem>
+                {/* 🚀 NEW: Advanced Field Types */}
+                <SelectItem value="select">Dropdown (Select)</SelectItem>
+                <SelectItem value="radio">Multiple Choice (Radio)</SelectItem>
               </SelectContent>
             </Select>
           </div>
         </div>
+
+        {/* 🚀 NEW: Options Field for Select/Radio */}
+        {needsOptions && (
+          <div className="space-y-1.5 p-3 bg-primary/5 border border-primary/20 rounded-lg">
+            <Label className="text-[10px] uppercase tracking-widest text-primary font-bold">
+              Choices (Comma Separated)
+            </Label>
+            <Input
+              placeholder="e.g. Basic Plan, Pro Plan, Enterprise"
+              value={field.options || ""}
+              onChange={(e) => updateFieldData(idx, "options", e.target.value)}
+              className="h-9 text-xs bg-background"
+              onPointerDown={(e) => e.stopPropagation()}
+            />
+          </div>
+        )}
 
         <div className="space-y-1.5">
           <Label className="text-[10px] uppercase tracking-widest text-muted-foreground">
             Placeholder Text
           </Label>
           <Input
-            placeholder="e.g. Enter your name here..."
+            placeholder={
+              needsOptions
+                ? "Leave blank for dropdowns"
+                : "e.g. Enter your name here..."
+            }
             value={field.placeholder || ""}
             onChange={(e) =>
               updateFieldData(idx, "placeholder", e.target.value)
             }
             className="h-9 text-xs bg-muted/50"
             onPointerDown={(e) => e.stopPropagation()}
+            disabled={needsOptions}
           />
         </div>
 
@@ -234,7 +258,7 @@ const SortableFormField = ({
               htmlFor={`req-${sortableId}`}
               className="text-xs cursor-pointer font-medium"
             >
-              Required Field
+              Required
             </Label>
           </div>
           <div className="flex items-center gap-2">
@@ -250,7 +274,7 @@ const SortableFormField = ({
               htmlFor={`width-${sortableId}`}
               className="text-xs cursor-pointer font-medium"
             >
-              50% Width (Side-by-side)
+              50% Width
             </Label>
           </div>
         </div>
@@ -2349,6 +2373,33 @@ const SectionEditor: React.FC<SectionEditorProps> = ({
                   value={formData.buttonText || ""}
                   onChange={(e) => updateField("buttonText", e.target.value)}
                   placeholder="e.g. Send Message"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4 pt-2 border-t border-dashed">
+              <div className="space-y-2">
+                <Label className="text-xs text-muted-foreground uppercase tracking-wider flex items-center gap-1">
+                  <CheckCircle2 size={12} /> Success Title
+                </Label>
+                <Input
+                  value={formData.successTitle || ""}
+                  onChange={(e) => updateField("successTitle", e.target.value)}
+                  placeholder="Message Sent!"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label className="text-xs text-muted-foreground uppercase tracking-wider flex items-center gap-1">
+                  <CheckCircle2 size={12} /> Success Note
+                </Label>
+                <Textarea
+                  value={formData.successMessage || ""}
+                  onChange={(e) =>
+                    updateField("successMessage", e.target.value)
+                  }
+                  placeholder="Thank you! We will get back to you shortly."
+                  rows={2}
+                  className="resize-none"
                 />
               </div>
             </div>
