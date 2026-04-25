@@ -96,6 +96,12 @@ import {
   Library,
   Copy,
   Pencil,
+  HelpCircle,
+  ChevronLeft,
+  ChevronRight,
+  ListPlus,
+  ShoppingCart,
+  Settings,
 } from "lucide-react";
 
 import PortfolioMediaManager, {
@@ -110,6 +116,7 @@ import {
 import { cn } from "@/lib/utils";
 import { ToggleGroup, ToggleGroupItem } from "../ui/toggle-group";
 import { DragDropContext, Draggable, Droppable } from "@hello-pangea/dnd";
+import FormManager from "../builder/FormManager";
 
 interface SectionEditorProps {
   section: PortfolioSection | null;
@@ -123,7 +130,598 @@ interface SectionEditorProps {
   pages?: any[]; // 🚀 1. ADD THIS HERE
   portfolioId: string; // 🚀 ADD THIS PROP
 }
+// 🚀 NEW: Standalone Sortable Item for Shop Products (Accordion & Duplication)
+const SortableShopProduct = ({
+  product,
+  idx,
+  updateProduct,
+  removeProduct,
+  duplicateProduct,
+  setActiveMediaField,
+  setIsMediaPickerOpen,
+  savedForms = [],
+}: any) => {
+  const [isExpanded, setIsExpanded] = useState(idx === 0); // Open the first one by default
 
+  const sortableId = product.id || `shop-product-${idx}`;
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: sortableId });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    zIndex: isDragging ? 50 : 0,
+  };
+
+  const images = product.images || (product.image ? [product.image] : []);
+
+  const moveImage = (imgIdx: number, direction: number) => {
+    const newImages = [...images];
+    if (direction === -1 && imgIdx > 0) {
+      [newImages[imgIdx], newImages[imgIdx - 1]] = [
+        newImages[imgIdx - 1],
+        newImages[imgIdx],
+      ];
+    } else if (direction === 1 && imgIdx < newImages.length - 1) {
+      [newImages[imgIdx], newImages[imgIdx + 1]] = [
+        newImages[imgIdx + 1],
+        newImages[imgIdx],
+      ];
+    }
+    updateProduct(idx, "images", newImages);
+    updateProduct(idx, "image", newImages[0] || "");
+  };
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={cn(
+        "border rounded-xl bg-background shadow-sm transition-all relative group overflow-hidden",
+        isDragging
+          ? "ring-2 ring-primary shadow-2xl opacity-90 scale-[0.98]"
+          : "hover:border-primary/30"
+      )}
+    >
+      {/* 🚀 ACCORDION HEADER */}
+      <div
+        className={cn(
+          "flex items-center gap-3 p-3 cursor-pointer select-none transition-colors hover:bg-muted/30",
+          isExpanded && "border-b bg-muted/10"
+        )}
+        onClick={() => setIsExpanded(!isExpanded)}
+      >
+        <div
+          {...attributes}
+          {...listeners}
+          className="cursor-grab active:cursor-grabbing text-muted-foreground hover:text-primary transition-colors flex-shrink-0 touch-none py-2"
+          onClick={(e) => e.stopPropagation()} // Prevent drag from toggling accordion
+        >
+          <GripVertical size={16} />
+        </div>
+
+        {/* Thumbnail Preview */}
+        <div className="w-10 h-10 rounded bg-muted/50 border overflow-hidden shrink-0">
+          {images[0] ? (
+            <img
+              src={images[0]}
+              alt="preview"
+              className="w-full h-full object-cover"
+            />
+          ) : (
+            <ShoppingBag className="w-4 h-4 m-auto mt-3 text-muted-foreground opacity-30" />
+          )}
+        </div>
+
+        {/* Summary */}
+        <div className="flex-1 min-w-0">
+          <div className="font-bold text-sm truncate">
+            {product.title || "Unnamed Product"}
+          </div>
+          <div className="text-[10px] text-muted-foreground flex gap-2">
+            <span className="font-mono text-primary font-bold">
+              {product.price || "$0.00"}
+            </span>
+            <span>• {images.length} images</span>
+            {product.variants?.length > 0 && (
+              <span>• {product.variants.length} options</span>
+            )}
+          </div>
+        </div>
+
+        {/* Actions (Duplicate / Delete) */}
+        <div
+          className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <Button
+            size="icon"
+            variant="ghost"
+            className="h-8 w-8 text-muted-foreground hover:text-primary"
+            onClick={() => duplicateProduct(idx)}
+            title="Duplicate Product"
+          >
+            <Copy size={14} />
+          </Button>
+          <Button
+            size="icon"
+            variant="ghost"
+            className="h-8 w-8 text-muted-foreground hover:text-destructive"
+            onClick={() => removeProduct(idx)}
+            title="Delete Product"
+          >
+            <Trash2 size={14} />
+          </Button>
+        </div>
+      </div>
+
+      {/* 🚀 EXPANDABLE CONTENT */}
+      {isExpanded && (
+        <div className="p-5 space-y-6 animate-in slide-in-from-top-2 fade-in duration-200">
+          {/* 1. MEDIA GALLERY */}
+          <div className="space-y-2">
+            <Label className="text-[10px] text-muted-foreground uppercase tracking-wider">
+              Product Gallery
+            </Label>
+            <div className="flex flex-wrap gap-2">
+              {images.map((imgUrl: string, imgIdx: number) => (
+                <div
+                  key={imgIdx}
+                  className="relative group/thumb w-20 h-20 border rounded-lg overflow-hidden bg-muted/30 shrink-0"
+                >
+                  <img
+                    src={imgUrl}
+                    className="w-full h-full object-cover"
+                    alt="thumb"
+                  />
+                  <div className="absolute inset-0 bg-black/60 opacity-0 group-hover/thumb:opacity-100 transition-opacity flex flex-col justify-between p-1">
+                    <div className="flex justify-between">
+                      <button
+                        className="text-white hover:text-primary disabled:opacity-30 p-1"
+                        disabled={imgIdx === 0}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          moveImage(imgIdx, -1);
+                        }}
+                      >
+                        <ChevronLeft size={14} />
+                      </button>
+                      <button
+                        className="text-white hover:text-primary disabled:opacity-30 p-1"
+                        disabled={imgIdx === images.length - 1}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          moveImage(imgIdx, 1);
+                        }}
+                      >
+                        <ChevronRight size={14} />
+                      </button>
+                    </div>
+                    <button
+                      className="text-red-400 hover:text-red-300 flex justify-center w-full pb-1"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        const newImages = [...images];
+                        newImages.splice(imgIdx, 1);
+                        updateProduct(idx, "images", newImages);
+                        updateProduct(idx, "image", newImages[0] || "");
+                      }}
+                    >
+                      <Trash2 size={12} />
+                    </button>
+                  </div>
+                  {imgIdx === 0 && (
+                    <span className="absolute bottom-0 left-0 right-0 bg-primary/90 text-[8px] text-primary-foreground text-center font-bold uppercase py-0.5 pointer-events-none">
+                      Cover
+                    </span>
+                  )}
+                </div>
+              ))}
+              <div
+                className="w-20 h-20 border-2 border-dashed rounded-lg flex flex-col items-center justify-center cursor-pointer hover:bg-muted/50 text-muted-foreground hover:text-primary transition-colors shrink-0"
+                onClick={() => {
+                  setActiveMediaField(`product-gallery-add-${idx}`);
+                  setIsMediaPickerOpen(true);
+                }}
+              >
+                <Plus size={16} />
+                <span className="text-[9px] font-semibold mt-1">ADD IMAGE</span>
+              </div>
+            </div>
+          </div>
+
+          {/* 2. CORE DETAILS */}
+          <div className="grid grid-cols-12 gap-3">
+            <div className="col-span-12 space-y-1.5">
+              <Label className="text-[10px] uppercase tracking-widest text-muted-foreground">
+                Product Title
+              </Label>
+              <Input
+                placeholder="e.g. Premium Leather Bag"
+                value={product.title || ""}
+                onChange={(e) => updateProduct(idx, "title", e.target.value)}
+                className="font-bold"
+              />
+            </div>
+            <div className="col-span-4 space-y-1.5">
+              <Label className="text-[10px] uppercase tracking-widest text-muted-foreground">
+                Price
+              </Label>
+              <Input
+                placeholder="$99.00"
+                value={product.price || ""}
+                onChange={(e) => updateProduct(idx, "price", e.target.value)}
+                className="font-mono text-sm"
+              />
+            </div>
+            <div className="col-span-4 space-y-1.5">
+              <Label className="text-[10px] uppercase tracking-widest text-muted-foreground flex items-center gap-1">
+                Sale Price <Tag size={10} className="text-orange-500" />
+              </Label>
+              <Input
+                placeholder="$79.00 (Opt)"
+                value={product.salePrice || ""}
+                onChange={(e) =>
+                  updateProduct(idx, "salePrice", e.target.value)
+                }
+                className="font-mono text-sm text-orange-600"
+              />
+            </div>
+            <div className="col-span-4 space-y-1.5">
+              <Label className="text-[10px] uppercase tracking-widest text-muted-foreground">
+                Stock
+              </Label>
+              <Input
+                placeholder="In Stock"
+                value={product.stock || ""}
+                onChange={(e) => updateProduct(idx, "stock", e.target.value)}
+                className="text-sm"
+              />
+            </div>
+            <div className="col-span-12 space-y-1.5 pt-2">
+              <Label className="text-[10px] uppercase tracking-widest text-muted-foreground">
+                Description
+              </Label>
+              <Textarea
+                placeholder="Detailed product description..."
+                value={product.description || ""}
+                onChange={(e) =>
+                  updateProduct(idx, "description", e.target.value)
+                }
+                rows={3}
+                className="text-xs resize-none"
+              />
+            </div>
+          </div>
+
+          {/* 3. PURCHASE ACTION */}
+          <div className="p-3 bg-muted/20 border rounded-lg space-y-3">
+            <div className="flex items-center gap-2 border-b border-muted-foreground/10 pb-2">
+              <ShoppingCart size={14} className="text-primary" />
+              <Label className="text-[10px] font-bold uppercase tracking-wider">
+                Purchase Setup
+              </Label>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label className="text-[10px] text-muted-foreground">
+                  Action Type
+                </Label>
+                <Select
+                  value={product.actionType || "whatsapp"}
+                  onValueChange={(val) => updateProduct(idx, "actionType", val)}
+                >
+                  <SelectTrigger className="h-8 text-xs bg-background">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="whatsapp">WhatsApp Order</SelectItem>
+                    <SelectItem value="form_order">
+                      Custom Order Form
+                    </SelectItem>
+                    <SelectItem value="link">External Link</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-[10px] text-muted-foreground">
+                  Button Label
+                </Label>
+                <Input
+                  placeholder="e.g. Buy Now"
+                  value={product.buttonText || ""}
+                  onChange={(e) =>
+                    updateProduct(idx, "buttonText", e.target.value)
+                  }
+                  className="h-8 text-xs bg-background font-medium"
+                />
+              </div>
+            </div>
+
+            <div className="pt-1">
+              {product.actionType === "link" && (
+                <Input
+                  placeholder="https://..."
+                  value={product.checkoutUrl || ""}
+                  onChange={(e) =>
+                    updateProduct(idx, "checkoutUrl", e.target.value)
+                  }
+                  className="h-8 text-xs bg-background"
+                />
+              )}
+              {product.actionType === "whatsapp" && (
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] text-muted-foreground font-mono bg-muted px-2 py-1.5 rounded border">
+                    wa.me/
+                  </span>
+                  <Input
+                    placeholder="212600000000"
+                    value={product.whatsappNumber || ""}
+                    onChange={(e) =>
+                      updateProduct(idx, "whatsappNumber", e.target.value)
+                    }
+                    className="h-8 text-xs bg-background flex-grow"
+                  />
+                </div>
+              )}
+              {product.actionType === "form_order" && (
+                <div className="space-y-1.5 p-2 bg-orange-500/5 border border-orange-500/20 rounded">
+                  <Label className="text-[10px] text-orange-600 font-bold uppercase tracking-wider flex items-center justify-between">
+                    Select Form Template
+                  </Label>
+                  <Select
+                    value={product.formId || ""}
+                    onValueChange={(val) => updateProduct(idx, "formId", val)}
+                  >
+                    <SelectTrigger className="h-8 text-xs bg-background border-orange-500/30">
+                      <SelectValue placeholder="Choose a saved form..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {savedForms?.map((f: any) => (
+                        <SelectItem key={f.id} value={f.id}>
+                          {f.name}
+                        </SelectItem>
+                      ))}
+                      {(!savedForms || savedForms.length === 0) && (
+                        <SelectItem value="none" disabled>
+                          No templates saved.
+                        </SelectItem>
+                      )}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-[9px] text-muted-foreground pt-1 leading-tight">
+                    When a user submits this form, it will automatically save to
+                    your{" "}
+                    <span className="font-bold text-foreground">
+                      Orders Dashboard
+                    </span>{" "}
+                    instead of your Leads.
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* 4. ADVANCED VARIANTS (AAA+) */}
+          <div className="space-y-3 pt-2 border-t border-muted-foreground/10">
+            <div className="flex justify-between items-center">
+              <Label className="text-xs font-semibold flex items-center gap-2">
+                <ListPlus size={14} /> Product Variants
+              </Label>
+              <Button
+                size="sm"
+                variant="secondary"
+                className="h-6 text-[10px] px-2"
+                onClick={() => {
+                  const current = product.variants || [];
+                  updateProduct(idx, "variants", [
+                    ...current,
+                    {
+                      name: "Size",
+                      options: [
+                        { label: "Small", price: "" },
+                        { label: "Large", price: "10" },
+                      ],
+                    },
+                  ]);
+                }}
+              >
+                <Plus className="w-3 h-3 mr-1" /> Add Variant Type
+              </Button>
+            </div>
+
+            <div className="space-y-3">
+              {(product.variants || []).map((v: any, vIdx: number) => {
+                const optionsArray = Array.isArray(v.options)
+                  ? v.options
+                  : typeof v.options === "string"
+                  ? v.options
+                      .split(",")
+                      .map((o: string) => ({ label: o.trim(), price: "" }))
+                  : [];
+
+                return (
+                  <div
+                    key={vIdx}
+                    className="bg-muted/10 p-3 rounded-lg border space-y-3 relative group/variant"
+                  >
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="absolute top-1 right-1 h-6 w-6 opacity-0 group-hover/variant:opacity-100 text-muted-foreground hover:text-destructive"
+                      onClick={() => {
+                        const newVars = [...product.variants];
+                        newVars.splice(vIdx, 1);
+                        updateProduct(idx, "variants", newVars);
+                      }}
+                    >
+                      <Trash2 className="w-3 h-3" />
+                    </Button>
+
+                    <div className="space-y-1">
+                      <Label className="text-[10px] uppercase text-muted-foreground">
+                        Variant Name
+                      </Label>
+                      <Input
+                        placeholder="e.g. Size, Color, Material"
+                        value={v.name || ""}
+                        onChange={(e) => {
+                          const newVars = [...product.variants];
+                          newVars[vIdx].name = e.target.value;
+                          updateProduct(idx, "variants", newVars);
+                        }}
+                        className="h-8 text-xs font-semibold w-2/3"
+                      />
+                    </div>
+
+                    <div className="space-y-2 pl-2 border-l-2 border-primary/20">
+                      {optionsArray.map((opt: any, optIdx: number) => (
+                        <div key={optIdx} className="flex gap-2 items-center">
+                          <Input
+                            placeholder="Option (e.g. Large)"
+                            value={opt.label}
+                            onChange={(e) => {
+                              const newVars = [...product.variants];
+                              newVars[vIdx].options[optIdx].label =
+                                e.target.value;
+                              updateProduct(idx, "variants", newVars);
+                            }}
+                            className="h-8 text-xs bg-background flex-grow"
+                          />
+
+                          <div className="relative w-1/3">
+                            <span className="absolute left-2 top-1/2 -translate-y-1/2 text-[10px] text-muted-foreground">
+                              +
+                            </span>
+                            <Input
+                              placeholder="Price (Opt)"
+                              value={opt.price}
+                              onChange={(e) => {
+                                const newVars = [...product.variants];
+                                newVars[vIdx].options[optIdx].price =
+                                  e.target.value;
+                                updateProduct(idx, "variants", newVars);
+                              }}
+                              className="h-8 text-xs bg-background pl-5"
+                              title="Leave blank to inherit main price"
+                            />
+                          </div>
+
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7 text-muted-foreground hover:text-destructive shrink-0"
+                            onClick={() => {
+                              const newVars = [...product.variants];
+                              newVars[vIdx].options.splice(optIdx, 1);
+                              updateProduct(idx, "variants", newVars);
+                            }}
+                          >
+                            <X className="w-3 h-3" />
+                          </Button>
+                        </div>
+                      ))}
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-6 text-[10px] text-primary hover:bg-primary/10 mt-1"
+                        onClick={() => {
+                          const newVars = [...product.variants];
+                          newVars[vIdx].options.push({
+                            label: "New Option",
+                            price: "",
+                          });
+                          updateProduct(idx, "variants", newVars);
+                        }}
+                      >
+                        <Plus className="w-3 h-3 mr-1" /> Add Option
+                      </Button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* 5. FAQs / PRODUCT DETAILS */}
+          <div className="space-y-3 pt-2 border-t border-muted-foreground/10">
+            <div className="flex justify-between items-center">
+              <Label className="text-xs font-semibold flex items-center gap-2">
+                <HelpCircle size={14} /> Details & FAQs
+              </Label>
+              <Button
+                size="sm"
+                variant="secondary"
+                className="h-6 text-[10px] px-2"
+                onClick={() => {
+                  const current = product.faqs || [];
+                  updateProduct(idx, "faqs", [
+                    ...current,
+                    {
+                      question: "Shipping Info",
+                      answer: "Ships within 24 hours.",
+                    },
+                  ]);
+                }}
+              >
+                <Plus className="w-3 h-3 mr-1" /> Add Detail
+              </Button>
+            </div>
+
+            <div className="space-y-2">
+              {(product.faqs || []).map((faq: any, fIdx: number) => (
+                <div
+                  key={fIdx}
+                  className="bg-muted/10 border rounded-lg p-3 space-y-2 relative group/faq"
+                >
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="absolute top-1 right-1 h-6 w-6 opacity-0 group-hover/faq:opacity-100 text-muted-foreground hover:text-destructive"
+                    onClick={() => {
+                      const newFaqs = [...product.faqs];
+                      newFaqs.splice(fIdx, 1);
+                      updateProduct(idx, "faqs", newFaqs);
+                    }}
+                  >
+                    <Trash2 className="w-3 h-3" />
+                  </Button>
+                  <Input
+                    placeholder="Title / Question (e.g. Materials)"
+                    value={faq.question}
+                    onChange={(e) => {
+                      const newFaqs = [...product.faqs];
+                      newFaqs[fIdx].question = e.target.value;
+                      updateProduct(idx, "faqs", newFaqs);
+                    }}
+                    className="h-8 text-xs font-semibold bg-background pr-8"
+                  />
+                  <Textarea
+                    placeholder="Details..."
+                    value={faq.answer}
+                    onChange={(e) => {
+                      const newFaqs = [...product.faqs];
+                      newFaqs[fIdx].answer = e.target.value;
+                      updateProduct(idx, "faqs", newFaqs);
+                    }}
+                    className="h-16 text-xs resize-none bg-background"
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
 // 🚀 UPDATED: Standalone Sortable Item for Form Fields
 const SortableFormField = ({
   field,
@@ -732,6 +1330,7 @@ const SectionEditor: React.FC<SectionEditorProps> = ({
 
   // --- LOCAL UI STATE ---
   const [isMediaPickerOpen, setIsMediaPickerOpen] = useState(false);
+  const [isFormManagerOpen, setIsFormManagerOpen] = useState(false);
   const [activeMediaField, setActiveMediaField] = useState<string>("");
   const [isProductManagerOpen, setIsProductManagerOpen] = useState(false);
   const [availableProducts, setAvailableProducts] = useState<any[]>([]);
@@ -743,25 +1342,28 @@ const SectionEditor: React.FC<SectionEditorProps> = ({
   );
   // Tier 2 is eCommerce, Tier 3 is Pro
   const hasMegaMenuAccess = limits?.hasMegaMenu === true;
+
   // Put this near the top of your SectionEditor component
   const [savedForms, setSavedForms] = useState<any[]>([]); // 🚀 STATE FOR FETCHED FORMS
 
+  // 🚀 FIXED: Fetch by portfolioId because the forms table doesn't use actorId!
+  const fetchForms = async () => {
+    if (!portfolioId) return;
+    const { data, error } = await supabase
+      .from("forms")
+      .select("*")
+      .eq("portfolio_id", portfolioId) // Changed from actor_id
+      .order("created_at", { ascending: false });
+
+    if (!error && data) {
+      setSavedForms(data);
+    }
+  };
+
   useEffect(() => {
-    const fetchForms = async () => {
-      if (!portfolioId) return;
-
-      const { data, error } = await supabase
-        .from("forms")
-        .select("*") // 🚀 FIX: We need all the data, not just the name!
-        .eq("portfolio_id", portfolioId)
-        .order("created_at", { ascending: false });
-
-      if (!error && data) {
-        setSavedForms(data);
-      }
-    };
     fetchForms();
   }, [portfolioId]);
+
   // 🚀 AAA+ GLOBAL TEMPLATE AUTO-SAVE ENGINE
   useEffect(() => {
     if (
@@ -770,6 +1372,7 @@ const SectionEditor: React.FC<SectionEditorProps> = ({
       formData.formId === "custom"
     )
       return;
+
     const autoSaveTemplate = async () => {
       await supabase
         .from("forms")
@@ -807,7 +1410,7 @@ const SectionEditor: React.FC<SectionEditorProps> = ({
 
     const timer = setTimeout(autoSaveTemplate, 1000);
     return () => clearTimeout(timer);
-  }, [formData, section?.type]); // ✅ Added optional chaining here too
+  }, [formData, section?.type]);
 
   useEffect(() => {
     const fetchActorProducts = async () => {
@@ -827,7 +1430,6 @@ const SectionEditor: React.FC<SectionEditorProps> = ({
   }, [actorId, section?.type]);
 
   if (!section) return null;
-
   // =========================================================
   // THE LOCAL STATE BUFFER (Fixes cursor jumping & freezing!)
   // =========================================================
@@ -1058,7 +1660,26 @@ const SectionEditor: React.FC<SectionEditorProps> = ({
     current.splice(idx, 1);
     updateField("products", current);
   };
+  const duplicateProduct = (idx: number) => {
+    const currentProducts = formData.products || [];
+    const productToCopy = currentProducts[idx];
 
+    // Deep clone the object so modifying the copy doesn't affect the original
+    const newProduct = JSON.parse(JSON.stringify(productToCopy));
+
+    // Append " (Copy)" to the title
+    if (newProduct.title) {
+      newProduct.title = `${newProduct.title} (Copy)`;
+    }
+
+    // Generate a new unique ID for DndKit
+    newProduct.id = `shop-product-${Date.now()}`;
+
+    const newProducts = [...currentProducts];
+    newProducts.splice(idx + 1, 0, newProduct); // Insert it right after the original
+
+    updateField("products", newProducts);
+  };
   // =========================================================
   // DYNAMIC FORM BUILDER (Theme Settings)
   // =========================================================
@@ -2963,24 +3584,53 @@ const SectionEditor: React.FC<SectionEditorProps> = ({
       case "shop":
         return (
           <div className="space-y-6">
-            <div className="space-y-2">
-              <Label>Section Title</Label>
-              <Input
-                value={formData.title || ""}
-                onChange={(e) => updateField("title", e.target.value)}
-                placeholder="Shop"
-              />
+            <div className="space-y-4 p-4 border rounded-lg bg-background shadow-sm">
+              <div className="flex items-center gap-2 mb-2 border-b pb-2">
+                <Type size={16} className="text-primary" />
+                <Label className="text-base font-semibold">
+                  Section Header
+                </Label>
+              </div>
+              <div className="space-y-2">
+                <Label className="text-xs text-muted-foreground uppercase tracking-wider">
+                  Shop Title
+                </Label>
+                <Input
+                  value={formData.title || ""}
+                  onChange={(e) => updateField("title", e.target.value)}
+                  placeholder="Shop"
+                  className="font-bold"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label className="text-xs text-muted-foreground uppercase tracking-wider">
+                  Subtitle
+                </Label>
+                <Textarea
+                  value={formData.subheadline || ""}
+                  onChange={(e) => updateField("subheadline", e.target.value)}
+                  placeholder="Browse our latest collection."
+                  className="resize-none"
+                  rows={2}
+                />
+              </div>
             </div>
 
             {/* 1. CONFIGURATION */}
-            <div className="grid grid-cols-1 gap-4 p-4 border rounded-lg bg-muted/20">
+            <div className="grid grid-cols-1 gap-4 p-4 border rounded-lg bg-muted/10">
+              <div className="flex items-center gap-2 mb-2 border-b pb-2">
+                <LayoutTemplate size={16} className="text-primary" />
+                <Label className="text-base font-semibold text-primary">
+                  Layout Architecture
+                </Label>
+              </div>
               <div className="space-y-2">
-                <Label>Layout Style</Label>
+                <Label>Display Style</Label>
                 <Select
                   value={formData.variant || "grid"}
                   onValueChange={(val) => updateField("variant", val)}
                 >
-                  <SelectTrigger className="bg-background">
+                  <SelectTrigger className="bg-background h-10">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -2994,285 +3644,103 @@ const SectionEditor: React.FC<SectionEditorProps> = ({
                   </SelectContent>
                 </Select>
               </div>
+              {/* 🚀 FORM MANAGER BUTTON ADDED HERE */}
+              <div className="flex items-center gap-2 mt-2">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-8 text-[10px] w-full border-dashed"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setIsFormManagerOpen(true);
+                  }}
+                >
+                  <Settings className="w-3 h-3 mr-1.5" /> Create / Manage Forms
+                </Button>
+              </div>
             </div>
 
-            {/* 2. PRODUCT MANAGER */}
-            <div className="space-y-3 pt-4 border-t">
-              <div className="flex justify-between items-center">
-                <Label>Products</Label>
-                <Button size="sm" variant="outline" onClick={handleAddProduct}>
-                  <Plus className="w-4 h-4 mr-2" /> Add Product
+            {/* 2. PRODUCT MANAGER (WITH DND) */}
+            <div className="space-y-4 p-4 border rounded-lg bg-muted/5">
+              <div className="flex justify-between items-center border-b pb-2">
+                <div className="flex items-center gap-2">
+                  <ShoppingBag size={16} className="text-primary" />
+                  <Label className="text-base font-semibold">
+                    Product Catalog
+                  </Label>
+                </div>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-8 text-xs bg-background shadow-sm"
+                  onClick={handleAddProduct}
+                >
+                  <Plus className="w-3 h-3 mr-1" /> Add Product
                 </Button>
               </div>
 
-              <div className="space-y-6">
-                {(formData.products || []).map((product: any, idx: number) => (
-                  <div
-                    key={idx}
-                    className="border p-4 rounded-lg bg-muted/10 space-y-4 relative group"
+              <div className="space-y-3 pt-2">
+                <DndContext
+                  sensors={sensors}
+                  collisionDetection={closestCenter}
+                  onDragEnd={(event) => {
+                    const { active, over } = event;
+                    if (over && active.id !== over.id) {
+                      const oldIndex = formData.products.findIndex(
+                        (p: any, idx: number) =>
+                          (p.id || `shop-product-${idx}`) === active.id
+                      );
+                      const newIndex = formData.products.findIndex(
+                        (p: any, idx: number) =>
+                          (p.id || `shop-product-${idx}`) === over.id
+                      );
+                      updateField(
+                        "products",
+                        arrayMove(formData.products, oldIndex, newIndex)
+                      );
+                    }
+                  }}
+                >
+                  <SortableContext
+                    items={(formData.products || []).map(
+                      (p: any, idx: number) => p.id || `shop-product-${idx}`
+                    )}
+                    strategy={verticalListSortingStrategy}
                   >
-                    <div className="absolute top-3 right-3 flex gap-2">
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        className="text-muted-foreground hover:text-destructive h-8 w-8"
-                        onClick={() => removeProduct(idx)}
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
-                    </div>
-
-                    {/* BASIC INFO */}
-                    <div className="flex gap-4 items-start">
-                      <div className="space-y-2">
-                        <Label className="text-xs text-muted-foreground">
-                          Product Gallery (First image is featured)
-                        </Label>
-
-                        <div className="flex flex-wrap gap-2">
-                          {/* Existing Images */}
-                          {(
-                            product.images ||
-                            (product.image ? [product.image] : [])
-                          ).map((imgUrl: string, imgIdx: number) => (
-                            <div
-                              key={imgIdx}
-                              className="relative group/thumb w-16 h-16 border rounded overflow-hidden"
-                            >
-                              <img
-                                src={imgUrl}
-                                className="w-full h-full object-cover"
-                                alt="thumb"
-                              />
-
-                              {/* Remove Image Button */}
-                              <button
-                                className="absolute top-0 right-0 bg-red-500/90 text-white p-1 opacity-0 group-hover/thumb:opacity-100 transition-opacity"
-                                onClick={(e) => {
-                                  e.stopPropagation(); // Stop bubble
-                                  const newProds = [
-                                    ...(formData.products || []),
-                                  ];
-                                  const newImages = [...(product.images || [])];
-                                  newImages.splice(imgIdx, 1);
-                                  newProds[idx].images = newImages;
-                                  // Update legacy 'image' field to always be the first one
-                                  newProds[idx].image = newImages[0] || "";
-                                  updateField("products", newProds);
-                                }}
-                              >
-                                <Trash2 size={10} />
-                              </button>
-                            </div>
-                          ))}
-
-                          {/* Add New Image Button */}
-                          <div
-                            className="w-16 h-16 border border-dashed rounded flex flex-col items-center justify-center cursor-pointer hover:bg-muted/50 text-muted-foreground hover:text-primary transition-colors"
-                            onClick={() => {
-                              setActiveMediaField(`product-gallery-add-${idx}`);
-                              setIsMediaPickerOpen(true);
-                            }}
-                          >
-                            <Plus size={16} />
-                            <span className="text-[9px] font-semibold mt-1">
-                              ADD
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="flex-grow space-y-2">
-                        <Input
-                          placeholder="Product Title"
-                          value={product.title}
-                          onChange={(e) =>
-                            updateProduct(idx, "title", e.target.value)
-                          }
-                          className="font-medium"
+                    {(formData.products || []).map(
+                      (product: any, idx: number) => (
+                        <SortableShopProduct
+                          key={product.id || `shop-product-${idx}`}
+                          product={product}
+                          idx={idx}
+                          updateProduct={updateProduct}
+                          removeProduct={removeProduct}
+                          duplicateProduct={duplicateProduct}
+                          setActiveMediaField={setActiveMediaField}
+                          setIsMediaPickerOpen={setIsMediaPickerOpen}
+                          savedForms={savedForms}
                         />
-                        <div className="flex gap-2">
-                          <Input
-                            placeholder="Price"
-                            value={product.price}
-                            onChange={(e) =>
-                              updateProduct(idx, "price", e.target.value)
-                            }
-                            className="w-1/2"
-                          />
-                          <Input
-                            placeholder="Stock"
-                            value={product.stock}
-                            onChange={(e) =>
-                              updateProduct(idx, "stock", e.target.value)
-                            }
-                            className="w-1/2"
-                          />
-                        </div>
-                      </div>
-                    </div>
+                      )
+                    )}
+                  </SortableContext>
+                </DndContext>
 
-                    <Textarea
-                      placeholder="Short description..."
-                      value={product.description}
-                      onChange={(e) =>
-                        updateProduct(idx, "description", e.target.value)
-                      }
-                      rows={2}
-                      className="text-sm resize-none"
-                    />
-
-                    {/* CHECKOUT METHOD SELECTOR */}
-                    <div className="p-3 bg-background border rounded-md space-y-3">
-                      <Label className="text-xs font-bold text-muted-foreground uppercase">
-                        Checkout Action
-                      </Label>
-                      <Select
-                        value={product.actionType || "whatsapp"}
-                        onValueChange={(val) =>
-                          updateProduct(idx, "actionType", val)
-                        }
-                      >
-                        <SelectTrigger className="h-9 text-sm">
-                          <SelectValue placeholder="Select Action" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="whatsapp">
-                            <div className="flex items-center gap-2">
-                              <MessageCircle
-                                size={14}
-                                className="text-green-500"
-                              />{" "}
-                              WhatsApp Order
-                            </div>
-                          </SelectItem>
-                          <SelectItem value="form_order">
-                            {/* NEW OPTION */}
-                            <div className="flex items-center gap-2">
-                              <FileText size={14} className="text-orange-500" />{" "}
-                              Direct Order Form
-                            </div>
-                          </SelectItem>
-                          <SelectItem value="link">
-                            <div className="flex items-center gap-2">
-                              <ExternalLink
-                                size={14}
-                                className="text-blue-500"
-                              />{" "}
-                              External Link
-                            </div>
-                          </SelectItem>
-                        </SelectContent>
-                      </Select>
-
-                      {/* CONDITIONAL INPUTS */}
-                      {product.actionType === "link" && (
-                        <Input
-                          placeholder="https://buy.stripe.com/..."
-                          value={product.checkoutUrl || ""}
-                          onChange={(e) =>
-                            updateProduct(idx, "checkoutUrl", e.target.value)
-                          }
-                          className="h-9 text-xs"
-                        />
-                      )}
-
-                      {product.actionType === "whatsapp" && (
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm text-muted-foreground whitespace-nowrap">
-                            wa.me/
-                          </span>
-                          <Input
-                            placeholder="212600000000"
-                            value={product.whatsappNumber || ""}
-                            onChange={(e) =>
-                              updateProduct(
-                                idx,
-                                "whatsappNumber",
-                                e.target.value
-                              )
-                            }
-                            className="h-9 text-xs"
-                          />
-                        </div>
-                      )}
-
-                      {/* Note: 'form_order' doesn't need extra inputs, just the button label below */}
-
-                      <Input
-                        placeholder="Button Label (e.g. Buy Now)"
-                        value={product.buttonText}
-                        onChange={(e) =>
-                          updateProduct(idx, "buttonText", e.target.value)
-                        }
-                        className="h-9 text-xs"
-                      />
-                    </div>
-
-                    {/* VISUAL VARIANT BUILDER (Only for WhatsApp flow mostly, but useful for display too) */}
-                    <div className="space-y-2">
-                      <div className="flex justify-between items-end">
-                        <Label className="text-xs">Product Variants</Label>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          className="h-6 text-[10px]"
-                          onClick={() => {
-                            const current = product.variants || [];
-                            updateProduct(idx, "variants", [
-                              ...current,
-                              { name: "Size", options: "S, M, L" },
-                            ]);
-                          }}
-                        >
-                          <Plus className="w-3 h-3 mr-1" /> Add Option
-                        </Button>
-                      </div>
-
-                      {(product.variants || []).map((v: any, vIdx: number) => (
-                        <div key={vIdx} className="flex gap-2 items-center">
-                          <Input
-                            placeholder="Type (Color)"
-                            value={v.name}
-                            onChange={(e) => {
-                              const newVars = [...(product.variants || [])];
-                              newVars[vIdx].name = e.target.value;
-                              updateProduct(idx, "variants", newVars);
-                            }}
-                            className="w-1/3 h-8 text-xs"
-                          />
-                          <Input
-                            placeholder="Options (Red, Blue)"
-                            value={v.options}
-                            onChange={(e) => {
-                              const newVars = [...(product.variants || [])];
-                              newVars[vIdx].options = e.target.value;
-                              updateProduct(idx, "variants", newVars);
-                            }}
-                            className="flex-grow h-8 text-xs"
-                          />
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8 text-muted-foreground"
-                            onClick={() => {
-                              const newVars = [...(product.variants || [])];
-                              newVars.splice(vIdx, 1);
-                              updateProduct(idx, "variants", newVars);
-                            }}
-                          >
-                            <Trash2 className="w-3 h-3" />
-                          </Button>
-                        </div>
-                      ))}
-                    </div>
+                {(!formData.products || formData.products.length === 0) && (
+                  <div
+                    className="w-full py-12 flex flex-col items-center justify-center border-2 border-dashed rounded-xl bg-muted/30 text-muted-foreground hover:bg-muted/50 hover:text-primary hover:border-primary/50 transition-colors cursor-pointer"
+                    onClick={handleAddProduct}
+                  >
+                    <ShoppingBag className="w-8 h-8 mb-3 opacity-50" />
+                    <p className="text-sm font-medium">No products added</p>
+                    <p className="text-xs opacity-70">
+                      Click here to add your first product
+                    </p>
                   </div>
-                ))}
+                )}
               </div>
             </div>
           </div>
         );
-
       case "hero":
         return (
           <div className="space-y-6">
@@ -5884,6 +6352,14 @@ const SectionEditor: React.FC<SectionEditorProps> = ({
           </div>
         </DialogContent>
       </Dialog>
+      {/* 🚀 FORM MANAGER IS A SIBLING TO MEDIA PICKER NOW */}
+      <FormManager
+        isOpen={isFormManagerOpen}
+        onClose={() => setIsFormManagerOpen(false)}
+        actorId={actorId}
+        portfolioId={portfolioId} // 🚀 Pass this down!
+        onFormsChange={fetchForms}
+      />
     </>
   );
 };
