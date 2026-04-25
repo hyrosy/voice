@@ -287,8 +287,14 @@ const SortableFormField = ({
     </div>
   );
 };
-// 🚀 NEW: Standalone Sortable Item for Pricing Plans
-const SortablePricingPlan = ({ plan, idx, updatePlan, removePlan }: any) => {
+// 🚀 NEW: Standalone Sortable Item for Pricing Plans (Upgraded with Form Actions)
+const SortablePricingPlan = ({
+  plan,
+  idx,
+  updatePlan,
+  removePlan,
+  savedForms = [],
+}: any) => {
   const sortableId = plan.id || `pricing-plan-${idx}`;
   const {
     attributes,
@@ -389,31 +395,84 @@ const SortablePricingPlan = ({ plan, idx, updatePlan, removePlan }: any) => {
           />
         </div>
 
-        <div className="grid grid-cols-2 gap-3 pt-2 border-t border-dashed">
-          <div className="space-y-1.5">
-            <Label className="text-[10px] uppercase tracking-widest text-muted-foreground">
-              Button Text
-            </Label>
-            <Input
-              placeholder="Get Started"
-              value={plan.cta || ""}
-              onChange={(e) => updatePlan(idx, "cta", e.target.value)}
-              className="h-8 text-xs bg-muted/50"
-              onPointerDown={(e) => e.stopPropagation()}
-            />
+        {/* 🚀 UPGRADED CHECKOUT / ACTION SETTINGS */}
+        <div className="p-3 bg-muted/20 border rounded-md space-y-3">
+          <Label className="text-[10px] uppercase tracking-widest text-muted-foreground">
+            Button Action
+          </Label>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label className="text-[10px] text-muted-foreground">
+                Button Text
+              </Label>
+              <Input
+                placeholder="Get Started"
+                value={plan.cta || ""}
+                onChange={(e) => updatePlan(idx, "cta", e.target.value)}
+                className="h-8 text-xs bg-background"
+                onPointerDown={(e) => e.stopPropagation()}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-[10px] text-muted-foreground">
+                Action Type
+              </Label>
+              <Select
+                value={plan.actionType || "link"}
+                onValueChange={(val) => updatePlan(idx, "actionType", val)}
+              >
+                <SelectTrigger className="h-8 text-xs bg-background">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="link">URL / Link</SelectItem>
+                  <SelectItem value="form">Open Lead Form</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
-          <div className="space-y-1.5">
-            <Label className="text-[10px] uppercase tracking-widest text-muted-foreground">
-              Button Link
-            </Label>
-            <Input
-              placeholder="https://"
-              value={plan.buttonUrl || ""}
-              onChange={(e) => updatePlan(idx, "buttonUrl", e.target.value)}
-              className="h-8 text-xs bg-muted/50"
-              onPointerDown={(e) => e.stopPropagation()}
-            />
-          </div>
+
+          {/* Conditional Input based on Action Type */}
+          {plan.actionType === "form" ? (
+            <div className="space-y-1.5 pt-1 animate-in fade-in slide-in-from-top-1">
+              <Label className="text-[10px] text-primary font-bold">
+                Select Form Template
+              </Label>
+              <Select
+                value={plan.formId || ""}
+                onValueChange={(val) => updatePlan(idx, "formId", val)}
+              >
+                <SelectTrigger className="h-8 text-xs bg-background border-primary/30">
+                  <SelectValue placeholder="Choose a saved form..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {savedForms?.map((f: any) => (
+                    <SelectItem key={f.id} value={f.id}>
+                      {f.name}
+                    </SelectItem>
+                  ))}
+                  {(!savedForms || savedForms.length === 0) && (
+                    <SelectItem value="none" disabled>
+                      No templates saved. Go to a Form section to save one!
+                    </SelectItem>
+                  )}
+                </SelectContent>
+              </Select>
+            </div>
+          ) : (
+            <div className="space-y-1.5 pt-1 animate-in fade-in slide-in-from-top-1">
+              <Label className="text-[10px] text-muted-foreground">
+                Button Link
+              </Label>
+              <Input
+                placeholder="https://..."
+                value={plan.buttonUrl || ""}
+                onChange={(e) => updatePlan(idx, "buttonUrl", e.target.value)}
+                className="h-8 text-xs bg-background"
+                onPointerDown={(e) => e.stopPropagation()}
+              />
+            </div>
+          )}
         </div>
 
         <div className="flex items-center gap-2 pt-1">
@@ -4328,6 +4387,7 @@ const SectionEditor: React.FC<SectionEditorProps> = ({
                         idx={idx}
                         updatePlan={updatePlan}
                         removePlan={removePlan}
+                        savedForms={savedForms} // 🚀 PASSING THE FORMS HERE!
                       />
                     ))}
                   </SortableContext>
