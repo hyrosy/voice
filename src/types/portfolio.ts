@@ -115,6 +115,41 @@ export const DEFAULT_PORTFOLIO_SECTIONS: PortfolioSection[] = [
     },
   },
   {
+    id: "shop-1",
+    type: "shop",
+    isVisible: true,
+    data: {
+      title: "Quick Shop",
+      subheadline: "Shop with us directly.",
+      variant: "grid",
+      products: [
+        {
+          title: "Premium Service",
+          price: "$99.00",
+          description: "A high quality service to boost your brand.",
+          buttonText: "Buy Now",
+          actionType: "whatsapp",
+          whatsappNumber: "1234567890",
+          variants: [
+            {
+              name: "Size",
+              options: "Small, Medium, Large",
+            },
+          ],
+        },
+        {
+          title: "Digital Asset",
+          price: "$49.00",
+          salePrice: "$29.00",
+          description: "Downloadable guide and assets.",
+          buttonText: "Purchase",
+          actionType: "link",
+          checkoutUrl: "https://stripe.com",
+        },
+      ],
+    },
+  },
+  {
     id: "gallery-1",
     type: "gallery",
     isVisible: true,
