@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { supabase } from "@/supabaseClient";
 import { trackEvent } from "../../analytics";
 
@@ -6,12 +6,17 @@ export function useShopOrderForm({
   actorId,
   portfolioId,
   isPreview,
+  initialProduct = null,
 }: {
   actorId?: string;
   portfolioId?: string;
   isPreview?: boolean;
+  initialProduct?: any;
 }) {
-  const [selectedProduct, setSelectedProduct] = useState<any | null>(null);
+  const [selectedProduct, setSelectedProduct] = useState<any | null>(
+    initialProduct
+  );
+  const [step, setStep] = useState<"details" | "form" | "success">("details");
   const [expandedModalFaq, setExpandedModalFaq] = useState<number | null>(null);
   const [formTemplate, setFormTemplate] = useState<any | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -23,13 +28,24 @@ export function useShopOrderForm({
     {}
   );
   const [quantity, setQuantity] = useState(1);
+  const [activeImageIdx, setActiveImageIdx] = useState(0);
 
-  const parseOptions = (optString?: string) => {
-    if (!optString) return [];
-    return optString
-      .split(",")
-      .map((s) => s.trim())
-      .filter(Boolean);
+  const parseOptions = (optStringOrArray?: string | any[]) => {
+    if (!optStringOrArray) return [];
+    if (Array.isArray(optStringOrArray)) {
+      // If it's already an array of options, extract the labels
+      return optStringOrArray
+        .map((opt) => (typeof opt === "string" ? opt : opt.label))
+        .filter(Boolean);
+    }
+    // If it's a string, split it
+    if (typeof optStringOrArray === "string") {
+      return optStringOrArray
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean);
+    }
+    return [];
   };
 
   const calculateTotalPrice = (
@@ -47,18 +63,39 @@ export function useShopOrderForm({
         const optionPrice = parseFloat(
           option.price.toString().replace(/[^0-9.]/g, "")
         );
-        if (!isNaN(optionPrice)) {
-          total += optionPrice;
-        }
+        if (!isNaN(optionPrice)) total += optionPrice;
       }
     });
 
     return (total * qty).toFixed(2);
   };
 
-  const handleProductAction = async (product: any, e: React.MouseEvent) => {
+  // Triggered when a user clicks a Product Card in Grid/Carousel
+  const openProductModal = (product: any) => {
+    if (product.actionType === "link") {
+      if (actorId)
+        trackEvent(actorId, "shop_click", {
+          product_name: product.title,
+          portfolio_id: portfolioId,
+        });
+      if (!isPreview) window.open(product.checkoutUrl || "#", "_blank");
+      return;
+    }
+
+    setSelectedProduct(product);
+    setIsModalOpen(true);
+    setStep("details");
+    setQuantity(1);
+    setSelectedVariants({});
+    setFormValues({});
+    setIsSuccess(false);
+    setExpandedModalFaq(null);
+    setActiveImageIdx(0);
+  };
+
+  // Triggered when a user clicks "Buy Now" inside the Modal or Spotlight view
+  const proceedToCheckout = async (product: any) => {
     if (isPreview) {
-      e.preventDefault();
       alert("Checkout is disabled in Preview Mode.");
       return;
     }
@@ -69,18 +106,19 @@ export function useShopOrderForm({
           product_name: product.title,
           portfolio_id: portfolioId,
         });
+      window.open(product.checkoutUrl || "#", "_blank");
       return;
     }
 
-    e.preventDefault();
-    setSelectedProduct(product);
-    setIsModalOpen(true);
+    if (product.variants && product.variants.length > 0) {
+      const missing = product.variants.find(
+        (v: any) => !selectedVariants[v.name]
+      );
+      if (missing) return alert(`Please select a ${missing.name}`);
+    }
+
+    setStep("form");
     setIsLoadingForm(true);
-    setIsSuccess(false);
-    setFormValues({});
-    setSelectedVariants({});
-    setQuantity(1);
-    setExpandedModalFaq(null);
 
     if (product.actionType === "form_order" && product.formId) {
       const { data: formData } = await supabase
@@ -92,6 +130,7 @@ export function useShopOrderForm({
     } else {
       setFormTemplate(null);
     }
+
     setIsLoadingForm(false);
   };
 
@@ -178,6 +217,7 @@ export function useShopOrderForm({
         alert("Failed to submit order. Please try again.");
       } else {
         setIsSuccess(true);
+        setStep("success");
       }
     }
   };
@@ -185,6 +225,8 @@ export function useShopOrderForm({
   return {
     selectedProduct,
     setSelectedProduct,
+    step,
+    setStep,
     formTemplate,
     setFormTemplate,
     isModalOpen,
@@ -193,6 +235,7 @@ export function useShopOrderForm({
     setIsLoadingForm,
     isSubmitting,
     isSuccess,
+    setIsSuccess,
     formValues,
     setFormValues,
     selectedVariants,
@@ -201,9 +244,12 @@ export function useShopOrderForm({
     setQuantity,
     expandedModalFaq,
     setExpandedModalFaq,
+    activeImageIdx,
+    setActiveImageIdx,
     parseOptions,
     calculateTotalPrice,
-    handleProductAction,
+    openProductModal,
+    proceedToCheckout,
     handleFormSubmit,
   };
 }

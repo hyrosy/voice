@@ -1205,12 +1205,10 @@ const Shop: React.FC<any> = ({ data, id, isPreview, actorId, portfolioId }) => {
                                           : o
                                       )
                                     : typeof v.options === "string"
-                                    ? v.options
-                                        .split(",")
-                                        .map((s: string) => ({
-                                          label: s.trim(),
-                                          price: "",
-                                        }))
+                                    ? v.options.split(",").map((s: string) => ({
+                                        label: s.trim(),
+                                        price: "",
+                                      }))
                                     : [];
                                   return (
                                     <div key={i} className="space-y-2">
