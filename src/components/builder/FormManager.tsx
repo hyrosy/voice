@@ -5,6 +5,13 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
+import PortfolioMediaManager from "../dashboard/PortfolioMediaManager";
+import {
+  Dialog,
+  DialogContent,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -29,6 +36,7 @@ import {
   Loader2,
   Copy,
   CheckCircle2,
+  Image as ImageIcon,
 } from "lucide-react";
 import { supabase } from "@/supabaseClient";
 import {
@@ -247,7 +255,7 @@ export default function FormManager({
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [activeForm, setActiveForm] = useState<any | null>(null);
-
+  const [isMediaPickerOpen, setIsMediaPickerOpen] = useState(false);
   // Tabs for Builder
   const [activeTab, setActiveTab] = useState<"setup" | "fields">("fields");
 
@@ -320,11 +328,10 @@ export default function FormManager({
     if (!activeForm || !portfolioId) return;
     setSaving(true);
 
-    const payload = {
-      ...activeForm,
-      actor_id: actorId, // Only inject if it exists (for compatibility)
-      portfolio_id: portfolioId,
-    };
+    // 🚀 FIXED: We ONLY send portfolio_id. We also delete actor_id just in case
+    // it accidentally sneaked into the activeForm state from older data.
+    const payload = { ...activeForm, portfolio_id: portfolioId };
+    delete payload.actor_id; // Prevents the 400 Bad Request!
 
     let res;
     if (payload.id) {
@@ -616,13 +623,38 @@ export default function FormManager({
                       <Label className="text-[10px] uppercase tracking-widest text-muted-foreground">
                         Side Image URL (Desktop Only)
                       </Label>
-                      <Input
-                        placeholder="https://..."
-                        value={activeForm.image || ""}
-                        onChange={(e) =>
-                          updateActiveForm("image", e.target.value)
-                        }
-                      />
+                      <div className="flex gap-2 items-center">
+                        {activeForm.image && (
+                          <div className="h-9 w-9 rounded border overflow-hidden shrink-0 bg-muted">
+                            <img
+                              src={activeForm.image}
+                              alt="Preview"
+                              className="h-full w-full object-cover"
+                            />
+                          </div>
+                        )}
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="flex-1 h-9 bg-background"
+                          onClick={() => setIsMediaPickerOpen(true)}
+                        >
+                          <ImageIcon className="w-4 h-4 mr-2" />
+                          {activeForm.image
+                            ? "Change Image"
+                            : "Select from Library"}
+                        </Button>
+                        {activeForm.image && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-9 w-9 text-destructive hover:bg-destructive/10 shrink-0"
+                            onClick={() => updateActiveForm("image", "")}
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        )}
+                      </div>
                     </div>
                   </div>
 
@@ -662,6 +694,24 @@ export default function FormManager({
           </div>
         )}
       </SheetContent>
+      {/* 🚀 NESTED MEDIA PICKER DIALOG */}
+      <Dialog open={isMediaPickerOpen} onOpenChange={setIsMediaPickerOpen}>
+        <DialogContent className="max-w-4xl h-[80vh] flex flex-col p-0 z-[100000]">
+          <DialogTitle className="sr-only">Media Library</DialogTitle>
+          <DialogDescription className="sr-only">
+            Select media for form
+          </DialogDescription>
+          <div className="p-6 flex-grow overflow-hidden">
+            <PortfolioMediaManager
+              actorId={actorId || ""}
+              onSelect={(item) => {
+                updateActiveForm("image", item.url);
+                setIsMediaPickerOpen(false);
+              }}
+            />
+          </div>
+        </DialogContent>
+      </Dialog>
     </Sheet>
   );
 }

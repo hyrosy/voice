@@ -139,6 +139,7 @@ const SortableShopProduct = ({
   duplicateProduct,
   setActiveMediaField,
   setIsMediaPickerOpen,
+  setIsFormManagerOpen, // 🚀 ADD THIS
   savedForms = [],
 }: any) => {
   const [isExpanded, setIsExpanded] = useState(idx === 0); // Open the first one by default
@@ -496,6 +497,17 @@ const SortableShopProduct = ({
                       )}
                     </SelectContent>
                   </Select>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="w-full h-7 text-[10px] mt-1 border-dashed border-orange-500/30 text-orange-600 hover:text-orange-700 hover:bg-orange-500/10"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (setIsFormManagerOpen) setIsFormManagerOpen(true);
+                    }}
+                  >
+                    <Settings className="w-3 h-3 mr-1.5" /> Manage Forms
+                  </Button>
                   <p className="text-[9px] text-muted-foreground pt-1 leading-tight">
                     When a user submits this form, it will automatically save to
                     your{" "}
@@ -539,12 +551,15 @@ const SortableShopProduct = ({
 
             <div className="space-y-3">
               {(product.variants || []).map((v: any, vIdx: number) => {
+                // 🚀 THE FIX: Safely parse old strings AND new objects!
                 const optionsArray = Array.isArray(v.options)
-                  ? v.options
+                  ? v.options.map((o: any) =>
+                      typeof o === "string" ? { label: o.trim(), price: "" } : o
+                    )
                   : typeof v.options === "string"
                   ? v.options
                       .split(",")
-                      .map((o: string) => ({ label: o.trim(), price: "" }))
+                      .map((s: string) => ({ label: s.trim(), price: "" }))
                   : [];
 
                 return (
@@ -589,6 +604,8 @@ const SortableShopProduct = ({
                             value={opt.label}
                             onChange={(e) => {
                               const newVars = [...product.variants];
+                              // Make sure we are writing to an object array
+                              newVars[vIdx].options = [...optionsArray];
                               newVars[vIdx].options[optIdx].label =
                                 e.target.value;
                               updateProduct(idx, "variants", newVars);
@@ -605,6 +622,7 @@ const SortableShopProduct = ({
                               value={opt.price}
                               onChange={(e) => {
                                 const newVars = [...product.variants];
+                                newVars[vIdx].options = [...optionsArray];
                                 newVars[vIdx].options[optIdx].price =
                                   e.target.value;
                                 updateProduct(idx, "variants", newVars);
@@ -620,6 +638,7 @@ const SortableShopProduct = ({
                             className="h-7 w-7 text-muted-foreground hover:text-destructive shrink-0"
                             onClick={() => {
                               const newVars = [...product.variants];
+                              newVars[vIdx].options = [...optionsArray];
                               newVars[vIdx].options.splice(optIdx, 1);
                               updateProduct(idx, "variants", newVars);
                             }}
@@ -634,6 +653,7 @@ const SortableShopProduct = ({
                         className="h-6 text-[10px] text-primary hover:bg-primary/10 mt-1"
                         onClick={() => {
                           const newVars = [...product.variants];
+                          newVars[vIdx].options = [...optionsArray];
                           newVars[vIdx].options.push({
                             label: "New Option",
                             price: "",
@@ -891,6 +911,7 @@ const SortablePricingPlan = ({
   idx,
   updatePlan,
   removePlan,
+  setIsFormManagerOpen, // 🚀 ADD THIS
   savedForms = [],
 }: any) => {
   const sortableId = plan.id || `pricing-plan-${idx}`;
@@ -1056,6 +1077,18 @@ const SortablePricingPlan = ({
                   )}
                 </SelectContent>
               </Select>
+              {/* 🚀 NEW: Button explicitly placed here */}
+              <Button
+                size="sm"
+                variant="outline"
+                className="w-full h-7 text-[10px] mt-1 border-dashed text-muted-foreground hover:text-primary"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setIsFormManagerOpen(true);
+                }}
+              >
+                <Settings className="w-3 h-3 mr-1.5" /> Manage Forms
+              </Button>
             </div>
           ) : (
             <div className="space-y-1.5 pt-1 animate-in fade-in slide-in-from-top-1">
@@ -3644,20 +3677,6 @@ const SectionEditor: React.FC<SectionEditorProps> = ({
                   </SelectContent>
                 </Select>
               </div>
-              {/* 🚀 FORM MANAGER BUTTON ADDED HERE */}
-              <div className="flex items-center gap-2 mt-2">
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="h-8 text-[10px] w-full border-dashed"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setIsFormManagerOpen(true);
-                  }}
-                >
-                  <Settings className="w-3 h-3 mr-1.5" /> Create / Manage Forms
-                </Button>
-              </div>
             </div>
 
             {/* 2. PRODUCT MANAGER (WITH DND) */}
@@ -3718,6 +3737,7 @@ const SectionEditor: React.FC<SectionEditorProps> = ({
                           duplicateProduct={duplicateProduct}
                           setActiveMediaField={setActiveMediaField}
                           setIsMediaPickerOpen={setIsMediaPickerOpen}
+                          setIsFormManagerOpen={setIsFormManagerOpen} // 🚀 Ensure this is passed!
                           savedForms={savedForms}
                         />
                       )
@@ -3741,6 +3761,7 @@ const SectionEditor: React.FC<SectionEditorProps> = ({
             </div>
           </div>
         );
+
       case "hero":
         return (
           <div className="space-y-6">
@@ -4681,7 +4702,6 @@ const SectionEditor: React.FC<SectionEditorProps> = ({
             </div>
           </div>
         );
-      // --- PRICING SECTION EDITOR ---
       case "pricing":
         return (
           <div className="space-y-6">
@@ -4855,7 +4875,8 @@ const SectionEditor: React.FC<SectionEditorProps> = ({
                         idx={idx}
                         updatePlan={updatePlan}
                         removePlan={removePlan}
-                        savedForms={savedForms} // 🚀 PASSING THE FORMS HERE!
+                        setIsFormManagerOpen={setIsFormManagerOpen} // 🚀 Ensure this is passed!
+                        savedForms={savedForms}
                       />
                     ))}
                   </SortableContext>

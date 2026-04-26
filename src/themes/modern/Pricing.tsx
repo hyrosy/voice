@@ -120,24 +120,56 @@ const Pricing: React.FC<any> = ({
 
     setIsSubmitting(true);
 
+    // Smart Field Extractor (Matches what users type to database columns)
+    const getFieldVal = (keywords: string[]) => {
+      const key = Object.keys(formValues).find((k) =>
+        keywords.some((keyword) => k.toLowerCase().includes(keyword))
+      );
+      return key ? formValues[key] : "";
+    };
+
+    const customerName = getFieldVal(["name", "first", "last"]) || "Anonymous";
+    const customerEmail =
+      getFieldVal(["email", "mail"]) || "no-email@provided.com";
+    const customerPhone = getFieldVal(["phone", "tel", "mobile"]) || null;
+    const customerMessage =
+      getFieldVal(["message", "inquiry", "details"]) || "";
+
     const dbPayload: any = {
       actor_id: actorId,
       portfolio_id: portfolioId,
       source: "pricing_form",
-      name: formValues["name"] || "Anonymous",
-      email: formValues["email"] || "no-email@provided.com",
-      phone: formValues["phone"] || null,
+      name: customerName,
+      email: customerEmail,
+      phone: customerPhone,
       subject: `Inquiry for ${activePlan.name} Plan`,
-      message: formValues["message"] || "",
+      message: customerMessage,
       metadata: {
         "Plan Name": activePlan.name,
         "Plan Price": activePlan.price,
       },
     };
 
+    // Dump all custom remaining fields into metadata
     if (formTemplate?.fields) {
       formTemplate.fields.forEach((f: any) => {
-        if (!["name", "email", "phone", "subject", "message"].includes(f.id)) {
+        const isCoreField = [
+          "name",
+          "first",
+          "last",
+          "email",
+          "mail",
+          "phone",
+          "tel",
+          "message",
+          "inquiry",
+        ].some(
+          (kw) =>
+            f.id.toLowerCase().includes(kw) ||
+            f.label.toLowerCase().includes(kw)
+        );
+
+        if (!isCoreField) {
           dbPayload.metadata[f.label] = formValues[f.id];
         }
       });
@@ -314,57 +346,52 @@ const Pricing: React.FC<any> = ({
     );
   };
 
-  // 🚀 LOGIC FOR SPLIT SCREEN MODAL
   const showImageCover = formTemplate?.image && !isLoadingForm && !isSuccess;
 
   return (
     <>
-      {/* 🚀 THE FORM MODAL OVERLAY (AAA+ Split Screen on Desktop, Bottom Sheet on Mobile) */}
+      {/* 🚀 THE AAA+ FORM MODAL (Missing from previous code!) */}
       {isModalOpen &&
         typeof document !== "undefined" &&
         createPortal(
-          <div className="fixed inset-0 z-[99999] flex items-end sm:items-center justify-center sm:p-4">
+          <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center sm:p-4">
             <div
-              className="absolute inset-0 bg-black/60 sm:bg-black/80 backdrop-blur-sm cursor-pointer animate-in fade-in duration-500"
+              className="absolute inset-0 bg-black/80 backdrop-blur-sm cursor-pointer animate-in fade-in duration-300"
               onClick={() => setIsModalOpen(false)}
             />
 
             <div
               className={cn(
-                "relative w-full bg-neutral-950 border-t sm:border border-white/10 rounded-t-[2rem] sm:rounded-[2.5rem] shadow-[0_-20px_50px_rgba(0,0,0,0.5)] sm:shadow-2xl animate-in slide-in-from-bottom-full sm:slide-in-from-bottom-0 sm:zoom-in-95 duration-500 max-h-[92vh] sm:max-h-[90vh] flex flex-col sm:flex-row overflow-hidden",
-                showImageCover ? "sm:max-w-5xl" : "sm:max-w-2xl"
+                "relative w-full bg-neutral-950 border-t sm:border border-white/10 rounded-t-[2rem] sm:rounded-[2.5rem] p-0 shadow-2xl animate-in slide-in-from-bottom-full sm:slide-in-from-bottom-0 sm:zoom-in-95 duration-500 max-h-[92vh] sm:max-h-[90vh] flex flex-col overflow-hidden",
+                showImageCover ? "sm:max-w-5xl sm:flex-row" : "sm:max-w-2xl"
               )}
             >
-              {/* Mobile Handle */}
+              {/* Mobile Handle & Close */}
               <div className="absolute top-3 left-1/2 -translate-x-1/2 w-12 h-1.5 bg-white/20 rounded-full sm:hidden pointer-events-none z-50" />
-
-              {/* Close Button */}
               <Button
                 variant="ghost"
                 size="icon"
                 className={cn(
                   "absolute top-4 right-4 sm:top-6 sm:right-6 rounded-full z-50 transition-colors",
                   showImageCover
-                    ? "text-white bg-black/20 hover:bg-black/50 backdrop-blur-md"
-                    : "text-neutral-400 hover:text-white hover:bg-white/10 bg-white/5 sm:bg-transparent"
+                    ? "text-white bg-black/20 hover:bg-black/50"
+                    : "text-neutral-400 hover:text-white bg-white/5 hover:bg-white/10"
                 )}
                 onClick={() => setIsModalOpen(false)}
               >
                 <X className="w-5 h-5" />
               </Button>
 
-              {/* 🚀 DESKTOP IMAGE PANEL (SPLIT SCREEN) */}
+              {/* SPLIT SCREEN IMAGE */}
               {showImageCover && (
-                <div className="hidden sm:flex sm:w-2/5 relative border-r border-white/10 bg-neutral-900 shrink-0 flex-col justify-end p-8">
+                <div className="hidden sm:flex sm:w-2/5 relative border-r border-white/10 bg-neutral-900 shrink-0">
                   <img
                     src={formTemplate.image}
                     alt="Cover"
                     className="absolute inset-0 w-full h-full object-cover opacity-80"
                   />
-                  <div className="absolute inset-0 bg-gradient-to-t from-neutral-950 via-neutral-950/20 to-transparent pointer-events-none" />
-
-                  {/* Overlay Plan Details */}
-                  <div className="relative z-10 space-y-2 animate-in fade-in slide-in-from-bottom-4 duration-700 delay-200">
+                  <div className="absolute inset-0 bg-gradient-to-t from-neutral-950 via-neutral-950/20 to-transparent" />
+                  <div className="absolute bottom-8 left-8 right-8 z-10 space-y-2">
                     <div className="inline-flex items-center justify-center px-3 py-1 rounded-full bg-primary/20 text-primary text-[10px] font-bold uppercase tracking-widest backdrop-blur-md border border-primary/20 mb-2">
                       Selected Plan
                     </div>
@@ -373,24 +400,16 @@ const Pricing: React.FC<any> = ({
                     </h3>
                     <p className="text-primary font-mono font-bold text-2xl drop-shadow-md">
                       {activePlan?.price}
-                      {activePlan?.unit && (
-                        <span className="text-sm text-neutral-300 font-sans ml-1">
-                          /{activePlan.unit.replace("/", "")}
-                        </span>
-                      )}
                     </p>
                   </div>
                 </div>
               )}
 
-              {/* SCROLLABLE FORM CONTAINER */}
+              {/* SCROLLABLE CONTENT */}
               <div
                 className={cn(
-                  "flex-grow overflow-y-auto flex flex-col pt-14 pb-6 px-6 sm:p-10",
-                  // 🚀 THE BEAUTIFUL SCROLLBAR CLASSES
-                  "[&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-transparent",
-                  "[&::-webkit-scrollbar-thumb]:bg-white/10 hover:[&::-webkit-scrollbar-thumb]:bg-white/20 [&::-webkit-scrollbar-thumb]:rounded-full",
-                  showImageCover ? "sm:w-3/5 sm:pt-10" : "w-full"
+                  "flex-grow overflow-y-auto no-scrollbar flex flex-col p-6 sm:p-10",
+                  showImageCover ? "sm:w-3/5" : "w-full"
                 )}
               >
                 {isLoadingForm ? (
@@ -401,48 +420,42 @@ const Pricing: React.FC<any> = ({
                     </p>
                   </div>
                 ) : !formTemplate ? (
-                  <div className="py-20 text-center h-full flex flex-col items-center justify-center">
+                  <div className="py-20 text-center h-full flex items-center justify-center">
                     <p className="text-neutral-400">
                       Form template could not be loaded.
                     </p>
                   </div>
                 ) : isSuccess ? (
                   <div className="py-16 text-center space-y-4 animate-in zoom-in-95 h-full flex flex-col items-center justify-center">
-                    <div className="w-20 h-20 bg-green-500/20 text-green-400 rounded-full flex items-center justify-center mx-auto ring-1 ring-green-500/50 shadow-[0_0_30px_rgba(34,197,94,0.2)]">
-                      <CheckCircle2
-                        size={40}
-                        className="animate-in zoom-in duration-500 delay-150"
-                      />
+                    <div className="w-20 h-20 bg-green-500/20 text-green-400 rounded-full flex items-center justify-center mx-auto ring-1 ring-green-500/50">
+                      <CheckCircle2 size={40} className="animate-in zoom-in" />
                     </div>
                     <h3 className="text-3xl font-bold text-white tracking-tight">
                       {formTemplate.success_title || "Request Sent!"}
                     </h3>
-                    <p className="text-neutral-400 max-w-sm mx-auto">
+                    <p className="text-neutral-400 max-w-sm">
                       {formTemplate.success_message ||
                         `Thanks for inquiring about the ${activePlan?.name} plan. We'll be in touch.`}
                     </p>
                     <Button
-                      className="mt-6 h-12 rounded-full px-8 bg-white text-black hover:bg-neutral-200 font-bold"
+                      className="mt-6 rounded-full px-8 bg-white text-black hover:bg-neutral-200"
                       onClick={() => setIsModalOpen(false)}
                     >
-                      Close Window
+                      Close
                     </Button>
                   </div>
                 ) : (
-                  <div className="space-y-8 mt-auto mb-auto">
-                    {/* Form Header */}
-                    <div className="text-left sm:text-center space-y-3 mb-8 pr-10 sm:pr-0">
-                      <div className="inline-flex items-center justify-center px-4 py-1.5 rounded-full bg-primary/10 text-primary text-[10px] font-bold uppercase tracking-widest border border-primary/20">
-                        Requesting: {activePlan?.name}
-                      </div>
-                      <h3 className="text-3xl sm:text-4xl font-bold text-white tracking-tight">
+                  <div className="space-y-8 mt-4 sm:mt-0">
+                    <div className="text-left space-y-3 pb-6 border-b border-white/10">
+                      <h3 className="text-2xl sm:text-3xl font-bold text-white tracking-tight pr-8">
                         {formTemplate.title || "Let's get started"}
                       </h3>
-                      <p className="text-sm sm:text-base text-neutral-400">
+                      <p className="text-sm text-neutral-400">
                         {formTemplate.subheadline ||
-                          "Fill out the details below to proceed."}
+                          "Please fill in your details below."}
                       </p>
                     </div>
+
                     <form onSubmit={handleFormSubmit} className="space-y-6">
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5">
                         {(formTemplate.fields || []).map(
@@ -454,7 +467,7 @@ const Pricing: React.FC<any> = ({
                               <div
                                 key={idx}
                                 className={cn(
-                                  "space-y-2.5",
+                                  "space-y-2",
                                   isHalf
                                     ? "col-span-1"
                                     : "col-span-1 sm:col-span-2"
@@ -471,7 +484,7 @@ const Pricing: React.FC<any> = ({
                                   <Textarea
                                     required={field.required}
                                     placeholder={field.placeholder}
-                                    className="bg-white/5 border-white/10 focus-visible:border-primary text-white min-h-[120px] resize-none rounded-xl text-base sm:text-sm p-4"
+                                    className="bg-white/5 border-white/10 focus-visible:border-primary text-white min-h-[100px] resize-none rounded-xl"
                                     value={formValues[field.id] || ""}
                                     onChange={(e) =>
                                       setFormValues({
@@ -483,7 +496,7 @@ const Pricing: React.FC<any> = ({
                                 ) : field.type === "select" ? (
                                   <select
                                     required={field.required}
-                                    className="w-full bg-white/5 border border-white/10 focus:border-primary text-white h-14 rounded-xl px-4 text-base sm:text-sm appearance-none outline-none"
+                                    className="w-full bg-white/5 border border-white/10 focus:border-primary text-white h-12 rounded-xl px-4 text-sm appearance-none outline-none"
                                     value={formValues[field.id] || ""}
                                     onChange={(e) =>
                                       setFormValues({
@@ -517,9 +530,9 @@ const Pricing: React.FC<any> = ({
                                       (opt: string, i: number) => (
                                         <label
                                           key={i}
-                                          className="flex items-center gap-3 cursor-pointer group p-3 rounded-xl border border-white/5 bg-white/[0.02] hover:bg-white/5 transition-colors has-[:checked]:bg-primary/5 has-[:checked]:border-primary/30"
+                                          className="flex items-center gap-3 cursor-pointer group"
                                         >
-                                          <div className="relative flex items-center justify-center w-5 h-5 rounded-full border border-white/20 group-hover:border-primary bg-white/5">
+                                          <div className="relative flex items-center justify-center w-4 h-4 rounded-full border border-white/20 group-hover:border-primary bg-white/5">
                                             <input
                                               type="radio"
                                               name={field.id}
@@ -533,7 +546,7 @@ const Pricing: React.FC<any> = ({
                                                 })
                                               }
                                             />
-                                            <div className="w-2.5 h-2.5 rounded-full bg-primary opacity-0 peer-checked:opacity-100 transition-all scale-50 peer-checked:scale-100" />
+                                            <div className="w-2 h-2 rounded-full bg-primary opacity-0 peer-checked:opacity-100" />
                                           </div>
                                           <span className="text-neutral-300 text-sm font-medium">
                                             {opt}
@@ -556,7 +569,7 @@ const Pricing: React.FC<any> = ({
                                     }
                                     placeholder={field.placeholder}
                                     className={cn(
-                                      "bg-white/5 border-white/10 focus-visible:border-primary text-white h-14 rounded-xl text-base sm:text-sm",
+                                      "bg-white/5 border-white/10 focus-visible:border-primary text-white h-12 rounded-xl",
                                       field.type === "date" &&
                                         "[color-scheme:dark]"
                                     )}
@@ -574,17 +587,16 @@ const Pricing: React.FC<any> = ({
                           }
                         )}
                       </div>
-
-                      <div className="pt-6 sm:pt-4">
+                      <div className="pt-4 border-t border-white/10">
                         <Button
                           type="submit"
                           disabled={isSubmitting}
-                          className="w-full h-16 sm:h-14 text-lg sm:text-base font-bold rounded-2xl sm:rounded-xl bg-primary text-black hover:bg-primary/90 transition-transform hover:scale-[1.02] shadow-[0_0_30px_rgba(255,255,255,0.1)] group"
+                          className="w-full h-14 text-base font-bold rounded-xl bg-primary text-black hover:bg-primary/90 transition-transform hover:scale-[1.02]"
                         >
                           {isSubmitting ? (
                             <Loader2 className="animate-spin mr-2 w-5 h-5" />
                           ) : (
-                            <Send className="mr-3 w-5 h-5 group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform" />
+                            <Send className="mr-3 w-5 h-5" />
                           )}
                           {formTemplate.button_text || "Submit Request"}
                         </Button>
