@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { supabase } from "@/supabaseClient";
 import { trackEvent } from "../../analytics";
 
@@ -18,27 +18,26 @@ export function useShopOrderForm({
   );
   const [step, setStep] = useState<"details" | "form" | "success">("details");
   const [expandedModalFaq, setExpandedModalFaq] = useState<number | null>(null);
+
   const [formTemplate, setFormTemplate] = useState<any | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isLoadingForm, setIsLoadingForm] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
+
   const [formValues, setFormValues] = useState<Record<string, string>>({});
   const [selectedVariants, setSelectedVariants] = useState<Record<string, any>>(
     {}
   );
   const [quantity, setQuantity] = useState(1);
-  const [activeImageIdx, setActiveImageIdx] = useState(0);
 
   const parseOptions = (optStringOrArray?: string | any[]) => {
     if (!optStringOrArray) return [];
     if (Array.isArray(optStringOrArray)) {
-      // If it's already an array of options, extract the labels
       return optStringOrArray
         .map((opt) => (typeof opt === "string" ? opt : opt.label))
         .filter(Boolean);
     }
-    // If it's a string, split it
     if (typeof optStringOrArray === "string") {
       return optStringOrArray
         .split(",")
@@ -70,7 +69,7 @@ export function useShopOrderForm({
     return (total * qty).toFixed(2);
   };
 
-  // Triggered when a user clicks a Product Card in Grid/Carousel
+  // Used for Grid / Carousel to open the Modal
   const openProductModal = (product: any) => {
     if (product.actionType === "link") {
       if (actorId)
@@ -81,7 +80,6 @@ export function useShopOrderForm({
       if (!isPreview) window.open(product.checkoutUrl || "#", "_blank");
       return;
     }
-
     setSelectedProduct(product);
     setIsModalOpen(true);
     setStep("details");
@@ -90,16 +88,11 @@ export function useShopOrderForm({
     setFormValues({});
     setIsSuccess(false);
     setExpandedModalFaq(null);
-    setActiveImageIdx(0);
   };
 
-  // Triggered when a user clicks "Buy Now" inside the Modal or Spotlight view
+  // Used to transition from "Details" -> "Form" (fetches the form template)
   const proceedToCheckout = async (product: any) => {
-    if (isPreview) {
-      alert("Checkout is disabled in Preview Mode.");
-      return;
-    }
-
+    if (isPreview) return alert("Checkout is disabled in Preview Mode.");
     if (product.actionType === "link") {
       if (actorId)
         trackEvent(actorId, "shop_click", {
@@ -130,7 +123,6 @@ export function useShopOrderForm({
     } else {
       setFormTemplate(null);
     }
-
     setIsLoadingForm(false);
   };
 
@@ -234,6 +226,7 @@ export function useShopOrderForm({
     isLoadingForm,
     setIsLoadingForm,
     isSubmitting,
+    setIsSubmitting,
     isSuccess,
     setIsSuccess,
     formValues,
@@ -244,8 +237,6 @@ export function useShopOrderForm({
     setQuantity,
     expandedModalFaq,
     setExpandedModalFaq,
-    activeImageIdx,
-    setActiveImageIdx,
     parseOptions,
     calculateTotalPrice,
     openProductModal,

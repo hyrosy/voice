@@ -1,10 +1,17 @@
-import React, { useState, useRef } from "react";
+import React, { useState } from "react";
 import { createPortal } from "react-dom";
 import { BlockProps } from "../types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   ShoppingCart,
   ChevronRight,
@@ -27,6 +34,7 @@ import {
   Tag,
   HelpCircle,
   Send,
+  Badge,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { UCP } from "@ucp/sdk"; // 🚀 SDK Magic
@@ -62,15 +70,15 @@ export const defaultProps = {
 const getFieldIcon = (type: string) => {
   switch (type) {
     case "email":
-      return <Mail size={14} />;
+      return <Mail size={14} className="text-slate-400" />;
     case "tel":
-      return <Phone size={14} />;
+      return <Phone size={14} className="text-slate-400" />;
     case "textarea":
-      return <MessageSquare size={14} />;
+      return <MessageSquare size={14} className="text-slate-400" />;
     case "date":
-      return <Calendar size={14} />;
+      return <Calendar size={14} className="text-slate-400" />;
     default:
-      return <User size={14} />;
+      return <User size={14} className="text-slate-400" />;
   }
 };
 
@@ -90,13 +98,12 @@ const SpotlightCheckout = ({
     isPreview,
     initialProduct: product,
   });
-  const { step, setStep, activeImageIdx, setActiveImageIdx } = checkout;
-  const nextImage = () =>
-    setActiveImageIdx((prev: number) => (prev + 1) % images.length);
-  const prevImage = () =>
-    setActiveImageIdx(
-      (prev: number) => (prev - 1 + images.length) % images.length
-    );
+
+  const { step, setStep } = checkout;
+  const [expandedFaq, setExpandedFaq] = useState<number | null>(null);
+
+  // 🚀 Keep image gallery state purely local to the UI component!
+  const [activeImageIdx, setActiveImageIdx] = useState(0);
   const images = product.images?.length
     ? product.images
     : product.image
@@ -104,22 +111,29 @@ const SpotlightCheckout = ({
     : [];
   const actionType = product.actionType || "whatsapp";
 
+  const nextImage = () =>
+    setActiveImageIdx((prev: number) => (prev + 1) % images.length);
+  const prevImage = () =>
+    setActiveImageIdx(
+      (prev: number) => (prev - 1 + images.length) % images.length
+    );
+
   if (step === "success") {
     return (
-      <div className="bg-[#1c1c1e] rounded-[2rem] overflow-hidden min-h-[500px] flex flex-col items-center justify-center p-8 text-center animate-in fade-in zoom-in duration-300 shadow-2xl">
-        <div className="w-20 h-20 bg-blue-500/20 text-blue-500 rounded-full flex items-center justify-center mb-6 ring-1 ring-blue-500/50">
+      <div className="bg-white border border-gray-200/60 rounded-[2.5rem] overflow-hidden min-h-[500px] flex flex-col items-center justify-center p-8 text-center animate-in fade-in zoom-in duration-500 shadow-[0_8px_30px_rgb(0,0,0,0.04)]">
+        <div className="w-20 h-20 bg-blue-50 text-blue-600 rounded-full flex items-center justify-center mb-6 ring-4 ring-blue-50/50">
           <CheckCircle2 size={40} className="animate-in zoom-in duration-500" />
         </div>
-        <h3 className="text-3xl font-bold text-white mb-2">
+        <h3 className="text-3xl font-bold text-slate-900 mb-2 tracking-tight">
           {checkout.formTemplate?.success_title || "Order Received!"}
         </h3>
-        <p className="text-neutral-400 max-w-md mx-auto mb-8">
+        <p className="text-slate-500 max-w-md mx-auto mb-8 leading-relaxed">
           {checkout.formTemplate?.success_message ||
             `Thank you. We have received your order for ${product.title}.`}
         </p>
         <Button
           onClick={() => setStep("details")}
-          className="bg-white text-black hover:bg-neutral-200 h-12 px-8 rounded-full font-bold"
+          className="bg-slate-900 text-white hover:bg-slate-800 h-12 px-8 rounded-full font-semibold shadow-md transition-all hover:scale-105"
         >
           Continue Shopping
         </Button>
@@ -128,34 +142,28 @@ const SpotlightCheckout = ({
   }
 
   return (
-    <div className="bg-[#1c1c1e] rounded-[2.5rem] overflow-hidden md:grid md:grid-cols-2 min-h-[600px] shadow-2xl">
-      {/* LEFT: IMAGE GALLERY */}
-      <div className="bg-black relative flex flex-col h-[400px] md:h-auto group/gallery">
+    <div className="bg-white border border-gray-200/60 rounded-[2.5rem] overflow-hidden md:grid md:grid-cols-2 min-h-[600px] shadow-[0_8px_30px_rgb(0,0,0,0.06)]">
+      {/* LEFT: IMAGE GALLERY (Light Apple Look) */}
+      <div className="bg-gray-50 relative flex flex-col h-[400px] md:h-auto group/gallery">
         <div className="flex-grow relative overflow-hidden">
           {images.length > 0 ? (
             <>
               <img
                 src={images[activeImageIdx]}
                 alt={product.title}
-                className="w-full h-full object-cover absolute inset-0 transition-all duration-500"
+                className="w-full h-full object-cover absolute inset-0 transition-all duration-700 ease-[cubic-bezier(0.32,0.72,0,1)]"
               />
               {images.length > 1 && (
                 <>
                   <button
-                    onClick={() =>
-                      setActiveImageIdx(
-                        (prev) => (prev - 1 + images.length) % images.length
-                      )
-                    }
-                    className="absolute left-4 top-[40%] group-hover/gallery:top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/80 text-white p-3 rounded-full opacity-0 group-hover/gallery:opacity-100 transition-all duration-300 z-20 backdrop-blur-sm"
+                    onClick={prevImage}
+                    className="absolute left-4 top-[40%] group-hover/gallery:top-1/2 -translate-y-1/2 bg-white/90 hover:bg-white text-slate-900 p-3 rounded-full opacity-0 group-hover/gallery:opacity-100 transition-all duration-300 z-20 backdrop-blur-md shadow-lg"
                   >
                     <ChevronLeft size={20} />
                   </button>
                   <button
-                    onClick={() =>
-                      setActiveImageIdx((prev) => (prev + 1) % images.length)
-                    }
-                    className="absolute right-4 top-[40%] group-hover/gallery:top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/80 text-white p-3 rounded-full opacity-0 group-hover/gallery:opacity-100 transition-all duration-300 z-20 backdrop-blur-sm"
+                    onClick={nextImage}
+                    className="absolute right-4 top-[40%] group-hover/gallery:top-1/2 -translate-y-1/2 bg-white/90 hover:bg-white text-slate-900 p-3 rounded-full opacity-0 group-hover/gallery:opacity-100 transition-all duration-300 z-20 backdrop-blur-md shadow-lg"
                   >
                     <ChevronRight size={20} />
                   </button>
@@ -163,7 +171,7 @@ const SpotlightCheckout = ({
               )}
             </>
           ) : (
-            <div className="flex items-center justify-center h-full text-neutral-600">
+            <div className="flex items-center justify-center h-full text-slate-300">
               <ShoppingCart size={64} />
             </div>
           )}
@@ -175,10 +183,10 @@ const SpotlightCheckout = ({
                 key={idx}
                 onClick={() => setActiveImageIdx(idx)}
                 className={cn(
-                  "w-12 h-12 rounded-xl border-2 overflow-hidden transition-all shadow-sm shrink-0",
+                  "w-12 h-12 rounded-xl border-2 overflow-hidden transition-all shadow-md shrink-0 bg-white",
                   activeImageIdx === idx
-                    ? "border-blue-500 scale-110"
-                    : "border-white/30 opacity-60 hover:opacity-100"
+                    ? "border-blue-600 scale-110"
+                    : "border-transparent opacity-70 hover:opacity-100"
                 )}
               >
                 <img src={img} className="w-full h-full object-cover" />
@@ -189,57 +197,68 @@ const SpotlightCheckout = ({
       </div>
 
       {/* RIGHT: DETAILS OR FORM */}
-      <div className="p-8 md:p-12 flex flex-col justify-center h-full relative">
+      <div className="p-8 md:p-12 flex flex-col justify-center h-full relative bg-white">
         {step === "details" && (
-          <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
+          <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-500 ease-out">
             <div>
               {product.salePrice && (
-                <div className="bg-blue-500/20 text-blue-400 text-xs font-bold px-3 py-1 rounded-full uppercase tracking-widest w-max mb-3">
+                <Badge className="bg-blue-50 text-blue-600 hover:bg-blue-100 mb-3 px-3 py-1 text-xs uppercase tracking-widest font-bold shadow-none border-none">
                   On Sale
-                </div>
+                </Badge>
               )}
-              <h3 className="text-3xl md:text-4xl font-bold text-white leading-tight tracking-tight">
+              <h3 className="text-3xl md:text-4xl font-extrabold text-slate-900 leading-tight tracking-tight">
                 {product.title}
               </h3>
-              <div className="flex items-end gap-3 mt-3">
+              <div className="flex items-baseline gap-3 mt-2">
                 {product.salePrice ? (
                   <>
-                    <span className="text-3xl text-blue-400 font-bold font-mono">
+                    <span className="text-3xl text-blue-600 font-bold tracking-tight">
                       {product.salePrice}
                     </span>
-                    <span className="text-lg text-neutral-500 line-through mb-1 font-mono">
+                    <span className="text-lg text-slate-400 line-through font-medium">
                       {product.price}
                     </span>
                   </>
                 ) : (
-                  <span className="text-3xl text-white font-bold font-mono">
+                  <span className="text-3xl text-slate-900 font-bold tracking-tight">
                     {product.price}
                   </span>
                 )}
               </div>
             </div>
 
-            <p className="text-lg text-neutral-300 leading-relaxed">
+            <p className="text-base text-slate-500 leading-relaxed font-medium">
               {product.description}
             </p>
 
+            {/* VARIANTS */}
             {product.variants && product.variants.length > 0 && (
-              <div className="space-y-4 pt-4 border-t border-white/5">
+              <div className="space-y-4 pt-4 border-t border-slate-100">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   {product.variants.map((v: any, i: number) => {
-                    const optionsArray = checkout.parseOptions(v.options);
+                    const optionsArray = Array.isArray(v.options)
+                      ? v.options.map((o: any) =>
+                          typeof o === "string"
+                            ? { label: o.trim(), price: "" }
+                            : o
+                        )
+                      : typeof v.options === "string"
+                      ? v.options
+                          .split(",")
+                          .map((s: string) => ({ label: s.trim(), price: "" }))
+                      : [];
+
                     return (
                       <div key={i} className="space-y-1.5">
-                        <Label className="text-xs text-neutral-400 font-bold uppercase tracking-wider ml-1">
+                        <Label className="text-xs text-slate-500 font-bold uppercase tracking-wider ml-1">
                           {v.name}
                         </Label>
-                        <select
+                        <Select
                           required
-                          className="w-full bg-[#2c2c2e] border-none text-white h-12 rounded-xl px-4 text-sm appearance-none outline-none focus:ring-2 focus:ring-blue-500"
                           value={checkout.selectedVariants[v.name]?.label || ""}
-                          onChange={(e) => {
+                          onValueChange={(val) => {
                             const opt = optionsArray.find(
-                              (o: any) => o.label === e.target.value
+                              (o: any) => o.label === val
                             );
                             checkout.setSelectedVariants({
                               ...checkout.selectedVariants,
@@ -247,15 +266,23 @@ const SpotlightCheckout = ({
                             });
                           }}
                         >
-                          <option value="" disabled>
-                            Select {v.name}...
-                          </option>
-                          {optionsArray.map((opt: any, optIdx: number) => (
-                            <option key={optIdx} value={opt.label}>
-                              {opt.label} {opt.price && `(+$${opt.price})`}
-                            </option>
-                          ))}
-                        </select>
+                          <SelectTrigger className="w-full bg-gray-50 border border-gray-200 text-slate-900 h-12 rounded-xl focus:ring-blue-600 focus:ring-offset-0 shadow-sm transition-all hover:bg-gray-100">
+                            <SelectValue placeholder={`Select ${v.name}...`} />
+                          </SelectTrigger>
+
+                          {/* 🚀 BULLETPROOF TEXT COLOR FIX FOR PORTALS */}
+                          <SelectContent className="z-[100000] border-gray-200 bg-white !text-slate-900 rounded-xl shadow-xl [&_*]:!text-slate-900">
+                            {optionsArray.map((opt: any, optIdx: number) => (
+                              <SelectItem
+                                key={optIdx}
+                                value={opt.label}
+                                className="!text-slate-900 font-medium focus:!bg-blue-50 focus:!text-blue-700 cursor-pointer rounded-lg m-1 transition-colors"
+                              >
+                                {opt.label} {opt.price && `(+$${opt.price})`}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                       </div>
                     );
                   })}
@@ -263,34 +290,34 @@ const SpotlightCheckout = ({
               </div>
             )}
 
+            {/* FAQS */}
             {product.faqs && product.faqs.length > 0 && (
-              <div className="space-y-2 pt-4 border-t border-white/5">
-                <h4 className="text-xs font-semibold uppercase tracking-wider text-neutral-500 mb-3 flex items-center gap-2">
-                  <HelpCircle size={14} /> Product Details
+              <div className="space-y-3 pt-4 border-t border-slate-100">
+                <h4 className="text-xs font-bold uppercase tracking-widest text-slate-500 flex items-center gap-2 mb-3">
+                  <HelpCircle size={14} className="text-slate-400" /> Product
+                  Details
                 </h4>
-                <div className="bg-[#2c2c2e] rounded-2xl overflow-hidden divide-y divide-white/5">
+                <div className="bg-gray-50 rounded-2xl overflow-hidden border border-gray-100 divide-y divide-gray-200/60">
                   {product.faqs.map((faq: any, i: number) => (
                     <div key={i}>
                       <button
                         type="button"
-                        className="w-full px-5 py-4 flex items-center justify-between text-left text-sm font-medium text-white/90 hover:bg-white/5 transition-colors"
+                        className="w-full px-5 py-4 flex items-center justify-between text-left text-sm font-semibold text-slate-700 hover:bg-gray-100 transition-colors"
                         onClick={() =>
-                          checkout.setExpandedModalFaq(
-                            checkout.expandedModalFaq === i ? null : i
-                          )
+                          setExpandedFaq(expandedFaq === i ? null : i)
                         }
                       >
                         <span>{faq.question}</span>
                         <ChevronDown
                           size={16}
                           className={cn(
-                            "transition-transform text-neutral-400",
-                            checkout.expandedModalFaq === i && "rotate-180"
+                            "transition-transform duration-300 text-slate-400",
+                            expandedFaq === i && "rotate-180"
                           )}
                         />
                       </button>
-                      {checkout.expandedModalFaq === i && (
-                        <div className="px-5 pb-4 text-sm text-neutral-400 leading-relaxed animate-in slide-in-from-top-1 fade-in">
+                      {expandedFaq === i && (
+                        <div className="px-5 pb-4 text-sm text-slate-500 leading-relaxed animate-in slide-in-from-top-1 fade-in font-medium">
                           {faq.answer}
                         </div>
                       )}
@@ -300,34 +327,36 @@ const SpotlightCheckout = ({
               </div>
             )}
 
-            <div className="pt-6 flex flex-col sm:flex-row gap-4 border-t border-white/5">
+            {/* ACTIONS */}
+            <div className="pt-6 flex flex-col sm:flex-row gap-3 border-t border-slate-100">
               {actionType !== "link" && (
-                <div className="flex items-center gap-4 bg-[#2c2c2e] rounded-full p-1 w-max shrink-0">
-                  <button
-                    type="button"
-                    className="w-12 h-12 rounded-full flex items-center justify-center text-white hover:bg-white/10 disabled:opacity-30 transition-colors"
-                    disabled={checkout.quantity <= 1}
+                <div className="flex items-center bg-gray-50 rounded-full p-1 border border-gray-200 w-max shrink-0 shadow-sm">
+                  <Button
+                    size="icon"
+                    variant="ghost"
                     onClick={() =>
                       checkout.setQuantity((q: number) => Math.max(1, q - 1))
                     }
+                    className="h-10 w-10 text-slate-600 hover:text-slate-900 hover:bg-white rounded-full"
                   >
                     <Minus size={16} />
-                  </button>
-                  <span className="font-semibold w-4 text-center text-white">
+                  </Button>
+                  <span className="w-12 text-center font-semibold text-lg text-slate-900">
                     {checkout.quantity}
                   </span>
-                  <button
-                    type="button"
-                    className="w-12 h-12 rounded-full flex items-center justify-center text-white hover:bg-white/10 transition-colors"
+                  <Button
+                    size="icon"
+                    variant="ghost"
                     onClick={() => checkout.setQuantity((q: number) => q + 1)}
+                    className="h-10 w-10 text-slate-600 hover:text-slate-900 hover:bg-white rounded-full"
                   >
                     <Plus size={16} />
-                  </button>
+                  </Button>
                 </div>
               )}
               <Button
                 size="lg"
-                className="flex-grow h-14 text-base rounded-full bg-blue-500 text-white hover:bg-blue-600 font-semibold"
+                className="flex-grow h-12 text-base rounded-full bg-blue-600 text-white hover:bg-blue-700 font-bold shadow-[0_4px_14px_rgba(37,99,235,0.3)] transition-all hover:scale-[1.02]"
                 onClick={() => checkout.proceedToCheckout(product)}
               >
                 {product.buttonText ||
@@ -342,33 +371,32 @@ const SpotlightCheckout = ({
           </div>
         )}
 
-        {step === "form" && (
-          <div className="space-y-6 h-full flex flex-col animate-in fade-in slide-in-from-right-4 duration-300">
+        {/* INLINE CHECKOUT FORM */}
+        {checkout.step === "form" && (
+          <div className="space-y-6 h-full flex flex-col animate-in fade-in slide-in-from-right-4 duration-500 ease-out">
             <div className="flex items-center gap-2 -ml-2 mb-2">
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => setStep("details")}
-                className="text-neutral-400 hover:text-white rounded-full"
+                onClick={() => checkout.setStep("details")}
+                className="text-slate-500 hover:text-slate-900 hover:bg-gray-100 rounded-full font-medium"
               >
                 <ChevronLeft className="w-4 h-4 mr-1" /> Back
               </Button>
             </div>
 
             {checkout.isLoadingForm ? (
-              <div className="flex-grow flex flex-col items-center justify-center text-blue-500">
+              <div className="flex-grow flex flex-col items-center justify-center text-blue-600">
                 <Loader2 className="w-8 h-8 animate-spin mb-4" />
-                <p className="text-sm text-neutral-400 font-medium">
-                  Loading form...
-                </p>
+                <p className="font-medium">Loading form...</p>
               </div>
             ) : (
               <div className="flex-grow flex flex-col">
                 <div className="mb-6">
-                  <h3 className="text-2xl font-bold text-white mb-2">
+                  <h3 className="text-2xl font-bold text-slate-900 mb-1">
                     {checkout.formTemplate?.title || "Complete Order"}
                   </h3>
-                  <p className="text-sm text-neutral-400">
+                  <p className="text-sm text-slate-500 font-medium">
                     {checkout.formTemplate?.subheadline ||
                       "Enter your details to finalize the purchase."}
                   </p>
@@ -396,17 +424,17 @@ const SpotlightCheckout = ({
                                   : "col-span-1 sm:col-span-2"
                               )}
                             >
-                              <Label className="text-neutral-400 flex items-center gap-2 text-xs ml-1">
+                              <Label className="text-slate-500 flex items-center gap-2 text-xs uppercase tracking-widest font-bold ml-1">
                                 {getFieldIcon(field.type)} {field.label}{" "}
                                 {field.required && (
-                                  <span className="text-red-400">*</span>
+                                  <span className="text-red-500">*</span>
                                 )}
                               </Label>
                               {field.type === "textarea" ? (
                                 <Textarea
                                   required={field.required}
                                   placeholder={field.placeholder}
-                                  className="bg-[#2c2c2e] border-none text-white min-h-[100px] resize-none rounded-xl p-4 focus-visible:ring-2 focus-visible:ring-blue-500"
+                                  className="bg-gray-50 border border-gray-200 text-slate-900 min-h-[100px] resize-none rounded-xl p-4 focus:bg-white focus:ring-2 focus:ring-blue-600 focus:border-transparent transition-all shadow-sm"
                                   value={checkout.formValues[field.id] || ""}
                                   onChange={(e) =>
                                     checkout.setFormValues({
@@ -418,7 +446,7 @@ const SpotlightCheckout = ({
                               ) : field.type === "select" ? (
                                 <select
                                   required={field.required}
-                                  className="w-full bg-[#2c2c2e] border-none text-white h-12 rounded-xl px-4 text-sm appearance-none outline-none focus:ring-2 focus:ring-blue-500"
+                                  className="w-full bg-gray-50 border border-gray-200 text-slate-900 h-12 rounded-xl px-4 text-sm outline-none focus:bg-white focus:ring-2 focus:ring-blue-600 transition-all shadow-sm"
                                   value={checkout.formValues[field.id] || ""}
                                   onChange={(e) =>
                                     checkout.setFormValues({
@@ -444,9 +472,9 @@ const SpotlightCheckout = ({
                                     (opt: string, i: number) => (
                                       <label
                                         key={i}
-                                        className="flex items-center gap-3 cursor-pointer group p-3 rounded-xl bg-[#2c2c2e] hover:bg-[#3a3a3c] transition-colors has-[:checked]:bg-blue-500/10 has-[:checked]:ring-1 has-[:checked]:ring-blue-500"
+                                        className="flex items-center gap-3 cursor-pointer group p-3 rounded-xl border border-gray-200 bg-gray-50 hover:bg-gray-100 transition-colors has-[:checked]:bg-blue-50 has-[:checked]:border-blue-200 has-[:checked]:ring-1 has-[:checked]:ring-blue-600"
                                       >
-                                        <div className="relative flex items-center justify-center w-5 h-5 rounded-full border border-white/20 group-hover:border-blue-500 bg-black/20">
+                                        <div className="relative flex items-center justify-center w-5 h-5 rounded-full border border-gray-300 group-hover:border-blue-600 bg-white">
                                           <input
                                             type="radio"
                                             name={field.id}
@@ -460,9 +488,9 @@ const SpotlightCheckout = ({
                                               })
                                             }
                                           />
-                                          <div className="w-2.5 h-2.5 rounded-full bg-blue-500 opacity-0 peer-checked:opacity-100 transition-all scale-50 peer-checked:scale-100" />
+                                          <div className="w-2.5 h-2.5 rounded-full bg-blue-600 opacity-0 peer-checked:opacity-100 transition-all scale-50 peer-checked:scale-100" />
                                         </div>
-                                        <span className="text-white text-sm font-medium">
+                                        <span className="text-slate-900 text-sm font-semibold">
                                           {opt}
                                         </span>
                                       </label>
@@ -480,11 +508,7 @@ const SpotlightCheckout = ({
                                       : "text"
                                   }
                                   placeholder={field.placeholder}
-                                  className={cn(
-                                    "bg-[#2c2c2e] border-none text-white h-12 rounded-xl focus-visible:ring-2 focus-visible:ring-blue-500 px-4",
-                                    field.type === "date" &&
-                                      "[color-scheme:dark]"
-                                  )}
+                                  className="bg-gray-50 border border-gray-200 text-slate-900 h-12 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-600 focus:border-transparent px-4 transition-all shadow-sm"
                                   value={checkout.formValues[field.id] || ""}
                                   onChange={(e) =>
                                     checkout.setFormValues({
@@ -502,7 +526,7 @@ const SpotlightCheckout = ({
                   ) : (
                     <div className="space-y-4">
                       <div className="space-y-1.5">
-                        <Label className="text-neutral-400 ml-1 text-xs">
+                        <Label className="text-slate-500 text-xs font-bold uppercase tracking-widest ml-1">
                           Full Name
                         </Label>
                         <Input
@@ -514,12 +538,12 @@ const SpotlightCheckout = ({
                               name: e.target.value,
                             })
                           }
-                          className="bg-[#2c2c2e] border-none h-12 rounded-xl text-white px-4"
+                          className="bg-gray-50 border border-gray-200 text-slate-900 h-12 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-600 transition-all shadow-sm px-4"
                           placeholder="Your Name"
                         />
                       </div>
                       <div className="space-y-1.5">
-                        <Label className="text-neutral-400 ml-1 text-xs">
+                        <Label className="text-slate-500 text-xs font-bold uppercase tracking-widest ml-1">
                           Phone
                         </Label>
                         <Input
@@ -531,19 +555,21 @@ const SpotlightCheckout = ({
                               phone: e.target.value,
                             })
                           }
-                          className="bg-[#2c2c2e] border-none h-12 rounded-xl text-white px-4"
+                          className="bg-gray-50 border border-gray-200 text-slate-900 h-12 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-600 transition-all shadow-sm px-4"
                           placeholder="Phone Number"
                         />
                       </div>
                     </div>
                   )}
 
-                  <div className="mt-auto pt-6 border-t border-white/5 space-y-6">
-                    <div className="flex items-end justify-between bg-[#2c2c2e]/50 p-5 rounded-2xl">
-                      <p className="text-sm text-neutral-400 font-medium">
-                        Total Due
-                      </p>
-                      <div className="text-3xl font-bold text-white">
+                  <div className="mt-auto pt-6 border-t border-gray-100 space-y-5">
+                    <div className="flex items-end justify-between bg-blue-50/50 p-5 rounded-2xl border border-blue-100">
+                      <div className="space-y-1">
+                        <p className="text-xs text-blue-600 font-bold uppercase tracking-widest">
+                          Total Due
+                        </p>
+                      </div>
+                      <div className="text-3xl font-black text-blue-900 tracking-tight">
                         $
                         {checkout.calculateTotalPrice(
                           product.price,
@@ -555,7 +581,7 @@ const SpotlightCheckout = ({
                     <Button
                       type="submit"
                       disabled={checkout.isSubmitting}
-                      className="w-full h-14 text-base font-semibold rounded-full bg-blue-500 text-white hover:bg-blue-600 transition-transform hover:scale-[1.02]"
+                      className="w-full h-14 text-lg font-bold rounded-full bg-blue-600 text-white hover:bg-blue-700 shadow-[0_4px_14px_rgba(37,99,235,0.3)] transition-transform hover:scale-[1.02]"
                     >
                       {checkout.isSubmitting ? (
                         <Loader2 className="animate-spin mr-2 w-5 h-5" />
@@ -567,7 +593,7 @@ const SpotlightCheckout = ({
                       {checkout.formTemplate?.button_text ||
                         (actionType === "whatsapp"
                           ? "Confirm via WhatsApp"
-                          : "Place Order")}
+                          : "Complete Order")}
                     </Button>
                   </div>
                 </form>
@@ -616,16 +642,16 @@ export default function Shop({
 
     return (
       <div
-        className="group h-full flex flex-col bg-[#1c1c1e] rounded-[2rem] overflow-hidden transition-all duration-300 hover:scale-[1.01] shadow-lg cursor-pointer"
+        className="group h-full flex flex-col bg-white rounded-[2rem] overflow-hidden transition-all duration-300 hover:scale-[1.01] shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:shadow-[0_8px_30px_rgb(0,0,0,0.12)] border border-gray-200/50 cursor-pointer"
         onClick={() => globalCheckout.openProductModal(product)}
       >
-        <div className="relative aspect-[4/3] overflow-hidden bg-black group/gallery">
+        <div className="relative aspect-[4/3] overflow-hidden bg-gray-50 group/gallery border-b border-gray-100">
           {images.length > 0 ? (
             <>
               <img
                 src={images[activeImageIdx]}
                 alt={product.title}
-                className="w-full h-full object-cover transition-transform duration-700 group-hover/gallery:scale-105"
+                className="w-full h-full object-cover transition-transform duration-700 ease-[cubic-bezier(0.32,0.72,0,1)] group-hover/gallery:scale-105"
               />
               {images.length > 1 && (
                 <>
@@ -634,10 +660,10 @@ export default function Shop({
                       <button
                         key={i}
                         className={cn(
-                          "w-2 h-2 rounded-full transition-all",
+                          "w-2 h-2 rounded-full transition-all shadow-sm",
                           i === activeImageIdx
                             ? "bg-white scale-125"
-                            : "bg-white/50 hover:bg-white/80"
+                            : "bg-white/60 hover:bg-white"
                         )}
                         onClick={(e) => {
                           e.preventDefault();
@@ -657,7 +683,7 @@ export default function Shop({
                           (prev - 1 + images.length) % images.length
                       );
                     }}
-                    className="absolute left-4 top-[40%] group-hover/gallery:top-1/2 -translate-y-1/2 bg-black/40 hover:bg-black/70 text-white p-2 rounded-full opacity-0 group-hover/gallery:opacity-100 transition-all duration-300 z-20 backdrop-blur-sm"
+                    className="absolute left-4 top-[40%] group-hover/gallery:top-1/2 -translate-y-1/2 bg-white/90 hover:bg-white text-slate-900 p-2.5 rounded-full opacity-0 group-hover/gallery:opacity-100 transition-all duration-300 z-20 backdrop-blur-md shadow-md"
                   >
                     <ChevronLeft size={18} />
                   </button>
@@ -669,20 +695,20 @@ export default function Shop({
                         (prev: number) => (prev + 1) % images.length
                       );
                     }}
-                    className="absolute right-4 top-[40%] group-hover/gallery:top-1/2 -translate-y-1/2 bg-black/40 hover:bg-black/70 text-white p-2 rounded-full opacity-0 group-hover/gallery:opacity-100 transition-all duration-300 z-20 backdrop-blur-sm"
+                    className="absolute right-4 top-[40%] group-hover/gallery:top-1/2 -translate-y-1/2 bg-white/90 hover:bg-white text-slate-900 p-2.5 rounded-full opacity-0 group-hover/gallery:opacity-100 transition-all duration-300 z-20 backdrop-blur-md shadow-md"
                   >
                     <ChevronRight size={18} />
-                  </button>{" "}
+                  </button>
                 </>
               )}
             </>
           ) : (
-            <div className="w-full h-full flex items-center justify-center text-white/20">
+            <div className="w-full h-full flex items-center justify-center text-slate-300">
               <ShoppingCart size={40} />
             </div>
           )}
           {product.salePrice && (
-            <div className="absolute top-4 left-4 bg-blue-500 text-white text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-widest shadow-md">
+            <div className="absolute top-4 left-4 bg-blue-500 text-white text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-widest shadow-sm">
               Sale
             </div>
           )}
@@ -690,40 +716,40 @@ export default function Shop({
 
         <div className="p-6 flex flex-col flex-grow">
           <div className="mb-4">
-            <h3 className="text-xl font-semibold text-white tracking-tight mb-1">
+            <h3 className="text-xl font-bold text-slate-900 tracking-tight mb-1 line-clamp-1">
               {product.title || "Product Name"}
             </h3>
             <div className="flex items-baseline gap-2">
               {product.salePrice ? (
                 <>
-                  <span className="text-xl text-blue-400 font-semibold">
+                  <span className="text-xl text-blue-600 font-bold tracking-tight">
                     {product.salePrice}
                   </span>
-                  <span className="text-sm text-neutral-500 line-through">
+                  <span className="text-sm text-slate-400 line-through font-medium">
                     {product.price}
                   </span>
                 </>
               ) : (
-                <span className="text-xl text-white font-semibold">
+                <span className="text-xl text-slate-900 font-bold tracking-tight">
                   {product.price || "$0.00"}
                 </span>
               )}
             </div>
           </div>
 
-          <p className="text-sm text-neutral-400 leading-relaxed mb-6 line-clamp-2">
+          <p className="text-sm text-slate-500 leading-relaxed mb-6 line-clamp-2 font-medium">
             {product.description}
           </p>
 
           {product.variants && product.variants.length > 0 && (
-            <p className="text-xs text-neutral-500 mb-6">
-              {product.variants.length} Customization Option
-              {product.variants.length > 1 ? "s" : ""} available
+            <p className="text-xs text-slate-400 mb-6 font-semibold uppercase tracking-wider">
+              {product.variants.length} Customization
+              {product.variants.length > 1 ? "s" : ""} Available
             </p>
           )}
 
-          <div className="mt-auto pt-4 border-t border-white/5">
-            <button className="w-full h-12 rounded-full text-sm font-semibold transition-all bg-white/10 text-blue-400 hover:bg-white/20 flex items-center justify-center gap-2 pointer-events-none">
+          <div className="mt-auto pt-4 border-t border-gray-100">
+            <button className="w-full h-12 rounded-full text-sm font-bold transition-all bg-gray-50 text-blue-600 hover:bg-blue-50 flex items-center justify-center gap-2 pointer-events-none">
               {product.buttonText || "View Details"}
               {isExternal ? (
                 <ExternalLink size={16} />
@@ -744,38 +770,38 @@ export default function Shop({
 
   return (
     <>
-      {/* 🚀 APPLE-STYLE MODAL (For Grid / Carousel variants) */}
+      {/* 🚀 APPLE-STYLE MODAL (Bottom Sheet style on Mobile, Floating Dialog on Desktop) */}
       {globalCheckout.isModalOpen &&
         typeof document !== "undefined" &&
         createPortal(
           <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center sm:p-6">
             <div
-              className="absolute inset-0 bg-black/60 backdrop-blur-md cursor-pointer animate-in fade-in duration-300"
+              className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm cursor-pointer animate-in fade-in duration-300"
               onClick={() => globalCheckout.setIsModalOpen(false)}
             />
 
             <div
               className={cn(
-                "relative w-full bg-[#1c1c1e] rounded-t-[2rem] sm:rounded-[2.5rem] p-0 shadow-2xl animate-in slide-in-from-bottom-full sm:slide-in-from-bottom-0 sm:zoom-in-95 duration-400 max-h-[92vh] sm:max-h-[85vh] flex flex-col overflow-hidden border border-white/5",
+                "relative w-full bg-white rounded-t-[2rem] sm:rounded-[2.5rem] p-0 shadow-2xl animate-in slide-in-from-bottom-full sm:slide-in-from-bottom-0 sm:zoom-in-95 duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] max-h-[92vh] sm:max-h-[85vh] flex flex-col overflow-hidden border border-gray-200/50",
                 showImageCover ? "sm:max-w-4xl sm:flex-row" : "sm:max-w-xl"
               )}
             >
               {/* iOS Top Bar */}
-              <div className="flex items-center justify-between p-4 border-b border-white/10 bg-[#1c1c1e]/80 backdrop-blur-xl absolute top-0 left-0 right-0 z-50">
+              <div className="flex items-center justify-between p-4 border-b border-gray-100 bg-white/80 backdrop-blur-xl absolute top-0 left-0 right-0 z-50">
                 <button
-                  className="text-blue-500 font-medium px-2"
+                  className="text-blue-600 font-semibold px-2 hover:opacity-80 transition-opacity"
                   onClick={() => globalCheckout.setIsModalOpen(false)}
                 >
                   Cancel
                 </button>
-                <span className="font-semibold text-white text-sm truncate max-w-[200px] text-center">
+                <span className="font-bold text-slate-900 text-sm truncate max-w-[200px] text-center">
                   {globalCheckout.selectedProduct?.title}
                 </span>
                 <div className="w-12" /> {/* Spacer for centering */}
               </div>
 
               {showImageCover && (
-                <div className="hidden sm:flex sm:w-1/2 relative bg-black shrink-0 mt-[60px]">
+                <div className="hidden sm:flex sm:w-1/2 relative bg-gray-100 shrink-0 mt-[60px] border-r border-gray-100">
                   <img
                     src={globalCheckout.formTemplate.image}
                     alt="Cover"
@@ -787,42 +813,45 @@ export default function Shop({
               <div
                 className={cn(
                   "flex-grow overflow-y-auto flex flex-col p-6 pt-24",
-                  // Styled Scrollbars
+                  // Styled Scrollbars (Light)
                   "[&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-transparent",
-                  "[&::-webkit-scrollbar-thumb]:bg-white/10 hover:[&::-webkit-scrollbar-thumb]:bg-white/20 [&::-webkit-scrollbar-thumb]:rounded-full",
+                  "[&::-webkit-scrollbar-thumb]:bg-gray-200 hover:[&::-webkit-scrollbar-thumb]:bg-gray-300 [&::-webkit-scrollbar-thumb]:rounded-full",
                   showImageCover ? "sm:w-1/2" : "w-full"
                 )}
               >
                 {globalCheckout.isLoadingForm ? (
-                  <div className="py-20 flex flex-col items-center justify-center text-blue-500 h-full">
+                  <div className="py-20 flex flex-col items-center justify-center text-blue-600 h-full">
                     <Loader2 className="w-8 h-8 animate-spin mb-4" />
-                    <p className="text-sm text-neutral-400 font-medium">
+                    <p className="text-sm text-slate-500 font-medium">
                       Loading...
                     </p>
                   </div>
                 ) : !globalCheckout.formTemplate &&
-                  globalCheckout.selectedProduct?.actionType ===
-                    "form_order" ? (
+                  globalCheckout.selectedProduct?.actionType === "form_order" &&
+                  globalCheckout.step === "form" ? (
                   <div className="py-20 text-center h-full flex items-center justify-center">
-                    <p className="text-neutral-400">
+                    <p className="text-slate-500">
                       Checkout template could not be loaded.
                     </p>
                   </div>
                 ) : globalCheckout.isSuccess ? (
                   <div className="py-16 text-center space-y-4 animate-in zoom-in-95 h-full flex flex-col items-center justify-center">
-                    <div className="w-20 h-20 bg-blue-500/20 text-blue-500 rounded-full flex items-center justify-center mx-auto">
-                      <CheckCircle2 size={40} className="animate-in zoom-in" />
+                    <div className="w-20 h-20 bg-blue-50 text-blue-600 rounded-full flex items-center justify-center mx-auto ring-4 ring-blue-50/50">
+                      <CheckCircle2
+                        size={40}
+                        className="animate-in zoom-in duration-500"
+                      />
                     </div>
-                    <h3 className="text-2xl font-bold text-white tracking-tight">
+                    <h3 className="text-2xl font-bold text-slate-900 tracking-tight">
                       {globalCheckout.formTemplate?.success_title ||
                         "Order Received"}
                     </h3>
-                    <p className="text-neutral-400 max-w-sm mx-auto text-sm">
+                    <p className="text-slate-500 max-w-sm mx-auto text-base font-medium">
                       {globalCheckout.formTemplate?.success_message ||
                         `Thank you for ordering ${globalCheckout.selectedProduct?.title}. We'll process it shortly.`}
                     </p>
                     <Button
-                      className="mt-6 rounded-full px-8 bg-blue-500 text-white hover:bg-blue-600 font-semibold h-12"
+                      className="mt-6 rounded-full px-8 bg-blue-600 text-white hover:bg-blue-700 font-bold h-12 shadow-md hover:scale-105 transition-all"
                       onClick={() => globalCheckout.setIsModalOpen(false)}
                     >
                       Done
@@ -830,24 +859,25 @@ export default function Shop({
                   </div>
                 ) : (
                   <div className="space-y-8 mt-4 sm:mt-0">
+                    {/* DETAILS STEP */}
                     {globalCheckout.step === "details" && (
-                      <div className="animate-in fade-in slide-in-from-left-4 duration-300 space-y-6">
-                        <div className="text-left space-y-2 pb-6 border-b border-white/10">
-                          <h3 className="text-2xl font-bold text-white tracking-tight">
+                      <div className="animate-in fade-in slide-in-from-left-4 duration-500 ease-out space-y-6">
+                        <div className="text-left space-y-2 pb-6 border-b border-gray-100">
+                          <h3 className="text-3xl font-extrabold text-slate-900 tracking-tight leading-tight">
                             {globalCheckout.selectedProduct?.title}
                           </h3>
                           <div className="flex items-baseline gap-2 mt-2">
                             {globalCheckout.selectedProduct?.salePrice ? (
                               <>
-                                <span className="text-2xl text-blue-400 font-semibold">
+                                <span className="text-2xl text-blue-600 font-bold tracking-tight">
                                   {globalCheckout.selectedProduct.salePrice}
                                 </span>
-                                <span className="text-sm text-neutral-500 line-through">
+                                <span className="text-sm text-slate-400 line-through font-medium">
                                   {globalCheckout.selectedProduct.price}
                                 </span>
                               </>
                             ) : (
-                              <span className="text-2xl text-white font-semibold">
+                              <span className="text-2xl text-slate-900 font-bold tracking-tight">
                                 {globalCheckout.selectedProduct?.price ||
                                   "$0.00"}
                               </span>
@@ -860,7 +890,7 @@ export default function Shop({
                           globalCheckout.selectedProduct.variants.length >
                             0 && (
                             <div className="space-y-4">
-                              <h4 className="text-xs font-semibold uppercase tracking-wider text-neutral-500">
+                              <h4 className="text-xs font-bold uppercase tracking-widest text-slate-500">
                                 Customization
                               </h4>
                               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -870,21 +900,19 @@ export default function Shop({
                                       globalCheckout.parseOptions(v.options);
                                     return (
                                       <div key={i} className="space-y-1.5">
-                                        <Label className="text-xs text-neutral-400 ml-1">
+                                        <Label className="text-xs text-slate-500 font-bold uppercase tracking-wider ml-1">
                                           {v.name}
                                         </Label>
-                                        <select
+                                        <Select
                                           required
-                                          className="w-full bg-[#2c2c2e] text-white h-12 rounded-xl px-4 text-sm appearance-none outline-none focus:ring-2 focus:ring-blue-500"
                                           value={
                                             globalCheckout.selectedVariants[
                                               v.name
                                             ]?.label || ""
                                           }
-                                          onChange={(e) => {
+                                          onValueChange={(val) => {
                                             const opt = optionsArray.find(
-                                              (o: any) =>
-                                                o.label === e.target.value
+                                              (o: any) => o.label === val
                                             );
                                             globalCheckout.setSelectedVariants({
                                               ...globalCheckout.selectedVariants,
@@ -892,22 +920,28 @@ export default function Shop({
                                             });
                                           }}
                                         >
-                                          <option value="" disabled>
-                                            Select {v.name}...
-                                          </option>
-                                          {optionsArray.map(
-                                            (opt: any, optIdx: number) => (
-                                              <option
-                                                key={optIdx}
-                                                value={opt.label}
-                                              >
-                                                {opt.label}{" "}
-                                                {opt.price &&
-                                                  `(+$${opt.price})`}
-                                              </option>
-                                            )
-                                          )}
-                                        </select>
+                                          <SelectTrigger className="w-full bg-gray-50 border-gray-200 text-slate-900 h-12 rounded-xl focus:ring-blue-600 focus:ring-offset-0 shadow-sm transition-all hover:bg-gray-100">
+                                            <SelectValue
+                                              placeholder={`Select ${v.name}...`}
+                                            />
+                                          </SelectTrigger>
+                                          <SelectContent className="z-[100000] border-gray-200 bg-white text-slate-900 rounded-xl shadow-xl">
+                                            {optionsArray.map(
+                                              (opt: any, optIdx: number) => (
+                                                <SelectItem
+                                                  key={optIdx}
+                                                  value={opt.label}
+                                                  // 🚀 FIX: Added text-slate-700 and font-medium so it is perfectly visible!
+                                                  className="text-slate-700 font-medium focus:bg-blue-50 focus:text-blue-700 cursor-pointer rounded-lg m-1 transition-colors"
+                                                >
+                                                  {opt.label}{" "}
+                                                  {opt.price &&
+                                                    `(+$${opt.price})`}
+                                                </SelectItem>
+                                              )
+                                            )}
+                                          </SelectContent>
+                                        </Select>
                                       </div>
                                     );
                                   }
@@ -919,17 +953,21 @@ export default function Shop({
                         {/* FAQs */}
                         {globalCheckout.selectedProduct?.faqs &&
                           globalCheckout.selectedProduct.faqs.length > 0 && (
-                            <div className="space-y-2">
-                              <h4 className="text-xs font-semibold uppercase tracking-wider text-neutral-500 mb-3">
+                            <div className="space-y-3">
+                              <h4 className="text-xs font-bold uppercase tracking-widest text-slate-500 flex items-center gap-2 mb-3">
+                                <HelpCircle
+                                  size={14}
+                                  className="text-slate-400"
+                                />{" "}
                                 Product Details
                               </h4>
-                              <div className="bg-[#2c2c2e] rounded-2xl overflow-hidden divide-y divide-white/5">
+                              <div className="bg-gray-50 rounded-2xl overflow-hidden border border-gray-100 divide-y divide-gray-200/60">
                                 {globalCheckout.selectedProduct.faqs.map(
                                   (faq: any, i: number) => (
                                     <div key={i}>
                                       <button
                                         type="button"
-                                        className="w-full px-5 py-4 flex items-center justify-between text-left text-sm font-medium text-white/90 hover:bg-white/5 transition-colors"
+                                        className="w-full px-5 py-4 flex items-center justify-between text-left text-sm font-semibold text-slate-700 hover:bg-gray-100 transition-colors"
                                         onClick={() =>
                                           globalCheckout.setExpandedModalFaq(
                                             globalCheckout.expandedModalFaq ===
@@ -943,7 +981,7 @@ export default function Shop({
                                         <ChevronDown
                                           size={16}
                                           className={cn(
-                                            "transition-transform text-neutral-400",
+                                            "transition-transform duration-300 text-slate-400",
                                             globalCheckout.expandedModalFaq ===
                                               i && "rotate-180"
                                           )}
@@ -951,7 +989,7 @@ export default function Shop({
                                       </button>
                                       {globalCheckout.expandedModalFaq ===
                                         i && (
-                                        <div className="px-5 pb-4 text-sm text-neutral-400 leading-relaxed animate-in slide-in-from-top-1 fade-in">
+                                        <div className="px-5 pb-4 text-sm text-slate-500 leading-relaxed animate-in slide-in-from-top-1 fade-in font-medium">
                                           {faq.answer}
                                         </div>
                                       )}
@@ -962,15 +1000,15 @@ export default function Shop({
                             </div>
                           )}
 
-                        <div className="pt-6 border-t border-white/5 space-y-6">
+                        <div className="pt-6 border-t border-gray-100 space-y-6">
                           <div className="flex items-center justify-between">
-                            <Label className="text-white font-medium">
+                            <Label className="text-slate-900 font-bold text-sm">
                               Quantity
                             </Label>
-                            <div className="flex items-center gap-4 bg-[#2c2c2e] rounded-full p-1">
+                            <div className="flex items-center gap-4 bg-gray-50 border border-gray-200 rounded-full p-1 shadow-sm">
                               <button
                                 type="button"
-                                className="w-8 h-8 rounded-full flex items-center justify-center text-white disabled:opacity-30"
+                                className="w-10 h-10 rounded-full flex items-center justify-center text-slate-600 hover:bg-white hover:text-slate-900 transition-colors disabled:opacity-30"
                                 disabled={globalCheckout.quantity <= 1}
                                 onClick={() =>
                                   globalCheckout.setQuantity(
@@ -980,12 +1018,12 @@ export default function Shop({
                               >
                                 <Minus size={16} />
                               </button>
-                              <span className="font-semibold w-4 text-center">
+                              <span className="font-bold w-4 text-center text-slate-900">
                                 {globalCheckout.quantity}
                               </span>
                               <button
                                 type="button"
-                                className="w-8 h-8 rounded-full flex items-center justify-center text-white"
+                                className="w-10 h-10 rounded-full flex items-center justify-center text-slate-600 hover:bg-white hover:text-slate-900 transition-colors"
                                 onClick={() =>
                                   globalCheckout.setQuantity(
                                     (q: number) => q + 1
@@ -1003,24 +1041,25 @@ export default function Shop({
                                 globalCheckout.selectedProduct
                               )
                             }
-                            className="w-full h-14 text-base font-semibold rounded-full bg-blue-500 text-white hover:bg-blue-600 transition-transform hover:scale-[1.02]"
+                            className="w-full h-14 text-lg font-bold rounded-full bg-blue-600 text-white hover:bg-blue-700 shadow-[0_4px_14px_rgba(37,99,235,0.3)] transition-all hover:scale-[1.02]"
                           >
                             {globalCheckout.selectedProduct?.buttonText ||
                               "Checkout"}
-                            <ArrowRight className="ml-2 w-4 h-4" />
+                            <ArrowRight className="ml-2 w-5 h-5" />
                           </Button>
                         </div>
                       </div>
                     )}
 
+                    {/* FORM STEP */}
                     {globalCheckout.step === "form" && (
-                      <div className="animate-in fade-in slide-in-from-right-4 duration-300">
-                        <div className="flex items-center gap-2 -ml-2 mb-4 border-b border-white/10 pb-4">
+                      <div className="animate-in fade-in slide-in-from-right-4 duration-500 ease-out flex-grow flex flex-col">
+                        <div className="flex items-center gap-2 -ml-2 mb-4 border-b border-gray-100 pb-4">
                           <Button
                             variant="ghost"
                             size="sm"
                             onClick={() => globalCheckout.setStep("details")}
-                            className="text-neutral-400 hover:text-white rounded-full"
+                            className="text-slate-500 hover:text-slate-900 hover:bg-gray-100 rounded-full font-semibold"
                           >
                             <ChevronLeft className="w-4 h-4 mr-1" /> Back to
                             details
@@ -1029,10 +1068,10 @@ export default function Shop({
 
                         <form
                           onSubmit={globalCheckout.handleFormSubmit}
-                          className="space-y-6"
+                          className="space-y-6 flex-grow flex flex-col"
                         >
                           <div className="space-y-4">
-                            <h4 className="text-xs font-semibold uppercase tracking-wider text-neutral-500">
+                            <h4 className="text-xs font-bold uppercase tracking-widest text-slate-500">
                               Your Details
                             </h4>
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -1054,10 +1093,10 @@ export default function Shop({
                                             : "col-span-1 sm:col-span-2"
                                         )}
                                       >
-                                        <Label className="text-neutral-400 flex items-center gap-2 text-xs ml-1">
+                                        <Label className="text-slate-500 flex items-center gap-2 text-xs font-bold ml-1">
                                           {field.label}{" "}
                                           {field.required && (
-                                            <span className="text-red-400">
+                                            <span className="text-red-500">
                                               *
                                             </span>
                                           )}
@@ -1066,7 +1105,7 @@ export default function Shop({
                                           <Textarea
                                             required={field.required}
                                             placeholder={field.placeholder}
-                                            className="bg-[#2c2c2e] border-none text-white min-h-[100px] resize-none rounded-xl p-4 focus-visible:ring-2 focus-visible:ring-blue-500"
+                                            className="bg-gray-50 border border-gray-200 text-slate-900 min-h-[100px] resize-none rounded-xl p-4 focus:bg-white focus:ring-2 focus:ring-blue-600 focus:border-transparent transition-all shadow-sm"
                                             value={
                                               globalCheckout.formValues[
                                                 field.id
@@ -1082,7 +1121,7 @@ export default function Shop({
                                         ) : field.type === "select" ? (
                                           <select
                                             required={field.required}
-                                            className="w-full bg-[#2c2c2e] border-none text-white h-12 rounded-xl px-4 text-sm appearance-none outline-none focus:ring-2 focus:ring-blue-500"
+                                            className="w-full bg-gray-50 border border-gray-200 text-slate-900 h-12 rounded-xl px-4 text-sm appearance-none outline-none focus:bg-white focus:ring-2 focus:ring-blue-600 transition-all shadow-sm"
                                             value={
                                               globalCheckout.formValues[
                                                 field.id
@@ -1095,17 +1134,59 @@ export default function Shop({
                                               })
                                             }
                                           >
-                                            <option value="" disabled>
+                                            <option
+                                              value=""
+                                              disabled
+                                              className="text-slate-500"
+                                            >
                                               Select...
                                             </option>
                                             {fieldOptions.map(
                                               (opt: string, i: number) => (
-                                                <option key={i} value={opt}>
+                                                <option
+                                                  key={i}
+                                                  value={opt}
+                                                  className="text-slate-900"
+                                                >
                                                   {opt}
                                                 </option>
                                               )
                                             )}
                                           </select>
+                                        ) : field.type === "radio" ? (
+                                          <div className="flex flex-col gap-2 pt-1">
+                                            {fieldOptions.map(
+                                              (opt: string, i: number) => (
+                                                <label
+                                                  key={i}
+                                                  className="flex items-center gap-3 cursor-pointer group p-3 rounded-xl border border-gray-200 bg-gray-50 hover:bg-gray-100 transition-colors has-[:checked]:bg-blue-50 has-[:checked]:border-blue-200 has-[:checked]:ring-1 has-[:checked]:ring-blue-600"
+                                                >
+                                                  <div className="relative flex items-center justify-center w-5 h-5 rounded-full border border-gray-300 group-hover:border-blue-600 bg-white">
+                                                    <input
+                                                      type="radio"
+                                                      name={field.id}
+                                                      value={opt}
+                                                      required={field.required}
+                                                      className="peer sr-only"
+                                                      onChange={(e) =>
+                                                        globalCheckout.setFormValues(
+                                                          {
+                                                            ...globalCheckout.formValues,
+                                                            [field.id]:
+                                                              e.target.value,
+                                                          }
+                                                        )
+                                                      }
+                                                    />
+                                                    <div className="w-2.5 h-2.5 rounded-full bg-blue-600 opacity-0 peer-checked:opacity-100 transition-all scale-50 peer-checked:scale-100" />
+                                                  </div>
+                                                  <span className="text-slate-900 text-sm font-semibold">
+                                                    {opt}
+                                                  </span>
+                                                </label>
+                                              )
+                                            )}
+                                          </div>
                                         ) : (
                                           <Input
                                             required={field.required}
@@ -1117,7 +1198,7 @@ export default function Shop({
                                                 : "text"
                                             }
                                             placeholder={field.placeholder}
-                                            className="bg-[#2c2c2e] border-none text-white h-12 rounded-xl focus-visible:ring-2 focus-visible:ring-blue-500 px-4"
+                                            className="bg-gray-50 border border-gray-200 text-slate-900 h-12 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-600 focus:border-transparent px-4 transition-all shadow-sm"
                                             value={
                                               globalCheckout.formValues[
                                                 field.id
@@ -1138,7 +1219,7 @@ export default function Shop({
                               ) : (
                                 <div className="space-y-4 col-span-2">
                                   <div className="space-y-1.5">
-                                    <Label className="text-neutral-400 ml-1 text-xs">
+                                    <Label className="text-slate-500 ml-1 text-xs font-bold uppercase tracking-widest">
                                       Full Name
                                     </Label>
                                     <Input
@@ -1152,12 +1233,12 @@ export default function Shop({
                                           name: e.target.value,
                                         })
                                       }
-                                      className="bg-[#2c2c2e] border-none h-12 rounded-xl text-white px-4"
+                                      className="bg-gray-50 border border-gray-200 text-slate-900 h-12 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-600 px-4 shadow-sm transition-all"
                                       placeholder="Your Name"
                                     />
                                   </div>
                                   <div className="space-y-1.5">
-                                    <Label className="text-neutral-400 ml-1 text-xs">
+                                    <Label className="text-slate-500 ml-1 text-xs font-bold uppercase tracking-widest">
                                       Phone
                                     </Label>
                                     <Input
@@ -1171,7 +1252,7 @@ export default function Shop({
                                           phone: e.target.value,
                                         })
                                       }
-                                      className="bg-[#2c2c2e] border-none h-12 rounded-xl text-white px-4"
+                                      className="bg-gray-50 border border-gray-200 text-slate-900 h-12 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-600 px-4 shadow-sm transition-all"
                                       placeholder="Phone Number"
                                     />
                                   </div>
@@ -1180,12 +1261,14 @@ export default function Shop({
                             </div>
                           </div>
 
-                          <div className="pt-6 border-t border-white/5 space-y-6">
-                            <div className="flex items-end justify-between bg-[#2c2c2e]/50 p-5 rounded-2xl">
-                              <p className="text-sm text-neutral-400 font-medium">
-                                Total Due
-                              </p>
-                              <div className="text-2xl font-bold text-white">
+                          <div className="mt-auto pt-6 border-t border-gray-100 space-y-6">
+                            <div className="flex items-end justify-between bg-blue-50 p-5 rounded-2xl border border-blue-100">
+                              <div className="space-y-1">
+                                <p className="text-xs text-blue-600 font-bold uppercase tracking-widest">
+                                  Total Due
+                                </p>
+                              </div>
+                              <div className="text-3xl font-black text-blue-900 tracking-tight">
                                 $
                                 {globalCheckout.calculateTotalPrice(
                                   globalCheckout.selectedProduct?.price || "0",
@@ -1198,7 +1281,7 @@ export default function Shop({
                             <Button
                               type="submit"
                               disabled={globalCheckout.isSubmitting}
-                              className="w-full h-14 text-base font-semibold rounded-full bg-blue-500 text-white hover:bg-blue-600 transition-transform hover:scale-[1.02]"
+                              className="w-full h-14 text-lg font-bold rounded-full bg-blue-600 text-white hover:bg-blue-700 shadow-[0_4px_14px_rgba(37,99,235,0.3)] transition-transform hover:scale-[1.02]"
                             >
                               {globalCheckout.isSubmitting ? (
                                 <Loader2 className="animate-spin mr-2 w-5 h-5" />
@@ -1220,33 +1303,35 @@ export default function Shop({
 
       {/* 🚀 THE ACTUAL SHOP SECTION */}
       <section
-        className="relative py-24 md:py-32 bg-black overflow-hidden"
+        className="relative py-24 md:py-32 bg-white overflow-hidden"
         id="shop"
       >
         <div className="container max-w-6xl mx-auto relative z-10 px-6">
-          <div className="text-center max-w-3xl mx-auto mb-16 md:mb-20 space-y-4">
-            <UCP.Text
-              as="h2"
-              field="title"
-              value={data.title || "Shop"}
-              sectionId={id}
-              isPreview={isPreview}
-              className="text-4xl md:text-5xl font-semibold text-white tracking-tight block"
-            />
-            <UCP.Text
-              as="p"
-              field="subheadline"
-              value={data.subheadline || "Browse our latest collection."}
-              sectionId={id}
-              isPreview={isPreview}
-              className="text-lg md:text-xl text-neutral-400 block max-w-xl mx-auto leading-relaxed"
-            />
-          </div>
+          {variant !== "spotlight" && (
+            <div className="text-center max-w-3xl mx-auto mb-16 md:mb-20 space-y-4">
+              <UCP.Text
+                as="h2"
+                field="title"
+                value={data.title || "Shop"}
+                sectionId={id}
+                isPreview={isPreview}
+                className="text-4xl md:text-5xl font-extrabold text-slate-900 tracking-tight block"
+              />
+              <UCP.Text
+                as="p"
+                field="subheadline"
+                value={data.subheadline || "Browse our latest collection."}
+                sectionId={id}
+                isPreview={isPreview}
+                className="text-lg md:text-xl text-slate-500 block max-w-xl mx-auto font-medium"
+              />
+            </div>
+          )}
 
           {!hasProducts && isPreview && (
-            <div className="w-full py-24 border border-dashed border-white/20 rounded-3xl flex flex-col items-center justify-center text-white/40 bg-[#1c1c1e]">
+            <div className="w-full py-24 border border-dashed border-gray-300 rounded-3xl flex flex-col items-center justify-center text-slate-400 bg-gray-50">
               <Store className="w-12 h-12 mb-4 opacity-50" />
-              <p className="font-medium tracking-wide">
+              <p className="font-semibold tracking-wide">
                 No products added yet.
               </p>
             </div>
@@ -1264,7 +1349,17 @@ export default function Shop({
 
               {/* Spotlight - iOS Feature Card Style */}
               {variant === "spotlight" && products[0] && (
-                <div className="max-w-4xl mx-auto">
+                <div className="max-w-5xl mx-auto">
+                  <div className="mb-10 text-center md:text-left">
+                    <UCP.Text
+                      as="h2"
+                      field="title"
+                      value={data.title || "Featured Product"}
+                      sectionId={id}
+                      isPreview={isPreview}
+                      className="text-3xl md:text-4xl lg:text-5xl font-extrabold text-slate-900 block tracking-tight"
+                    />
+                  </div>
                   <SpotlightCheckout
                     product={products[0]}
                     actorId={actorId}
@@ -1277,21 +1372,21 @@ export default function Shop({
               {variant === "carousel" && (
                 <div className="relative group/carousel -mx-6 px-6 md:mx-0 md:px-0">
                   <button
-                    className="absolute left-4 top-[40%] group-hover/carousel:top-1/2 -translate-y-1/2 z-20 flex items-center justify-center bg-black/50 hover:bg-black/80 text-white rounded-full h-14 w-14 opacity-0 group-hover/carousel:opacity-100 transition-all duration-300 border border-white/10 hidden md:flex backdrop-blur-md"
+                    className="absolute left-4 top-[40%] group-hover/carousel:top-1/2 -translate-y-1/2 z-20 flex items-center justify-center bg-white/90 hover:bg-white text-slate-900 rounded-full h-14 w-14 opacity-0 group-hover/carousel:opacity-100 transition-all duration-300 border border-gray-200 hidden md:flex shadow-lg backdrop-blur-md"
                     onClick={() => scrollCarousel("left")}
                   >
-                    <ChevronLeft size={20} />
+                    <ChevronLeft size={24} />
                   </button>
                   <button
-                    className="absolute right-4 top-[40%] group-hover/carousel:top-1/2 -translate-y-1/2 z-20 flex items-center justify-center bg-black/50 hover:bg-black/80 text-white rounded-full h-14 w-14 opacity-0 group-hover/carousel:opacity-100 transition-all duration-300 border border-white/10 hidden md:flex backdrop-blur-md"
+                    className="absolute right-4 top-[40%] group-hover/carousel:top-1/2 -translate-y-1/2 z-20 flex items-center justify-center bg-white/90 hover:bg-white text-slate-900 rounded-full h-14 w-14 opacity-0 group-hover/carousel:opacity-100 transition-all duration-300 border border-gray-200 hidden md:flex shadow-lg backdrop-blur-md"
                     onClick={() => scrollCarousel("right")}
                   >
-                    <ChevronRight size={20} />
+                    <ChevronRight size={24} />
                   </button>
 
                   <div
                     ref={carouselRef}
-                    className="flex overflow-x-auto pb-8 gap-6 snap-x snap-mandatory hide-scrollbar"
+                    className="flex overflow-x-auto pb-12 gap-6 snap-x snap-mandatory [&::-webkit-scrollbar]:hidden [-ms-overflow-style:'none'] [scrollbar-width:'none']"
                   >
                     {products.map((prod: any, i: number) => (
                       <div
