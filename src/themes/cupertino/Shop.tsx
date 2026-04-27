@@ -127,10 +127,59 @@ const SpotlightCheckout = ({
         <h3 className="text-3xl font-bold text-slate-900 mb-2 tracking-tight">
           {checkout.formTemplate?.success_title || "Order Received!"}
         </h3>
-        <p className="text-slate-500 max-w-md mx-auto mb-8 leading-relaxed">
+        <p className="text-slate-500 max-w-md mx-auto mb-6 leading-relaxed">
           {checkout.formTemplate?.success_message ||
             `Thank you. We have received your order for ${product.title}.`}
         </p>
+
+        {/* 🚀 BEAUTIFUL INVOICE SUMMARY */}
+        <div className="w-full max-w-sm mx-auto bg-gray-50/50 p-5 rounded-2xl border border-gray-100 text-left mb-8 shadow-inner">
+          <h4 className="text-xs font-bold uppercase tracking-widest text-slate-400 border-b border-gray-200 pb-2 mb-3">
+            Order Summary
+          </h4>
+          <div className="flex justify-between items-start gap-4 text-sm font-bold text-slate-900">
+            <div className="leading-tight">
+              {product.title}{" "}
+              <span className="text-slate-400 font-medium ml-1">
+                x{checkout.quantity}
+              </span>
+            </div>
+            <div className="font-mono text-blue-600">
+              $
+              {checkout.calculateTotalPrice(
+                product.price,
+                checkout.selectedVariants,
+                checkout.quantity
+              )}
+            </div>
+          </div>
+
+          {Object.keys(checkout.selectedVariants).length > 0 && (
+            <div className="mt-2 space-y-1">
+              {Object.entries(checkout.selectedVariants).map(
+                ([key, val]: any, i) => (
+                  <div key={i} className="text-xs font-medium text-slate-500">
+                    <span className="text-slate-400 mr-1">{key}:</span>{" "}
+                    {val.label || val}
+                  </div>
+                )
+              )}
+            </div>
+          )}
+
+          <div className="pt-3 mt-3 border-t border-gray-200 flex justify-between items-center text-base font-black text-slate-900">
+            <span>Total</span>
+            <span className="font-mono text-blue-600">
+              $
+              {checkout.calculateTotalPrice(
+                product.price,
+                checkout.selectedVariants,
+                checkout.quantity
+              )}
+            </span>
+          </div>
+        </div>
+
         <Button
           onClick={() => setStep("details")}
           className="bg-slate-900 text-white hover:bg-slate-800 h-12 px-8 rounded-full font-semibold shadow-md transition-all hover:scale-105"
@@ -408,8 +457,9 @@ const SpotlightCheckout = ({
                 >
                   {checkout.formTemplate?.fields ? (
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      {checkout.formTemplate.fields.map(
-                        (field: any, idx: number) => {
+                      {checkout.formTemplate.fields
+                        .filter((f: any) => f.enabled !== false) // 🚀 FIX: Hides disabled fields!
+                        .map((field: any, idx: number) => {
                           const isHalf = field.width === "half";
                           const fieldOptions = checkout.parseOptions(
                             field.options
@@ -520,8 +570,7 @@ const SpotlightCheckout = ({
                               )}
                             </div>
                           );
-                        }
-                      )}
+                        })}
                     </div>
                   ) : (
                     <div className="space-y-4">
@@ -846,12 +895,67 @@ export default function Shop({
                       {globalCheckout.formTemplate?.success_title ||
                         "Order Received"}
                     </h3>
-                    <p className="text-slate-500 max-w-sm mx-auto text-base font-medium">
+                    <p className="text-slate-500 max-w-sm mx-auto text-base font-medium mb-4">
                       {globalCheckout.formTemplate?.success_message ||
                         `Thank you for ordering ${globalCheckout.selectedProduct?.title}. We'll process it shortly.`}
                     </p>
+
+                    {/* 🚀 BEAUTIFUL INVOICE SUMMARY */}
+                    <div className="w-full max-w-sm mx-auto bg-gray-50/50 p-5 rounded-2xl border border-gray-100 text-left mb-6 shadow-inner">
+                      <h4 className="text-xs font-bold uppercase tracking-widest text-slate-400 border-b border-gray-200 pb-2 mb-3">
+                        Order Summary
+                      </h4>
+                      <div className="flex justify-between items-start gap-4 text-sm font-bold text-slate-900">
+                        <div className="leading-tight">
+                          {globalCheckout.selectedProduct?.title}{" "}
+                          <span className="text-slate-400 font-medium ml-1">
+                            x{globalCheckout.quantity}
+                          </span>
+                        </div>
+                        <div className="font-mono text-blue-600">
+                          $
+                          {globalCheckout.calculateTotalPrice(
+                            globalCheckout.selectedProduct?.price || "0",
+                            globalCheckout.selectedVariants,
+                            globalCheckout.quantity
+                          )}
+                        </div>
+                      </div>
+
+                      {Object.keys(globalCheckout.selectedVariants).length >
+                        0 && (
+                        <div className="mt-2 space-y-1">
+                          {Object.entries(globalCheckout.selectedVariants).map(
+                            ([key, val]: any, i) => (
+                              <div
+                                key={i}
+                                className="text-xs font-medium text-slate-500"
+                              >
+                                <span className="text-slate-400 mr-1">
+                                  {key}:
+                                </span>{" "}
+                                {val.label || val}
+                              </div>
+                            )
+                          )}
+                        </div>
+                      )}
+
+                      <div className="pt-3 mt-3 border-t border-gray-200 flex justify-between items-center text-base font-black text-slate-900">
+                        <span>Total</span>
+                        <span className="font-mono text-blue-600">
+                          $
+                          {globalCheckout.calculateTotalPrice(
+                            globalCheckout.selectedProduct?.price || "0",
+                            globalCheckout.selectedVariants,
+                            globalCheckout.quantity
+                          )}
+                        </span>
+                      </div>
+                    </div>
+
                     <Button
-                      className="mt-6 rounded-full px-8 bg-blue-600 text-white hover:bg-blue-700 font-bold h-12 shadow-md hover:scale-105 transition-all"
+                      className="mt-4 rounded-full px-8 bg-blue-600 text-white hover:bg-blue-700 font-bold h-12 shadow-md hover:scale-105 transition-all"
                       onClick={() => globalCheckout.setIsModalOpen(false)}
                     >
                       Done
@@ -1074,10 +1178,11 @@ export default function Shop({
                             <h4 className="text-xs font-bold uppercase tracking-widest text-slate-500">
                               Your Details
                             </h4>
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5">
                               {globalCheckout.formTemplate?.fields ? (
-                                globalCheckout.formTemplate.fields.map(
-                                  (field: any, idx: number) => {
+                                globalCheckout.formTemplate.fields
+                                  .filter((f: any) => f.enabled !== false) // 🚀 FIX: Hides disabled fields!
+                                  .map((field: any, idx: number) => {
                                     const isHalf = field.width === "half";
                                     const fieldOptions =
                                       globalCheckout.parseOptions(
@@ -1214,8 +1319,7 @@ export default function Shop({
                                         )}
                                       </div>
                                     );
-                                  }
-                                )
+                                  })
                               ) : (
                                 <div className="space-y-4 col-span-2">
                                   <div className="space-y-1.5">

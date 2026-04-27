@@ -37,6 +37,9 @@ import {
   Copy,
   CheckCircle2,
   Image as ImageIcon,
+  Lock,
+  ShoppingCart,
+  MessageSquare,
 } from "lucide-react";
 import { supabase } from "@/supabaseClient";
 import {
@@ -65,8 +68,10 @@ interface FormManagerProps {
   onFormsChange?: () => void;
 }
 
-const defaultFormTemplate = {
-  name: "New Form Template",
+// --- TEMPLATES ---
+const defaultContactTemplate = {
+  name: "New Contact Form",
+  type: "contact",
   title: "Let's get started",
   subheadline: "Fill out the details below.",
   button_text: "Submit",
@@ -87,6 +92,63 @@ const defaultFormTemplate = {
       type: "email",
       required: true,
       width: "full",
+    },
+    {
+      id: "message",
+      label: "Message",
+      type: "textarea",
+      required: true,
+      width: "full",
+    },
+  ],
+};
+
+const defaultCheckoutTemplate = {
+  name: "New Checkout Form",
+  type: "checkout",
+  title: "Complete Your Order",
+  subheadline: "Please provide your details to finalize your purchase.",
+  button_text: "Complete Order",
+  success_title: "Order Received!",
+  success_message: "Thank you for your purchase. We will process it shortly.",
+  image: "",
+  fields: [
+    // 🚀 Lcoked Core Fields with enabled: true by default
+    {
+      id: "checkout_name",
+      label: "Full Name",
+      type: "text",
+      required: true,
+      width: "full",
+      locked: true,
+      enabled: true,
+    },
+    {
+      id: "checkout_email",
+      label: "Email Address",
+      type: "email",
+      required: true,
+      width: "full",
+      locked: true,
+      enabled: true,
+    },
+    {
+      id: "checkout_phone",
+      label: "Phone Number",
+      type: "tel",
+      required: false,
+      width: "full",
+      locked: true,
+      enabled: true,
+    },
+    {
+      id: "checkout_address",
+      label: "Shipping Address",
+      type: "textarea",
+      required: false,
+      width: "full",
+      locked: true,
+      enabled: true,
     },
   ],
 };
@@ -109,6 +171,8 @@ const SortableFormField = ({ field, idx, updateField, removeField }: any) => {
   };
 
   const needsOptions = field.type === "select" || field.type === "radio";
+  const isLocked = field.locked;
+  const isEnabled = field.enabled !== false; // Default to true if undefined
 
   return (
     <div
@@ -116,7 +180,9 @@ const SortableFormField = ({ field, idx, updateField, removeField }: any) => {
       style={style}
       className={cn(
         "flex gap-3 p-4 border rounded-xl bg-background shadow-sm transition-all relative group",
-        isDragging && "ring-2 ring-primary shadow-2xl opacity-90 scale-[0.98]"
+        isDragging && "ring-2 ring-primary shadow-2xl opacity-90 scale-[0.98]",
+        isLocked && "border-blue-100 bg-blue-50/10",
+        !isEnabled && "opacity-50 grayscale-[30%] bg-muted/50" // Dim it if disabled!
       )}
     >
       <div
@@ -128,17 +194,32 @@ const SortableFormField = ({ field, idx, updateField, removeField }: any) => {
       </div>
 
       <div className="flex-1 space-y-4">
-        <Button
-          size="icon"
-          variant="ghost"
-          className="absolute top-2 right-2 text-muted-foreground hover:text-destructive h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity"
-          onPointerDown={(e) => e.stopPropagation()}
-          onClick={() => removeField(idx)}
-        >
-          <Trash2 className="w-4 h-4" />
-        </Button>
+        {/* Trash or Lock Icon */}
+        {isLocked ? (
+          <div
+            className="absolute top-3 right-3 text-blue-400"
+            title="Core checkout field (Cannot be deleted)"
+          >
+            <Lock className="w-4 h-4" />
+          </div>
+        ) : (
+          <Button
+            size="icon"
+            variant="ghost"
+            className="absolute top-2 right-2 text-muted-foreground hover:text-destructive h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity"
+            onPointerDown={(e) => e.stopPropagation()}
+            onClick={() => removeField(idx)}
+          >
+            <Trash2 className="w-4 h-4" />
+          </Button>
+        )}
 
-        <div className="grid grid-cols-12 gap-3 pr-8">
+        <div
+          className={cn(
+            "grid grid-cols-12 gap-3 pr-8",
+            !isEnabled && "pointer-events-none"
+          )}
+        >
           <div className="col-span-12 md:col-span-6 space-y-1.5">
             <Label className="text-[10px] uppercase tracking-widest text-muted-foreground">
               Field Label
@@ -155,10 +236,13 @@ const SortableFormField = ({ field, idx, updateField, removeField }: any) => {
               Input Type
             </Label>
             <Select
+              disabled={isLocked}
               value={field.type}
               onValueChange={(val) => updateField(idx, "type", val)}
             >
-              <SelectTrigger className="h-9 bg-background">
+              <SelectTrigger
+                className={cn("h-9 bg-background", isLocked && "opacity-60")}
+              >
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -192,7 +276,12 @@ const SortableFormField = ({ field, idx, updateField, removeField }: any) => {
         </div>
 
         {needsOptions && (
-          <div className="space-y-1.5 pt-1 animate-in fade-in slide-in-from-top-1 p-3 bg-primary/5 border border-primary/20 rounded-lg">
+          <div
+            className={cn(
+              "space-y-1.5 pt-1 animate-in fade-in slide-in-from-top-1 p-3 bg-primary/5 border border-primary/20 rounded-lg",
+              !isEnabled && "pointer-events-none"
+            )}
+          >
             <Label className="text-[10px] uppercase tracking-widest text-primary font-bold">
               Choices (Comma Separated)
             </Label>
@@ -206,7 +295,7 @@ const SortableFormField = ({ field, idx, updateField, removeField }: any) => {
           </div>
         )}
 
-        <div className="space-y-1.5">
+        <div className={cn("space-y-1.5", !isEnabled && "pointer-events-none")}>
           <Label className="text-[10px] uppercase tracking-widest text-muted-foreground">
             Placeholder Text
           </Label>
@@ -224,19 +313,48 @@ const SortableFormField = ({ field, idx, updateField, removeField }: any) => {
           />
         </div>
 
-        <div className="flex items-center gap-2 pt-2 border-t border-dashed">
-          <Switch
-            id={`req-${field.id}`}
-            checked={field.required}
-            onCheckedChange={(c) => updateField(idx, "required", c)}
-            onPointerDown={(e) => e.stopPropagation()}
-          />
-          <Label
-            htmlFor={`req-${field.id}`}
-            className="text-[11px] cursor-pointer font-medium"
-          >
-            Required Field
-          </Label>
+        {/* 🚀 Enable & Required Toggles */}
+        <div className="flex items-center justify-between pt-2 border-t border-dashed">
+          <div className="flex items-center gap-6">
+            <div className="flex items-center gap-2">
+              <Switch
+                id={`req-${field.id}`}
+                checked={field.required}
+                onCheckedChange={(c) => updateField(idx, "required", c)}
+                onPointerDown={(e) => e.stopPropagation()}
+                disabled={!isEnabled}
+              />
+              <Label
+                htmlFor={`req-${field.id}`}
+                className="text-[11px] cursor-pointer font-medium"
+              >
+                Required
+              </Label>
+            </div>
+
+            {isLocked && (
+              <div className="flex items-center gap-2 border-l pl-4">
+                <Switch
+                  id={`en-${field.id}`}
+                  checked={isEnabled}
+                  onCheckedChange={(c) => updateField(idx, "enabled", c)}
+                  onPointerDown={(e) => e.stopPropagation()}
+                />
+                <Label
+                  htmlFor={`en-${field.id}`}
+                  className="text-[11px] cursor-pointer font-bold text-blue-600"
+                >
+                  Enabled
+                </Label>
+              </div>
+            )}
+          </div>
+
+          {isLocked && (
+            <span className="text-[10px] text-blue-500 italic">
+              Core checkout field
+            </span>
+          )}
         </div>
       </div>
     </div>
@@ -255,11 +373,12 @@ export default function FormManager({
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [activeForm, setActiveForm] = useState<any | null>(null);
+
+  // Modals & Tabs
   const [isMediaPickerOpen, setIsMediaPickerOpen] = useState(false);
-  // Tabs for Builder
+  const [isTypeSelectorOpen, setIsTypeSelectorOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<"setup" | "fields">("fields");
 
-  // DND Sensors
   const sensors = useSensors(
     useSensor(PointerSensor),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
@@ -282,9 +401,12 @@ export default function FormManager({
     if (isOpen) fetchForms();
   }, [isOpen, portfolioId]);
 
-  const handleCreateNew = () => {
-    setActiveForm({ ...defaultFormTemplate });
+  const handleCreateNew = (type: "contact" | "checkout") => {
+    const template =
+      type === "checkout" ? defaultCheckoutTemplate : defaultContactTemplate;
+    setActiveForm({ ...template });
     setActiveTab("fields");
+    setIsTypeSelectorOpen(false);
   };
 
   const handleEdit = (form: any) => {
@@ -315,7 +437,7 @@ export default function FormManager({
     e.stopPropagation();
     if (
       !confirm(
-        "Are you sure you want to delete this form template? Sections using it will fallback to a default configuration."
+        "Are you sure you want to delete this form? Sections using it will fallback to a default configuration."
       )
     )
       return;
@@ -328,10 +450,8 @@ export default function FormManager({
     if (!activeForm || !portfolioId) return;
     setSaving(true);
 
-    // 🚀 FIXED: We ONLY send portfolio_id. We also delete actor_id just in case
-    // it accidentally sneaked into the activeForm state from older data.
     const payload = { ...activeForm, portfolio_id: portfolioId };
-    delete payload.actor_id; // Prevents the 400 Bad Request!
+    delete payload.actor_id;
 
     let res;
     if (payload.id) {
@@ -366,6 +486,8 @@ export default function FormManager({
       type: "text",
       required: false,
       width: "full",
+      locked: false,
+      enabled: true,
     };
     updateActiveForm("fields", [...(activeForm.fields || []), newField]);
   };
@@ -373,8 +495,11 @@ export default function FormManager({
   const updateField = (idx: number, key: string, value: any) => {
     const newFields = [...activeForm.fields];
     newFields[idx][key] = value;
+
+    // Only auto-update the ID if it's NOT a locked field
     if (
       key === "label" &&
+      !newFields[idx].locked &&
       (!newFields[idx].id || newFields[idx].id.startsWith("field_"))
     ) {
       newFields[idx].id = value.toLowerCase().replace(/[^a-z0-9]/g, "_");
@@ -389,329 +514,401 @@ export default function FormManager({
   };
 
   return (
-    <Sheet open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <SheetContent className="w-full sm:w-[600px] sm:max-w-[100vw] overflow-y-auto p-0 flex flex-col border-l border-border/50">
-        {!activeForm ? (
-          <>
-            <div className="p-6 border-b bg-muted/10">
-              <SheetHeader>
-                <SheetTitle className="text-2xl font-bold flex items-center gap-2">
-                  <FileText className="text-primary" /> Form Templates
-                </SheetTitle>
-                <p className="text-sm text-muted-foreground">
-                  Create and manage forms for leads, pricing orders, and shop
-                  checkouts.
-                </p>
-              </SheetHeader>
-            </div>
-            <div className="p-6 flex-grow space-y-4">
-              <Button
-                className="w-full h-12 shadow-sm font-bold text-sm"
-                onClick={handleCreateNew}
-              >
-                <Plus className="mr-2 w-4 h-4" /> Create New Form
-              </Button>
-
-              {loading ? (
-                <div className="py-12 flex justify-center">
-                  <Loader2 className="animate-spin text-primary" />
-                </div>
-              ) : forms.length === 0 ? (
-                <div className="text-center py-12 text-muted-foreground">
-                  <FileText className="w-12 h-12 mx-auto opacity-20 mb-3" />
-                  <p>No forms created yet.</p>
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  {forms.map((form) => (
-                    <div
-                      key={form.id}
-                      className="flex items-center justify-between p-4 border rounded-xl hover:border-primary/50 bg-background shadow-sm transition-colors cursor-pointer group"
-                      onClick={() => handleEdit(form)}
-                    >
-                      <div className="space-y-1">
-                        <h4 className="font-bold text-sm">{form.name}</h4>
-                        <p className="text-xs text-muted-foreground flex items-center gap-2">
-                          <LayoutList size={12} /> {form.fields?.length || 0}{" "}
-                          fields
-                        </p>
-                      </div>
-                      <div className="flex gap-2">
-                        <Button
-                          size="icon"
-                          variant="ghost"
-                          className="h-8 w-8 text-muted-foreground hover:text-primary opacity-0 group-hover:opacity-100 transition-opacity"
-                          onClick={(e) => handleDuplicate(form, e)}
-                          title="Duplicate"
-                        >
-                          <Copy className="w-4 h-4" />
-                        </Button>
-                        <Button
-                          size="icon"
-                          variant="ghost"
-                          className="h-8 w-8 text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity"
-                          onClick={(e) => handleDelete(form.id, e)}
-                          title="Delete"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </>
-        ) : (
-          <div className="flex flex-col h-full">
-            <div className="p-4 border-b bg-muted/10 sticky top-0 z-10 flex items-center justify-between backdrop-blur-md">
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => setActiveForm(null)}
-                  className="h-8 w-8"
-                >
-                  <ChevronLeft className="w-4 h-4" />
-                </Button>
-                <div className="space-y-0.5">
-                  <div className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                    Form Builder
-                  </div>
-                  <Input
-                    value={activeForm.name}
-                    onChange={(e) => updateActiveForm("name", e.target.value)}
-                    className="h-6 w-48 text-sm font-bold px-1 bg-transparent border-transparent hover:bg-muted/50 focus:bg-background focus:border-border"
-                  />
-                </div>
+    <>
+      <Sheet open={isOpen} onOpenChange={(open) => !open && onClose()}>
+        <SheetContent className="w-full sm:w-[600px] sm:max-w-[100vw] overflow-y-auto p-0 flex flex-col border-l border-border/50">
+          {!activeForm ? (
+            <>
+              <div className="p-6 border-b bg-muted/10">
+                <SheetHeader>
+                  <SheetTitle className="text-2xl font-bold flex items-center gap-2">
+                    <FileText className="text-primary" /> Form Templates
+                  </SheetTitle>
+                  <p className="text-sm text-muted-foreground">
+                    Create and manage forms for leads, pricing orders, and shop
+                    checkouts.
+                  </p>
+                </SheetHeader>
               </div>
-              <Button
-                size="sm"
-                onClick={handleSave}
-                disabled={saving}
-                className="shadow-sm font-bold"
-              >
-                {saving ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
+              <div className="p-6 flex-grow space-y-4">
+                <Button
+                  className="w-full h-12 shadow-sm font-bold text-sm"
+                  onClick={() => setIsTypeSelectorOpen(true)}
+                >
+                  <Plus className="mr-2 w-4 h-4" /> Create New Form
+                </Button>
+
+                {loading ? (
+                  <div className="py-12 flex justify-center">
+                    <Loader2 className="animate-spin text-primary" />
+                  </div>
+                ) : forms.length === 0 ? (
+                  <div className="text-center py-12 text-muted-foreground">
+                    <FileText className="w-12 h-12 mx-auto opacity-20 mb-3" />
+                    <p>No forms created yet.</p>
+                  </div>
                 ) : (
-                  <Save className="w-4 h-4 mr-2" />
-                )}{" "}
-                Save
-              </Button>
-            </div>
-
-            <div className="flex border-b bg-muted/5">
-              <button
-                className={cn(
-                  "flex-1 py-3 text-xs font-bold uppercase tracking-wider border-b-2 transition-colors",
-                  activeTab === "fields"
-                    ? "border-primary text-primary"
-                    : "border-transparent text-muted-foreground hover:text-foreground"
-                )}
-                onClick={() => setActiveTab("fields")}
-              >
-                <LayoutList className="w-4 h-4 inline-block mr-1.5 -mt-0.5" />{" "}
-                Form Fields
-              </button>
-              <button
-                className={cn(
-                  "flex-1 py-3 text-xs font-bold uppercase tracking-wider border-b-2 transition-colors",
-                  activeTab === "setup"
-                    ? "border-primary text-primary"
-                    : "border-transparent text-muted-foreground hover:text-foreground"
-                )}
-                onClick={() => setActiveTab("setup")}
-              >
-                <Settings className="w-4 h-4 inline-block mr-1.5 -mt-0.5" />{" "}
-                Setup & Success
-              </button>
-            </div>
-
-            <div className="p-6 overflow-y-auto flex-grow bg-muted/5 pb-24">
-              {activeTab === "fields" && (
-                <div className="space-y-4">
-                  <DndContext
-                    sensors={sensors}
-                    collisionDetection={closestCenter}
-                    onDragEnd={(event) => {
-                      const { active, over } = event;
-                      if (over && active.id !== over.id) {
-                        const oldIndex = activeForm.fields.findIndex(
-                          (f: any) => f.id === active.id
-                        );
-                        const newIndex = activeForm.fields.findIndex(
-                          (f: any) => f.id === over.id
-                        );
-                        updateActiveForm(
-                          "fields",
-                          arrayMove(activeForm.fields, oldIndex, newIndex)
-                        );
-                      }
-                    }}
-                  >
-                    <SortableContext
-                      items={(activeForm.fields || []).map((f: any) => f.id)}
-                      strategy={verticalListSortingStrategy}
-                    >
-                      {(activeForm.fields || []).map(
-                        (field: any, idx: number) => (
-                          <SortableFormField
-                            key={field.id}
-                            field={field}
-                            idx={idx}
-                            updateField={updateField}
-                            removeField={removeField}
-                          />
-                        )
-                      )}
-                    </SortableContext>
-                  </DndContext>
-
-                  <Button
-                    variant="outline"
-                    className="w-full border-dashed h-12 text-muted-foreground hover:text-primary hover:border-primary/50 transition-colors bg-transparent"
-                    onClick={addField}
-                  >
-                    <Plus className="mr-2 w-4 h-4" /> Add New Field
-                  </Button>
-                </div>
-              )}
-
-              {activeTab === "setup" && (
-                <div className="space-y-6 animate-in fade-in">
-                  <div className="space-y-4 p-5 border rounded-xl bg-background shadow-sm">
-                    <h3 className="text-sm font-bold flex items-center gap-2 border-b pb-2">
-                      <FileText size={16} className="text-primary" /> Customer
-                      Facing Text
-                    </h3>
-                    <div className="space-y-2">
-                      <Label className="text-[10px] uppercase tracking-widest text-muted-foreground">
-                        Form Title
-                      </Label>
-                      <Input
-                        value={activeForm.title || ""}
-                        onChange={(e) =>
-                          updateActiveForm("title", e.target.value)
-                        }
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label className="text-[10px] uppercase tracking-widest text-muted-foreground">
-                        Subheadline
-                      </Label>
-                      <Textarea
-                        value={activeForm.subheadline || ""}
-                        onChange={(e) =>
-                          updateActiveForm("subheadline", e.target.value)
-                        }
-                        rows={2}
-                        className="resize-none"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label className="text-[10px] uppercase tracking-widest text-muted-foreground">
-                        Submit Button Text
-                      </Label>
-                      <Input
-                        value={activeForm.button_text || ""}
-                        onChange={(e) =>
-                          updateActiveForm("button_text", e.target.value)
-                        }
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label className="text-[10px] uppercase tracking-widest text-muted-foreground">
-                        Side Image URL (Desktop Only)
-                      </Label>
-                      <div className="flex gap-2 items-center">
-                        {activeForm.image && (
-                          <div className="h-9 w-9 rounded border overflow-hidden shrink-0 bg-muted">
-                            <img
-                              src={activeForm.image}
-                              alt="Preview"
-                              className="h-full w-full object-cover"
-                            />
+                  <div className="space-y-3">
+                    {forms.map((form) => (
+                      <div
+                        key={form.id}
+                        className="flex items-center justify-between p-4 border rounded-xl hover:border-primary/50 bg-background shadow-sm transition-colors cursor-pointer group"
+                        onClick={() => handleEdit(form)}
+                      >
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-2 mb-1">
+                            <h4 className="font-bold text-sm">{form.name}</h4>
+                            <span
+                              className={cn(
+                                "text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider",
+                                form.type === "checkout"
+                                  ? "bg-blue-100 text-blue-700"
+                                  : "bg-gray-100 text-gray-600"
+                              )}
+                            >
+                              {form.type === "checkout"
+                                ? "Checkout"
+                                : "Contact"}
+                            </span>
                           </div>
-                        )}
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="flex-1 h-9 bg-background"
-                          onClick={() => setIsMediaPickerOpen(true)}
-                        >
-                          <ImageIcon className="w-4 h-4 mr-2" />
-                          {activeForm.image
-                            ? "Change Image"
-                            : "Select from Library"}
-                        </Button>
-                        {activeForm.image && (
+                          <p className="text-xs text-muted-foreground flex items-center gap-2">
+                            <LayoutList size={12} /> {form.fields?.length || 0}{" "}
+                            fields
+                          </p>
+                        </div>
+                        <div className="flex gap-2">
                           <Button
-                            variant="ghost"
                             size="icon"
-                            className="h-9 w-9 text-destructive hover:bg-destructive/10 shrink-0"
-                            onClick={() => updateActiveForm("image", "")}
+                            variant="ghost"
+                            className="h-8 w-8 text-muted-foreground hover:text-primary opacity-0 group-hover:opacity-100 transition-opacity"
+                            onClick={(e) => handleDuplicate(form, e)}
+                            title="Duplicate"
+                          >
+                            <Copy className="w-4 h-4" />
+                          </Button>
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            className="h-8 w-8 text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity"
+                            onClick={(e) => handleDelete(form.id, e)}
+                            title="Delete"
                           >
                             <Trash2 className="w-4 h-4" />
                           </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </>
+          ) : (
+            <div className="flex flex-col h-full">
+              <div className="p-4 border-b bg-muted/10 sticky top-0 z-10 flex items-center justify-between backdrop-blur-md">
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => setActiveForm(null)}
+                    className="h-8 w-8"
+                  >
+                    <ChevronLeft className="w-4 h-4" />
+                  </Button>
+                  <div className="space-y-0.5">
+                    <div className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
+                      Form Builder
+                      <span
+                        className={cn(
+                          "text-[9px] px-1.5 py-0.5 rounded-full",
+                          activeForm.type === "checkout"
+                            ? "bg-blue-100 text-blue-700"
+                            : "bg-gray-200 text-gray-700"
                         )}
+                      >
+                        {activeForm.type === "checkout"
+                          ? "CHECKOUT"
+                          : "CONTACT"}
+                      </span>
+                    </div>
+                    <Input
+                      value={activeForm.name}
+                      onChange={(e) => updateActiveForm("name", e.target.value)}
+                      className="h-6 w-48 text-sm font-bold px-1 bg-transparent border-transparent hover:bg-muted/50 focus:bg-background focus:border-border"
+                    />
+                  </div>
+                </div>
+                <Button
+                  size="sm"
+                  onClick={handleSave}
+                  disabled={saving}
+                  className="shadow-sm font-bold"
+                >
+                  {saving ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Save className="w-4 h-4 mr-2" />
+                  )}{" "}
+                  Save
+                </Button>
+              </div>
+
+              <div className="flex border-b bg-muted/5">
+                <button
+                  className={cn(
+                    "flex-1 py-3 text-xs font-bold uppercase tracking-wider border-b-2 transition-colors",
+                    activeTab === "fields"
+                      ? "border-primary text-primary"
+                      : "border-transparent text-muted-foreground hover:text-foreground"
+                  )}
+                  onClick={() => setActiveTab("fields")}
+                >
+                  <LayoutList className="w-4 h-4 inline-block mr-1.5 -mt-0.5" />{" "}
+                  Form Fields
+                </button>
+                <button
+                  className={cn(
+                    "flex-1 py-3 text-xs font-bold uppercase tracking-wider border-b-2 transition-colors",
+                    activeTab === "setup"
+                      ? "border-primary text-primary"
+                      : "border-transparent text-muted-foreground hover:text-foreground"
+                  )}
+                  onClick={() => setActiveTab("setup")}
+                >
+                  <Settings className="w-4 h-4 inline-block mr-1.5 -mt-0.5" />{" "}
+                  Setup & Success
+                </button>
+              </div>
+
+              <div className="p-6 overflow-y-auto flex-grow bg-muted/5 pb-24">
+                {activeTab === "fields" && (
+                  <div className="space-y-4">
+                    <DndContext
+                      sensors={sensors}
+                      collisionDetection={closestCenter}
+                      onDragEnd={(event) => {
+                        const { active, over } = event;
+                        if (over && active.id !== over.id) {
+                          const oldIndex = activeForm.fields.findIndex(
+                            (f: any) => f.id === active.id
+                          );
+                          const newIndex = activeForm.fields.findIndex(
+                            (f: any) => f.id === over.id
+                          );
+                          updateActiveForm(
+                            "fields",
+                            arrayMove(activeForm.fields, oldIndex, newIndex)
+                          );
+                        }
+                      }}
+                    >
+                      <SortableContext
+                        items={(activeForm.fields || []).map((f: any) => f.id)}
+                        strategy={verticalListSortingStrategy}
+                      >
+                        {(activeForm.fields || []).map(
+                          (field: any, idx: number) => (
+                            <SortableFormField
+                              key={field.id}
+                              field={field}
+                              idx={idx}
+                              updateField={updateField}
+                              removeField={removeField}
+                            />
+                          )
+                        )}
+                      </SortableContext>
+                    </DndContext>
+
+                    <Button
+                      variant="outline"
+                      className="w-full border-dashed h-12 text-muted-foreground hover:text-primary hover:border-primary/50 transition-colors bg-transparent"
+                      onClick={addField}
+                    >
+                      <Plus className="mr-2 w-4 h-4" /> Add Custom Field
+                    </Button>
+                  </div>
+                )}
+
+                {activeTab === "setup" && (
+                  <div className="space-y-6 animate-in fade-in">
+                    <div className="space-y-4 p-5 border rounded-xl bg-background shadow-sm">
+                      <h3 className="text-sm font-bold flex items-center gap-2 border-b pb-2">
+                        <FileText size={16} className="text-primary" /> Customer
+                        Facing Text
+                      </h3>
+                      <div className="space-y-2">
+                        <Label className="text-[10px] uppercase tracking-widest text-muted-foreground">
+                          Form Title
+                        </Label>
+                        <Input
+                          value={activeForm.title || ""}
+                          onChange={(e) =>
+                            updateActiveForm("title", e.target.value)
+                          }
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label className="text-[10px] uppercase tracking-widest text-muted-foreground">
+                          Subheadline
+                        </Label>
+                        <Textarea
+                          value={activeForm.subheadline || ""}
+                          onChange={(e) =>
+                            updateActiveForm("subheadline", e.target.value)
+                          }
+                          rows={2}
+                          className="resize-none"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label className="text-[10px] uppercase tracking-widest text-muted-foreground">
+                          Submit Button Text
+                        </Label>
+                        <Input
+                          value={activeForm.button_text || ""}
+                          onChange={(e) =>
+                            updateActiveForm("button_text", e.target.value)
+                          }
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label className="text-[10px] uppercase tracking-widest text-muted-foreground">
+                          Side Image URL (Desktop Only)
+                        </Label>
+                        <div className="flex gap-2 items-center">
+                          {activeForm.image && (
+                            <div className="h-9 w-9 rounded border overflow-hidden shrink-0 bg-muted">
+                              <img
+                                src={activeForm.image}
+                                alt="Preview"
+                                className="h-full w-full object-cover"
+                              />
+                            </div>
+                          )}
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="flex-1 h-9 bg-background"
+                            onClick={() => setIsMediaPickerOpen(true)}
+                          >
+                            <ImageIcon className="w-4 h-4 mr-2" />
+                            {activeForm.image
+                              ? "Change Image"
+                              : "Select from Library"}
+                          </Button>
+                          {activeForm.image && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-9 w-9 text-destructive hover:bg-destructive/10 shrink-0"
+                              onClick={() => updateActiveForm("image", "")}
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="space-y-4 p-5 border rounded-xl bg-green-500/5 shadow-sm border-green-500/20">
+                      <h3 className="text-sm font-bold flex items-center gap-2 border-b border-green-500/20 pb-2 text-green-700">
+                        <CheckCircle2 size={16} /> Success State
+                      </h3>
+                      <div className="space-y-2">
+                        <Label className="text-[10px] uppercase tracking-widest text-green-700">
+                          Success Title
+                        </Label>
+                        <Input
+                          value={activeForm.success_title || ""}
+                          onChange={(e) =>
+                            updateActiveForm("success_title", e.target.value)
+                          }
+                          className="bg-background"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label className="text-[10px] uppercase tracking-widest text-green-700">
+                          Success Message
+                        </Label>
+                        <Textarea
+                          value={activeForm.success_message || ""}
+                          onChange={(e) =>
+                            updateActiveForm("success_message", e.target.value)
+                          }
+                          rows={2}
+                          className="resize-none bg-background"
+                        />
                       </div>
                     </div>
                   </div>
+                )}
+              </div>
+            </div>
+          )}
+        </SheetContent>
 
-                  <div className="space-y-4 p-5 border rounded-xl bg-green-500/5 shadow-sm border-green-500/20">
-                    <h3 className="text-sm font-bold flex items-center gap-2 border-b border-green-500/20 pb-2 text-green-700">
-                      <CheckCircle2 size={16} /> Success State
-                    </h3>
-                    <div className="space-y-2">
-                      <Label className="text-[10px] uppercase tracking-widest text-green-700">
-                        Success Title
-                      </Label>
-                      <Input
-                        value={activeForm.success_title || ""}
-                        onChange={(e) =>
-                          updateActiveForm("success_title", e.target.value)
-                        }
-                        className="bg-background"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label className="text-[10px] uppercase tracking-widest text-green-700">
-                        Success Message
-                      </Label>
-                      <Textarea
-                        value={activeForm.success_message || ""}
-                        onChange={(e) =>
-                          updateActiveForm("success_message", e.target.value)
-                        }
-                        rows={2}
-                        className="resize-none bg-background"
-                      />
-                    </div>
+        {/* 🚀 FORM TYPE SELECTOR MODAL */}
+        <Dialog open={isTypeSelectorOpen} onOpenChange={setIsTypeSelectorOpen}>
+          <DialogContent className="max-w-md z-[100000]">
+            <DialogTitle>Choose Form Type</DialogTitle>
+            <DialogDescription>
+              What kind of form do you want to build?
+            </DialogDescription>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
+              <Button
+                variant="outline"
+                className="h-auto py-6 flex flex-col gap-3 items-center hover:border-primary/50 hover:bg-primary/5"
+                onClick={() => handleCreateNew("contact")}
+              >
+                <div className="p-3 bg-muted rounded-full text-foreground">
+                  <MessageSquare className="w-6 h-6" />
+                </div>
+                <div className="space-y-1">
+                  <div className="font-bold text-sm">Lead / Contact Form</div>
+                  <div className="text-xs text-muted-foreground font-normal whitespace-normal">
+                    Perfect for contact pages, inquiries, and pricing requests.
                   </div>
                 </div>
-              )}
+              </Button>
+              <Button
+                variant="outline"
+                className="h-auto py-6 flex flex-col gap-3 items-center hover:border-blue-500/50 hover:bg-blue-500/5"
+                onClick={() => handleCreateNew("checkout")}
+              >
+                <div className="p-3 bg-blue-100 text-blue-600 rounded-full">
+                  <ShoppingCart className="w-6 h-6" />
+                </div>
+                <div className="space-y-1">
+                  <div className="font-bold text-sm">Shop Checkout Form</div>
+                  <div className="text-xs text-muted-foreground font-normal whitespace-normal">
+                    Includes locked shipping & detail fields for processing
+                    orders.
+                  </div>
+                </div>
+              </Button>
             </div>
-          </div>
-        )}
-      </SheetContent>
-      {/* 🚀 NESTED MEDIA PICKER DIALOG */}
-      <Dialog open={isMediaPickerOpen} onOpenChange={setIsMediaPickerOpen}>
-        <DialogContent className="max-w-4xl h-[80vh] flex flex-col p-0 z-[100000]">
-          <DialogTitle className="sr-only">Media Library</DialogTitle>
-          <DialogDescription className="sr-only">
-            Select media for form
-          </DialogDescription>
-          <div className="p-6 flex-grow overflow-hidden">
-            <PortfolioMediaManager
-              actorId={actorId || ""}
-              onSelect={(item) => {
-                updateActiveForm("image", item.url);
-                setIsMediaPickerOpen(false);
-              }}
-            />
-          </div>
-        </DialogContent>
-      </Dialog>
-    </Sheet>
+          </DialogContent>
+        </Dialog>
+
+        {/* NESTED MEDIA PICKER DIALOG */}
+        <Dialog open={isMediaPickerOpen} onOpenChange={setIsMediaPickerOpen}>
+          <DialogContent className="max-w-4xl h-[80vh] flex flex-col p-0 z-[100000]">
+            <DialogTitle className="sr-only">Media Library</DialogTitle>
+            <DialogDescription className="sr-only">
+              Select media for form
+            </DialogDescription>
+            <div className="p-6 flex-grow overflow-hidden">
+              <PortfolioMediaManager
+                actorId={actorId || ""}
+                onSelect={(item) => {
+                  updateActiveForm("image", item.url);
+                  setIsMediaPickerOpen(false);
+                }}
+              />
+            </div>
+          </DialogContent>
+        </Dialog>
+      </Sheet>
+    </>
   );
 }

@@ -475,24 +475,29 @@ const SortableShopProduct = ({
               {product.actionType === "form_order" && (
                 <div className="space-y-1.5 p-2 bg-orange-500/5 border border-orange-500/20 rounded">
                   <Label className="text-[10px] text-orange-600 font-bold uppercase tracking-wider flex items-center justify-between">
-                    Select Form Template
+                    Select Checkout Form
                   </Label>
                   <Select
                     value={product.formId || ""}
                     onValueChange={(val) => updateProduct(idx, "formId", val)}
                   >
                     <SelectTrigger className="h-8 text-xs bg-background border-orange-500/30">
-                      <SelectValue placeholder="Choose a saved form..." />
+                      <SelectValue placeholder="Choose a checkout form..." />
                     </SelectTrigger>
-                    <SelectContent>
-                      {savedForms?.map((f: any) => (
-                        <SelectItem key={f.id} value={f.id}>
-                          {f.name}
-                        </SelectItem>
-                      ))}
-                      {(!savedForms || savedForms.length === 0) && (
+                    <SelectContent className="z-[100000]">
+                      {savedForms &&
+                      savedForms.filter((f: any) => f.type === "checkout")
+                        .length > 0 ? (
+                        savedForms
+                          .filter((f: any) => f.type === "checkout") // 🚀 FIX: Only show Checkout forms!
+                          .map((f: any) => (
+                            <SelectItem key={f.id} value={f.id}>
+                              {f.name}
+                            </SelectItem>
+                          ))
+                      ) : (
                         <SelectItem value="none" disabled>
-                          No templates saved.
+                          No checkout forms created yet
                         </SelectItem>
                       )}
                     </SelectContent>

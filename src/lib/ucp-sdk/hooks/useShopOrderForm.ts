@@ -148,15 +148,19 @@ export function useShopOrderForm({
       const variantText = Object.entries(selectedVariants)
         .map(([key, val]) => `${key}: ${val.label || val}`)
         .join(", ");
+
+      // 🚀 FIX: Support strict checkout IDs for WhatsApp Orders
+      const customerName =
+        formValues["checkout_name"] || formValues["name"] || "Not Provided";
+      const customerPhone =
+        formValues["checkout_phone"] || formValues["phone"] || "Not Provided";
+
       const message = `*NEW ORDER* 🛍️\n------------------\n*Product:* ${
         selectedProduct.title
       }\n*Price:* ${selectedProduct.price}\n*Qty:* ${quantity}\n${
         variantText ? `*Options:* ${variantText}` : ""
-      }\n\n*CUSTOMER DETAILS* 👤\n*Name:* ${
-        formValues["name"] || "Not Provided"
-      }\n*Phone:* ${
-        formValues["phone"] || "Not Provided"
-      }\n------------------\nPlease confirm my order!`;
+      }\n\n*CUSTOMER DETAILS* 👤\n*Name:* ${customerName}\n*Phone:* ${customerPhone}\n------------------\nPlease confirm my order!`;
+
       const number = selectedProduct.whatsappNumber
         ? selectedProduct.whatsappNumber.replace(/[^0-9]/g, "")
         : "";
@@ -182,13 +186,20 @@ export function useShopOrderForm({
         return key ? formValues[key] : "";
       };
 
+      // 🚀 FIX: Prioritize strict locked IDs first, fallback to fuzzy match for legacy forms!
       const dbPayload = {
         actor_id: actorId,
         portfolio_id: portfolioId,
         customer_name:
-          getFieldVal(["name", "first", "last"]) || "Anonymous Buyer",
-        customer_phone: getFieldVal(["phone", "tel", "mobile"]) || "No Phone",
+          formValues["checkout_name"] ||
+          getFieldVal(["name", "first", "last"]) ||
+          "Anonymous Buyer",
+        customer_phone:
+          formValues["checkout_phone"] ||
+          getFieldVal(["phone", "tel", "mobile"]) ||
+          "No Phone",
         customer_address:
+          formValues["checkout_address"] ||
           getFieldVal(["address", "shipping", "street", "city", "zip"]) ||
           "No Address Provided",
         product_name: selectedProduct.title,

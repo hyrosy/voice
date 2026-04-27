@@ -284,10 +284,47 @@ const SpotlightCheckout = ({
         <h3 className="text-3xl font-bold text-white mb-2">
           {formTemplate?.success_title || "Order Received!"}
         </h3>
-        <p className="text-neutral-400 max-w-md mx-auto mb-8">
+        <p className="text-neutral-400 max-w-md mx-auto mb-6">
           {formTemplate?.success_message ||
             `Thank you. We have received your order for ${product.title}.`}
         </p>
+
+        {/* 🚀 BEAUTIFUL INVOICE SUMMARY */}
+        <div className="w-full max-w-sm mx-auto bg-black/40 p-5 rounded-2xl border border-white/5 text-left mb-8 shadow-inner">
+          <h4 className="text-xs font-bold uppercase tracking-widest text-neutral-500 border-b border-white/10 pb-2 mb-3">
+            Order Summary
+          </h4>
+          <div className="flex justify-between items-start gap-4 text-sm font-bold text-white">
+            <div className="leading-tight">
+              {product.title}{" "}
+              <span className="text-neutral-500 font-medium ml-1">
+                x{quantity}
+              </span>
+            </div>
+            <div className="font-mono text-primary">
+              ${calculateTotalPrice(product.price, selectedVariants, quantity)}
+            </div>
+          </div>
+
+          {Object.keys(selectedVariants).length > 0 && (
+            <div className="mt-2 space-y-1">
+              {Object.entries(selectedVariants).map(([key, val]: any, i) => (
+                <div key={i} className="text-xs font-medium text-neutral-400">
+                  <span className="text-neutral-600 mr-1">{key}:</span>{" "}
+                  {val.label || val}
+                </div>
+              ))}
+            </div>
+          )}
+
+          <div className="pt-3 mt-3 border-t border-white/10 flex justify-between items-center text-base font-black text-white">
+            <span>Total</span>
+            <span className="font-mono text-primary">
+              ${calculateTotalPrice(product.price, selectedVariants, quantity)}
+            </span>
+          </div>
+        </div>
+
         <Button
           onClick={() => setStep("details")}
           className="bg-white text-black hover:bg-neutral-200 h-12 px-8 rounded-full font-bold"
@@ -564,121 +601,130 @@ const SpotlightCheckout = ({
                 >
                   {formTemplate?.fields ? (
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      {formTemplate.fields.map((field: any, idx: number) => {
-                        const isHalf = field.width === "half";
-                        const fieldOptions = parseOptions(field.options);
-                        return (
-                          <div
-                            key={idx}
-                            className={cn(
-                              "space-y-2",
-                              isHalf ? "col-span-1" : "col-span-1 sm:col-span-2"
-                            )}
-                          >
-                            <Label className="text-neutral-400 flex items-center gap-2 text-xs uppercase tracking-widest font-bold ml-1">
-                              {getFieldIcon(field.type)} {field.label}{" "}
-                              {field.required && (
-                                <span className="text-primary">*</span>
+                      {formTemplate.fields
+                        .filter((f: any) => f.enabled !== false) // 🚀 FIX: Hides disabled fields!
+                        .map((field: any, idx: number) => {
+                          const isHalf = field.width === "half";
+                          const fieldOptions = parseOptions(field.options);
+                          return (
+                            <div
+                              key={idx}
+                              className={cn(
+                                "space-y-2",
+                                isHalf
+                                  ? "col-span-1"
+                                  : "col-span-1 sm:col-span-2"
                               )}
-                            </Label>
-                            {field.type === "textarea" ? (
-                              <Textarea
-                                required={field.required}
-                                placeholder={field.placeholder}
-                                className="bg-white/5 border-white/10 text-white min-h-[100px] resize-none rounded-xl p-4"
-                                value={formValues[field.id] || ""}
-                                onChange={(e) =>
-                                  setFormValues({
-                                    ...formValues,
-                                    [field.id]: e.target.value,
-                                  })
-                                }
-                              />
-                            ) : field.type === "select" ? (
-                              <select
-                                required={field.required}
-                                className="w-full bg-white/5 border border-white/10 text-white h-12 rounded-xl px-4 text-sm appearance-none outline-none"
-                                value={formValues[field.id] || ""}
-                                onChange={(e) =>
-                                  setFormValues({
-                                    ...formValues,
-                                    [field.id]: e.target.value,
-                                  })
-                                }
-                              >
-                                <option
-                                  value=""
-                                  disabled
-                                  className="text-neutral-900"
+                            >
+                              <Label className="text-neutral-400 flex items-center gap-2 text-xs uppercase tracking-widest font-bold ml-1">
+                                {getFieldIcon(field.type)} {field.label}{" "}
+                                {field.required && (
+                                  <span className="text-primary">*</span>
+                                )}
+                              </Label>
+                              {field.type === "textarea" ? (
+                                <Textarea
+                                  required={field.required}
+                                  placeholder={field.placeholder}
+                                  className="bg-white/5 border-white/10 text-white min-h-[100px] resize-none rounded-xl p-4"
+                                  value={formValues[field.id] || ""}
+                                  onChange={(e) =>
+                                    setFormValues({
+                                      ...formValues,
+                                      [field.id]: e.target.value,
+                                    })
+                                  }
+                                />
+                              ) : field.type === "select" ? (
+                                <select
+                                  required={field.required}
+                                  className="w-full bg-white/5 border border-white/10 text-white h-12 rounded-xl px-4 text-sm appearance-none outline-none"
+                                  value={formValues[field.id] || ""}
+                                  onChange={(e) =>
+                                    setFormValues({
+                                      ...formValues,
+                                      [field.id]: e.target.value,
+                                    })
+                                  }
                                 >
-                                  Select...
-                                </option>
-                                {fieldOptions.map((opt: string, i: number) => (
                                   <option
-                                    key={i}
-                                    value={opt}
+                                    value=""
+                                    disabled
                                     className="text-neutral-900"
                                   >
-                                    {opt}
+                                    Select...
                                   </option>
-                                ))}
-                              </select>
-                            ) : field.type === "radio" ? (
-                              <div className="flex flex-col gap-2 pt-1">
-                                {fieldOptions.map((opt: string, i: number) => (
-                                  <label
-                                    key={i}
-                                    className="flex items-center gap-3 cursor-pointer group p-3 rounded-xl border border-white/5 bg-white/[0.02] hover:bg-white/5 transition-colors has-[:checked]:bg-primary/5 has-[:checked]:border-primary/30"
-                                  >
-                                    <div className="relative flex items-center justify-center w-5 h-5 rounded-full border border-white/20 group-hover:border-primary bg-white/5">
-                                      <input
-                                        type="radio"
-                                        name={field.id}
+                                  {fieldOptions.map(
+                                    (opt: string, i: number) => (
+                                      <option
+                                        key={i}
                                         value={opt}
-                                        required={field.required}
-                                        className="peer sr-only"
-                                        onChange={(e) =>
-                                          setFormValues({
-                                            ...formValues,
-                                            [field.id]: e.target.value,
-                                          })
-                                        }
-                                      />
-                                      <div className="w-2.5 h-2.5 rounded-full bg-primary opacity-0 peer-checked:opacity-100 transition-all scale-50 peer-checked:scale-100" />
-                                    </div>
-                                    <span className="text-neutral-300 text-sm font-medium">
-                                      {opt}
-                                    </span>
-                                  </label>
-                                ))}
-                              </div>
-                            ) : (
-                              <Input
-                                required={field.required}
-                                type={
-                                  field.type === "email"
-                                    ? "email"
-                                    : field.type === "tel"
-                                    ? "tel"
-                                    : "text"
-                                }
-                                placeholder={field.placeholder}
-                                className={cn(
-                                  "bg-white/5 border-white/10 text-white h-12 rounded-xl",
-                                  field.type === "date" && "[color-scheme:dark]"
-                                )}
-                                value={formValues[field.id] || ""}
-                                onChange={(e) =>
-                                  setFormValues({
-                                    ...formValues,
-                                    [field.id]: e.target.value,
-                                  })
-                                }
-                              />
-                            )}
-                          </div>
-                        );
-                      })}
+                                        className="text-neutral-900"
+                                      >
+                                        {opt}
+                                      </option>
+                                    )
+                                  )}
+                                </select>
+                              ) : field.type === "radio" ? (
+                                <div className="flex flex-col gap-2 pt-1">
+                                  {fieldOptions.map(
+                                    (opt: string, i: number) => (
+                                      <label
+                                        key={i}
+                                        className="flex items-center gap-3 cursor-pointer group p-3 rounded-xl border border-white/5 bg-white/[0.02] hover:bg-white/5 transition-colors has-[:checked]:bg-primary/5 has-[:checked]:border-primary/30"
+                                      >
+                                        <div className="relative flex items-center justify-center w-5 h-5 rounded-full border border-white/20 group-hover:border-primary bg-white/5">
+                                          <input
+                                            type="radio"
+                                            name={field.id}
+                                            value={opt}
+                                            required={field.required}
+                                            className="peer sr-only"
+                                            onChange={(e) =>
+                                              setFormValues({
+                                                ...formValues,
+                                                [field.id]: e.target.value,
+                                              })
+                                            }
+                                          />
+                                          <div className="w-2.5 h-2.5 rounded-full bg-primary opacity-0 peer-checked:opacity-100 transition-all scale-50 peer-checked:scale-100" />
+                                        </div>
+                                        <span className="text-neutral-300 text-sm font-medium">
+                                          {opt}
+                                        </span>
+                                      </label>
+                                    )
+                                  )}
+                                </div>
+                              ) : (
+                                <Input
+                                  required={field.required}
+                                  type={
+                                    field.type === "email"
+                                      ? "email"
+                                      : field.type === "tel"
+                                      ? "tel"
+                                      : "text"
+                                  }
+                                  placeholder={field.placeholder}
+                                  className={cn(
+                                    "bg-white/5 border-white/10 text-white h-12 rounded-xl",
+                                    field.type === "date" &&
+                                      "[color-scheme:dark]"
+                                  )}
+                                  value={formValues[field.id] || ""}
+                                  onChange={(e) =>
+                                    setFormValues({
+                                      ...formValues,
+                                      [field.id]: e.target.value,
+                                    })
+                                  }
+                                />
+                              )}
+                            </div>
+                          );
+                        })}
                     </div>
                   ) : (
                     <div className="space-y-4">
@@ -1144,12 +1190,66 @@ const Shop: React.FC<any> = ({ data, id, isPreview, actorId, portfolioId }) => {
                     <h3 className="text-3xl font-bold text-white tracking-tight">
                       {formTemplate?.success_title || "Order Received!"}
                     </h3>
-                    <p className="text-neutral-400 max-w-sm mx-auto">
+                    <p className="text-neutral-400 max-w-sm mx-auto mb-2">
                       {formTemplate?.success_message ||
                         `Thanks for ordering ${selectedProduct?.title}. We'll process it shortly.`}
                     </p>
+
+                    {/* 🚀 BEAUTIFUL INVOICE SUMMARY */}
+                    <div className="w-full max-w-sm mx-auto bg-white/5 p-5 rounded-2xl border border-white/10 text-left mb-4 shadow-inner">
+                      <h4 className="text-xs font-bold uppercase tracking-widest text-neutral-500 border-b border-white/10 pb-2 mb-3">
+                        Order Summary
+                      </h4>
+                      <div className="flex justify-between items-start gap-4 text-sm font-bold text-white">
+                        <div className="leading-tight">
+                          {selectedProduct?.title}{" "}
+                          <span className="text-neutral-500 font-medium ml-1">
+                            x{quantity}
+                          </span>
+                        </div>
+                        <div className="font-mono text-primary">
+                          $
+                          {calculateTotalPrice(
+                            selectedProduct?.price || "0",
+                            selectedVariants,
+                            quantity
+                          )}
+                        </div>
+                      </div>
+
+                      {Object.keys(selectedVariants).length > 0 && (
+                        <div className="mt-2 space-y-1">
+                          {Object.entries(selectedVariants).map(
+                            ([key, val]: any, i) => (
+                              <div
+                                key={i}
+                                className="text-xs font-medium text-neutral-400"
+                              >
+                                <span className="text-neutral-600 mr-1">
+                                  {key}:
+                                </span>{" "}
+                                {val.label || val}
+                              </div>
+                            )
+                          )}
+                        </div>
+                      )}
+
+                      <div className="pt-3 mt-3 border-t border-white/10 flex justify-between items-center text-base font-black text-white">
+                        <span>Total</span>
+                        <span className="font-mono text-primary">
+                          $
+                          {calculateTotalPrice(
+                            selectedProduct?.price || "0",
+                            selectedVariants,
+                            quantity
+                          )}
+                        </span>
+                      </div>
+                    </div>
+
                     <Button
-                      className="mt-6 rounded-full px-8 bg-white text-black hover:bg-neutral-200"
+                      className="mt-6 rounded-full px-8 bg-white text-black hover:bg-neutral-200 h-12 font-bold"
                       onClick={() => setIsModalOpen(false)}
                     >
                       Close
@@ -1308,8 +1408,9 @@ const Shop: React.FC<any> = ({ data, id, isPreview, actorId, portfolioId }) => {
                         </h4>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5">
                           {formTemplate?.fields ? (
-                            formTemplate.fields.map(
-                              (field: any, idx: number) => {
+                            formTemplate.fields
+                              .filter((f: any) => f.enabled !== false) // 🚀 FIX: Hides disabled fields!
+                              .map((field: any, idx: number) => {
                                 const isHalf = field.width === "half";
                                 const fieldOptions = parseOptions(
                                   field.options
@@ -1433,8 +1534,7 @@ const Shop: React.FC<any> = ({ data, id, isPreview, actorId, portfolioId }) => {
                                     )}
                                   </div>
                                 );
-                              }
-                            )
+                              })
                           ) : (
                             <div className="space-y-4 col-span-2">
                               <div className="space-y-2">
