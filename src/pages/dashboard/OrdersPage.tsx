@@ -7,6 +7,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Loader2,
   Package,
@@ -21,7 +23,11 @@ import {
   DollarSign,
   TrendingUp,
   Tag,
-  Mail,
+  Search,
+  Download,
+  RotateCcw,
+  PlayCircle,
+  X as CloseIcon,
 } from "lucide-react";
 import {
   Table,
@@ -47,6 +53,39 @@ import {
 import SiteFilter from "../../components/dashboard/SiteFilter";
 import { cn } from "@/lib/utils";
 
+// --- UNIVERSAL STATUS MAP ---
+const STATUS_MAP = {
+  pending: {
+    label: "Pending",
+    icon: Clock,
+    color:
+      "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20",
+  },
+  in_progress: {
+    label: "In Progress",
+    icon: PlayCircle,
+    color: "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20",
+  },
+  completed: {
+    label: "Completed",
+    icon: CheckCircle2,
+    color:
+      "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20",
+  },
+  cancelled: {
+    label: "Cancelled",
+    icon: XCircle,
+    color: "bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20",
+  },
+  refunded: {
+    label: "Refunded",
+    icon: RotateCcw,
+    color: "bg-gray-500/10 text-gray-600 dark:text-gray-400 border-gray-500/20",
+  },
+};
+
+type OrderStatus = keyof typeof STATUS_MAP;
+
 interface ProOrder {
   id: string;
   created_at: string;
@@ -57,7 +96,7 @@ interface ProOrder {
   product_price: string;
   quantity: number;
   variants: Record<string, any>;
-  status: "pending" | "completed" | "cancelled";
+  status: OrderStatus;
   notes: string | null;
   portfolio_id?: string;
 }
@@ -65,12 +104,19 @@ interface ProOrder {
 const OrdersPage = () => {
   const { actorData } = useOutletContext<ActorDashboardContextType>();
   const [allOrders, setAllOrders] = useState<ProOrder[]>([]);
-  const [filteredOrders, setFilteredOrders] = useState<ProOrder[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Site Filter State
+  // Filters & Search
   const [sites, setSites] = useState<any[]>([]);
   const [selectedSiteId, setSelectedSiteId] = useState<string>("all");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState<OrderStatus | "all">("all");
+
+  // Bulk Selection
+  const [selectedOrderIds, setSelectedOrderIds] = useState<Set<string>>(
+    new Set()
+  );
+  const [isBulkUpdating, setIsBulkUpdating] = useState(false);
 
   // Sheet State
   const [selectedOrder, setSelectedOrder] = useState<ProOrder | null>(null);
@@ -82,14 +128,12 @@ const OrdersPage = () => {
     if (!actorData.id) return;
     setLoading(true);
 
-    // 1. Fetch Sites (for filter)
     const { data: mySites } = await supabase
       .from("portfolios")
       .select("id, site_name")
       .eq("actor_id", actorData.id);
     if (mySites) setSites(mySites);
 
-    // 2. Fetch Orders
     const { data, error } = await supabase
       .from("pro_orders")
       .select("*")
@@ -97,48 +141,122 @@ const OrdersPage = () => {
       .order("created_at", { ascending: false });
 
     if (!error && data) {
-      setAllOrders(data);
-      setFilteredOrders(data);
+      const normalizedData = data.map((o: any) => ({
+        ...o,
+        status: o.status === "processing" ? "in_progress" : o.status,
+      }));
+      setAllOrders(normalizedData);
     }
     setLoading(false);
+    setSelectedOrderIds(new Set());
   };
-
-  useEffect(() => {
-    if (selectedSiteId === "all") {
-      setFilteredOrders(allOrders);
-    } else {
-      setFilteredOrders(
-        allOrders.filter((o) => o.portfolio_id === selectedSiteId)
-      );
-    }
-  }, [selectedSiteId, allOrders]);
 
   useEffect(() => {
     fetchData();
   }, [actorData.id]);
 
-  const handleViewDetails = (order: ProOrder) => {
+  // --- FILTERING LOGIC ---
+  const filteredOrders = useMemo(() => {
+    return allOrders.filter((order) => {
+      if (selectedSiteId !== "all" && order.portfolio_id !== selectedSiteId)
+        return false;
+      if (statusFilter !== "all" && order.status !== statusFilter) return false;
+      if (searchQuery.trim() !== "") {
+        const q = searchQuery.toLowerCase();
+        const shortId = order.id.substring(0, 6).toLowerCase();
+        if (
+          !order.customer_name?.toLowerCase().includes(q) &&
+          !order.customer_phone?.toLowerCase().includes(q) &&
+          !shortId.includes(q) &&
+          !order.product_name?.toLowerCase().includes(q)
+        ) {
+          return false;
+        }
+      }
+      return true;
+    });
+  }, [allOrders, selectedSiteId, statusFilter, searchQuery]);
+
+  // --- METRICS CALCULATION ---
+  const metrics = useMemo(() => {
+    let revenue = 0;
+    let pending = 0;
+    allOrders.forEach((order) => {
+      if (order.portfolio_id !== selectedSiteId && selectedSiteId !== "all")
+        return;
+      if (order.status === "pending") pending++;
+      if (order.status !== "cancelled" && order.status !== "refunded") {
+        const amount = parseFloat(
+          order.product_price?.replace(/[^0-9.]/g, "") || "0"
+        );
+        revenue += isNaN(amount) ? 0 : amount;
+      }
+    });
+    return { revenue, total: allOrders.length, pending };
+  }, [allOrders, selectedSiteId]);
+
+  // --- ACTIONS ---
+  const handleRowClick = (order: ProOrder) => {
+    // 🚀 UX FIX: If we are in "Bulk Selection Mode", clicking a row toggles the checkbox!
+    if (selectedOrderIds.size > 0) {
+      toggleOrderSelection(order.id);
+      return;
+    }
+    // Otherwise, open the details sheet normally
     setSelectedOrder(order);
     setInternalNotes(order.notes || "");
     setIsSheetOpen(true);
   };
 
-  const updateStatus = async (orderId: string, newStatus: string) => {
+  const updateStatus = async (orderId: string, newStatus: OrderStatus) => {
     const updater = (prev: ProOrder[]) =>
-      prev.map((o) =>
-        o.id === orderId ? { ...o, status: newStatus as any } : o
-      );
+      prev.map((o) => (o.id === orderId ? { ...o, status: newStatus } : o));
     setAllOrders(updater);
-    setFilteredOrders(updater);
 
     if (selectedOrder && selectedOrder.id === orderId) {
-      setSelectedOrder({ ...selectedOrder, status: newStatus as any });
+      setSelectedOrder({ ...selectedOrder, status: newStatus });
     }
 
     await supabase
       .from("pro_orders")
       .update({ status: newStatus })
       .eq("id", orderId);
+  };
+
+  const handleBulkUpdateStatus = async (newStatus: OrderStatus) => {
+    if (selectedOrderIds.size === 0) return;
+    setIsBulkUpdating(true);
+
+    const idsToUpdate = Array.from(selectedOrderIds);
+
+    setAllOrders((prev) =>
+      prev.map((o) =>
+        idsToUpdate.includes(o.id) ? { ...o, status: newStatus } : o
+      )
+    );
+
+    await supabase
+      .from("pro_orders")
+      .update({ status: newStatus })
+      .in("id", idsToUpdate);
+
+    setIsBulkUpdating(false);
+    setSelectedOrderIds(new Set());
+  };
+
+  const toggleOrderSelection = (id: string) => {
+    const next = new Set(selectedOrderIds);
+    if (next.has(id)) next.delete(id);
+    else next.add(id);
+    setSelectedOrderIds(next);
+  };
+
+  const toggleAllSelection = () => {
+    if (selectedOrderIds.size === filteredOrders.length) {
+      setSelectedOrderIds(new Set());
+    } else {
+      setSelectedOrderIds(new Set(filteredOrders.map((o) => o.id)));
+    }
   };
 
   const saveNotes = async () => {
@@ -149,14 +267,81 @@ const OrdersPage = () => {
       .update({ notes: internalNotes })
       .eq("id", selectedOrder.id);
     if (!error) {
-      const updater = (prev: ProOrder[]) =>
+      setAllOrders((prev) =>
         prev.map((o) =>
           o.id === selectedOrder.id ? { ...o, notes: internalNotes } : o
-        );
-      setAllOrders(updater);
-      setFilteredOrders(updater);
+        )
+      );
     }
     setIsSaving(false);
+  };
+
+  // 🚀 CSV EXPORT UPGRADE (Includes Variants + All Custom Form Responses!)
+  const exportToCSV = () => {
+    if (filteredOrders.length === 0) return;
+
+    // 1. First, find EVERY custom key that exists in ANY order's notes
+    const customKeys = new Set<string>();
+    const parsedNotesArray = filteredOrders.map((o) => {
+      const parsed = parseFormNotes(o.notes);
+      parsed.forEach((item) => customKeys.add(item.key));
+      return parsed;
+    });
+
+    const customHeaders = Array.from(customKeys);
+
+    // 2. Create the master header row
+    const headers = [
+      "Order ID",
+      "Date",
+      "Status",
+      "Customer Name",
+      "Customer Phone",
+      "Shipping Address",
+      "Product",
+      "Variants",
+      "Quantity",
+      "Total",
+      ...customHeaders,
+    ];
+
+    // 3. Map orders to match headers precisely
+    const csvContent = [
+      headers.join(","),
+      ...filteredOrders.map((o, idx) => {
+        // Map the parsed notes for this specific order so we can query them easily
+        const notesMap = new Map(
+          parsedNotesArray[idx].map((i) => [i.key, i.value])
+        );
+
+        // Grab the custom values in the exact order of the customHeaders
+        const customValues = customHeaders.map(
+          (key) => `"${(notesMap.get(key) || "").replace(/"/g, '""')}"`
+        );
+
+        return [
+          formatOrderId(o.id),
+          new Date(o.created_at).toLocaleDateString(),
+          o.status,
+          `"${(o.customer_name || "").replace(/"/g, '""')}"`,
+          `"${(o.customer_phone || "").replace(/"/g, '""')}"`,
+          `"${(o.customer_address || "").replace(/"/g, '""')}"`,
+          `"${(o.product_name || "").replace(/"/g, '""')}"`,
+          `"${(parseVariants(o.variants) || "").replace(/"/g, '""')}"`,
+          o.quantity,
+          `"${(o.product_price || "").replace(/"/g, '""')}"`,
+          ...customValues,
+        ].join(",");
+      }),
+    ].join("\n");
+
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = `orders_export_${
+      new Date().toISOString().split("T")[0]
+    }.csv`;
+    link.click();
   };
 
   const getSiteName = (id?: string) => {
@@ -164,17 +349,15 @@ const OrdersPage = () => {
     return sites.find((s) => s.id === id)?.site_name || "Portfolio";
   };
 
-  // --- HELPERS FOR AAA+ DISPLAY ---
+  // --- HELPERS ---
   const formatOrderId = (id: string) =>
     `#ORD-${id.substring(0, 6).toUpperCase()}`;
-
   const parseVariants = (variants: Record<string, any>) => {
     if (!variants || Object.keys(variants).length === 0) return null;
     return Object.entries(variants)
       .map(([key, val]) => `${key}: ${val?.label || val}`)
       .join(" • ");
   };
-
   const parseFormNotes = (notes: string | null) => {
     if (!notes) return [];
     return notes
@@ -186,22 +369,6 @@ const OrdersPage = () => {
       });
   };
 
-  // --- METRICS CALCULATION ---
-  const metrics = useMemo(() => {
-    let revenue = 0;
-    let pending = 0;
-    filteredOrders.forEach((order) => {
-      if (order.status === "pending") pending++;
-      if (order.status !== "cancelled") {
-        const amount = parseFloat(
-          order.product_price?.replace(/[^0-9.]/g, "") || "0"
-        );
-        revenue += isNaN(amount) ? 0 : amount;
-      }
-    });
-    return { revenue, total: filteredOrders.length, pending };
-  }, [filteredOrders]);
-
   if (loading) {
     return (
       <div className="flex h-[80vh] items-center justify-center">
@@ -211,7 +378,7 @@ const OrdersPage = () => {
   }
 
   return (
-    <div className="p-4 md:p-8 space-y-8 w-full max-w-7xl mx-auto bg-muted/20 min-h-screen rounded-3xl">
+    <div className="p-4 md:p-8 space-y-6 w-full max-w-7xl mx-auto bg-muted/20 min-h-screen rounded-3xl">
       {/* HEADER */}
       <div className="flex flex-col md:flex-row justify-between md:items-end gap-4">
         <div>
@@ -222,8 +389,7 @@ const OrdersPage = () => {
             Manage and fulfill your shop sales.
           </p>
         </div>
-
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 flex-wrap">
           <SiteFilter
             sites={sites}
             selectedSiteId={selectedSiteId}
@@ -231,8 +397,15 @@ const OrdersPage = () => {
           />
           <Button
             variant="outline"
+            onClick={exportToCSV}
+            className="h-10 rounded-xl bg-background shadow-sm border-border"
+          >
+            <Download className="w-4 h-4 mr-2" /> Export CSV
+          </Button>
+          <Button
+            variant="default"
             onClick={fetchData}
-            className="h-10 rounded-xl bg-background shadow-sm border-border text-foreground hover:bg-muted"
+            className="h-10 rounded-xl shadow-sm"
           >
             Refresh
           </Button>
@@ -257,11 +430,10 @@ const OrdersPage = () => {
               })}
             </div>
             <p className="text-xs text-muted-foreground mt-1 font-medium">
-              Excluding cancelled orders
+              Excluding cancelled/refunded
             </p>
           </CardContent>
         </Card>
-
         <Card className="rounded-2xl border-border shadow-sm bg-background overflow-hidden relative">
           <div className="absolute right-0 top-0 w-24 h-24 bg-emerald-500/10 rounded-bl-full -mr-4 -mt-4" />
           <CardHeader className="flex flex-row items-center justify-between pb-2">
@@ -279,7 +451,6 @@ const OrdersPage = () => {
             </p>
           </CardContent>
         </Card>
-
         <Card className="rounded-2xl border-border shadow-sm bg-background overflow-hidden relative">
           <div className="absolute right-0 top-0 w-24 h-24 bg-amber-500/10 rounded-bl-full -mr-4 -mt-4" />
           <CardHeader className="flex flex-row items-center justify-between pb-2">
@@ -299,26 +470,139 @@ const OrdersPage = () => {
         </Card>
       </div>
 
+      {/* 🚀 UPGRADED SEARCH & FILTER BAR */}
+      <div className="flex flex-col lg:flex-row justify-between gap-2 lg:gap-4 items-start lg:items-center bg-background p-2 rounded-2xl border border-border shadow-sm">
+        {/* Search */}
+        <div className="relative w-full lg:w-80 shrink-0">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <Input
+            placeholder="Search orders, names, phone..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-9 h-10 border-none shadow-none focus-visible:ring-0 bg-transparent text-sm"
+          />
+        </div>
+
+        <div className="h-px w-full bg-border lg:hidden" />
+
+        {/* Status Pill Filters */}
+        <div className="flex items-center gap-2 overflow-x-auto w-full lg:w-auto px-2 py-1 scrollbar-none snap-x">
+          <Button
+            variant={statusFilter === "all" ? "default" : "ghost"}
+            className={cn(
+              "rounded-full h-8 text-xs snap-start px-4",
+              statusFilter !== "all" && "text-muted-foreground"
+            )}
+            onClick={() => setStatusFilter("all")}
+          >
+            All
+          </Button>
+          {Object.entries(STATUS_MAP).map(([key, info]) => {
+            const count = allOrders.filter((o) => o.status === key).length;
+            return (
+              <Button
+                key={key}
+                variant={statusFilter === key ? "secondary" : "ghost"}
+                className={cn(
+                  "rounded-full h-8 text-xs snap-start gap-1.5 whitespace-nowrap",
+                  statusFilter !== key &&
+                    "text-muted-foreground hover:bg-muted/50"
+                )}
+                onClick={() => setStatusFilter(key as OrderStatus)}
+              >
+                <info.icon className="w-3 h-3" /> {info.label}
+                <span
+                  className={cn(
+                    "ml-1 opacity-60 text-[10px]",
+                    statusFilter === key && "font-bold"
+                  )}
+                >
+                  ({count})
+                </span>
+              </Button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* 🚀 BULK ACTIONS FLOATING BAR */}
+      {selectedOrderIds.size > 0 && (
+        <div className="bg-foreground text-background px-6 py-4 rounded-2xl flex items-center justify-between animate-in slide-in-from-bottom-4 fade-in shadow-2xl sticky bottom-6 z-50 transition-all duration-300 border border-border">
+          <div className="flex items-center gap-4">
+            <Button
+              size="icon"
+              variant="ghost"
+              onClick={() => setSelectedOrderIds(new Set())}
+              className="h-8 w-8 text-background/60 hover:text-background hover:bg-background/20 rounded-full"
+            >
+              <CloseIcon className="w-4 h-4" />
+            </Button>
+            <div className="font-bold text-sm">
+              {selectedOrderIds.size} order
+              {selectedOrderIds.size > 1 ? "s" : ""} selected
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3">
+            <span className="text-xs opacity-80 hidden sm:inline-block font-medium">
+              Update status to:
+            </span>
+            <Select
+              onValueChange={(val: OrderStatus) => handleBulkUpdateStatus(val)}
+            >
+              <SelectTrigger className="h-9 w-[150px] bg-background/10 border-background/20 text-background focus:ring-0 font-semibold rounded-lg">
+                <SelectValue placeholder="Select Status" />
+              </SelectTrigger>
+              <SelectContent className="z-[100000] rounded-xl shadow-2xl">
+                {Object.entries(STATUS_MAP).map(([key, info]) => (
+                  <SelectItem
+                    key={key}
+                    value={key}
+                    className="font-medium cursor-pointer"
+                  >
+                    <div className="flex items-center gap-2">
+                      <info.icon className="w-4 h-4 opacity-50" /> {info.label}
+                    </div>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {isBulkUpdating && (
+              <Loader2 className="w-4 h-4 animate-spin ml-2 text-background/50" />
+            )}
+          </div>
+        </div>
+      )}
+
       {/* MAIN TABLE */}
       <Card className="rounded-2xl border-border shadow-sm bg-background overflow-hidden">
         <CardContent className="p-0">
           {filteredOrders.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-24 text-muted-foreground bg-muted/20">
               <div className="bg-background p-6 rounded-full mb-4 shadow-sm border border-border">
-                <Package className="w-10 h-10 text-muted-foreground/50" />
+                <Search className="w-10 h-10 text-muted-foreground/30" />
               </div>
               <p className="font-semibold text-lg text-foreground">
                 No orders found.
               </p>
-              <p className="text-sm mt-1">
-                When customers purchase from your shop, they'll appear here.
+              <p className="text-sm mt-1 opacity-70">
+                Try adjusting your filters or search query.
               </p>
             </div>
           ) : (
             <div className="overflow-x-auto">
               <Table>
-                <TableHeader className="bg-muted/50 border-b border-border">
-                  <TableRow className="hover:bg-transparent">
+                <TableHeader className="bg-muted/30 border-b border-border">
+                  <TableRow className="hover:bg-transparent border-none">
+                    <TableHead className="w-12 pl-6">
+                      <Checkbox
+                        checked={
+                          selectedOrderIds.size === filteredOrders.length &&
+                          filteredOrders.length > 0
+                        }
+                        onCheckedChange={toggleAllSelection}
+                      />
+                    </TableHead>
                     <TableHead className="py-4 font-bold text-muted-foreground uppercase tracking-wider text-xs">
                       Order
                     </TableHead>
@@ -339,12 +623,31 @@ const OrdersPage = () => {
                 <TableBody>
                   {filteredOrders.map((order) => {
                     const variantsStr = parseVariants(order.variants);
+                    const StatusIcon = STATUS_MAP[order.status]?.icon || Clock;
+                    const isSelected = selectedOrderIds.has(order.id);
+
                     return (
                       <TableRow
                         key={order.id}
-                        className="cursor-pointer hover:bg-muted/50 transition-colors border-b border-border group"
-                        onClick={() => handleViewDetails(order)}
+                        className={cn(
+                          "cursor-pointer transition-colors border-b border-border/50 group",
+                          isSelected
+                            ? "bg-primary/5 hover:bg-primary/10"
+                            : "hover:bg-muted/30"
+                        )}
+                        onClick={() => handleRowClick(order)}
                       >
+                        <TableCell
+                          className="w-12 pl-6"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <Checkbox
+                            checked={isSelected}
+                            onCheckedChange={() =>
+                              toggleOrderSelection(order.id)
+                            }
+                          />
+                        </TableCell>
                         <TableCell className="py-4 align-top">
                           <div className="font-mono font-bold text-foreground">
                             {formatOrderId(order.id)}
@@ -387,50 +690,35 @@ const OrdersPage = () => {
 
                         <TableCell className="py-4 align-top">
                           <div className="font-bold text-foreground flex items-center gap-2">
-                            <span className="text-muted-foreground">
+                            <span className="text-muted-foreground font-mono bg-muted px-1.5 rounded">
                               {order.quantity}x
                             </span>{" "}
                             {order.product_name}
                           </div>
                           {variantsStr && (
-                            <div className="text-xs text-muted-foreground mt-1 font-medium bg-muted inline-block px-2 py-0.5 rounded-md">
+                            <div className="text-xs text-muted-foreground mt-2 font-medium bg-muted inline-block px-2 py-0.5 rounded-md">
                               {variantsStr}
                             </div>
                           )}
                         </TableCell>
 
                         <TableCell className="py-4 align-top">
-                          <div className="font-bold text-emerald-600 dark:text-emerald-400 font-mono bg-emerald-500/10 px-2 py-1 rounded-md inline-block">
+                          <div className="font-bold text-foreground font-mono px-2 py-1 rounded-md inline-block">
                             {order.product_price}
                           </div>
                         </TableCell>
 
                         <TableCell className="py-4 align-top">
-                          {order.status === "pending" && (
-                            <Badge
-                              variant="outline"
-                              className="bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20 font-bold px-3 py-1"
-                            >
-                              <Clock className="w-3 h-3 mr-1" /> Pending
-                            </Badge>
-                          )}
-                          {order.status === "completed" && (
-                            <Badge
-                              variant="outline"
-                              className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20 font-bold px-3 py-1"
-                            >
-                              <CheckCircle2 className="w-3 h-3 mr-1" />{" "}
-                              Completed
-                            </Badge>
-                          )}
-                          {order.status === "cancelled" && (
-                            <Badge
-                              variant="outline"
-                              className="bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20 font-bold px-3 py-1"
-                            >
-                              <XCircle className="w-3 h-3 mr-1" /> Cancelled
-                            </Badge>
-                          )}
+                          <Badge
+                            variant="outline"
+                            className={cn(
+                              "font-bold px-3 py-1 shadow-sm",
+                              STATUS_MAP[order.status]?.color
+                            )}
+                          >
+                            <StatusIcon className="w-3 h-3 mr-1.5" />{" "}
+                            {STATUS_MAP[order.status]?.label}
+                          </Badge>
                         </TableCell>
                       </TableRow>
                     );
@@ -444,16 +732,16 @@ const OrdersPage = () => {
 
       {/* 🚀 THE AAA+ ORDER SHEET */}
       <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
-        <SheetContent className="w-full sm:max-w-md overflow-y-auto p-0 border-l-0 bg-background sm:rounded-l-[2rem] shadow-2xl">
+        <SheetContent className="w-full sm:max-w-md overflow-y-auto p-0 border-l border-border bg-background shadow-2xl">
           {selectedOrder && (
             <div className="flex flex-col h-full">
               {/* Sheet Header */}
-              <div className="p-6 md:p-8 bg-background border-b border-border space-y-4 shrink-0">
+              <div className="p-6 md:p-8 bg-muted/20 border-b border-border space-y-4 shrink-0">
                 <div className="flex items-start justify-between">
                   <div>
                     <Badge
                       variant="secondary"
-                      className="bg-muted text-muted-foreground border-none font-bold mb-2"
+                      className="bg-background text-muted-foreground border border-border font-bold mb-2 shadow-sm"
                     >
                       {getSiteName(selectedOrder.portfolio_id)}
                     </Badge>
@@ -468,27 +756,25 @@ const OrdersPage = () => {
                     </div>
                   </div>
                   <div>
-                    {selectedOrder.status === "pending" && (
-                      <Badge className="bg-amber-500/10 hover:bg-amber-500/20 text-amber-600 dark:text-amber-400 border-none font-bold px-3 py-1 text-sm shadow-none">
-                        <Clock className="w-3 h-3 mr-1" /> Pending
-                      </Badge>
-                    )}
-                    {selectedOrder.status === "completed" && (
-                      <Badge className="bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border-none font-bold px-3 py-1 text-sm shadow-none">
-                        <CheckCircle2 className="w-3 h-3 mr-1" /> Completed
-                      </Badge>
-                    )}
-                    {selectedOrder.status === "cancelled" && (
-                      <Badge className="bg-rose-500/10 hover:bg-rose-500/20 text-rose-600 dark:text-rose-400 border-none font-bold px-3 py-1 text-sm shadow-none">
-                        <XCircle className="w-3 h-3 mr-1" /> Cancelled
-                      </Badge>
-                    )}
+                    <Badge
+                      variant="outline"
+                      className={cn(
+                        "font-bold px-3 py-1 text-sm shadow-sm bg-background",
+                        STATUS_MAP[selectedOrder.status]?.color
+                      )}
+                    >
+                      {React.createElement(
+                        STATUS_MAP[selectedOrder.status]?.icon || Clock,
+                        { className: "w-3 h-3 mr-1" }
+                      )}
+                      {STATUS_MAP[selectedOrder.status]?.label}
+                    </Badge>
                   </div>
                 </div>
               </div>
 
               {/* Sheet Body (Scrollable) */}
-              <div className="p-6 md:p-8 space-y-6 flex-grow overflow-y-auto bg-muted/10">
+              <div className="p-6 md:p-8 space-y-6 flex-grow overflow-y-auto">
                 {/* 1. Order Summary */}
                 <div className="bg-background p-5 rounded-2xl border border-border shadow-sm space-y-4">
                   <h4 className="text-xs font-black uppercase tracking-widest text-muted-foreground flex items-center gap-2 mb-3">
@@ -522,7 +808,7 @@ const OrdersPage = () => {
                   </h4>
                   <div className="space-y-4">
                     <div className="flex items-center gap-3">
-                      <div className="w-12 h-12 rounded-full bg-muted text-muted-foreground flex items-center justify-center font-bold text-lg">
+                      <div className="w-12 h-12 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold text-lg">
                         {(selectedOrder.customer_name || "G")[0].toUpperCase()}
                       </div>
                       <div>
@@ -573,15 +859,15 @@ const OrdersPage = () => {
                 {parseFormNotes(selectedOrder.notes).length > 0 && (
                   <div className="bg-background p-5 rounded-2xl border border-border shadow-sm">
                     <h4 className="text-xs font-black uppercase tracking-widest text-muted-foreground flex items-center gap-2 mb-4">
-                      <FileText size={14} /> Form Responses
+                      <FileText size={14} /> Custom Form Data
                     </h4>
                     <div className="space-y-4">
                       {parseFormNotes(selectedOrder.notes).map((item, idx) => (
                         <div
                           key={idx}
-                          className="bg-muted/50 p-3 rounded-xl border border-border"
+                          className="bg-muted/50 p-4 rounded-xl border border-border"
                         >
-                          <div className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1">
+                          <div className="text-[10px] font-bold text-primary uppercase tracking-wider mb-1">
                             {item.key}
                           </div>
                           <div className="font-medium text-foreground whitespace-pre-wrap">
@@ -596,43 +882,35 @@ const OrdersPage = () => {
                 {/* 4. Internal Actions (Status & Notes) */}
                 <div className="space-y-4 pt-2">
                   <h4 className="text-xs font-black uppercase tracking-widest text-muted-foreground flex items-center gap-2">
-                    <TrendingUp size={14} /> Fulfillment
+                    <TrendingUp size={14} /> Fulfillment Tracking
                   </h4>
 
                   <div className="space-y-2">
                     <Label className="font-bold text-foreground">
-                      Update Status
+                      Update Order Status
                     </Label>
                     <Select
                       value={selectedOrder.status}
-                      onValueChange={(val) =>
+                      onValueChange={(val: OrderStatus) =>
                         updateStatus(selectedOrder.id, val)
                       }
                     >
-                      <SelectTrigger className="h-12 bg-background border-border rounded-xl font-medium focus:ring-primary">
+                      <SelectTrigger className="h-12 bg-background border-border rounded-xl font-medium focus:ring-primary shadow-sm">
                         <SelectValue />
                       </SelectTrigger>
-                      <SelectContent className="rounded-xl shadow-xl">
-                        <SelectItem
-                          value="pending"
-                          className="font-medium cursor-pointer"
-                        >
-                          <span className="text-amber-500 mr-2">●</span> Pending
-                        </SelectItem>
-                        <SelectItem
-                          value="completed"
-                          className="font-medium cursor-pointer"
-                        >
-                          <span className="text-emerald-500 mr-2">●</span>{" "}
-                          Completed
-                        </SelectItem>
-                        <SelectItem
-                          value="cancelled"
-                          className="font-medium cursor-pointer"
-                        >
-                          <span className="text-rose-500 mr-2">●</span>{" "}
-                          Cancelled
-                        </SelectItem>
+                      <SelectContent className="rounded-xl shadow-xl z-[100000]">
+                        {Object.entries(STATUS_MAP).map(([key, info]) => (
+                          <SelectItem
+                            key={key}
+                            value={key}
+                            className="font-medium cursor-pointer py-3"
+                          >
+                            <div className="flex items-center gap-2">
+                              <info.icon className="w-4 h-4 opacity-50" />{" "}
+                              {info.label}
+                            </div>
+                          </SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
                   </div>
@@ -644,15 +922,15 @@ const OrdersPage = () => {
                     <Textarea
                       value={internalNotes}
                       onChange={(e) => setInternalNotes(e.target.value)}
-                      placeholder="Add private tracking info or notes here..."
-                      className="min-h-[100px] bg-background border-border rounded-xl resize-none focus:ring-primary"
+                      placeholder="Add tracking links, internal references, or private notes here..."
+                      className="min-h-[100px] bg-background border-border rounded-xl resize-none focus:ring-primary shadow-sm"
                     />
                     <Button
                       onClick={saveNotes}
                       disabled={
                         isSaving || internalNotes === selectedOrder.notes
                       }
-                      className="w-full h-12 rounded-xl font-bold mt-2"
+                      className="w-full h-12 rounded-xl font-bold mt-2 shadow-sm"
                     >
                       {isSaving ? (
                         <Loader2 className="animate-spin h-5 w-5" />

@@ -40,6 +40,7 @@ import {
   Lock,
   ShoppingCart,
   MessageSquare,
+  ChevronDown,
 } from "lucide-react";
 import { supabase } from "@/supabaseClient";
 import {
@@ -113,7 +114,7 @@ const defaultCheckoutTemplate = {
   success_message: "Thank you for your purchase. We will process it shortly.",
   image: "",
   fields: [
-    // 🚀 Lcoked Core Fields with enabled: true by default
+    // 🚀 Locked Core Fields (Expanded with City, Zip, Country)
     {
       id: "checkout_name",
       label: "Full Name",
@@ -143,8 +144,35 @@ const defaultCheckoutTemplate = {
     },
     {
       id: "checkout_address",
-      label: "Shipping Address",
+      label: "Street Address",
       type: "textarea",
+      required: false,
+      width: "full",
+      locked: true,
+      enabled: true,
+    },
+    {
+      id: "checkout_city",
+      label: "City",
+      type: "text",
+      required: false,
+      width: "half",
+      locked: true,
+      enabled: true,
+    },
+    {
+      id: "checkout_zip",
+      label: "Zip / Postal Code",
+      type: "text",
+      required: false,
+      width: "half",
+      locked: true,
+      enabled: true,
+    },
+    {
+      id: "checkout_country",
+      label: "Country",
+      type: "text",
       required: false,
       width: "full",
       locked: true,
@@ -153,7 +181,7 @@ const defaultCheckoutTemplate = {
   ],
 };
 
-// --- DND SORTABLE FIELD ITEM ---
+// --- DND SORTABLE FIELD ITEM (🚀 ACCORDION DESIGN) ---
 const SortableFormField = ({ field, idx, updateField, removeField }: any) => {
   const {
     attributes,
@@ -164,6 +192,9 @@ const SortableFormField = ({ field, idx, updateField, removeField }: any) => {
     isDragging,
   } = useSortable({ id: field.id || `field-${idx}` });
 
+  // 🚀 Keep custom fields expanded by default, lock fields collapsed by default
+  const [isExpanded, setIsExpanded] = useState(!field.locked);
+
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
@@ -172,191 +203,204 @@ const SortableFormField = ({ field, idx, updateField, removeField }: any) => {
 
   const needsOptions = field.type === "select" || field.type === "radio";
   const isLocked = field.locked;
-  const isEnabled = field.enabled !== false; // Default to true if undefined
+  const isEnabled = field.enabled !== false;
 
   return (
     <div
       ref={setNodeRef}
       style={style}
       className={cn(
-        "flex gap-3 p-4 border rounded-xl bg-background shadow-sm transition-all relative group",
+        "border rounded-xl bg-background shadow-sm transition-all relative overflow-hidden group",
         isDragging && "ring-2 ring-primary shadow-2xl opacity-90 scale-[0.98]",
-        isLocked && "border-blue-100 bg-blue-50/10",
-        !isEnabled && "opacity-50 grayscale-[30%] bg-muted/50" // Dim it if disabled!
+        isLocked && "border-blue-100",
+        !isEnabled && "opacity-60 grayscale-[30%] bg-muted/30"
       )}
     >
+      {/* 🚀 ACCORDION HEADER */}
       <div
-        {...attributes}
-        {...listeners}
-        className="mt-6 cursor-grab active:cursor-grabbing text-muted-foreground hover:text-primary transition-colors flex-shrink-0 touch-none"
-      >
-        <GripVertical size={20} />
-      </div>
-
-      <div className="flex-1 space-y-4">
-        {/* Trash or Lock Icon */}
-        {isLocked ? (
-          <div
-            className="absolute top-3 right-3 text-blue-400"
-            title="Core checkout field (Cannot be deleted)"
-          >
-            <Lock className="w-4 h-4" />
-          </div>
-        ) : (
-          <Button
-            size="icon"
-            variant="ghost"
-            className="absolute top-2 right-2 text-muted-foreground hover:text-destructive h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity"
-            onPointerDown={(e) => e.stopPropagation()}
-            onClick={() => removeField(idx)}
-          >
-            <Trash2 className="w-4 h-4" />
-          </Button>
+        className={cn(
+          "flex items-center justify-between p-3 cursor-pointer hover:bg-muted/50 transition-colors",
+          isLocked ? "bg-blue-50/20" : "bg-transparent",
+          isExpanded && "border-b border-border bg-muted/10"
         )}
+        onClick={() => setIsExpanded(!isExpanded)}
+      >
+        <div className="flex items-center gap-3 overflow-hidden">
+          <div
+            {...attributes}
+            {...listeners}
+            className="cursor-grab text-muted-foreground hover:text-primary p-1 touch-none"
+            onClick={(e) => e.stopPropagation()} // Prevent dragging from toggling accordion
+          >
+            <GripVertical size={16} />
+          </div>
+          <div className="min-w-0">
+            <div className="text-sm font-bold flex items-center gap-2 truncate">
+              {field.label || "Unnamed Field"}
+              {field.required && isEnabled && (
+                <span className="text-red-500">*</span>
+              )}
+            </div>
+            <div className="text-[10px] text-muted-foreground uppercase tracking-wider">
+              {field.type} {field.width === "half" && "• Half Width"}
+            </div>
+          </div>
+        </div>
 
         <div
+          className="flex items-center gap-3 pl-2 shrink-0"
+          onClick={(e) => e.stopPropagation()}
+        >
+          {isLocked ? (
+            <div
+              className="flex items-center gap-2 mr-1"
+              title="Core checkout field"
+            >
+              <Switch
+                checked={isEnabled}
+                onCheckedChange={(c) => updateField(idx, "enabled", c)}
+                className="scale-90 data-[state=checked]:bg-blue-500"
+              />
+              <Lock size={14} className="text-blue-400 hidden sm:block" />
+            </div>
+          ) : (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7 text-muted-foreground hover:text-destructive"
+              onClick={() => removeField(idx)}
+            >
+              <Trash2 size={14} />
+            </Button>
+          )}
+          <ChevronDown
+            size={16}
+            className={cn(
+              "text-muted-foreground transition-transform duration-300",
+              isExpanded && "rotate-180"
+            )}
+            onClick={() => setIsExpanded(!isExpanded)}
+          />
+        </div>
+      </div>
+
+      {/* 🚀 ACCORDION BODY */}
+      {isExpanded && (
+        <div
           className={cn(
-            "grid grid-cols-12 gap-3 pr-8",
+            "p-4 space-y-4 animate-in slide-in-from-top-2 fade-in duration-200",
             !isEnabled && "pointer-events-none"
           )}
         >
-          <div className="col-span-12 md:col-span-6 space-y-1.5">
-            <Label className="text-[10px] uppercase tracking-widest text-muted-foreground">
-              Field Label
-            </Label>
-            <Input
-              value={field.label}
-              onChange={(e) => updateField(idx, "label", e.target.value)}
-              className="h-9 font-bold"
-              onPointerDown={(e) => e.stopPropagation()}
-            />
-          </div>
-          <div className="col-span-6 sm:col-span-3 space-y-1.5">
-            <Label className="text-[10px] uppercase tracking-widest text-muted-foreground">
-              Input Type
-            </Label>
-            <Select
-              disabled={isLocked}
-              value={field.type}
-              onValueChange={(val) => updateField(idx, "type", val)}
-            >
-              <SelectTrigger
-                className={cn("h-9 bg-background", isLocked && "opacity-60")}
-              >
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="text">Short Text</SelectItem>
-                <SelectItem value="textarea">Long Text (Paragraph)</SelectItem>
-                <SelectItem value="email">Email</SelectItem>
-                <SelectItem value="tel">Phone</SelectItem>
-                <SelectItem value="date">Date</SelectItem>
-                <SelectItem value="select">Dropdown (Select)</SelectItem>
-                <SelectItem value="radio">Multiple Choice (Radio)</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="col-span-6 sm:col-span-3 space-y-1.5">
-            <Label className="text-[10px] uppercase tracking-widest text-muted-foreground">
-              Width
-            </Label>
-            <Select
-              value={field.width || "full"}
-              onValueChange={(val) => updateField(idx, "width", val)}
-            >
-              <SelectTrigger className="h-9 bg-background">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="full">Full Width</SelectItem>
-                <SelectItem value="half">Half (50%)</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
-
-        {needsOptions && (
-          <div
-            className={cn(
-              "space-y-1.5 pt-1 animate-in fade-in slide-in-from-top-1 p-3 bg-primary/5 border border-primary/20 rounded-lg",
-              !isEnabled && "pointer-events-none"
-            )}
-          >
-            <Label className="text-[10px] uppercase tracking-widest text-primary font-bold">
-              Choices (Comma Separated)
-            </Label>
-            <Input
-              placeholder="e.g. Red, Blue, Green"
-              value={field.options || ""}
-              onChange={(e) => updateField(idx, "options", e.target.value)}
-              className="h-9 text-xs bg-background"
-              onPointerDown={(e) => e.stopPropagation()}
-            />
-          </div>
-        )}
-
-        <div className={cn("space-y-1.5", !isEnabled && "pointer-events-none")}>
-          <Label className="text-[10px] uppercase tracking-widest text-muted-foreground">
-            Placeholder Text
-          </Label>
-          <Input
-            placeholder={
-              needsOptions
-                ? "Leave blank for dropdowns"
-                : "e.g. Enter your details here..."
-            }
-            value={field.placeholder || ""}
-            onChange={(e) => updateField(idx, "placeholder", e.target.value)}
-            className="h-9 text-xs bg-muted/50"
-            onPointerDown={(e) => e.stopPropagation()}
-            disabled={needsOptions}
-          />
-        </div>
-
-        {/* 🚀 Enable & Required Toggles */}
-        <div className="flex items-center justify-between pt-2 border-t border-dashed">
-          <div className="flex items-center gap-6">
-            <div className="flex items-center gap-2">
-              <Switch
-                id={`req-${field.id}`}
-                checked={field.required}
-                onCheckedChange={(c) => updateField(idx, "required", c)}
-                onPointerDown={(e) => e.stopPropagation()}
-                disabled={!isEnabled}
-              />
-              <Label
-                htmlFor={`req-${field.id}`}
-                className="text-[11px] cursor-pointer font-medium"
-              >
-                Required
+          <div className="grid grid-cols-12 gap-3">
+            <div className="col-span-12 md:col-span-6 space-y-1.5">
+              <Label className="text-[10px] uppercase tracking-widest text-muted-foreground">
+                Field Label
               </Label>
+              <Input
+                value={field.label}
+                onChange={(e) => updateField(idx, "label", e.target.value)}
+                className="h-9 font-bold"
+              />
             </div>
-
-            {isLocked && (
-              <div className="flex items-center gap-2 border-l pl-4">
-                <Switch
-                  id={`en-${field.id}`}
-                  checked={isEnabled}
-                  onCheckedChange={(c) => updateField(idx, "enabled", c)}
-                  onPointerDown={(e) => e.stopPropagation()}
-                />
-                <Label
-                  htmlFor={`en-${field.id}`}
-                  className="text-[11px] cursor-pointer font-bold text-blue-600"
+            <div className="col-span-6 sm:col-span-3 space-y-1.5">
+              <Label className="text-[10px] uppercase tracking-widest text-muted-foreground">
+                Input Type
+              </Label>
+              <Select
+                disabled={isLocked}
+                value={field.type}
+                onValueChange={(val) => updateField(idx, "type", val)}
+              >
+                <SelectTrigger
+                  className={cn("h-9 bg-background", isLocked && "opacity-60")}
                 >
-                  Enabled
-                </Label>
-              </div>
-            )}
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="text">Short Text</SelectItem>
+                  <SelectItem value="textarea">
+                    Long Text (Paragraph)
+                  </SelectItem>
+                  <SelectItem value="email">Email</SelectItem>
+                  <SelectItem value="tel">Phone</SelectItem>
+                  <SelectItem value="date">Date</SelectItem>
+                  <SelectItem value="select">Dropdown (Select)</SelectItem>
+                  <SelectItem value="radio">Multiple Choice (Radio)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="col-span-6 sm:col-span-3 space-y-1.5">
+              <Label className="text-[10px] uppercase tracking-widest text-muted-foreground">
+                Width
+              </Label>
+              <Select
+                value={field.width || "full"}
+                onValueChange={(val) => updateField(idx, "width", val)}
+              >
+                <SelectTrigger className="h-9 bg-background">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="full">Full Width</SelectItem>
+                  <SelectItem value="half">Half (50%)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
 
-          {isLocked && (
-            <span className="text-[10px] text-blue-500 italic">
-              Core checkout field
-            </span>
+          {needsOptions && (
+            <div className="space-y-1.5 pt-1 animate-in fade-in p-3 bg-primary/5 border border-primary/20 rounded-lg">
+              <Label className="text-[10px] uppercase tracking-widest text-primary font-bold">
+                Choices (Comma Separated)
+              </Label>
+              <Input
+                placeholder="e.g. Red, Blue, Green"
+                value={field.options || ""}
+                onChange={(e) => updateField(idx, "options", e.target.value)}
+                className="h-9 text-xs bg-background"
+              />
+            </div>
           )}
+
+          <div className="space-y-1.5">
+            <Label className="text-[10px] uppercase tracking-widest text-muted-foreground">
+              Placeholder Text
+            </Label>
+            <Input
+              placeholder={
+                needsOptions
+                  ? "Leave blank for dropdowns"
+                  : "e.g. Enter your details here..."
+              }
+              value={field.placeholder || ""}
+              onChange={(e) => updateField(idx, "placeholder", e.target.value)}
+              className="h-9 text-xs bg-muted/50"
+              disabled={needsOptions}
+            />
+          </div>
+
+          <div className="flex items-center gap-2 pt-2 border-t border-dashed">
+            <Switch
+              id={`req-${field.id}`}
+              checked={field.required}
+              onCheckedChange={(c) => updateField(idx, "required", c)}
+              disabled={!isEnabled}
+            />
+            <Label
+              htmlFor={`req-${field.id}`}
+              className="text-[11px] cursor-pointer font-medium"
+            >
+              Required Field
+            </Label>
+            {isLocked && (
+              <span className="text-[10px] text-blue-500 ml-auto italic">
+                Core checkout field
+              </span>
+            )}
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 };
@@ -481,7 +525,7 @@ export default function FormManager({
 
   const addField = () => {
     const newField = {
-      id: `field_${Date.now()}`,
+      id: `field_${Date.now()}`, // 🚀 Stable ID! Never mutates on keystroke.
       label: "New Field",
       type: "text",
       required: false,
@@ -495,15 +539,7 @@ export default function FormManager({
   const updateField = (idx: number, key: string, value: any) => {
     const newFields = [...activeForm.fields];
     newFields[idx][key] = value;
-
-    // Only auto-update the ID if it's NOT a locked field
-    if (
-      key === "label" &&
-      !newFields[idx].locked &&
-      (!newFields[idx].id || newFields[idx].id.startsWith("field_"))
-    ) {
-      newFields[idx].id = value.toLowerCase().replace(/[^a-z0-9]/g, "_");
-    }
+    // 🚀 Bug fixed: Removed the auto-id mutation code that destroyed focus!
     updateActiveForm("fields", newFields);
   };
 
