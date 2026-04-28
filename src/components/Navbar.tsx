@@ -320,13 +320,13 @@ const Navbar: React.FC = () => {
                   <DropdownMenuTrigger asChild>
                     <Button className="rounded-full shadow-sm hover:shadow-md transition-all">
                       <LogIn size={16} className="mr-2" />
-                      Login / Sign Up
+                      My Account
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent className="w-48" align="end">
                     <DropdownMenuItem asChild>
                       <Link
-                        to="/client-auth"
+                        to="/client-dashboard"
                         className="flex items-center gap-3 w-full cursor-pointer"
                       >
                         <UserCircle size={16} className="text-primary" />
@@ -335,7 +335,7 @@ const Navbar: React.FC = () => {
                     </DropdownMenuItem>
                     <DropdownMenuItem asChild>
                       <Link
-                        to="/actor-login"
+                        to="/dashboard"
                         className="flex items-center gap-3 w-full cursor-pointer"
                       >
                         <UserCheck

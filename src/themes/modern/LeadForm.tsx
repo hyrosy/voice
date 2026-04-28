@@ -1,5 +1,4 @@
 import React, { useState } from "react";
-import { BlockProps } from "../types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -13,10 +12,10 @@ import {
   Phone,
   MessageSquare,
   Calendar,
+  Image as ImageIcon,
 } from "lucide-react";
 import { supabase } from "@/supabaseClient";
 import { cn } from "@/lib/utils";
-// 🚀 1. IMPORT INLINE EDIT
 import { InlineEdit } from "../../components/dashboard/InlineEdit";
 
 // Helper to get icon for field type
@@ -31,11 +30,10 @@ const getFieldIcon = (type: string) => {
     case "date":
       return <Calendar size={14} />;
     default:
-      return <User size={14} />; // Default generic icon
+      return <User size={14} />;
   }
 };
 
-// 🚀 2. GRAB id AND isPreview FROM PROPS
 const LeadForm: React.FC<any> = ({
   data,
   actorId,
@@ -45,8 +43,6 @@ const LeadForm: React.FC<any> = ({
 }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [isSent, setIsSent] = useState(false);
-
-  // Dynamic Form State
   const [formState, setFormState] = useState<Record<string, string>>({});
 
   const fields = data.fields || [
@@ -72,9 +68,14 @@ const LeadForm: React.FC<any> = ({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // 🚀 3. SAFE SHIELD: Don't submit real leads in the builder!
+    // 🚀 SAFE SHIELD: Don't submit real leads in the builder!
     if (isPreview) {
-      alert("Form submission is disabled in preview mode.");
+      alert("Form submission is simulated in the builder.");
+      setIsLoading(true);
+      setTimeout(() => {
+        setIsLoading(false);
+        setIsSent(true);
+      }, 800);
       return;
     }
 
@@ -115,68 +116,147 @@ const LeadForm: React.FC<any> = ({
     }
   };
 
+  // --- SUCCESS STATE UX ---
+  // --- SUCCESS STATE UX ---
   if (isSent) {
     return (
-      <section className="py-24 px-6 bg-neutral-900/50 border-y border-white/5">
-        <div className="max-w-md mx-auto text-center space-y-4 animate-in zoom-in duration-300">
-          <div className="w-16 h-16 bg-green-500/20 text-green-500 rounded-full flex items-center justify-center mx-auto">
-            <CheckCircle2 size={32} />
+      <section className="py-32 px-6 bg-neutral-950 relative overflow-hidden flex items-center justify-center min-h-[60vh]">
+        <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 brightness-100 contrast-150 mix-blend-overlay pointer-events-none"></div>
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[400px] h-[400px] bg-green-500/10 blur-[100px] rounded-full pointer-events-none" />
+
+        <div className="max-w-md w-full mx-auto text-center space-y-6 animate-in zoom-in-95 duration-500 relative z-10 bg-neutral-900/40 backdrop-blur-xl p-10 rounded-3xl border border-white/10 ring-1 ring-white/5">
+          <div className="w-20 h-20 bg-green-500/20 text-green-400 rounded-full flex items-center justify-center mx-auto ring-1 ring-green-500/50 shadow-[0_0_30px_rgba(34,197,94,0.2)]">
+            <CheckCircle2
+              size={40}
+              className="animate-in fade-in zoom-in duration-700 delay-200"
+            />
           </div>
-          <h3 className="text-2xl font-bold text-white">Message Sent!</h3>
-          <p className="text-neutral-400">
-            Thank you! We have received your message and will get back to you
-            shortly.
-          </p>
+          <div className="space-y-2">
+            <h3 className="text-3xl font-bold text-white tracking-tight">
+              {data.successTitle || "Message Sent!"}
+            </h3>
+            <p className="text-neutral-400 font-medium">
+              {data.successMessage ||
+                "Thank you! We have received your message and will get back to you shortly."}
+            </p>
+          </div>
           <Button
             variant="outline"
+            className="mt-4 rounded-full px-8 border-white/20 text-white hover:bg-white hover:text-black transition-all"
             onClick={() => {
               setIsSent(false);
               setFormState({});
             }}
           >
-            Send Another
+            Send Another Message
           </Button>
         </div>
       </section>
     );
   }
-
-  // 🚀 4. REFACTORED TO JSX VARIABLE TO PREVENT REACT FOCUS BUG
+  // Helper to safely parse options
+  const parseOptions = (optString?: string) => {
+    if (!optString) return [];
+    return optString
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean);
+  };
+  // --- REUSABLE FORM JSX ---
   const formContentJsx = (
-    <form onSubmit={handleSubmit} className="space-y-6">
-      <div className="flex flex-wrap gap-4">
+    <form
+      onSubmit={handleSubmit}
+      className="space-y-6 animate-in fade-in duration-700"
+    >
+      <div className="flex flex-wrap gap-5">
         {fields.map((field: any, idx: number) => {
           const isHalf = field.width === "half";
+          const fieldOptions = parseOptions(field.options);
+
           return (
             <div
               key={idx}
               className={cn(
-                "space-y-2 flex-grow",
+                "space-y-2.5 flex-grow",
                 isHalf
-                  ? "basis-[calc(50%-1rem)] min-w-[250px]"
+                  ? "basis-[calc(50%-1.25rem)] min-w-[240px]"
                   : "basis-full w-full"
               )}
             >
-              <Label className="text-neutral-400 flex items-center gap-2 text-xs uppercase tracking-wide">
+              <Label className="text-neutral-400 flex items-center gap-2 text-xs uppercase tracking-widest font-bold ml-1">
                 {getFieldIcon(field.type)} {field.label}{" "}
-                {field.required && <span className="text-red-500">*</span>}
+                {field.required && <span className="text-primary">*</span>}
               </Label>
 
+              {/* 🚀 FIELD TYPE: TEXTAREA */}
               {field.type === "textarea" ? (
                 <Textarea
                   required={field.required && !isPreview}
-                  readOnly={isPreview} // 🚀 Prevent typing in builder
+                  readOnly={isPreview}
                   placeholder={field.placeholder}
-                  className="bg-black/50 border-white/10 min-h-[120px] resize-none p-4 leading-relaxed focus:border-primary/50 transition-all"
+                  className="bg-white/5 border-white/10 hover:border-white/20 focus-visible:border-primary focus-visible:ring-1 focus-visible:ring-primary/50 text-white placeholder:text-neutral-600 transition-all min-h-[140px] resize-none p-4 leading-relaxed rounded-2xl text-base"
                   value={formState[field.id] || ""}
                   onChange={(e) =>
                     setFormState({ ...formState, [field.id]: e.target.value })
                   }
                 />
+              ) : /* 🚀 FIELD TYPE: DROPDOWN (SELECT) */
+              field.type === "select" ? (
+                <select
+                  required={field.required && !isPreview}
+                  disabled={isPreview}
+                  className="w-full bg-white/5 border border-white/10 hover:border-white/20 focus:border-primary focus:ring-1 focus:ring-primary/50 text-white transition-all h-14 rounded-2xl px-4 text-base appearance-none outline-none"
+                  value={formState[field.id] || ""}
+                  onChange={(e) =>
+                    setFormState({ ...formState, [field.id]: e.target.value })
+                  }
+                >
+                  <option value="" disabled className="text-neutral-900">
+                    Select an option...
+                  </option>
+                  {fieldOptions.map((opt, i) => (
+                    <option key={i} value={opt} className="text-neutral-900">
+                      {opt}
+                    </option>
+                  ))}
+                </select>
+              ) : /* 🚀 FIELD TYPE: MULTIPLE CHOICE (RADIO) */
+              field.type === "radio" ? (
+                <div className="flex flex-col gap-3 pt-2">
+                  {fieldOptions.map((opt, i) => (
+                    <label
+                      key={i}
+                      className="flex items-center gap-3 cursor-pointer group"
+                    >
+                      <div className="relative flex items-center justify-center w-5 h-5 rounded-full border border-white/20 group-hover:border-primary transition-colors bg-white/5">
+                        <input
+                          type="radio"
+                          name={field.id}
+                          value={opt}
+                          required={field.required && !isPreview}
+                          disabled={isPreview}
+                          className="peer sr-only"
+                          onChange={(e) =>
+                            setFormState({
+                              ...formState,
+                              [field.id]: e.target.value,
+                            })
+                          }
+                        />
+                        {/* Custom Radio Dot */}
+                        <div className="w-2.5 h-2.5 rounded-full bg-primary opacity-0 peer-checked:opacity-100 transition-opacity" />
+                      </div>
+                      <span className="text-neutral-300 group-hover:text-white transition-colors text-sm font-medium">
+                        {opt}
+                      </span>
+                    </label>
+                  ))}
+                </div>
               ) : (
+                /* 🚀 FIELD TYPE: STANDARD INPUTS (Text, Email, Tel, Date) */
                 <Input
                   required={field.required && !isPreview}
-                  readOnly={isPreview} // 🚀 Prevent typing in builder
+                  readOnly={isPreview}
                   type={
                     field.type === "email"
                       ? "email"
@@ -187,7 +267,12 @@ const LeadForm: React.FC<any> = ({
                       : "text"
                   }
                   placeholder={field.placeholder}
-                  className="bg-black/50 border-white/10 h-12 focus:border-primary/50 transition-all"
+                  className={cn(
+                    "bg-white/5 border-white/10 hover:border-white/20 focus-visible:border-primary focus-visible:ring-1 focus-visible:ring-primary/50 text-white placeholder:text-neutral-600 transition-all h-14 rounded-2xl px-4 text-base",
+                    // Fix ugly native date picker icon in dark mode
+                    field.type === "date" &&
+                      "[color-scheme:dark] [&::-webkit-calendar-picker-indicator]:opacity-50 [&::-webkit-calendar-picker-indicator]:hover:opacity-100 cursor-pointer"
+                  )}
                   value={formState[field.id] || ""}
                   onChange={(e) =>
                     setFormState({ ...formState, [field.id]: e.target.value })
@@ -198,26 +283,24 @@ const LeadForm: React.FC<any> = ({
           );
         })}
       </div>
-
-      <div className="pt-4">
+      <div className="pt-6">
         <Button
-          type={isPreview ? "button" : "submit"} // 🚀 Safe button type for builder
+          type={isPreview ? "button" : "submit"}
           disabled={isLoading}
-          size="lg"
-          className="w-full h-14 text-base font-semibold rounded-xl bg-primary text-black hover:bg-primary/90 transition-all"
+          className="w-full h-16 text-lg font-bold rounded-2xl bg-primary text-black hover:bg-primary/90 transition-all hover:scale-[1.02] shadow-[0_0_30px_rgba(255,255,255,0.1)] group"
         >
           {isLoading ? (
-            <Loader2 className="animate-spin mr-2" />
+            <Loader2 className="animate-spin mr-2 w-5 h-5" />
           ) : (
-            <Send className="mr-2 w-5 h-5" />
+            <Send className="mr-3 w-5 h-5 group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform" />
           )}
-          {/* 🚀 5. INLINE EDIT BUTTON TEXT */}
           <InlineEdit
             tagName="span"
             text={data.buttonText || "Send Message"}
             sectionId={id}
             fieldKey="buttonText"
             isPreview={isPreview}
+            className="tracking-wide"
           />
         </Button>
       </div>
@@ -228,15 +311,17 @@ const LeadForm: React.FC<any> = ({
   if (variant === "centered") {
     return (
       <section
-        className="py-20 px-6 md:px-12 bg-neutral-950 relative overflow-hidden"
+        className="py-24 md:py-32 px-6 md:px-12 bg-neutral-950 relative overflow-hidden"
         id="contact-form"
       >
-        <div className="absolute top-0 left-0 w-1/3 h-1/3 bg-primary/5 blur-[100px] rounded-full pointer-events-none" />
+        <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 brightness-100 contrast-150 mix-blend-overlay pointer-events-none"></div>
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-3/4 h-3/4 bg-primary/5 blur-[120px] rounded-full pointer-events-none" />
+
         <div className="max-w-3xl mx-auto relative z-10">
-          <div className="text-center mb-10 space-y-3">
+          <div className="text-center mb-14 space-y-4 animate-in fade-in slide-in-from-bottom-8 duration-700">
             <InlineEdit
               tagName="h2"
-              className="text-3xl md:text-5xl font-bold text-white tracking-tight block"
+              className="text-4xl md:text-6xl font-black text-white tracking-tighter block"
               text={data.title || "Contact Us"}
               sectionId={id}
               fieldKey="title"
@@ -244,7 +329,7 @@ const LeadForm: React.FC<any> = ({
             />
             <InlineEdit
               tagName="p"
-              className="text-lg text-neutral-400 block"
+              className="text-lg md:text-xl text-neutral-400 block font-medium max-w-xl mx-auto"
               text={
                 data.subheadline ||
                 "Send us a message and we'll get back to you."
@@ -254,7 +339,8 @@ const LeadForm: React.FC<any> = ({
               isPreview={isPreview}
             />
           </div>
-          <div className="bg-neutral-900/50 border border-white/10 rounded-2xl p-6 md:p-10 backdrop-blur-sm shadow-xl">
+
+          <div className="bg-neutral-900/40 border border-white/10 rounded-[2.5rem] p-8 md:p-12 backdrop-blur-xl shadow-2xl ring-1 ring-white/5 animate-in zoom-in-95 duration-700 delay-100">
             {formContentJsx}
           </div>
         </div>
@@ -266,44 +352,58 @@ const LeadForm: React.FC<any> = ({
   if (variant === "split") {
     return (
       <section
-        className="bg-neutral-950 relative overflow-hidden flex flex-col md:flex-row min-h-[600px]"
+        className="bg-neutral-950 relative overflow-hidden flex flex-col lg:flex-row min-h-[800px]"
         id="contact-form"
       >
         {/* Left: Image / Content */}
-        <div className="w-full md:w-1/2 relative min-h-[300px]">
+        <div className="w-full lg:w-1/2 relative min-h-[400px] lg:min-h-full flex flex-col justify-end">
           {data.image ? (
             <img
               src={data.image}
               alt="Contact"
-              className="absolute inset-0 w-full h-full object-cover"
+              className="absolute inset-0 w-full h-full object-cover filter brightness-75"
             />
           ) : (
-            <div className="absolute inset-0 bg-neutral-900 flex items-center justify-center text-neutral-700">
-              <span className="text-sm">No Image Selected</span>
+            <div className="absolute inset-0 bg-neutral-900 flex flex-col items-center justify-center text-neutral-600 border-r border-white/5">
+              <ImageIcon className="w-16 h-16 mb-4 opacity-20" />
+              <span className="text-sm font-bold uppercase tracking-widest opacity-40">
+                No Cover Image
+              </span>
             </div>
           )}
-          <div className="absolute inset-0 bg-gradient-to-t from-black/90 to-transparent flex flex-col justify-end p-10 pointer-events-none">
+          {/* Editorial Gradient Overlay */}
+          <div className="absolute inset-0 bg-gradient-to-t from-neutral-950 via-neutral-950/40 to-transparent pointer-events-none" />
+
+          <div className="relative z-10 p-10 md:p-16 lg:p-20 pointer-events-none animate-in fade-in slide-in-from-bottom-8 duration-1000">
             <InlineEdit
               tagName="h2"
-              className="text-3xl md:text-4xl font-bold text-white mb-2 block pointer-events-auto w-max"
-              text={data.title || "Contact Us"}
+              className="text-4xl md:text-5xl lg:text-7xl font-black text-white mb-6 block pointer-events-auto tracking-tighter leading-tight"
+              text={data.title || "Get In Touch"}
               sectionId={id}
               fieldKey="title"
               isPreview={isPreview}
             />
+            <div className="h-1 w-20 bg-primary mb-6" />
             <InlineEdit
               tagName="p"
-              className="text-neutral-300 block pointer-events-auto w-max max-w-sm"
-              text={data.subheadline || "We'd love to hear from you."}
+              className="text-lg md:text-xl text-neutral-300 block pointer-events-auto font-medium max-w-md leading-relaxed"
+              text={
+                data.subheadline ||
+                "We'd love to hear from you. Fill out the form and our team will be in touch shortly."
+              }
               sectionId={id}
               fieldKey="subheadline"
               isPreview={isPreview}
             />
           </div>
         </div>
+
         {/* Right: Form */}
-        <div className="w-full md:w-1/2 p-8 md:p-16 flex flex-col justify-center bg-neutral-950">
-          {formContentJsx}
+        <div className="w-full lg:w-1/2 p-8 md:p-16 lg:p-24 flex flex-col justify-center bg-neutral-950 relative">
+          <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 brightness-100 contrast-150 mix-blend-overlay pointer-events-none"></div>
+          <div className="relative z-10 max-w-xl w-full mx-auto">
+            {formContentJsx}
+          </div>
         </div>
       </section>
     );
@@ -311,12 +411,17 @@ const LeadForm: React.FC<any> = ({
 
   // --- VARIANT 3: MINIMAL (No Box) ---
   return (
-    <section className="py-24 px-6 bg-neutral-950" id="contact-form">
-      <div className="max-w-2xl mx-auto space-y-12">
-        <div className="space-y-4">
+    <section
+      className="py-24 md:py-32 px-6 bg-neutral-950 relative overflow-hidden"
+      id="contact-form"
+    >
+      <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 brightness-100 contrast-150 mix-blend-overlay pointer-events-none"></div>
+
+      <div className="max-w-3xl mx-auto space-y-16 relative z-10">
+        <div className="space-y-6 animate-in fade-in slide-in-from-bottom-8 duration-700">
           <InlineEdit
             tagName="h2"
-            className="text-3xl font-bold text-white block"
+            className="text-5xl md:text-7xl font-black text-white tracking-tighter block"
             text={data.title || "Contact Us"}
             sectionId={id}
             fieldKey="title"
@@ -324,14 +429,17 @@ const LeadForm: React.FC<any> = ({
           />
           <InlineEdit
             tagName="p"
-            className="text-neutral-400 border-l-2 border-primary pl-4 block"
-            text={data.subheadline || "Send us a message."}
+            className="text-xl md:text-2xl text-neutral-400 border-l-4 border-primary pl-6 block font-medium py-2"
+            text={
+              data.subheadline ||
+              "Send us a message and we'll get back to you as soon as possible."
+            }
             sectionId={id}
             fieldKey="subheadline"
             isPreview={isPreview}
           />
         </div>
-        {formContentJsx}
+        <div className="pt-4">{formContentJsx}</div>
       </div>
     </section>
   );

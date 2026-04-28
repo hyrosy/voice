@@ -187,9 +187,37 @@ const IframePreview = ({
   publicSlug: string; // 🚀 1. TYPE IT
 }) => {
   const iframeRef = React.useRef<HTMLIFrameElement>(null);
+  const containerRef = React.useRef<HTMLDivElement>(null); // 🚀 NEW: Container Ref
   const [viewport, setViewport] = useState<"desktop" | "tablet" | "mobile">(
     "desktop"
   );
+  const [scale, setScale] = useState(1); // 🚀 NEW: Scale state
+
+  // 🚀 NEW: SMART DESKTOP SCALING
+  // Forces the iframe to think it's on a large screen, then zooms it out to fit your editor visually!
+  useEffect(() => {
+    if (viewport !== "desktop") {
+      setScale(1);
+      return;
+    }
+
+    const observer = new ResizeObserver((entries) => {
+      for (let entry of entries) {
+        const containerWidth = entry.contentRect.width;
+        const targetDesktopWidth = 1280; // Standard Tailwind desktop breakpoint
+
+        // If the editor panel is smaller than a desktop, scale it down proportionally
+        if (containerWidth < targetDesktopWidth) {
+          setScale(containerWidth / targetDesktopWidth);
+        } else {
+          setScale(1);
+        }
+      }
+    });
+
+    if (containerRef.current) observer.observe(containerRef.current);
+    return () => observer.disconnect();
+  }, [viewport]);
 
   const sendDataToIframe = useCallback(() => {
     if (iframeRef.current && iframeRef.current.contentWindow) {
@@ -260,7 +288,7 @@ const IframePreview = ({
   }, [sendDataToIframe, sections, onEditSection, updateSection]);
 
   const viewportWidths = {
-    desktop: "100%",
+    desktop: "1280px", // 🚀 Force actual desktop width internally
     tablet: "768px",
     mobile: "375px",
   };
@@ -304,12 +332,21 @@ const IframePreview = ({
       </div>
 
       {/* Iframe Container */}
-      <div className="flex-grow overflow-auto flex justify-center items-start p-4 md:p-8 custom-scrollbar bg-slate-50/50 dark:bg-black/20">
+      <div
+        ref={containerRef}
+        className="flex-grow overflow-auto flex justify-center items-start p-4 md:p-8 custom-scrollbar bg-slate-50/50 dark:bg-black/20"
+      >
         <div
-          className="transition-all duration-300 origin-top bg-white flex flex-col" // <-- Added flex flex-col
+          // 🚀 ADDED 'shrink-0' so flexbox doesn't squish it
+          className="transition-all duration-300 origin-top bg-white flex flex-col shrink-0"
           style={{
-            width: viewportWidths[viewport],
-            height: "100%", // 🚀 Changed from minHeight to height
+            width: viewport === "desktop" ? "1280px" : viewportWidths[viewport],
+            // 🚀 ADDED minWidth to force the 1280px physical size before scaling
+            minWidth:
+              viewport === "desktop" ? "1280px" : viewportWidths[viewport],
+            height: viewport === "desktop" ? `${100 / scale}%` : "100%",
+            transform: `scale(${scale})`,
+            transformOrigin: "top center",
             border: "1px solid var(--border)",
             borderRadius: viewport === "desktop" ? "0.5rem" : "2rem",
             overflow: "hidden",
@@ -399,7 +436,27 @@ const PortfolioBuilderPage = () => {
   const [isPurchasingTheme, setIsPurchasingTheme] = useState<string | null>(
     null
   );
+  const handleTogglePublish = async (checked: boolean) => {
+    if (!activePortfolioId) return;
 
+    // 1. Update the UI instantly so it feels responsive
+    setIsPublished(checked);
+
+    // 2. Fire the update directly to Supabase
+    const { error } = await supabase
+      .from("portfolios")
+      .update({
+        is_published: checked,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", activePortfolioId);
+
+    if (error) {
+      console.error("Publish error:", error);
+      alert("Failed to update publish status.");
+      setIsPublished(!checked); // Revert the UI if the database failed
+    }
+  };
   // FETCH GLOBAL INVENTORY (Actor Table)
   // FETCH GLOBAL INVENTORY (Actor Table)
   const { data: actorWalletData, refetch: fetchActorWallet } = useQuery({
@@ -1001,7 +1058,7 @@ const PortfolioBuilderPage = () => {
 
   return (
     // 1. Made it slightly wider (max-w-[1600px]) so the Desktop preview has more breathing room
-    <div className="max-w-[1600px] w-full mx-auto flex flex-col pt-4 px-4 lg:px-8 pb-4 lg:pb-6 h-[100dvh]">
+    <div className="p-4 md:p-8 space-y-8 w-full max-w-8xl mx-auto ">
       {/* Header / Toolbar */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4 shrink-0">
         {/* LEFT SIDE: Site & Page Switchers */}
@@ -1161,7 +1218,10 @@ const PortfolioBuilderPage = () => {
             <span className="text-xs font-medium uppercase text-muted-foreground">
               Published
             </span>
-            <Switch checked={isPublished} onCheckedChange={setIsPublished} />
+            <Switch
+              checked={isPublished}
+              onCheckedChange={handleTogglePublish}
+            />
           </div>
 
           {/* 🚀 FIXED DIV NESTING HERE */}
@@ -1270,6 +1330,7 @@ const PortfolioBuilderPage = () => {
                       themeId={themeConfig.templateId || "modern"}
                       isInline={true}
                       pages={customPages}
+                      portfolioId={activePortfolioId || ""} // ✅ FIXED
                     />
                   </div>
                 </div>

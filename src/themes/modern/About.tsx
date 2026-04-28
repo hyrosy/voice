@@ -1,12 +1,9 @@
 import React from "react";
-import { BlockProps } from "../types";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { ArrowRight, CheckCircle2 } from "lucide-react";
-// 🚀 1. IMPORT INLINE EDIT
 import { InlineEdit } from "../../components/dashboard/InlineEdit";
 
-// 🚀 2. GRAB id AND isPreview FROM PROPS
 const About: React.FC<any> = ({ data, id, isPreview }) => {
   // 1. CONFIGURATION
   const variant = data.variant || "split"; // 'simple', 'split', 'profile'
@@ -14,7 +11,7 @@ const About: React.FC<any> = ({ data, id, isPreview }) => {
   const isProfile = variant === "profile";
 
   // Layout Alignment
-  const mediaPosition = data.layout || "left";
+  const mediaPosition = data.layout || "right"; // Default to right like standard modern
   const isMediaLeft = mediaPosition === "left";
 
   // Helper to detect video files
@@ -30,8 +27,9 @@ const About: React.FC<any> = ({ data, id, isPreview }) => {
     return (
       <div
         className={cn(
-          "relative group mx-auto lg:mx-0 max-w-md",
-          isSimple ? "hidden" : "block"
+          "relative group mx-auto lg:mx-0 w-full max-w-md xl:max-w-lg",
+          isSimple ? "hidden" : "block",
+          "animate-in fade-in slide-in-from-bottom-8 duration-1000 fill-mode-both"
         )}
       >
         <div
@@ -41,7 +39,7 @@ const About: React.FC<any> = ({ data, id, isPreview }) => {
           )}
         />
 
-        <div className="relative rounded-3xl overflow-hidden bg-neutral-900 border border-white/10 shadow-2xl aspect-[3/4] ring-1 ring-white/5">
+        <div className="relative rounded-3xl overflow-hidden bg-neutral-900 border border-white/10 shadow-2xl aspect-[4/5] ring-1 ring-white/5">
           {isVideo(data.image) ? (
             <video
               src={data.image}
@@ -69,14 +67,30 @@ const About: React.FC<any> = ({ data, id, isPreview }) => {
   const StatsGrid = () => {
     if (!data.stats || data.stats.length === 0) return null;
     return (
-      <div className="pt-8 border-t border-white/10 w-full animate-in fade-in slide-in-from-bottom-4 duration-700 delay-100">
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-6 text-left">
+      <div
+        className={cn(
+          "pt-8 border-t border-white/10 w-full animate-in fade-in slide-in-from-bottom-4 duration-700 delay-100",
+          isSimple && "max-w-2xl mx-auto" // 🚀 Centers the block in simple mode
+        )}
+      >
+        <div
+          className={cn(
+            "grid grid-cols-2 sm:grid-cols-3 gap-6",
+            isSimple ? "text-center" : "text-left" // 🚀 Centers the text in simple mode
+          )}
+        >
           {data.stats.map((stat: any, idx: number) => (
-            <div key={idx} className="space-y-1">
-              <h4 className="text-2xl md:text-3xl font-bold text-primary">
+            <div
+              key={idx}
+              className={cn(
+                "space-y-1",
+                isSimple && "flex flex-col items-center"
+              )}
+            >
+              <h4 className="text-3xl md:text-4xl font-black text-primary">
                 {stat.value}
               </h4>
-              <p className="text-xs text-neutral-500 uppercase tracking-wider font-medium">
+              <p className="text-xs text-neutral-400 uppercase tracking-wider font-bold">
                 {stat.label}
               </p>
             </div>
@@ -90,11 +104,22 @@ const About: React.FC<any> = ({ data, id, isPreview }) => {
   const FeaturesList = () => {
     if (!data.features || data.features.length === 0) return null;
     return (
-      <ul className="grid gap-3 pt-4 sm:grid-cols-2">
+      <ul
+        className={cn(
+          "grid gap-4 pt-4 sm:grid-cols-2 w-full animate-in fade-in slide-in-from-bottom-4 duration-700 delay-100",
+          isSimple && "max-w-xl mx-auto place-items-center" // 🚀 Centers the block
+        )}
+      >
         {data.features.map((feature: string, idx: number) => (
-          <li key={idx} className="flex items-start gap-3">
-            <CheckCircle2 className="w-5 h-5 text-primary/60 mt-0.5 shrink-0" />
-            <span className="text-sm md:text-base text-neutral-300">
+          <li
+            key={idx}
+            className={cn(
+              "flex items-start gap-3",
+              isSimple && "justify-center text-center"
+            )}
+          >
+            <CheckCircle2 className="w-5 h-5 text-primary mt-0.5 shrink-0" />
+            <span className="text-sm md:text-base text-neutral-300 font-medium">
               {feature}
             </span>
           </li>
@@ -111,14 +136,13 @@ const About: React.FC<any> = ({ data, id, isPreview }) => {
       <div className="absolute top-0 right-0 w-1/2 h-1/2 bg-primary/10 blur-[120px] rounded-full pointer-events-none" />
       <div className="absolute bottom-0 left-0 w-1/2 h-1/2 bg-primary/5 blur-[100px] rounded-full pointer-events-none" />
 
-      <div className="relative container mx-auto z-10">
+      <div className="relative container mx-auto z-10 max-w-7xl">
         {/* === VARIANT 1: SIMPLE (Centered) === */}
         {isSimple ? (
           <div className="max-w-4xl mx-auto text-center space-y-8 animate-in fade-in slide-in-from-bottom-8 duration-700">
             {data.label && (
               <span className="text-primary font-mono text-sm tracking-widest uppercase inline-flex items-center gap-2 mb-2">
                 <span className="w-8 h-px bg-primary/50"></span>
-                {/* 🚀 3. REPLACE LABEL */}
                 <InlineEdit
                   tagName="span"
                   text={data.label}
@@ -130,10 +154,9 @@ const About: React.FC<any> = ({ data, id, isPreview }) => {
               </span>
             )}
 
-            {/* 🚀 3. REPLACE TITLE */}
             <InlineEdit
               tagName="h2"
-              className="text-4xl md:text-5xl lg:text-7xl font-bold tracking-tight text-white leading-[1.1] block"
+              className="text-4xl md:text-5xl lg:text-7xl font-extrabold tracking-tight text-white leading-[1.1] block"
               text={data.title || "About Me"}
               sectionId={id}
               fieldKey="title"
@@ -142,39 +165,25 @@ const About: React.FC<any> = ({ data, id, isPreview }) => {
 
             <div className="h-1 w-24 mx-auto bg-gradient-to-r from-primary to-transparent" />
 
-            {/* 🚀 3. REPLACE CONTENT */}
             <InlineEdit
               tagName="div"
-              className="prose prose-lg prose-invert mx-auto text-neutral-400 leading-relaxed whitespace-pre-wrap"
+              className="prose prose-lg prose-invert mx-auto text-neutral-300 leading-relaxed whitespace-pre-wrap font-medium"
               text={data.content || "Write your bio here..."}
               sectionId={id}
               fieldKey="content"
               isPreview={isPreview}
             />
 
-            {data.features && data.features.length > 0 && (
-              <div className="flex flex-wrap justify-center gap-x-8 gap-y-4 pt-4">
-                {data.features.map((feature: string, idx: number) => (
-                  <div
-                    key={idx}
-                    className="flex items-center gap-2 text-neutral-300"
-                  >
-                    <CheckCircle2 className="w-4 h-4 text-primary" />
-                    <span>{feature}</span>
-                  </div>
-                ))}
-              </div>
-            )}
+            <FeaturesList />
 
             {data.ctaText && (
               <div className="pt-8">
                 <Button
                   asChild
                   size="lg"
-                  className="rounded-full px-10 h-14 text-base bg-white text-black hover:bg-neutral-200 hover:scale-105 transition-all"
+                  className="rounded-full px-10 h-14 text-base bg-white text-black hover:bg-neutral-200 hover:scale-105 transition-all shadow-[0_0_30px_rgba(255,255,255,0.15)]"
                 >
                   <a href={data.ctaLink || "#"}>
-                    {/* 🚀 3. REPLACE CTA TEXT */}
                     <InlineEdit
                       tagName="span"
                       text={data.ctaText}
@@ -182,7 +191,7 @@ const About: React.FC<any> = ({ data, id, isPreview }) => {
                       fieldKey="ctaText"
                       isPreview={isPreview}
                     />
-                    <ArrowRight className="ml-2 w-4 h-4 inline-block" />
+                    <ArrowRight className="ml-2 w-5 h-5 inline-block" />
                   </a>
                 </Button>
               </div>
@@ -190,12 +199,14 @@ const About: React.FC<any> = ({ data, id, isPreview }) => {
           </div>
         ) : (
           /* === VARIANT 2 & 3: SPLIT & PROFILE (Grid) === */
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-24 items-center">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-20 items-center">
             {/* COLUMN: MEDIA */}
             <div
               className={cn(
-                "transition-all duration-1000 ease-out",
-                isMediaLeft ? "lg:order-1" : "lg:order-2",
+                "transition-all duration-1000 ease-out flex justify-center",
+                isMediaLeft
+                  ? "lg:order-1 lg:justify-start"
+                  : "lg:order-2 lg:justify-end",
                 "order-1"
               )}
             >
@@ -205,7 +216,7 @@ const About: React.FC<any> = ({ data, id, isPreview }) => {
             {/* COLUMN: CONTENT */}
             <div
               className={cn(
-                "space-y-8",
+                "space-y-8 animate-in fade-in slide-in-from-bottom-8 duration-700 delay-200 fill-mode-both",
                 isMediaLeft ? "lg:order-2" : "lg:order-1",
                 "order-2"
               )}
@@ -214,7 +225,6 @@ const About: React.FC<any> = ({ data, id, isPreview }) => {
                 {data.label && (
                   <span className="text-primary font-mono text-sm tracking-widest uppercase flex items-center gap-3">
                     <span className="w-8 h-px bg-primary"></span>
-                    {/* 🚀 3. REPLACE LABEL */}
                     <InlineEdit
                       tagName="span"
                       text={data.label}
@@ -225,10 +235,9 @@ const About: React.FC<any> = ({ data, id, isPreview }) => {
                   </span>
                 )}
 
-                {/* 🚀 3. REPLACE TITLE */}
                 <InlineEdit
                   tagName="h2"
-                  className="text-4xl md:text-5xl lg:text-6xl font-bold text-white tracking-tight leading-[1.1] block"
+                  className="text-4xl md:text-5xl lg:text-6xl font-extrabold text-white tracking-tight leading-[1.1] block"
                   text={data.title || "About Me"}
                   sectionId={id}
                   fieldKey="title"
@@ -238,10 +247,9 @@ const About: React.FC<any> = ({ data, id, isPreview }) => {
                 <div className="h-1 w-24 bg-gradient-to-r from-primary to-transparent" />
               </div>
 
-              {/* 🚀 3. REPLACE CONTENT */}
               <InlineEdit
                 tagName="div"
-                className="prose prose-lg prose-invert text-neutral-400 leading-relaxed whitespace-pre-wrap font-light"
+                className="prose prose-lg prose-invert text-neutral-300 leading-relaxed whitespace-pre-wrap font-medium"
                 text={data.content || "Write your bio here..."}
                 sectionId={id}
                 fieldKey="content"
@@ -256,10 +264,9 @@ const About: React.FC<any> = ({ data, id, isPreview }) => {
                   <Button
                     asChild
                     size="lg"
-                    className="h-12 px-8 rounded-full bg-white text-black hover:bg-neutral-200 transition-all shadow-[0_0_20px_rgba(255,255,255,0.3)] hover:shadow-[0_0_30px_rgba(255,255,255,0.5)]"
+                    className="h-14 px-8 rounded-full bg-white text-black hover:bg-neutral-200 transition-all hover:scale-105 shadow-[0_0_20px_rgba(255,255,255,0.15)] group"
                   >
                     <a href={data.ctaLink || "#"}>
-                      {/* 🚀 3. REPLACE CTA TEXT */}
                       <InlineEdit
                         tagName="span"
                         text={data.ctaText}
@@ -267,6 +274,7 @@ const About: React.FC<any> = ({ data, id, isPreview }) => {
                         fieldKey="ctaText"
                         isPreview={isPreview}
                       />
+                      <ArrowRight className="ml-2 w-5 h-5 inline-block group-hover:translate-x-1 transition-transform" />
                     </a>
                   </Button>
                 </div>

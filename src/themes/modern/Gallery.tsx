@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useRef } from "react";
-import { BlockProps } from "../types";
 import { cn } from "@/lib/utils";
 import {
   X,
@@ -10,43 +9,39 @@ import {
   Image as ImageIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-// 🚀 1. IMPORT INLINE EDIT
 import { InlineEdit } from "../../components/dashboard/InlineEdit";
 
-// 🚀 2. GRAB id AND isPreview FROM PROPS
 const Gallery: React.FC<any> = ({ data, id, isPreview }) => {
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [currentIndex, setCurrentIndex] = useState(0);
-
-  // Ref for the carousel container to control scrolling
   const carouselRef = useRef<HTMLDivElement>(null);
 
   const images = data.images || [];
   const hasImages = images.length > 0;
   const variant = data.variant || "masonry";
 
-  // 🚀 3. HIDE ON LIVE SITE IF EMPTY, BUT SHOW IN PREVIEW
+  // HIDE ON LIVE SITE IF EMPTY
   if (!hasImages && !isPreview) return null;
 
-  // Aspect Ratio classes for Grid Mode
+  // 🚀 AAA+ Aspect Ratios & Grids
   const aspectClass =
     data.aspectRatio === "portrait"
-      ? "aspect-[2/3]"
+      ? "aspect-[4/5]"
       : data.aspectRatio === "landscape"
       ? "aspect-video"
       : "aspect-square";
 
   const gridColsClass =
     data.gridColumns === 2
-      ? "md:grid-cols-2"
+      ? "grid-cols-1 sm:grid-cols-2"
       : data.gridColumns === 4
-      ? "md:grid-cols-4"
-      : "md:grid-cols-3";
+      ? "grid-cols-2 sm:grid-cols-3 md:grid-cols-4"
+      : "grid-cols-1 sm:grid-cols-2 md:grid-cols-3"; // Default 3
 
   // --- SCROLL BUTTON LOGIC ---
   const scrollCarousel = (direction: "left" | "right") => {
     if (carouselRef.current) {
-      const scrollAmount = 400; // Pixel amount to scroll
+      const scrollAmount = carouselRef.current.clientWidth * 0.6;
       carouselRef.current.scrollBy({
         left: direction === "left" ? -scrollAmount : scrollAmount,
         behavior: "smooth",
@@ -56,9 +51,7 @@ const Gallery: React.FC<any> = ({ data, id, isPreview }) => {
 
   // --- LIGHTBOX LOGIC ---
   const openLightbox = (index: number) => {
-    // 🚀 4. DO NOT OPEN LIGHTBOX IN BUILDER (Prevents trapping the user)
-    if (isPreview) return;
-
+    if (isPreview) return; // Prevent getting trapped in builder
     setCurrentIndex(index);
     setLightboxOpen(true);
     document.body.style.overflow = "hidden";
@@ -90,7 +83,14 @@ const Gallery: React.FC<any> = ({ data, id, isPreview }) => {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [lightboxOpen]);
 
+  // 🚀 SMART MEDIA HELPERS
   const isVideo = (url: string) => url.match(/\.(mp4|webm|mov)$/i);
+  const getYoutubeId = (url: string) => {
+    const match = url.match(
+      /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/
+    );
+    return match && match[2].length === 11 ? match[2] : null;
+  };
 
   // --- SUB-COMPONENT: GALLERY ITEM ---
   const GalleryItem = ({
@@ -103,76 +103,102 @@ const Gallery: React.FC<any> = ({ data, id, isPreview }) => {
     index: number;
     className?: string;
     imageClass?: string;
-  }) => (
-    <div
-      className={cn(
-        "group relative overflow-hidden bg-neutral-900 mb-4 break-inside-avoid",
-        "rounded-xl border border-white/5 shadow-md transition-all duration-500 hover:shadow-xl hover:border-white/20",
-        isPreview ? "cursor-default" : "cursor-zoom-in", // 🚀 Adjust cursor if preview mode
-        className
-      )}
-      onClick={() => openLightbox(index)}
-    >
-      {isVideo(img.url) ? (
-        <div className="relative w-full h-full">
-          <video
-            src={img.url}
-            className={cn(
-              "w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity",
-              imageClass
-            )}
-            muted
-          />
-          <div className="absolute inset-0 flex items-center justify-center">
-            <div className="bg-black/50 p-3 rounded-full backdrop-blur-sm border border-white/10 group-hover:scale-110 transition-transform">
-              <Play className="w-6 h-6 text-white fill-white" />
+  }) => {
+    const ytId = getYoutubeId(img.url);
+
+    return (
+      <div
+        className={cn(
+          "group relative overflow-hidden bg-neutral-900 mb-4 break-inside-avoid",
+          "rounded-2xl border border-white/5 shadow-lg transition-all duration-700 hover:shadow-2xl hover:border-white/20 hover:-translate-y-1",
+          isPreview ? "cursor-default" : "cursor-zoom-in",
+          className
+        )}
+        onClick={() => openLightbox(index)}
+      >
+        {/* 🚀 SMART RENDERING: YouTube vs MP4 vs Image */}
+        {ytId ? (
+          <div className="relative w-full h-full bg-black">
+            <img
+              src={`https://img.youtube.com/vi/${ytId}/hqdefault.jpg`}
+              className={cn(
+                "w-full h-full object-cover opacity-70 group-hover:opacity-100 transition-opacity duration-500",
+                imageClass
+              )}
+              alt="YouTube Thumbnail"
+            />
+            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+              <div className="bg-red-600/90 backdrop-blur-md p-3 rounded-xl border border-white/10 group-hover:scale-110 transition-transform duration-500 shadow-lg">
+                <Play className="w-6 h-6 text-white fill-white ml-0.5" />
+              </div>
             </div>
           </div>
+        ) : isVideo(img.url) ? (
+          <div className="relative w-full h-full bg-black">
+            <video
+              src={img.url}
+              className={cn(
+                "w-full h-full object-cover opacity-70 group-hover:opacity-100 transition-opacity duration-500",
+                imageClass
+              )}
+              muted
+              autoPlay
+              loop
+              playsInline
+            />
+            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+              <div className="bg-black/40 backdrop-blur-md p-3 rounded-full border border-white/20 group-hover:scale-110 transition-transform duration-500">
+                <Play className="w-5 h-5 text-white fill-white ml-0.5" />
+              </div>
+            </div>
+          </div>
+        ) : (
+          <img
+            src={img.url}
+            alt="Gallery"
+            loading="lazy"
+            className={cn(
+              "w-full h-full object-cover transition-transform duration-700 group-hover:scale-110 filter grayscale-[15%] group-hover:grayscale-0",
+              imageClass
+            )}
+          />
+        )}
+
+        {/* Hover Overlay */}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/0 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none flex items-end p-4">
+          <Maximize2 className="w-5 h-5 text-white opacity-80 absolute top-4 right-4" />
         </div>
-      ) : (
-        <img
-          src={img.url}
-          alt="Gallery"
-          loading="lazy"
-          className={cn(
-            "w-full h-full object-cover transition-transform duration-700 group-hover:scale-110 grayscale-[30%] group-hover:grayscale-0",
-            imageClass
-          )}
-        />
-      )}
-
-      {/* Hover Overlay */}
-      <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center pointer-events-none">
-        <Maximize2 className="w-6 h-6 text-white opacity-80" />
       </div>
-    </div>
-  );
+    );
+  };
 
+  // --- MAIN RENDER ---
   return (
-    <section className="py-24 bg-neutral-950 text-white relative">
+    <section className="py-24 md:py-32 bg-neutral-950 text-white relative overflow-hidden">
+      {/* Atmosphere Layers */}
       <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 brightness-100 contrast-150 mix-blend-overlay pointer-events-none"></div>
 
-      <div className="container px-4 mx-auto relative z-10">
-        {/* 🚀 5. ALWAYS RENDER HEADER FOR INLINE EDITING */}
-        <div className="mb-12 text-center space-y-4">
+      <div className="container px-6 mx-auto relative z-10 max-w-7xl">
+        {/* HEADER SECTION */}
+        <div className="mb-16 text-center space-y-6 animate-in fade-in slide-in-from-bottom-8 duration-700">
           <InlineEdit
             tagName="h2"
-            className="text-3xl md:text-5xl font-bold tracking-tight block"
+            className="text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight block"
             text={data.title || "Gallery"}
             sectionId={id}
             fieldKey="title"
             isPreview={isPreview}
           />
-          <div className="h-1 w-20 bg-primary mx-auto rounded-full" />
+          <div className="h-1 w-24 bg-gradient-to-r from-primary to-transparent mx-auto rounded-full" />
         </div>
 
-        {/* 🚀 6. EMPTY STATE UX FOR BUILDER */}
+        {/* 🚀 EMPTY STATE UX FOR BUILDER */}
         {!hasImages && isPreview && (
-          <div className="w-full py-20 border-2 border-dashed border-white/20 rounded-2xl flex flex-col items-center justify-center text-white/50">
+          <div className="w-full py-24 border-2 border-dashed border-white/10 rounded-3xl flex flex-col items-center justify-center text-white/40 bg-white/5 backdrop-blur-sm">
             <ImageIcon className="w-12 h-12 mb-4 opacity-50" />
-            <p>
-              No images added yet. Hover over this section and click "Edit
-              Gallery" to upload media.
+            <p className="font-medium tracking-wide">No media uploaded yet.</p>
+            <p className="text-xs mt-2 opacity-70">
+              Hover over this section and click "Design" to add images.
             </p>
           </div>
         )}
@@ -181,7 +207,7 @@ const Gallery: React.FC<any> = ({ data, id, isPreview }) => {
           <>
             {/* --- VARIANT 1: MASONRY --- */}
             {variant === "masonry" && (
-              <div className="columns-1 sm:columns-2 md:columns-3 gap-4 space-y-4">
+              <div className="columns-1 sm:columns-2 md:columns-3 lg:columns-4 gap-4 space-y-4">
                 {images.map((img: any, idx: number) => (
                   <GalleryItem
                     key={idx}
@@ -195,7 +221,7 @@ const Gallery: React.FC<any> = ({ data, id, isPreview }) => {
 
             {/* --- VARIANT 2: GRID --- */}
             {variant === "grid" && (
-              <div className={cn("grid grid-cols-2 gap-4", gridColsClass)}>
+              <div className={cn("grid gap-4 md:gap-6", gridColsClass)}>
                 {images.map((img: any, idx: number) => (
                   <GalleryItem
                     key={idx}
@@ -209,46 +235,43 @@ const Gallery: React.FC<any> = ({ data, id, isPreview }) => {
 
             {/* --- VARIANT 3: CAROUSEL --- */}
             {variant === "carousel" && (
-              <div className="relative group/carousel">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="absolute left-2 top-1/2 -translate-y-1/2 z-20 bg-black/30 hover:bg-black/60 text-white rounded-full h-10 w-10 opacity-0 group-hover/carousel:opacity-100 transition-opacity duration-300 backdrop-blur-sm hidden md:flex border border-white/10"
+              <div className="relative group/carousel -mx-6 px-6 md:mx-0 md:px-0">
+                <button
+                  className="absolute left-4 top-1/2 -translate-y-1/2 z-20 flex items-center justify-center bg-black/50 hover:bg-black/80 text-white rounded-full h-12 w-12 opacity-0 group-hover/carousel:opacity-100 transition-all duration-300 backdrop-blur-md hidden md:flex border border-white/10 shadow-2xl hover:scale-105"
                   onClick={() => scrollCarousel("left")}
                 >
                   <ChevronLeft className="w-6 h-6" />
-                </Button>
+                </button>
 
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="absolute right-2 top-1/2 -translate-y-1/2 z-20 bg-black/30 hover:bg-black/60 text-white rounded-full h-10 w-10 opacity-0 group-hover/carousel:opacity-100 transition-opacity duration-300 backdrop-blur-sm hidden md:flex border border-white/10"
+                <button
+                  className="absolute right-4 top-1/2 -translate-y-1/2 z-20 flex items-center justify-center bg-black/50 hover:bg-black/80 text-white rounded-full h-12 w-12 opacity-0 group-hover/carousel:opacity-100 transition-all duration-300 backdrop-blur-md hidden md:flex border border-white/10 shadow-2xl hover:scale-105"
                   onClick={() => scrollCarousel("right")}
                 >
                   <ChevronRight className="w-6 h-6" />
-                </Button>
+                </button>
 
                 <div
                   ref={carouselRef}
-                  className="flex overflow-x-auto gap-4 pb-4 snap-x snap-mandatory -mx-4 px-4 md:mx-0 md:px-0 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:'none'] [scrollbar-width:'none']"
+                  className="flex overflow-x-auto gap-4 md:gap-6 pb-8 pt-4 snap-x snap-mandatory [&::-webkit-scrollbar]:hidden [-ms-overflow-style:'none'] [scrollbar-width:'none']"
                 >
                   {images.map((img: any, idx: number) => (
                     <div
                       key={idx}
-                      className="snap-center shrink-0 h-[300px] md:h-[500px]"
+                      className="snap-center shrink-0 h-[400px] md:h-[600px] shadow-2xl"
                     >
                       <GalleryItem
                         img={img}
                         index={idx}
-                        className="h-full w-auto aspect-auto mb-0"
-                        imageClass="w-auto h-full object-contain md:object-cover"
+                        className="h-full w-auto aspect-auto mb-0 rounded-2xl"
+                        imageClass="w-auto h-full object-contain md:object-cover min-w-[250px]"
                       />
                     </div>
                   ))}
                 </div>
 
-                <div className="absolute top-0 right-0 h-full w-24 bg-gradient-to-l from-neutral-950 to-transparent pointer-events-none md:block hidden z-10" />
-                <div className="absolute top-0 left-0 h-full w-24 bg-gradient-to-r from-neutral-950 to-transparent pointer-events-none md:block hidden z-10" />
+                {/* Fade edges for carousel */}
+                <div className="absolute top-0 right-0 h-full w-32 bg-gradient-to-l from-neutral-950 to-transparent pointer-events-none md:block hidden z-10" />
+                <div className="absolute top-0 left-0 h-full w-32 bg-gradient-to-r from-neutral-950 to-transparent pointer-events-none md:block hidden z-10" />
               </div>
             )}
           </>
@@ -256,63 +279,76 @@ const Gallery: React.FC<any> = ({ data, id, isPreview }) => {
       </div>
 
       {/* --- LIGHTBOX --- */}
-      {lightboxOpen && !isPreview && (
-        <div
-          className="fixed inset-0 z-[9999] bg-black/95 backdrop-blur-xl flex items-center justify-center animate-in fade-in duration-300"
-          onClick={closeLightbox}
-        >
-          <Button
-            variant="ghost"
-            size="icon"
-            className="absolute top-4 right-4 text-white/70 hover:text-white hover:bg-white/10 z-50"
-            onClick={closeLightbox}
-          >
-            <X className="w-8 h-8" />
-          </Button>
+      {lightboxOpen &&
+        !isPreview &&
+        (() => {
+          const currentImg = images[currentIndex];
+          const activeYtId = getYoutubeId(currentImg.url);
 
-          <Button
-            variant="ghost"
-            size="icon"
-            className="absolute left-4 top-1/2 -translate-y-1/2 text-white/70 hover:text-white hover:bg-white/10 z-50 h-12 w-12 rounded-full hidden md:flex"
-            onClick={prevImage}
-          >
-            <ChevronLeft className="w-8 h-8" />
-          </Button>
+          return (
+            <div
+              className="fixed inset-0 z-[9999] bg-black/95 backdrop-blur-xl flex items-center justify-center animate-in fade-in duration-300"
+              onClick={closeLightbox}
+            >
+              <button
+                className="absolute top-4 right-4 text-white/70 hover:text-white z-[99] p-2 transition-colors"
+                onClick={closeLightbox}
+              >
+                <X className="w-8 h-8" />
+              </button>
 
-          <Button
-            variant="ghost"
-            size="icon"
-            className="absolute right-4 top-1/2 -translate-y-1/2 text-white/70 hover:text-white hover:bg-white/10 z-50 h-12 w-12 rounded-full hidden md:flex"
-            onClick={nextImage}
-          >
-            <ChevronRight className="w-8 h-8" />
-          </Button>
+              <button
+                className="absolute left-6 top-1/2 -translate-y-1/2 z-[99] h-14 w-14 rounded-full flex items-center justify-center bg-black/40 border border-white/10 hover:border-white/20 hover:scale-105 active:scale-95 transition-all text-white/70 hover:text-white"
+                onClick={prevImage}
+              >
+                <ChevronLeft className="w-9 h-9" />
+              </button>
 
-          <div
-            className="relative max-w-7xl max-h-[90vh] w-full p-4 flex items-center justify-center"
-            onClick={(e) => e.stopPropagation()}
-          >
-            {isVideo(images[currentIndex].url) ? (
-              <video
-                src={images[currentIndex].url}
-                className="max-w-full max-h-[85vh] rounded-md shadow-2xl"
-                controls
-                autoPlay
-              />
-            ) : (
-              <img
-                src={images[currentIndex].url}
-                alt="Full Screen"
-                className="max-w-full max-h-[85vh] object-contain rounded-md shadow-2xl"
-              />
-            )}
+              <button
+                className="absolute right-6 top-1/2 -translate-y-1/2 z-[99] h-14 w-14 rounded-full flex items-center justify-center bg-black/40 border border-white/10 hover:border-white/20 hover:scale-105 active:scale-95 transition-all text-white/70 hover:text-white"
+                onClick={nextImage}
+              >
+                <ChevronRight className="w-9 h-9" />
+              </button>
 
-            <div className="absolute -bottom-10 left-0 right-0 text-center text-white/50 text-sm font-mono tracking-widest">
-              {currentIndex + 1} / {images.length}
+              <div
+                className="relative max-w-7xl max-h-[90vh] w-full p-4 flex flex-col items-center justify-center"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="relative shadow-2xl rounded-xl overflow-hidden ring-1 ring-white/10 flex items-center justify-center w-full">
+                  {/* 🚀 THE SMART LIGHTBOX PLAYER */}
+                  {activeYtId ? (
+                    <iframe
+                      src={`https://www.youtube.com/embed/${activeYtId}?autoplay=1&rel=0`}
+                      className="w-full aspect-video max-w-5xl bg-black rounded-lg"
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                      allowFullScreen
+                    />
+                  ) : isVideo(currentImg.url) ? (
+                    <video
+                      src={currentImg.url}
+                      className="max-w-full max-h-[80vh] object-contain bg-black"
+                      controls
+                      autoPlay
+                      loop
+                      playsInline
+                    />
+                  ) : (
+                    <img
+                      src={currentImg.url}
+                      alt="Full Screen"
+                      className="max-w-full max-h-[80vh] object-contain"
+                    />
+                  )}
+                </div>
+
+                <div className="absolute bottom-4 left-0 right-0 text-center text-white/50 text-sm font-mono tracking-widest">
+                  {currentIndex + 1} / {images.length}
+                </div>
+              </div>
             </div>
-          </div>
-        </div>
-      )}
+          );
+        })()}
     </section>
   );
 };

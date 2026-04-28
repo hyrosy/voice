@@ -1,121 +1,296 @@
 import React from "react";
 import { cn } from "@/lib/utils";
-import { UCP } from "@ucp/sdk"; // 🚀 Import the Platform SDK
+import { X, ChevronLeft, ChevronRight, Play } from "lucide-react";
+import { UCP } from "@ucp/sdk"; // 🚀 The Magic Wand
 
-// 1. SCHEMA: Added the Title string so it shows in the platform editor
+// 1. DEVELOPER SCHEMA: Apple-inspired controls
 export const schema = [
   {
-    id: "title",
-    type: "string",
-    label: "Section Title",
-    defaultValue: "Featured Projects",
+    id: "glassmorphism",
+    type: "toggle",
+    label: "Glassmorphism Cards",
+    defaultValue: true,
   },
   {
-    id: "rounded",
+    id: "gapSize",
+    type: "select",
+    label: "Grid Gap",
+    options: ["small", "medium", "large"],
+    defaultValue: "medium",
+  },
+  {
+    id: "cornerRadius",
     type: "slider",
     min: 0,
     max: 40,
-    label: "Corner Roundness",
-    defaultValue: 24,
+    label: "Corner Radius",
+    defaultValue: 20,
   },
 ];
 
-// 2. COMPONENT: Grabbing id and isPreview for the UCP SDK
-export default function Gallery({ data, id, isPreview }: any) {
-  // 🚀 3. FALLBACK DATA: Gorgeous default images so the Studio Preview isn't empty!
-  const images =
-    data.images?.length > 0
-      ? data.images
-      : [
-          {
-            url: "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=2564&auto=format&fit=crop",
-            caption: "Minimalist Workspace",
-          },
-          {
-            url: "https://images.unsplash.com/photo-1616499370260-485b3e5ed653?q=80&w=2670&auto=format&fit=crop",
-            caption: "Interior Design",
-          },
-          {
-            url: "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?q=80&w=2670&auto=format&fit=crop",
-            caption: "Modern Architecture",
-          },
-          {
-            url: "https://images.unsplash.com/photo-1513694203232-719a280e022f?q=80&w=2669&auto=format&fit=crop",
-            caption: "Cozy Living Room",
-          },
-          {
-            url: "https://images.unsplash.com/photo-1586023492125-27b2c045efd7?q=80&w=2758&auto=format&fit=crop",
-            caption: "Furniture Design",
-          },
-        ];
+export default function CupertinoGallery({
+  data,
+  settings = {},
+  id,
+  isPreview,
+}: any) {
+  const images = data.images || [];
+  const hasImages = images.length > 0;
+  const variant = data.variant || "grid";
 
-  // Map the schema variable safely
-  const radius = data.rounded !== undefined ? data.rounded : 24;
+  // 🚀 SDK HOOK: All the complex logic handled instantly!
+  const {
+    lightboxOpen,
+    currentIndex,
+    currentImage,
+    carouselRef,
+    openLightbox,
+    closeLightbox,
+    nextImage,
+    prevImage,
+    scrollCarousel,
+  } = UCP.useGallery(images, isPreview);
+
+  if (!hasImages && !isPreview) return null;
+
+  // Layout Mappers
+  const gapClass =
+    settings.gapSize === "small"
+      ? "gap-2"
+      : settings.gapSize === "large"
+      ? "gap-8"
+      : "gap-4";
+
+  const aspectClass =
+    data.aspectRatio === "portrait"
+      ? "aspect-[4/5]"
+      : data.aspectRatio === "landscape"
+      ? "aspect-video"
+      : "aspect-square";
+
+  const gridColsClass =
+    data.gridColumns === 2
+      ? "grid-cols-1 sm:grid-cols-2"
+      : data.gridColumns === 4
+      ? "grid-cols-2 sm:grid-cols-3 md:grid-cols-4"
+      : "grid-cols-1 sm:grid-cols-2 md:grid-cols-3";
+
+  // Shared Gallery Item Component
+  const GalleryItem = ({ img, idx, className }: any) => {
+    const ytId = UCP.utils.getYoutubeId(img.url);
+    const isVid = UCP.utils.isVideo(img.url);
+
+    return (
+      <div
+        className={cn(
+          "relative overflow-hidden cursor-pointer group transition-all duration-500",
+          settings.glassmorphism
+            ? "bg-white/40 backdrop-blur-md border border-white/50 shadow-sm hover:shadow-xl"
+            : "bg-slate-100",
+          className
+        )}
+        style={{ borderRadius: `${settings.cornerRadius}px` }}
+        onClick={() => openLightbox(idx)}
+      >
+        <div className="relative w-full h-full p-1.5 rounded-[inherit]">
+          <div
+            className="relative w-full h-full overflow-hidden"
+            style={{
+              borderRadius: `${Math.max(0, settings.cornerRadius - 6)}px`,
+            }}
+          >
+            {ytId ? (
+              <>
+                <img
+                  src={`https://img.youtube.com/vi/${ytId}/hqdefault.jpg`}
+                  className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+                  alt="YT"
+                />
+                <div className="absolute inset-0 flex items-center justify-center bg-black/10 group-hover:bg-transparent transition-colors">
+                  <div className="bg-white/80 backdrop-blur-md p-3 rounded-full shadow-lg text-slate-900 group-hover:scale-110 transition-transform">
+                    <Play size={16} fill="currentColor" className="ml-1" />
+                  </div>
+                </div>
+              </>
+            ) : isVid ? (
+              <video
+                src={img.url}
+                className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+                muted
+                autoPlay
+                loop
+                playsInline
+              />
+            ) : (
+              <img
+                src={img.url}
+                className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+                alt={`Item ${idx}`}
+              />
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  };
 
   return (
-    <section className="py-32 bg-gray-50">
-      <div className="container mx-auto px-6">
-        <div className="mb-16">
-          {/* 🚀 4. INLINE EDITING: The Title is now editable on the canvas! */}
+    <section className="py-24 md:py-32 px-6 bg-slate-50 text-slate-900 relative">
+      <div className="container mx-auto max-w-6xl">
+        {/* HEADER */}
+        <div className="mb-12 text-center space-y-4">
           <UCP.Text
             as="h2"
             field="title"
-            default="Featured Projects"
+            value={data.title || "Gallery"}
             sectionId={id}
             isPreview={isPreview}
-            className="text-4xl font-bold tracking-tight text-slate-900 mb-4 inline-block"
+            className="text-4xl md:text-5xl font-[800] tracking-tighter text-slate-900"
           />
-          <div className="h-1 w-20 bg-blue-600 rounded-full" />
         </div>
 
-        {/* BENTO GRID CSS */}
-        <div className="grid grid-cols-1 md:grid-cols-4 auto-rows-[300px] gap-6">
-          {images.map((img: any, idx: number) => {
-            // Logic: Make every 4th item span 2 columns and 2 rows (Big Square)
-            // Make every 7th item span 2 columns (Wide Rectangle)
-            const isLarge = idx === 0 || idx % 7 === 0;
-            const isTall = idx === 2 || idx % 5 === 0;
+        {/* GRID LAYOUTS */}
+        {hasImages && variant === "masonry" && (
+          <div
+            className={cn(
+              "columns-1 sm:columns-2 md:columns-3 lg:columns-4 space-y-4",
+              gapClass
+            )}
+          >
+            {images.map((img: any, idx: number) => (
+              <GalleryItem
+                key={idx}
+                img={img}
+                idx={idx}
+                className="w-full break-inside-avoid"
+              />
+            ))}
+          </div>
+        )}
 
-            let colSpan = "col-span-1";
-            let rowSpan = "row-span-1";
+        {hasImages && variant === "grid" && (
+          <div className={cn("grid", gridColsClass, gapClass)}>
+            {images.map((img: any, idx: number) => (
+              <GalleryItem
+                key={idx}
+                img={img}
+                idx={idx}
+                className={cn("w-full", aspectClass)}
+              />
+            ))}
+          </div>
+        )}
 
-            if (isLarge) {
-              colSpan = "md:col-span-2";
-              rowSpan = "md:row-span-2";
-            } else if (isTall) {
-              rowSpan = "md:row-span-2";
-            }
+        {/* CAROUSEL LAYOUT */}
+        {hasImages && variant === "carousel" && (
+          <div className="relative group/carousel -mx-6 px-6 md:mx-0 md:px-0">
+            <button
+              onClick={() => scrollCarousel("left")}
+              className="absolute left-2 top-1/2 -translate-y-1/2 z-20 flex items-center justify-center bg-white/80 hover:bg-white text-slate-900 rounded-full h-12 w-12 opacity-0 group-hover/carousel:opacity-100 transition-all duration-300 backdrop-blur-xl shadow-lg border border-slate-200 hover:scale-105 hidden md:flex"
+            >
+              <ChevronLeft className="w-6 h-6" />
+            </button>
+            <button
+              onClick={() => scrollCarousel("right")}
+              className="absolute right-2 top-1/2 -translate-y-1/2 z-20 flex items-center justify-center bg-white/80 hover:bg-white text-slate-900 rounded-full h-12 w-12 opacity-0 group-hover/carousel:opacity-100 transition-all duration-300 backdrop-blur-xl shadow-lg border border-slate-200 hover:scale-105 hidden md:flex"
+            >
+              <ChevronRight className="w-6 h-6" />
+            </button>
+
+            <div
+              ref={carouselRef}
+              className={cn(
+                "flex overflow-x-auto pb-8 pt-4 snap-x snap-mandatory [&::-webkit-scrollbar]:hidden",
+                gapClass
+              )}
+            >
+              {images.map((img: any, idx: number) => (
+                <div
+                  key={idx}
+                  className="snap-center shrink-0 h-[400px] md:h-[500px]"
+                >
+                  <GalleryItem
+                    img={img}
+                    idx={idx}
+                    className="h-full w-auto aspect-auto"
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* LIGHTBOX (Powered by SDK) */}
+        {lightboxOpen &&
+          !isPreview &&
+          currentImage &&
+          (() => {
+            const ytId = UCP.utils.getYoutubeId(currentImage.url);
+            const isVid = UCP.utils.isVideo(currentImage.url);
 
             return (
               <div
-                key={idx}
-                className={cn(
-                  "relative group overflow-hidden bg-white shadow-sm hover:shadow-xl transition-all duration-500 ease-out hover:-translate-y-1",
-                  colSpan,
-                  rowSpan
-                )}
-                style={{ borderRadius: `${radius}px` }} // 🚀 Dynamic Radius mapping to px
+                className="fixed inset-0 z-[9999] bg-slate-900/90 backdrop-blur-2xl flex items-center justify-center animate-in fade-in duration-300"
+                onClick={closeLightbox}
               >
-                <img
-                  src={img.url}
-                  className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
-                  alt={img.caption || "Gallery Image"}
-                />
+                <button
+                  onClick={closeLightbox}
+                  className="absolute top-6 right-6 text-white/50 hover:text-white z-[99] p-2 bg-white/10 rounded-full hover:bg-white/20 transition-colors"
+                >
+                  <X className="w-6 h-6" />
+                </button>
 
-                {/* Overlay Text (Only on Hover) */}
-                <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col justify-end p-6">
-                  <p className="text-white font-medium translate-y-4 group-hover:translate-y-0 transition-transform duration-300">
-                    {img.caption || "View Project"}
-                  </p>
+                <button
+                  onClick={prevImage}
+                  className="absolute left-6 top-1/2 -translate-y-1/2 z-[99] h-14 w-14 rounded-full flex items-center justify-center bg-white/10 hover:bg-white/20 hover:scale-105 transition-all text-white hidden md:flex"
+                >
+                  <ChevronLeft className="w-8 h-8" />
+                </button>
+                <button
+                  onClick={nextImage}
+                  className="absolute right-6 top-1/2 -translate-y-1/2 z-[99] h-14 w-14 rounded-full flex items-center justify-center bg-white/10 hover:bg-white/20 hover:scale-105 transition-all text-white hidden md:flex"
+                >
+                  <ChevronRight className="w-8 h-8" />
+                </button>
+
+                <div
+                  className="relative max-w-6xl max-h-[85vh] w-full p-4 flex flex-col items-center justify-center"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <div className="relative shadow-2xl rounded-2xl overflow-hidden ring-1 ring-white/20 flex items-center justify-center w-full bg-black/50">
+                    {ytId ? (
+                      <iframe
+                        src={`https://www.youtube.com/embed/${ytId}?autoplay=1&rel=0`}
+                        className="w-full aspect-video max-w-5xl bg-black rounded-2xl"
+                        allow="autoplay; fullscreen"
+                      />
+                    ) : isVid ? (
+                      <video
+                        src={currentImage.url}
+                        className="max-w-full max-h-[80vh] object-contain rounded-2xl"
+                        controls
+                        autoPlay
+                        loop
+                        playsInline
+                      />
+                    ) : (
+                      <img
+                        src={currentImage.url}
+                        className="max-w-full max-h-[80vh] object-contain rounded-2xl"
+                        alt="Fullscreen"
+                      />
+                    )}
+                  </div>
+                  <div className="absolute bottom-2 left-0 right-0 text-center text-white/70 font-semibold text-sm">
+                    {currentIndex + 1} of {images.length}
+                  </div>
                 </div>
               </div>
             );
-          })}
-        </div>
+          })()}
       </div>
     </section>
   );
 }
 
-// Attach the schema
-Gallery.schema = schema;
+CupertinoGallery.schema = schema;
