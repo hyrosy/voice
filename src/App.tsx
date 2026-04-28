@@ -249,7 +249,7 @@ function App() {
 
                     {/* ACTOR DASHBOARD */}
                     <Route path="/dashboard" element={<ActorDashboardLayout />}>
-                      <Route index element={<DashboardOrders />} />
+                      <Route index element={<AnalyticsPage />} />
                       <Route path="profile" element={<DashboardProfile />} />
                       <Route path="messages" element={<MessagesPage />} />
                       <Route
@@ -257,6 +257,7 @@ function App() {
                         element={<MessagesPage />}
                       />
                       <Route path="services" element={<DashboardServices />} />
+
                       <Route path="demos" element={<DashboardDemos />} />
                       <Route path="library" element={<DashboardLibrary />} />
                       <Route path="earnings" element={<ActorEarningsPage />} />
@@ -268,7 +269,8 @@ function App() {
                         path="Portfolio"
                         element={<PortfolioBuilderPage />}
                       />
-                      <Route path="analytics" element={<AnalyticsPage />} />
+                      <Route path="job-orders" element={<DashboardOrders />} />
+
                       <Route path="Orders" element={<OrdersPage />} />
                       <Route path="leads" element={<LeadsPage />} />
                       <Route path="settings" element={<SettingsPage />} />

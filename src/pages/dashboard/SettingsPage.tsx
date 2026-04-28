@@ -178,9 +178,11 @@ const SettingsPage = () => {
 
   const activeTab = searchParams.get("tab") || "websites";
 
+  // 🚀 FIX: Extracted `limits` so the domain connection tools work properly!
   const {
     plan: currentPlanId,
     siteSlots,
+    limits,
     refreshSubscription,
     isLoading: isSubLoading,
   } = useSubscription();
@@ -431,7 +433,6 @@ const SettingsPage = () => {
     );
   };
 
-  // 🚀 NEW: Function to Cancel a Scheduled Downgrade
   const handleCancelDowngrade = async () => {
     if (!selectedPortfolioId || !actorData?.id) return;
     openConfirmation(
@@ -601,6 +602,16 @@ const SettingsPage = () => {
     if (!newSiteName.trim())
       return notify("error", "Missing Name", "Please enter a site name");
     if (!actorData?.id) return;
+
+    // 🚀 FIX: Prevent users from creating while limits are still loading from Supabase
+    if (isSubLoading) {
+      return notify(
+        "info",
+        "Loading",
+        "Please wait while we load your plan details."
+      );
+    }
+
     if (siteSlots.remaining <= 0) {
       notify(
         "error",
