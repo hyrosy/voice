@@ -167,7 +167,7 @@ const VISUAL_THEMES = [
   },
 ];
 
-// --- IFRAME PREVIEW COMPONENT ---
+// --- 🚀 UPGRADED AAA+ IFRAME PREVIEW COMPONENT ---
 const IframePreview = ({
   sections,
   theme,
@@ -189,13 +189,14 @@ const IframePreview = ({
   customPages: any[];
   publicSlug: string;
 }) => {
-  const iframeRef = useRef<HTMLIFrameElement>(null);
-  const containerRef = useRef<HTMLDivElement>(null);
+  const iframeRef = React.useRef<HTMLIFrameElement>(null);
+  const containerRef = React.useRef<HTMLDivElement>(null);
   const [viewport, setViewport] = useState<"desktop" | "tablet" | "mobile">(
     "desktop"
   );
   const [dims, setDims] = useState({ w: 0, h: 0 });
 
+  // 🚀 MATH-PERFECT SCALING ENGINE
   useEffect(() => {
     const observer = new ResizeObserver((entries) => {
       if (entries[0]) {
@@ -212,18 +213,20 @@ const IframePreview = ({
   const sendDataToIframe = useCallback(() => {
     if (iframeRef.current && iframeRef.current.contentWindow) {
       let previewSections = sections.map((s) => {
-        if (s.type === "header")
+        if (s.type === "header") {
           return { ...s, data: { ...s.data, customPages, publicSlug } };
+        }
         return s;
       });
 
       if (activePageId !== "home" && globalSections.length > 0) {
         const header = globalSections.find((s) => s.type === "header");
-        if (header && header.isVisible)
+        if (header && header.isVisible) {
           previewSections.unshift({
             ...header,
             data: { ...header.data, customPages, publicSlug },
           });
+        }
       }
 
       iframeRef.current.contentWindow.postMessage(
@@ -250,8 +253,9 @@ const IframePreview = ({
 
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
-      if (event.data?.type === "PREVIEW_READY") sendDataToIframe();
-      else if (event.data?.type === "EDIT_SECTION") {
+      if (event.data?.type === "PREVIEW_READY") {
+        sendDataToIframe();
+      } else if (event.data?.type === "EDIT_SECTION") {
         const clickedSection = sections.find(
           (s) => s.id === event.data.payload
         );
@@ -265,26 +269,30 @@ const IframePreview = ({
     return () => window.removeEventListener("message", handleMessage);
   }, [sendDataToIframe, sections, onEditSection, updateSection]);
 
+  // 🚀 CALCULATE PERFECT SCALING AND HEIGHT
   const DESKTOP_W = 1280;
-  const PADDING = 32;
 
   let scale = 1;
   let width = "100%";
   let height = "100%";
 
   if (viewport === "desktop") {
-    const availableW = Math.max(dims.w - PADDING * 2, 100);
-    const availableH = Math.max(dims.h - PADDING * 2, 100);
+    // Adjusted available width/height to account for the new padding
+    const availableW = Math.max(dims.w - 32, 100);
+    const availableH = Math.max(dims.h - 32, 100);
     scale = Math.min(1, availableW / DESKTOP_W);
     width = `${DESKTOP_W}px`;
     height = `${availableH / scale}px`;
-  } else if (viewport === "tablet") width = "768px";
-  else if (viewport === "mobile") width = "375px";
+  } else if (viewport === "tablet") {
+    width = "768px";
+  } else if (viewport === "mobile") {
+    width = "375px";
+  }
 
   return (
-    <div className="flex flex-col h-full w-full relative overflow-hidden">
-      <div className="flex justify-center items-center gap-2 p-2 shrink-0 h-14 z-10 relative">
-        <div className="flex items-center bg-background/80 backdrop-blur-md p-1 rounded-full border shadow-sm">
+    <div className="flex flex-col h-full w-full relative overflow-hidden bg-transparent">
+      <div className="">
+        <div className="">
           <Button
             variant={viewport === "desktop" ? "secondary" : "ghost"}
             size="icon"
@@ -319,36 +327,45 @@ const IframePreview = ({
             <Smartphone size={16} />
           </Button>
         </div>
-        <div className="absolute right-4 text-[10px] text-muted-foreground uppercase font-bold tracking-widest">
-          Live Canvas
-        </div>
+        <div className="">Live Canvas</div>
       </div>
 
       <div
         ref={containerRef}
-        className="flex-grow flex items-start justify-center overflow-y-auto custom-scrollbar pt-2 pb-12"
+        className={cn(
+          "flex-grow flex justify-center overflow-hidden transition-colors duration-300",
+          // 🚀 FIX: Made the backgrounds transparent and added padding so the rounded corners show nicely
+          viewport === "desktop"
+            ? "bg-transparent items-start p-4"
+            : "bg-transparent items-center p-4 sm:p-8"
+        )}
       >
         <div
-          className="bg-background transition-all duration-300 overflow-hidden flex flex-col shrink-0"
+          className="bg-transparent transition-all duration-300 overflow-hidden flex flex-col shrink-0"
           style={{
             width,
             height,
             transform: `scale(${scale})`,
-            transformOrigin: "top center",
+            transformOrigin:
+              viewport === "desktop" ? "top center" : "center center",
+            // 🚀 FIX: Made the desktop view slightly rounded
             borderRadius: viewport === "desktop" ? "0.75rem" : "2.5rem",
-            border: viewport !== "desktop" ? "1px solid var(--border)" : "none",
+            // 🚀 FIX: Ensured the clean 1px border applies to all views (no ugly black border)
+            border: "1px solid var(--border)",
             boxShadow:
               viewport === "desktop"
-                ? "0 25px 50px -12px rgba(0, 0, 0, 0.15), 0 0 0 1px var(--border)"
+                ? "0 25px 50px -12px rgba(0, 0, 0, 0.15)"
                 : "0 35px 60px -15px rgba(0, 0, 0, 0.4)",
           }}
         >
           <iframe
             ref={iframeRef}
             src="/builder-preview"
-            className="flex-grow w-full h-full border-0 bg-background custom-scrollbar"
+            // 🚀 FIX: Changed to bg-transparent
+            className="flex-grow w-full h-full border-0 bg-transparent custom-scrollbar"
             title="Live Preview Canvas"
             onLoad={sendDataToIframe}
+            allowTransparency={true}
           />
         </div>
       </div>
