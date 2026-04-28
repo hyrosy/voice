@@ -69,7 +69,6 @@ export default function BuilderPreview() {
   const themeId = themeConfig.templateId || "modern";
   const ActiveTheme = THEME_REGISTRY[themeId] || DEFAULT_THEME;
 
-  // 🚀 THE NEW CSS INJECTION LOGIC
   const primaryHsl = themeConfig.primaryColor
     ? hexToHSLString(themeConfig.primaryColor)
     : "259 94% 51%";
@@ -83,7 +82,6 @@ export default function BuilderPreview() {
 
   return (
     <>
-      {/* 🚀 INJECTING THE STYLES EXACTLY LIKE THE LIVE SITE */}
       <style>
         {`
           @import url('${fontUrl}');
@@ -93,12 +91,37 @@ export default function BuilderPreview() {
             --radius: ${activeRadius}rem;
           }
 
-          .builder-preview-wrapper {
-            font-family: '${activeFont}', sans-serif;
+          /* 🚀 FIX: Smooth internal scrollbar injected directly into the iframe */
+          ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+          }
+          ::-webkit-scrollbar-track {
+            background: transparent;
+          }
+          ::-webkit-scrollbar-thumb {
+            background: rgba(156, 163, 175, 0.3);
+            border-radius: 10px;
+          }
+          ::-webkit-scrollbar-thumb:hover {
+            background: rgba(156, 163, 175, 0.5);
+          }
+
+          /* 🚀 FIX: Apply background globally to html/body to remove white flashes */
+          html, body {
+            margin: 0;
+            padding: 0;
             background-color: ${
               themeId === "cinematic" ? "#0f172a" : "var(--background)"
             };
             color: ${themeId === "cinematic" ? "#f8fafc" : "var(--foreground)"};
+          }
+
+          .builder-preview-wrapper {
+            font-family: '${activeFont}', sans-serif;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
           }
           
           .builder-preview-wrapper button, 
@@ -113,7 +136,7 @@ export default function BuilderPreview() {
       {/* 3. Render the preview wrapper */}
       <div
         className={cn(
-          "builder-preview-wrapper min-h-screen flex flex-col selection:bg-primary/30 selection:text-primary",
+          "builder-preview-wrapper selection:bg-primary/30 selection:text-primary",
           themeId === "cinematic" ? "dark" : ""
         )}
         data-btn-style={themeConfig.buttonStyle || "solid"}
