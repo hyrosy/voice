@@ -89,7 +89,7 @@ const MAIN_DOMAINS = [
   "www.ucpmaroc.com",
   "localhost",
   "127.0.0.1",
-  "v5svtr-5173.csb.app",
+  "symmetrical-acorn-697wxxq4r74j3jpj-5173.app.github.dev",
 ];
 
 const queryClient = new QueryClient({

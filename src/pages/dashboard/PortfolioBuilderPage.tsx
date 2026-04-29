@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { supabase } from "../../supabaseClient";
 import { useQuery } from "@tanstack/react-query";
 import {
@@ -19,7 +19,6 @@ import {
   Eye,
   ArrowLeft,
   EyeOff,
-  Save,
   ExternalLink,
   Loader2,
   Plus,
@@ -195,6 +194,8 @@ const IframePreview = ({
     "desktop"
   );
   const [dims, setDims] = useState({ w: 0, h: 0 });
+  const [isPreviewReady, setIsPreviewReady] = useState(false);
+  const [isIframeLoading, setIsIframeLoading] = useState(true);
 
   // 🚀 MATH-PERFECT SCALING ENGINE
   useEffect(() => {
@@ -211,28 +212,29 @@ const IframePreview = ({
   }, []);
 
   const sendDataToIframe = useCallback(() => {
-    if (iframeRef.current && iframeRef.current.contentWindow) {
-      let previewSections = sections.map((s) => {
-        if (s.type === "header") {
-          return { ...s, data: { ...s.data, customPages, publicSlug } };
-        }
-        return s;
-      });
+    if (iframeRef.current?.contentWindow) {
+      const previewSections = sections.map((s) =>
+        s.type === "header"
+          ? { ...s, data: { ...s.data, customPages, publicSlug } }
+          : s
+      );
 
-      if (activePageId !== "home" && globalSections.length > 0) {
-        const header = globalSections.find((s) => s.type === "header");
-        if (header && header.isVisible) {
-          previewSections.unshift({
-            ...header,
-            data: { ...header.data, customPages, publicSlug },
-          });
-        }
-      }
+      const header = globalSections.find((s) => s.type === "header");
+      const finalSections =
+        activePageId !== "home" && header && header.isVisible
+          ? [
+              {
+                ...header,
+                data: { ...header.data, customPages, publicSlug },
+              },
+              ...previewSections,
+            ]
+          : previewSections;
 
       iframeRef.current.contentWindow.postMessage(
         {
           type: "UPDATE_PREVIEW",
-          payload: { sections: previewSections, themeConfig: theme, actorId },
+          payload: { sections: finalSections, themeConfig: theme, actorId },
         },
         "*"
       );
@@ -254,6 +256,7 @@ const IframePreview = ({
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
       if (event.data?.type === "PREVIEW_READY") {
+        setIsPreviewReady(true);
         sendDataToIframe();
       } else if (event.data?.type === "EDIT_SECTION") {
         const clickedSection = sections.find(
@@ -271,36 +274,46 @@ const IframePreview = ({
 
   // 🚀 CALCULATE PERFECT SCALING AND HEIGHT
   const DESKTOP_W = 1280;
+  const VIEWPORT_WIDTHS = { tablet: 768, mobile: 375 } as const;
 
   let scale = 1;
   let width = "100%";
   let height = "100%";
 
   if (viewport === "desktop") {
-    // Adjusted available width/height to account for the new padding
-    const availableW = Math.max(dims.w - 32, 100);
-    const availableH = Math.max(dims.h - 32, 100);
+    const availableW = Math.max(dims.w - 32, 320);
+    const availableH = Math.max(dims.h - 32, 320);
     scale = Math.min(1, availableW / DESKTOP_W);
     width = `${DESKTOP_W}px`;
     height = `${availableH / scale}px`;
-  } else if (viewport === "tablet") {
-    width = "768px";
-  } else if (viewport === "mobile") {
-    width = "375px";
+  } else {
+    const targetWidth = VIEWPORT_WIDTHS[viewport];
+    const availableW = Math.max(dims.w - 32, 320);
+    const availableH = Math.max(dims.h - 32, 320);
+    scale = Math.min(1, availableW / targetWidth);
+    width = `${targetWidth}px`;
+    height = `${availableH / scale}px`;
   }
 
   return (
     <div className="flex flex-col h-full w-full relative overflow-hidden bg-transparent">
-      <div className="">
-        <div className="">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-3">
+        <div className="flex items-center gap-2 text-sm font-semibold text-muted-foreground">
+          <span>Live Canvas</span>
+          <span className="rounded-full bg-muted px-2 py-0.5 text-[11px] font-medium uppercase tracking-[0.16em]">
+            {viewport}
+          </span>
+        </div>
+        <div className="flex items-center gap-2">
           <Button
             variant={viewport === "desktop" ? "secondary" : "ghost"}
             size="icon"
             className={cn(
-              "h-8 w-8 rounded-full",
+              "h-9 w-9 rounded-full",
               viewport === "desktop" && "shadow-sm"
             )}
             onClick={() => setViewport("desktop")}
+            title="Desktop preview"
           >
             <Monitor size={16} />
           </Button>
@@ -308,10 +321,11 @@ const IframePreview = ({
             variant={viewport === "tablet" ? "secondary" : "ghost"}
             size="icon"
             className={cn(
-              "h-8 w-8 rounded-full",
+              "h-9 w-9 rounded-full",
               viewport === "tablet" && "shadow-sm"
             )}
             onClick={() => setViewport("tablet")}
+            title="Tablet preview"
           >
             <Tablet size={16} />
           </Button>
@@ -319,54 +333,70 @@ const IframePreview = ({
             variant={viewport === "mobile" ? "secondary" : "ghost"}
             size="icon"
             className={cn(
-              "h-8 w-8 rounded-full",
+              "h-9 w-9 rounded-full",
               viewport === "mobile" && "shadow-sm"
             )}
             onClick={() => setViewport("mobile")}
+            title="Mobile preview"
           >
             <Smartphone size={16} />
           </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-9 w-9 rounded-full text-muted-foreground hover:text-foreground"
+            onClick={sendDataToIframe}
+            title="Refresh preview"
+          >
+            <RefreshCw size={16} />
+          </Button>
         </div>
-        <div className="">Live Canvas</div>
       </div>
 
       <div
         ref={containerRef}
         className={cn(
-          "flex-grow flex justify-center overflow-hidden transition-colors duration-300",
-          // 🚀 FIX: Made the backgrounds transparent and added padding so the rounded corners show nicely
+          "relative flex-grow flex justify-center overflow-hidden rounded-3xl transition-colors duration-300",
           viewport === "desktop"
-            ? "bg-transparent items-start p-4"
-            : "bg-transparent items-center p-4 sm:p-8"
+            ? "bg-slate-950/5 items-start p-4"
+            : "bg-slate-950/5 items-center p-4 sm:p-8"
         )}
       >
         <div
-          className="bg-transparent transition-all duration-300 overflow-hidden flex flex-col shrink-0"
+          className="relative bg-background transition-all duration-300 overflow-hidden flex flex-col shrink-0 rounded-3xl"
           style={{
             width,
             height,
             transform: `scale(${scale})`,
-            transformOrigin:
-              viewport === "desktop" ? "top center" : "center center",
-            // 🚀 FIX: Made the desktop view slightly rounded
-            borderRadius: viewport === "desktop" ? "0.75rem" : "2.5rem",
-            // 🚀 FIX: Ensured the clean 1px border applies to all views (no ugly black border)
+            transformOrigin: viewport === "desktop" ? "top center" : "center center",
             border: "1px solid var(--border)",
             boxShadow:
               viewport === "desktop"
-                ? "0 25px 50px -12px rgba(0, 0, 0, 0.15)"
-                : "0 35px 60px -15px rgba(0, 0, 0, 0.4)",
+                ? "0 25px 50px -12px rgba(15, 23, 42, 0.12)"
+                : "0 25px 50px -20px rgba(15, 23, 42, 0.14)",
           }}
         >
           <iframe
             ref={iframeRef}
             src="/builder-preview"
-            // 🚀 FIX: Changed to bg-transparent
-            className="flex-grow w-full h-full border-0 bg-transparent custom-scrollbar"
+            className="flex-grow w-full h-full border-0 bg-transparent"
             title="Live Preview Canvas"
-            onLoad={sendDataToIframe}
+            onLoad={() => {
+              setIsIframeLoading(false);
+              sendDataToIframe();
+            }}
             allowTransparency={true}
           />
+
+          {(isIframeLoading || !isPreviewReady) && (
+            <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-slate-950/50 text-sm text-white backdrop-blur-sm">
+              <div className="rounded-full bg-slate-900/90 px-4 py-2 shadow-lg shadow-slate-950/20">
+                {isIframeLoading
+                  ? "Loading preview…"
+                  : "Waiting for preview to initialize..."}
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>
@@ -1157,7 +1187,7 @@ const PortfolioBuilderPage = () => {
                   title="View Live Page"
                 >
                   <ExternalLink className="w-4 h-4 sm:mr-2" />
-                  <span className="hidden sm:inline">Live</span>
+                  <span className="hidden sm:inline">View Live</span>
                 </a>
               </Button>
             )}
@@ -1166,11 +1196,12 @@ const PortfolioBuilderPage = () => {
               onClick={handleManualSave}
               disabled={isSaving}
               size="sm"
+              variant={hasUnsavedChanges ? "secondary" : "outline"}
               className={cn(
-                "min-w-[100px] transition-all",
+                "min-w-[120px] transition-all",
                 hasUnsavedChanges
                   ? "bg-amber-500 hover:bg-amber-600 text-white"
-                  : ""
+                  : "text-muted-foreground"
               )}
             >
               {isSaving ? (
@@ -1180,7 +1211,7 @@ const PortfolioBuilderPage = () => {
               ) : (
                 <Cloud className="w-4 h-4 mr-2" />
               )}
-              {isSaving ? "Saving..." : hasUnsavedChanges ? "Save" : "Saved"}
+              {isSaving ? "Saving..." : hasUnsavedChanges ? "Save Draft" : "Saved"}
             </Button>
           </div>
         </div>
@@ -1248,12 +1279,13 @@ const PortfolioBuilderPage = () => {
               ) : (
                 <>
                   <div className="flex-grow overflow-y-auto min-h-[400px] lg:min-h-0 custom-scrollbar animate-in slide-in-from-left-4 duration-200 p-4 pt-2">
-                    <div className="mb-4 flex justify-between items-center text-xs font-bold text-muted-foreground uppercase tracking-wider sticky top-0 bg-card z-10 py-2">
-                      <span className="flex items-center gap-2">
-                        Sections: {sections.length} /{" "}
-                        {limits?.maxBlocksPerSite || 10}
-                        {sections.length >=
-                          (limits?.maxBlocksPerSite || 10) && (
+                    <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-center text-xs font-bold text-muted-foreground uppercase tracking-wider sticky top-0 bg-card/95 backdrop-blur-sm z-20 py-3 px-1">
+                      <span className="flex flex-wrap items-center gap-2">
+                        <span>Sections:</span>
+                        <span className="font-bold text-foreground">
+                          {sections.length} / {limits?.maxBlocksPerSite || 10}
+                        </span>
+                        {sections.length >= (limits?.maxBlocksPerSite || 10) && (
                           <span className="text-amber-600 bg-amber-500/10 px-2 py-0.5 rounded">
                             Limit Reached
                           </span>
@@ -1264,7 +1296,7 @@ const PortfolioBuilderPage = () => {
                         <DropdownMenuTrigger asChild>
                           <Button
                             size="sm"
-                            className="h-7 px-3 rounded-full text-[10px] tracking-wider shadow-sm transition-all hover:scale-105"
+                            className="h-9 px-3 rounded-full text-[10px] tracking-wider shadow-sm transition-all hover:scale-105"
                           >
                             <Plus className="w-3 h-3 mr-1" /> Add Block
                           </Button>
@@ -1451,13 +1483,14 @@ const PortfolioBuilderPage = () => {
                                           variant="ghost"
                                           size="icon"
                                           className="h-8 w-8 text-destructive/70 hover:text-destructive hover:bg-destructive/10"
+                                          title="Remove section"
                                           onClick={(e) => {
                                             e.stopPropagation();
                                             if (confirm("Remove section?"))
                                               removeSection(section.id);
                                           }}
                                         >
-                                          <Plus className="w-5 h-5 rotate-45" />
+                                          <Trash2 className="w-5 h-5" />
                                         </Button>
                                       </div>
                                     </CardContent>

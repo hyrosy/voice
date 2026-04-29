@@ -7,9 +7,7 @@ export default defineConfig({
   plugins: [react()],
   //base: "/",
   server: {
-    allowedHosts: [
-      "v5svtr-5173.csb.app", // <-- Adds your specific CodeSandbox URL
-    ],
+    host: "0.0.0.0",
   },
   optimizeDeps: {
     exclude: ["lucide-react"],
