@@ -462,8 +462,7 @@ const PortfolioBuilderPage = () => {
 
   // Page Tracker
   const [activePageId, setActivePageId] = useState<string | "home">("home");
-  const [lastLoadedPage, setLastLoadedPage] = useState<string | null>(null);
-
+  const [lastLoadedKey, setLastLoadedKey] = useState<string | null>(null); // 🚀 FIX: Now tracks Site + Page combo
   const [isPageModalOpen, setIsPageModalOpen] = useState(false);
   const [newPageName, setNewPageName] = useState("");
   const [isCreatingPage, setIsCreatingPage] = useState(false);
@@ -564,83 +563,74 @@ const PortfolioBuilderPage = () => {
   const hasThemeAccess = (themeId: string) =>
     globalOwnedThemes.includes(themeId) || siteOwnedThemes.includes(themeId);
 
-  // 🚀 FIX: BULLETPROOF STATE INITIALIZATION
+  // 🚀 FIX: BULLETPROOF STATE INITIALIZATION WITH PORTFOLIO SWITCHING
   useEffect(() => {
     if (isPortfolioLoading || isSubLoading) return;
 
     if (fetchedPortfolio) {
-      // Safe setters to avoid infinite renders
-      setActivePortfolioId((prev) =>
-        prev !== fetchedPortfolio.id ? fetchedPortfolio.id : prev
-      );
-      setIsPublished((prev) =>
-        prev !== fetchedPortfolio.is_published
-          ? fetchedPortfolio.is_published
-          : prev
-      );
+      // 1. Detect if the user just switched to a different website
+      const isPortfolioSwitch = activePortfolioId !== fetchedPortfolio.id;
+      
+      if (isPortfolioSwitch) {
+        setActivePortfolioId(fetchedPortfolio.id);
+        setActivePageId("home"); // 🚀 Reset them to the homepage of the new site
+        setEditingSection(null); // Close the editor pane if it was open
+      }
 
-      setSiteIdentity((prev) => {
+      setIsPublished(prev => prev !== fetchedPortfolio.is_published ? fetchedPortfolio.is_published : prev);
+      
+      setSiteIdentity(prev => {
         const newName = fetchedPortfolio.site_name || "";
         const newSlug = fetchedPortfolio.public_slug || "";
         const newDomain = fetchedPortfolio.custom_domain || "";
-        if (
-          prev.name === newName &&
-          prev.slug === newSlug &&
-          prev.customDomain === newDomain
-        )
-          return prev;
+        if (prev.name === newName && prev.slug === newSlug && prev.customDomain === newDomain) return prev;
         return { name: newName, slug: newSlug, customDomain: newDomain };
       });
 
       const currentDomain = fetchedPortfolio.custom_domain || "";
-      setActiveDomain((prev) =>
-        prev !== currentDomain ? currentDomain : prev
-      );
+      setActiveDomain(prev => prev !== currentDomain ? currentDomain : prev);
       if (!currentDomain) setDomainStatus(null);
 
-      if (activePageId !== lastLoadedPage) {
-        if (activePageId === "home") {
+      // 2. Generate a unique key so the builder knows exactly what it's looking at
+      const pageToLoad = isPortfolioSwitch ? "home" : activePageId;
+      const loadKey = `${fetchedPortfolio.id}-${pageToLoad}`;
+
+      // 3. ONLY set state if the key changed (preserves undo history during autosaves!)
+      if (loadKey !== lastLoadedKey) {
+        if (pageToLoad === "home") {
           setInitialState(fetchedPortfolio.sections || [], {
             ...fetchedPortfolio.theme_config,
             radius: fetchedPortfolio.theme_config?.radius ?? 0.5,
             buttonStyle: fetchedPortfolio.theme_config?.buttonStyle ?? "solid",
           });
         } else {
-          const page = customPages.find((p) => p.id === activePageId);
-          setInitialState(page?.sections || [], themeConfig);
+          // Find the custom page, but still inject the global theme from the portfolio!
+          const page = customPagesData?.find((p) => p.id === pageToLoad);
+          setInitialState(page?.sections || [], {
+            ...fetchedPortfolio.theme_config,
+            radius: fetchedPortfolio.theme_config?.radius ?? 0.5,
+            buttonStyle: fetchedPortfolio.theme_config?.buttonStyle ?? "solid",
+          });
         }
-        setLastLoadedPage(activePageId);
-      }
-    } else {
-      setActivePortfolioId(null);
-      if (activePageId !== lastLoadedPage) {
-        setInitialState(DEFAULT_PORTFOLIO_SECTIONS, {
-          templateId: "modern",
-          primaryColor: "violet",
-          font: "sans",
-          radius: 0.5,
-          buttonStyle: "solid",
-        });
-        setLastLoadedPage(activePageId);
+        setLastLoadedKey(loadKey); // Lock it in
       }
 
+    } else {
+      setActivePortfolioId(null); 
+      if (lastLoadedKey !== "empty-home") {
+        setInitialState(DEFAULT_PORTFOLIO_SECTIONS, { templateId: "modern", primaryColor: "violet", font: "sans", radius: 0.5, buttonStyle: "solid" });
+        setLastLoadedKey("empty-home");
+      }
+      
       if (!isSubLoading && fetchedSiteList && fetchedSiteList.length === 0) {
         setShowOnboarding(true);
       }
     }
-  }, [
-    fetchedPortfolio,
-    isPortfolioLoading,
-    isSubLoading,
-    activePageId,
-    lastLoadedPage,
-    customPagesData,
-    fetchedSiteList,
-  ]);
+  }, [fetchedPortfolio, isPortfolioLoading, isSubLoading, activePageId, lastLoadedKey, customPagesData, fetchedSiteList, activePortfolioId]);
 
   const isLoading = isPortfolioLoading;
 
-  // AUTO-SAVE ENGINE
+  // 🚀 FIXED: SILENT BACKGROUND AUTO-SAVE ENGINE WITH CACHE SYNC
   useEffect(() => {
     if (!hasUnsavedChanges || isLoading || !activePortfolioId) return;
     const autoSaveTimer = setTimeout(async () => {
@@ -654,6 +644,8 @@ const PortfolioBuilderPage = () => {
             updated_at: new Date().toISOString(),
           })
           .eq("id", activePortfolioId);
+          
+        fetchPortfolio(); // 🚀 FIX: Sync the React Query Cache!
       } else {
         await supabase
           .from("pro_pages")
@@ -663,7 +655,11 @@ const PortfolioBuilderPage = () => {
           .from("portfolios")
           .update({ theme_config: themeConfig })
           .eq("id", activePortfolioId);
+          
+        fetchCustomPages(); // 🚀 FIX: Sync Custom Pages Cache!
+        fetchPortfolio();   // 🚀 FIX: Sync Global Theme Cache!
       }
+      // Because lastLoadedKey protects the canvas, markSaved won't wipe history!
       markSaved();
       setIsSaving(false);
     }, 1500);
@@ -675,6 +671,7 @@ const PortfolioBuilderPage = () => {
     isLoading,
     activePortfolioId,
     activePageId,
+    // Do NOT add fetchPortfolio to dependencies
   ]);
 
   // KEYBOARD SHORTCUTS
@@ -825,6 +822,8 @@ const PortfolioBuilderPage = () => {
           updated_at: new Date().toISOString(),
         })
         .eq("id", activePortfolioId);
+        
+      fetchPortfolio(); // 🚀 FIX: Sync the React Query Cache!
     } else {
       await supabase
         .from("pro_pages")
@@ -834,6 +833,9 @@ const PortfolioBuilderPage = () => {
         .from("portfolios")
         .update({ theme_config: themeConfig })
         .eq("id", activePortfolioId);
+        
+      fetchCustomPages(); // 🚀 FIX: Sync Custom Pages Cache!
+      fetchPortfolio();   // 🚀 FIX: Sync Global Theme Cache!
     }
     markSaved();
     setIsSaving(false);
@@ -888,12 +890,10 @@ const PortfolioBuilderPage = () => {
 
     setIsCreating(true);
     try {
-      const template =
-        PORTFOLIO_TEMPLATES.find((t) => t.id === selectedTemplate) ||
-        PORTFOLIO_TEMPLATES[0];
-      const baseSlug = newSiteName.toLowerCase().replace(/[^a-z0-9]/g, "-");
-      const uniqueSlug = `${baseSlug}-${Date.now().toString().slice(-4)}`;
-      const { data, error } = await supabase
+      const template = PORTFOLIO_TEMPLATES.find((t) => t.id === selectedTemplate) || PORTFOLIO_TEMPLATES[0];
+      // 🚀 FIX: Merges multiple dashes, removes trailing dashes, falls back to "site" if empty
+      const baseSlug = newSiteName.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "site";
+      const uniqueSlug = `${baseSlug}-${Date.now().toString().slice(-4)}`;      const { data, error } = await supabase
         .from("portfolios")
         .insert({
           actor_id: actorData.id,
@@ -929,12 +929,15 @@ const PortfolioBuilderPage = () => {
   const handleCreatePage = async () => {
     if (!activePortfolioId) return;
     if (!newPageName.trim()) return alert("Please enter a page name.");
+    
     setIsCreatingPage(true);
+    
+    // 🚀 FIX 1: Added || "page" fallback in case they only type special characters
     const cleanSlug = newPageName
       .toLowerCase()
-      .replace(/[^a-z0-9]/g, "-")
-      .replace(/-+/g, "-")
-      .replace(/^-|-$/g, "");
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-|-$/g, "") || "page";
+
     const { data, error } = await supabase
       .from("pro_pages")
       .insert({
@@ -945,7 +948,9 @@ const PortfolioBuilderPage = () => {
       })
       .select()
       .single();
+      
     setIsCreatingPage(false);
+    
     if (error) {
       if (error.code === "23505")
         alert(
@@ -954,8 +959,13 @@ const PortfolioBuilderPage = () => {
       else alert("Failed to create page. Please try again.");
       return;
     }
+    
     setIsPageModalOpen(false);
     setNewPageName("");
+    
+    // 🚀 FIX 2: Explicitly clear the Zustand canvas instantly so the user sees a fresh page
+    setInitialState([], themeConfig);
+    
     await fetchCustomPages();
     setActivePageId(data.id);
   };
@@ -1027,12 +1037,12 @@ const PortfolioBuilderPage = () => {
   }
 
   return (
-    <div className="p-4 md:p-8 space-y-8 w-full max-w-8xl mx-auto h-[calc(100vh-4rem)] flex flex-col">
+    <div className="p-4 md:p-8 space-y-6 w-full max-w-8xl mx-auto h-[calc(100vh-4rem)] flex flex-col">
       {/* Header / Toolbar */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 shrink-0">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 shrink-0 bg-card p-3 md:px-5 rounded-2xl border border-border shadow-sm mb-2">
         <div className="flex items-end gap-4">
           <div className="flex flex-col gap-1">
-            <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
+            <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider ml-1">
               Editing Site
             </span>
             <Select
@@ -1043,7 +1053,7 @@ const PortfolioBuilderPage = () => {
                   : navigate(`/dashboard/portfolio?id=${val}`)
               }
             >
-              <SelectTrigger className="h-9 border-0 p-0 shadow-none text-2xl md:text-3xl font-bold tracking-tight bg-transparent focus:ring-0 w-auto min-w-[200px] justify-start gap-2">
+              <SelectTrigger className="h-8 border-0 p-0 shadow-none text-xl md:text-2xl font-black tracking-tight bg-transparent focus:ring-0 w-auto min-w-[200px] justify-start gap-2 hover:opacity-80 transition-opacity">
                 <SelectValue placeholder="Select Site">
                   {siteList.find((s) => s.id === activePortfolioId)
                     ?.site_name ||
@@ -1072,19 +1082,19 @@ const PortfolioBuilderPage = () => {
           </div>
 
           {activePortfolioId && (
-            <div className="flex flex-col gap-1 border-l pl-4">
-              <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
+            <div className="flex flex-col gap-1 border-l border-border pl-4">
+              <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider ml-1">
                 Editing Page
               </span>
               <div className="flex items-center gap-2">
-                <Select
+<Select
                   value={activePageId}
                   onValueChange={(val) => {
+                    setEditingSection(null); // 🚀 FIX: Close the editor before switching pages
                     if (val === "new") setIsPageModalOpen(true);
-                    else setActivePageId(val);
+                    else setActivePageId(val); 
                   }}
-                >
-                  <SelectTrigger className="h-9 border-0 p-0 shadow-none text-xl font-bold tracking-tight bg-transparent focus:ring-0 w-auto min-w-[150px] justify-start gap-2">
+                >                  <SelectTrigger className="h-8 border-0 p-0 shadow-none text-lg md:text-xl font-bold tracking-tight bg-transparent focus:ring-0 w-auto min-w-[150px] justify-start gap-2 hover:opacity-80 transition-opacity">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -1220,22 +1230,22 @@ const PortfolioBuilderPage = () => {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8 flex-grow overflow-hidden min-h-0 relative pb-2">
         <div className="lg:col-span-1 flex flex-col h-full min-h-0 overflow-hidden pr-1">
           <Tabs defaultValue="content" className="flex flex-col h-full min-h-0">
-            <TabsList className="w-full grid grid-cols-3 lg:grid-cols-2 shrink-0 rounded-xl bg-muted/40 p-1 h-12 mb-4">
+            <TabsList className="w-full grid grid-cols-3 lg:grid-cols-2 gap-2 shrink-0 rounded-3xl bg-muted/40 p-2 h-12 mb-4">
               <TabsTrigger
                 value="content"
-                className="h-full rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:text-primary"
+                className="h-full rounded-2xl border border-transparent bg-muted/80 text-sm font-semibold data-[state=active]:bg-background data-[state=active]:border-primary data-[state=active]:text-primary"
               >
-                <Layers className="w-4 h-4 mr-2 hidden sm:block" /> Content
+                <Layers className="w-4 h-4 mr-2 hidden sm:inline" /> Content
               </TabsTrigger>
               <TabsTrigger
                 value="design"
-                className="h-full rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:text-primary"
+                className="h-full rounded-2xl border border-transparent bg-muted/80 text-sm font-semibold data-[state=active]:bg-background data-[state=active]:border-primary data-[state=active]:text-primary"
               >
-                <Palette className="w-4 h-4 mr-2 hidden sm:block" /> Design
+                <Palette className="w-4 h-4 mr-2 hidden sm:inline" /> Design
               </TabsTrigger>
               <TabsTrigger
                 value="preview"
-                className="lg:hidden h-full rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:text-primary"
+                className="lg:hidden h-full rounded-2xl border border-transparent bg-muted/80 text-sm font-semibold data-[state=active]:bg-background data-[state=active]:border-primary data-[state=active]:text-primary"
               >
                 <Smartphone className="w-4 h-4 mr-2" /> Preview
               </TabsTrigger>
@@ -1277,42 +1287,41 @@ const PortfolioBuilderPage = () => {
                   </div>
                 </div>
               ) : (
-                <>
                   <div className="flex-grow overflow-y-auto min-h-[400px] lg:min-h-0 custom-scrollbar animate-in slide-in-from-left-4 duration-200 p-4 pt-2">
-                    <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-center text-xs font-bold text-muted-foreground uppercase tracking-wider sticky top-0 bg-card/95 backdrop-blur-sm z-20 py-3 px-1">
-                      <span className="flex flex-wrap items-center gap-2">
-                        <span>Sections:</span>
-                        <span className="font-bold text-foreground">
-                          {sections.length} / {limits?.maxBlocksPerSite || 10}
-                        </span>
-                        {sections.length >= (limits?.maxBlocksPerSite || 10) && (
-                          <span className="text-amber-600 bg-amber-500/10 px-2 py-0.5 rounded">
-                            Limit Reached
+                    <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-center bg-card/95 sticky top-0 z-20 rounded-3xl border border-border/50 p-4 shadow-sm">
+                      <div className="space-y-2">
+                        <div className="flex flex-wrap items-center gap-2 text-sm font-semibold text-foreground">
+                          <span>Page sections</span>
+                          <span className="rounded-full bg-muted px-2 py-1 text-[11px] font-medium uppercase tracking-[0.18em]">
+                            {sections.length} / {limits?.maxBlocksPerSite || 10}
                           </span>
-                        )}
-                      </span>
+                        </div>
+                        <p className="text-xs text-muted-foreground max-w-xl">
+                          Drag to reorder your sections, then click a block to edit content and visibility.
+                        </p>
+                      </div>
 
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button
-                            size="sm"
-                            className="h-9 px-3 rounded-full text-[10px] tracking-wider shadow-sm transition-all hover:scale-105"
+                      <div className="flex flex-wrap items-center gap-2">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button
+                              size="sm"
+                              className="h-10 px-4 rounded-full tracking-wide shadow-sm transition-all hover:scale-105"
+                            >
+                              <Plus className="w-4 h-4 mr-2" /> Add Block
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent
+                            className="w-72 max-h-[400px] overflow-y-auto rounded-2xl p-3 shadow-xl [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-muted-foreground/20 hover:[&::-webkit-scrollbar-thumb]:bg-muted-foreground/40 [&::-webkit-scrollbar-thumb]:rounded-full"
+                            align="end"
+                            sideOffset={10}
                           >
-                            <Plus className="w-3 h-3 mr-1" /> Add Block
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent
-                          className="w-72 max-h-[400px] overflow-y-auto rounded-2xl p-3 shadow-xl [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-muted-foreground/20 hover:[&::-webkit-scrollbar-thumb]:bg-muted-foreground/40 [&::-webkit-scrollbar-thumb]:rounded-full"
-                          align="end"
-                          sideOffset={10}
-                        >
                           <div className="text-xs font-black text-muted-foreground uppercase tracking-wider mb-3 px-1">
                             Block Library
                           </div>
                           <div className="grid grid-cols-3 gap-2">
                             {AVAILABLE_BLOCKS.map((block) => {
-                              const isLocked =
-                                block.module && !limits?.modules[block.module];
+                              const isLocked = block.module && !limits?.modules?.[block.module]; // 🚀 FIX: Added ?. before brackets
                               const Icon = block.icon;
                               return (
                                 <DropdownMenuItem
@@ -1343,6 +1352,7 @@ const PortfolioBuilderPage = () => {
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </div>
+                      </div>
 
                     <DragDropContext onDragEnd={handleDragEnd}>
                       <Droppable droppableId="sections">
@@ -1352,6 +1362,14 @@ const PortfolioBuilderPage = () => {
                             ref={provided.innerRef}
                             className="space-y-3 pb-24"
                           >
+                            {sections.length === 0 && (
+                              <div className="flex flex-col items-center justify-center p-8 text-center border-2 border-dashed border-border rounded-2xl bg-muted/20 text-muted-foreground mt-4">
+                                <Layers className="w-10 h-10 mb-3 opacity-20" />
+                                <p className="font-semibold text-sm text-foreground mb-1">No sections added</p>
+                                <p className="text-xs max-w-[200px] mx-auto">Click "Add Block" to start building your page.</p>
+                              </div>
+                            )}
+
                             {sections.map((section, index) => (
                               <Draggable
                                 key={section.id}
@@ -1363,22 +1381,22 @@ const PortfolioBuilderPage = () => {
                                     ref={provided.innerRef}
                                     {...provided.draggableProps}
                                     className={cn(
-                                      "border-l-4 transition-all cursor-pointer group active:scale-[0.99] border-y-0 border-r-0 rounded-xl",
+                                      "transition-all cursor-pointer group active:scale-[0.99] hover:shadow-md",
                                       section.isVisible
-                                        ? "border-l-primary shadow-sm bg-background"
-                                        : "border-l-muted opacity-60 bg-muted/40",
+                                        ? "border border-border/70 bg-card hover:bg-muted/30 shadow-sm"
+                                        : "border border-amber-300/30 bg-amber-50/60 opacity-90 hover:opacity-100",
                                       snapshot.isDragging &&
-                                        "shadow-2xl scale-105 rotate-2 opacity-95 z-50 ring-1 ring-border"
+                                        "shadow-2xl scale-105 opacity-100 z-50 ring-1 ring-primary/50 bg-background"
                                     )}
                                     onClick={() => {
                                       if (!renamingId)
                                         setEditingSection(section);
                                     }}
                                   >
-                                    <CardContent className="p-3 sm:p-4 flex items-center gap-3">
+                                    <CardContent className="p-4 flex items-start gap-3">
                                       <div
                                         {...provided.dragHandleProps}
-                                        className="cursor-grab active:cursor-grabbing text-muted-foreground/40 hover:text-foreground p-1 transition-colors"
+                                        className="mt-1 cursor-grab active:cursor-grabbing text-muted-foreground/40 hover:text-foreground p-2 rounded-full transition-colors"
                                       >
                                         <GripVertical size={20} />
                                       </div>
@@ -1397,12 +1415,12 @@ const PortfolioBuilderPage = () => {
                                                 saveLabel(e);
                                             }}
                                             autoFocus
-                                            className="h-8 text-sm border-primary/50"
+                                            className="h-10 text-sm border-primary/50"
                                           />
                                           <Button
                                             size="icon"
                                             variant="ghost"
-                                            className="h-8 w-8 text-green-500 hover:bg-green-500/10"
+                                            className="h-9 w-9 text-green-500 hover:bg-green-500/10"
                                             onClick={saveLabel}
                                           >
                                             <Check size={16} />
@@ -1410,7 +1428,7 @@ const PortfolioBuilderPage = () => {
                                           <Button
                                             size="icon"
                                             variant="ghost"
-                                            className="h-8 w-8 text-muted-foreground"
+                                            className="h-9 w-9 text-muted-foreground"
                                             onClick={(e) => {
                                               e.stopPropagation();
                                               setRenamingId(null);
@@ -1420,79 +1438,86 @@ const PortfolioBuilderPage = () => {
                                           </Button>
                                         </div>
                                       ) : (
-                                        <div
-                                          className="flex-grow min-w-0"
-                                          onDoubleClick={(e) => {
-                                            e.stopPropagation();
-                                            setRenamingId(section.id);
-                                            setTempLabel(
-                                              section.data._label ||
-                                                section.type.replace("_", " ")
-                                            );
-                                          }}
-                                        >
-                                          <div className="flex items-center gap-2">
-                                            <p className="font-semibold text-sm capitalize select-none truncate">
-                                              {section.data._label ||
-                                                section.type.replace("_", " ")}
-                                            </p>
+                                        <div className="flex-1 min-w-0">
+                                          <div className="flex items-center justify-between gap-3">
+                                            <div className="min-w-0">
+                                              <p className="font-semibold text-sm capitalize truncate text-foreground">
+                                                {section.data._label ||
+                                                  section.type.replace(/_/g, " ")}
+                                              </p>
+                                              <div className="mt-2 flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground uppercase tracking-[0.2em]">
+                                                <span>
+                                                  {section.type.replace(/_/g, " ")}
+                                                </span>
+                                                <span
+                                                  className={cn(
+                                                    "rounded-full px-2 py-0.5",
+                                                    section.isVisible
+                                                      ? "bg-emerald-500/10 text-emerald-700"
+                                                      : "bg-amber-500/10 text-amber-700"
+                                                  )}
+                                                >
+                                                  {section.isVisible ? "Visible" : "Hidden"}
+                                                </span>
+                                              </div>
+                                            </div>
+                                            <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                              <Button
+                                                variant="ghost"
+                                                size="icon"
+                                                className="h-9 w-9 text-muted-foreground hover:text-foreground"
+                                                onClick={(e) => {
+                                                  e.stopPropagation();
+                                                  setRenamingId(section.id);
+                                                  setTempLabel(
+                                                    section.data._label ||
+                                                      section.type.replace(/_/g, " ")
+                                                  );
+                                                }}
+                                              >
+                                                <Pencil size={16} />
+                                              </Button>
+                                              <Button
+                                                variant="ghost"
+                                                size="icon"
+                                                className="h-9 w-9 text-muted-foreground hover:text-foreground"
+                                                onClick={(e) => {
+                                                  e.stopPropagation();
+                                                  updateSection(section.id, {
+                                                    isVisible: !section.isVisible,
+                                                  });
+                                                }}
+                                              >
+                                                {section.isVisible ? (
+                                                  <Eye size={18} />
+                                                ) : (
+                                                  <EyeOff size={18} />
+                                                )}
+                                              </Button>
+                                              <Button
+                                                variant="ghost"
+                                                size="icon"
+                                                className="h-9 w-9 text-destructive/70 hover:text-destructive hover:bg-destructive/10"
+                                                title="Remove section"
+                                                onClick={(e) => {
+                                                  e.stopPropagation();
+                                                  if (confirm("Remove section?"))
+                                                    removeSection(section.id);
+                                                }}
+                                              >
+                                                <Trash2 className="w-5 h-5" />
+                                              </Button>
+                                            </div>
                                           </div>
                                           {section.data.title &&
                                             section.data.title !==
                                               section.data._label && (
-                                              <p className="text-xs text-muted-foreground truncate max-w-[150px] mt-0.5">
+                                              <p className="text-xs text-muted-foreground truncate mt-2">
                                                 {section.data.title}
                                               </p>
                                             )}
                                         </div>
                                       )}
-                                      <div className="flex items-center gap-1 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
-                                        <Button
-                                          variant="ghost"
-                                          size="icon"
-                                          className="h-8 w-8 text-muted-foreground hover:text-foreground sm:hidden"
-                                          onClick={(e) => {
-                                            e.stopPropagation();
-                                            setRenamingId(section.id);
-                                            setTempLabel(
-                                              section.data._label ||
-                                                section.type.replace("_", " ")
-                                            );
-                                          }}
-                                        >
-                                          <Pencil size={16} />
-                                        </Button>
-                                        <Button
-                                          variant="ghost"
-                                          size="icon"
-                                          className="h-8 w-8 text-muted-foreground hover:text-foreground"
-                                          onClick={(e) => {
-                                            e.stopPropagation();
-                                            updateSection(section.id, {
-                                              isVisible: !section.isVisible,
-                                            });
-                                          }}
-                                        >
-                                          {section.isVisible ? (
-                                            <Eye size={18} />
-                                          ) : (
-                                            <EyeOff size={18} />
-                                          )}
-                                        </Button>
-                                        <Button
-                                          variant="ghost"
-                                          size="icon"
-                                          className="h-8 w-8 text-destructive/70 hover:text-destructive hover:bg-destructive/10"
-                                          title="Remove section"
-                                          onClick={(e) => {
-                                            e.stopPropagation();
-                                            if (confirm("Remove section?"))
-                                              removeSection(section.id);
-                                          }}
-                                        >
-                                          <Trash2 className="w-5 h-5" />
-                                        </Button>
-                                      </div>
                                     </CardContent>
                                   </Card>
                                 )}
@@ -1504,8 +1529,7 @@ const PortfolioBuilderPage = () => {
                       </Droppable>
                     </DragDropContext>
                   </div>
-                </>
-              )}
+                )}
             </TabsContent>
 
             {/* DESIGN TAB */}
@@ -1945,16 +1969,16 @@ const PortfolioBuilderPage = () => {
 
       {/* --- CREATE NEW PAGE MODAL --- */}
       <Dialog open={isPageModalOpen} onOpenChange={setIsPageModalOpen}>
-        <DialogContent className="sm:max-w-[425px]">
-          <DialogHeader>
-            <DialogTitle>Create New Page</DialogTitle>
-            <DialogDescription>
+        <DialogContent className="sm:max-w-[450px] p-0 overflow-hidden bg-background border-border">
+          <div className="p-6 bg-muted/30 border-b border-border">
+            <DialogTitle className="text-2xl font-bold text-foreground">Create New Page</DialogTitle>
+            <DialogDescription className="text-muted-foreground mt-1">
               Add a new custom page to your website.
             </DialogDescription>
-          </DialogHeader>
-          <div className="py-4 space-y-4">
+          </div>
+          <div className="p-6 space-y-4">
             <div className="space-y-2">
-              <Label>Page Name</Label>
+              <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Page Name</Label>
               <Input
                 placeholder="e.g. Tour Dates"
                 value={newPageName}
@@ -1963,6 +1987,7 @@ const PortfolioBuilderPage = () => {
                   if (e.key === "Enter") handleCreatePage();
                 }}
                 autoFocus
+                className="h-12 text-base font-medium bg-muted/50"
               />
               {newPageName && (
                 <p className="text-xs text-muted-foreground mt-2">
@@ -1979,35 +2004,39 @@ const PortfolioBuilderPage = () => {
               )}
             </div>
           </div>
-          <DialogFooter>
+          <div className="p-6 border-t border-border bg-muted/10 flex justify-end gap-3">
             <Button variant="outline" onClick={() => setIsPageModalOpen(false)}>
               Cancel
             </Button>
-            <Button onClick={handleCreatePage} disabled={isCreatingPage}>
+            <Button onClick={handleCreatePage} disabled={isCreatingPage} className="font-bold">
               {isCreatingPage && (
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               )}{" "}
               Create Page
             </Button>
-          </DialogFooter>
+          </div>
         </DialogContent>
       </Dialog>
 
       {/* --- SITE SETTINGS MODAL --- */}
       <Dialog open={isSettingsOpen} onOpenChange={setIsSettingsOpen}>
-        <DialogContent className="sm:max-w-[500px]">
-          <DialogHeader>
-            <DialogTitle>Site Settings</DialogTitle>
-            <DialogDescription>
+        <DialogContent className="sm:max-w-[600px] p-0 overflow-hidden bg-background border-border">
+          <div className="p-6 bg-muted/30 border-b border-border">
+            <DialogTitle className="text-2xl font-bold text-foreground">Site Settings</DialogTitle>
+            <DialogDescription className="text-muted-foreground mt-1">
               Manage your site identity, URL, and custom domain.
             </DialogDescription>
-          </DialogHeader>
-          <Tabs defaultValue="general" className="w-full mt-2">
-            <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="general">General</TabsTrigger>
-              <TabsTrigger value="domains">Domains</TabsTrigger>
-            </TabsList>
-            <TabsContent value="general" className="space-y-4 py-4">
+          </div>
+          <Tabs defaultValue="general" className="w-full">
+            <div className="px-6 pt-4">
+              <TabsList className="grid w-full grid-cols-2 bg-muted/50 rounded-xl p-1">
+                <TabsTrigger value="general" className="rounded-lg">General</TabsTrigger>
+                <TabsTrigger value="domains" className="rounded-lg">Domains</TabsTrigger>
+              </TabsList>
+            </div>
+            
+            <div className="p-6 max-h-[60vh] overflow-y-auto custom-scrollbar">
+            <TabsContent value="general" className="space-y-6 mt-0">
               <div className="space-y-2">
                 <Label>Site Name</Label>
                 <Input
@@ -2041,7 +2070,7 @@ const PortfolioBuilderPage = () => {
                 </div>
               </div>
             </TabsContent>
-            <TabsContent value="domains" className="space-y-4 py-4">
+            <TabsContent value="domains" className="space-y-6 mt-0">
               <div className="space-y-4">
                 <div className="flex justify-between items-center">
                   <Label>Custom Domain</Label>
@@ -2138,32 +2167,34 @@ const PortfolioBuilderPage = () => {
                               </p>
                             </div>
                           </div>
-                          <div className="grid grid-cols-[0.5fr_1fr_2fr] gap-2 font-mono text-xs items-center bg-muted/50 p-2 rounded">
-                            <div className="bg-white border px-1.5 py-0.5 rounded text-center font-bold">
+                          <div className="grid grid-cols-[0.5fr_1fr_2fr] gap-2 font-mono text-xs items-center bg-muted/50 p-2 rounded border border-border/50">
+                            <div className="bg-background border border-border px-1.5 py-0.5 rounded text-center font-bold text-foreground">
                               A
                             </div>
                             <div className="text-muted-foreground">@</div>
                             <div
-                              className="text-right select-all cursor-pointer font-medium"
+                              className="text-right select-all cursor-pointer font-medium hover:text-primary transition-colors"
                               onClick={() =>
                                 navigator.clipboard.writeText("76.76.21.21")
                               }
+                              title="Click to copy"
                             >
                               76.76.21.21
                             </div>
                           </div>
-                          <div className="grid grid-cols-[0.5fr_1fr_2fr] gap-2 font-mono text-xs items-center bg-muted/50 p-2 rounded">
-                            <div className="bg-white border px-1.5 py-0.5 rounded text-center font-bold">
+                          <div className="grid grid-cols-[0.5fr_1fr_2fr] gap-2 font-mono text-xs items-center bg-muted/50 p-2 rounded border border-border/50">
+                            <div className="bg-background border border-border px-1.5 py-0.5 rounded text-center font-bold text-foreground">
                               CNAME
                             </div>
                             <div className="text-muted-foreground">www</div>
                             <div
-                              className="text-right select-all cursor-pointer font-medium"
+                              className="text-right select-all cursor-pointer font-medium hover:text-primary transition-colors"
                               onClick={() =>
                                 navigator.clipboard.writeText(
                                   "cname.vercel-dns.com"
                                 )
                               }
+                              title="Click to copy"
                             >
                               cname.vercel-dns.com
                             </div>
@@ -2220,41 +2251,43 @@ const PortfolioBuilderPage = () => {
                 )}
               </div>
             </TabsContent>
+            </div>
           </Tabs>
-          <DialogFooter>
+          <div className="p-6 border-t border-border bg-muted/10 flex justify-end gap-3">
             <Button variant="outline" onClick={() => setIsSettingsOpen(false)}>
               Cancel
             </Button>
-            <Button onClick={handleSaveIdentity} disabled={isSavingIdentity}>
+            <Button onClick={handleSaveIdentity} disabled={isSavingIdentity} className="font-bold">
               {isSavingIdentity && (
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               )}{" "}
               Save Changes
             </Button>
-          </DialogFooter>
+          </div>
         </DialogContent>
       </Dialog>
 
       {/* --- CREATE NEW SITE (OR FROM ONBOARDING) MODAL --- */}
       <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
-        <DialogContent className="sm:max-w-[600px]">
-          <DialogHeader>
-            <DialogTitle>Create New Website</DialogTitle>
-            <DialogDescription>
+        <DialogContent className="sm:max-w-[600px] p-0 overflow-hidden bg-background border-border">
+          <div className="p-6 bg-muted/30 border-b border-border">
+            <DialogTitle className="text-2xl font-bold text-foreground">Create New Website</DialogTitle>
+            <DialogDescription className="text-muted-foreground mt-1">
               Choose a starting template for your new portfolio.
             </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-6 py-4">
+          </div>
+          <div className="p-6 space-y-6 max-h-[60vh] overflow-y-auto custom-scrollbar">
             <div className="space-y-2">
-              <Label>Website Name</Label>
+              <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Website Name</Label>
               <Input
                 placeholder="e.g. Acting Portfolio 2024"
                 value={newSiteName}
                 onChange={(e) => setNewSiteName(e.target.value)}
+                className="h-12 text-base font-medium bg-muted/50"
               />
             </div>
             <div className="space-y-3">
-              <Label>Select Template</Label>
+              <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Select Template</Label>
               <div className="grid grid-cols-2 gap-3">
                 {PORTFOLIO_TEMPLATES.map((template) => (
                   <div
@@ -2281,24 +2314,29 @@ const PortfolioBuilderPage = () => {
               </div>
             </div>
           </div>
-          <DialogFooter>
+          <div className="p-6 border-t border-border bg-muted/10 flex justify-end gap-3">
             <Button variant="outline" onClick={() => setIsCreateOpen(false)}>
               Cancel
             </Button>
             <Button
               onClick={handleCreateSite}
               disabled={isCreating || isSubLoading || !limits}
+              className="font-bold shadow-sm"
             >
               {isCreating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}{" "}
               {isSubLoading ? "Loading Plan..." : "Create Website"}
             </Button>
-          </DialogFooter>
+          </div>
         </DialogContent>
       </Dialog>
 
       {/* 🚀 AAA+ ONBOARDING MODAL */}
       <Dialog open={showOnboarding} onOpenChange={setShowOnboarding}>
         <DialogContent className="sm:max-w-[850px] p-0 overflow-hidden bg-background border-border shadow-2xl">
+          <DialogHeader className="sr-only">
+            <DialogTitle>Welcome to the Builder</DialogTitle>
+            <DialogDescription>Set up your new portfolio site.</DialogDescription>
+          </DialogHeader>
           <div className="grid grid-cols-1 md:grid-cols-2">
             <div className="bg-gradient-to-br from-primary/80 to-blue-600 p-10 flex flex-col justify-between text-white relative overflow-hidden">
               <div className="absolute -top-24 -left-24 w-64 h-64 bg-white/10 rounded-full blur-3xl"></div>
