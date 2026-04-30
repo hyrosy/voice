@@ -41,6 +41,7 @@ import * as Babel from "@babel/standalone";
 import SdkDocsModal from "@/components/dashboard/SdkDocsModal";
 // At the top of ThemeStudioPage.tsx
 import cupertinoHeaderRaw from "../../themes/cupertino/Header.tsx?raw";
+import ucpTypesRaw from "../../lib/ucp-sdk/types.d.ts?raw";
 import cupertinoHeroRaw from "../../themes/cupertino/Hero.tsx?raw";
 import cupertinoGalleryRaw from "../../themes/cupertino/Gallery.tsx?raw";
 
@@ -361,8 +362,8 @@ export default function ThemeStudioPage() {
   };
   // 🚀 MONACO COMPILER CONFIGURATION
   // 🚀 MONACO COMPILER CONFIGURATION
+  // 🚀 MONACO COMPILER CONFIGURATION
   const handleEditorWillMount = (m: any) => {
-    // Cast to 'any' to completely bypass your local IDE's global type clash
     const ts = m.languages.typescript as any;
 
     ts.typescriptDefaults.setCompilerOptions({
@@ -378,6 +379,12 @@ export default function ThemeStudioPage() {
       noSemanticValidation: true,
       noSyntaxValidation: false,
     });
+
+    // 🚀 2. INJECT THE UCP TYPES HERE
+    ts.typescriptDefaults.addExtraLib(
+      ucpTypesRaw, 
+      'file:///node_modules/@types/ucp-sdk/index.d.ts'
+    );
   };
 
   const handlePropChange = (key: string, value: string | boolean) => {
