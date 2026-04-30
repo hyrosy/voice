@@ -35,6 +35,8 @@ import {
   Plus,
   ArrowRightLeft,
   Sparkles,
+  Palette,
+  LayoutDashboard,
 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
@@ -136,13 +138,13 @@ const NAV_GROUPS = [
       {
         to: "/dashboard/creator-hub",
         name: "All Themes",
-        icon: CreditCard,
+        icon: LayoutDashboard,
         description: "Manage Themes",
       },
       {
         to: "/dashboard/studio",
         name: "Theme Editor",
-        icon: CreditCard,
+        icon: Palette,
         description: "Build Themes & Earn",
       },
     ],

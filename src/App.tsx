@@ -82,6 +82,7 @@ import StripeCallbackPage from "./pages/dashboard/StripeCallbackPage.tsx";
 import ThemeStudioPage from "./pages/dashboard/ThemeStudioPage.tsx";
 import DeveloperHubPage from "./pages/dashboard/DeveloperHubPage.tsx";
 import { AdminChatSheet } from "./components/dashboard/AdminChatSheet.tsx";
+import AdminThemesPage from "./pages/dashboard/AdminThemesPage.tsx";
 
 // Define main domains globally
 const MAIN_DOMAINS = [
@@ -307,6 +308,11 @@ function App() {
                           path="domains/order/:id"
                           element={<AdminDomainOrderDetailPage />}
                         />
+                                                <Route
+                          path="themes"
+                          element={<AdminThemesPage />}
+                        />
+
                         <Route path="payouts" element={<AdminPayoutsPage />} />
                       </Route>
                     </Route>

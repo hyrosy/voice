@@ -7,7 +7,18 @@ import {
   resolveThemeComponent,
 } from "../../themes/registry";
 import { cn } from "@/lib/utils";
-import { Loader2 } from "lucide-react";
+import { Loader2, AlertTriangle } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/supabaseClient";
+
+// 🚀 AAA+ UPGRADE: We are using the native executor hook, NO BABEL REQUIRED!
+import { usePrecompiledTheme } from "@/hooks/usePrecompiledTheme";
+
+// --- Helper to convert section type (e.g., 'video_slider') to Component Name ('VideoSlider') ---
+function formatSectionTypeToComponentName(type: string): string {
+  if (type === 'lead_form') return 'LeadForm';
+  return type.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join('');
+}
 
 // --- Helper to convert HEX to HSL for Tailwind ---
 function hexToHSLString(hex: string): string {
@@ -58,8 +69,6 @@ export default function BuilderPreview() {
     };
 
     window.addEventListener("message", handleMessage);
-
-    // Tell the parent window we are ready to receive data
     window.parent.postMessage({ type: "PREVIEW_READY" }, "*");
 
     return () => window.removeEventListener("message", handleMessage);
@@ -67,8 +76,30 @@ export default function BuilderPreview() {
 
   // 2. Setup Theme Variables
   const themeId = themeConfig.templateId || "modern";
-  const ActiveTheme = THEME_REGISTRY[themeId] || DEFAULT_THEME;
+  
+  // 🚀 NEW: Is this a custom marketplace theme?
+  const isCustomTheme = !!themeId && !THEME_REGISTRY[themeId];
 
+  // 🚀 AAA+ UPGRADE: Fetch ONLY the lightweight compiled bundle!
+  const { data: customThemeData, isLoading: isLoadingTheme, error: fetchError } = useQuery({
+    queryKey: ['customThemeCompiled', themeId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('marketplace_themes')
+        .select('compiled_bundle') // We do not need the heavy 'files' array here
+        .eq('id', themeId)
+        .single();
+      if (error) throw error;
+      return data;
+    },
+    enabled: isCustomTheme,
+    staleTime: 1000 * 60 * 5, // Cache for 5 mins so changing colors is instant
+  });
+
+  // 🚀 AAA+ UPGRADE: Execute natively using the new hook
+  const { compiledComponents } = usePrecompiledTheme(customThemeData?.compiled_bundle);
+
+  const ActiveTheme = THEME_REGISTRY[themeId] || DEFAULT_THEME;
   const primaryHsl = themeConfig.primaryColor
     ? hexToHSLString(themeConfig.primaryColor)
     : "259 94% 51%";
@@ -91,7 +122,6 @@ export default function BuilderPreview() {
             --radius: ${activeRadius}rem;
           }
 
-          /* 🚀 FIX: Smooth internal scrollbar injected directly into the iframe */
           ::-webkit-scrollbar {
             width: 6px;
             height: 6px;
@@ -107,7 +137,6 @@ export default function BuilderPreview() {
             background: rgba(156, 163, 175, 0.5);
           }
 
-          /* 🚀 FIX: Apply background globally to html/body to remove white flashes */
           html, body {
             margin: 0;
             padding: 0;
@@ -133,7 +162,6 @@ export default function BuilderPreview() {
         `}
       </style>
 
-      {/* 3. Render the preview wrapper */}
       <div
         className={cn(
           "builder-preview-wrapper selection:bg-primary/30 selection:text-primary",
@@ -141,10 +169,40 @@ export default function BuilderPreview() {
         )}
         data-btn-style={themeConfig.buttonStyle || "solid"}
       >
-        {sections
+        {/* Loading / Error States for Custom Themes */}
+        {isCustomTheme && isLoadingTheme && (
+           <div className="flex items-center justify-center p-12 h-full flex-grow text-muted-foreground">
+              <Loader2 className="w-6 h-6 animate-spin mr-2" /> Loading Custom Theme...
+           </div>
+        )}
+        
+        {fetchError && (
+           <div className="m-4 bg-red-50 border border-red-200 text-red-600 p-4 rounded-lg flex items-start gap-3">
+              <AlertTriangle className="shrink-0 mt-0.5" size={20} />
+              <div>
+                <h4 className="font-bold text-sm">Theme Fetch Error</h4>
+                <p className="text-xs font-mono mt-1 whitespace-pre-wrap">{fetchError.message}</p>
+              </div>
+           </div>
+        )}
+
+        {!isLoadingTheme && !fetchError && sections
           .filter((s) => s.isVisible)
           .map((section) => {
-            const Component = resolveThemeComponent(ActiveTheme, section.type);
+            
+            // 🚀 SMART RENDERER: Pick from Natively Compiled Components OR Local Registry
+            let Component = null;
+            if (isCustomTheme && compiledComponents) {
+               const compName = formatSectionTypeToComponentName(section.type);
+               Component = compiledComponents[compName] || compiledComponents[section.type]; 
+               
+               // Fallback check to 'modern' registry if the developer missed a section block
+               if (!Component && THEME_REGISTRY['modern']) {
+                  Component = resolveThemeComponent(THEME_REGISTRY['modern'], section.type);
+               }
+            } else {
+               Component = resolveThemeComponent(ActiveTheme, section.type);
+            }
 
             if (!Component) return null;
 

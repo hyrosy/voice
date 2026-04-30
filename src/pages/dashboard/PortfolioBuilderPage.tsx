@@ -1,3 +1,4 @@
+// src/pages/dashboard/PortfolioBuilderPage.tsx
 import React, { useState, useEffect, useCallback } from "react";
 import { supabase } from "../../supabaseClient";
 import { useQuery } from "@tanstack/react-query";
@@ -462,7 +463,7 @@ const PortfolioBuilderPage = () => {
 
   // Page Tracker
   const [activePageId, setActivePageId] = useState<string | "home">("home");
-  const [lastLoadedKey, setLastLoadedKey] = useState<string | null>(null); // 🚀 FIX: Now tracks Site + Page combo
+  const [lastLoadedKey, setLastLoadedKey] = useState<string | null>(null);
   const [isPageModalOpen, setIsPageModalOpen] = useState(false);
   const [newPageName, setNewPageName] = useState("");
   const [isCreatingPage, setIsCreatingPage] = useState(false);
@@ -470,6 +471,32 @@ const PortfolioBuilderPage = () => {
   const [isPurchasingTheme, setIsPurchasingTheme] = useState<string | null>(
     null
   );
+
+  // 🚀 NEW: FETCH APPROVED MARKETPLACE THEMES
+  const { data: marketplaceThemesData = [], isLoading: isLoadingMarketplace } = useQuery({
+    queryKey: ["approvedMarketplaceThemes"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("marketplace_themes")
+        .select("id, name, description, preview_color, site_price, global_price")
+        .eq("status", "approved");
+      
+      if (error) throw error;
+      
+      return data.map((t) => ({
+        id: t.id,
+        name: t.name || "Custom Theme",
+        description: t.description || "A custom marketplace theme.",
+        previewColor: t.preview_color || "#6366f1",
+        sitePrice: t.site_price || 0,
+        globalPrice: t.global_price || 0,
+        isCustom: true,
+      }));
+    },
+  });
+
+  // 🚀 MERGE THEMES
+  const ALL_THEMES = [...VISUAL_THEMES, ...marketplaceThemesData];
 
   const handleTogglePublish = async (checked: boolean) => {
     if (!activePortfolioId) return;
@@ -499,7 +526,6 @@ const PortfolioBuilderPage = () => {
   const globalOwnedThemes = actorWalletData?.purchased_themes || ["modern"];
   const walletBalance = actorData.wallet_balance || 0;
 
-  // 🚀 FIX: Removed the unstable fallback = [] from the destructuring
   const { data: fetchedSiteList, refetch: fetchSiteList } = useQuery({
     queryKey: ["siteList", actorData?.id],
     queryFn: async () => {
@@ -515,7 +541,6 @@ const PortfolioBuilderPage = () => {
     enabled: !!actorData?.id,
   });
 
-  // Create a stable local variable directly from the cached query
   const siteList = fetchedSiteList || [];
 
   const { data: customPagesData, refetch: fetchCustomPages } = useQuery({
@@ -563,18 +588,16 @@ const PortfolioBuilderPage = () => {
   const hasThemeAccess = (themeId: string) =>
     globalOwnedThemes.includes(themeId) || siteOwnedThemes.includes(themeId);
 
-  // 🚀 FIX: BULLETPROOF STATE INITIALIZATION WITH PORTFOLIO SWITCHING
   useEffect(() => {
     if (isPortfolioLoading || isSubLoading) return;
 
     if (fetchedPortfolio) {
-      // 1. Detect if the user just switched to a different website
       const isPortfolioSwitch = activePortfolioId !== fetchedPortfolio.id;
       
       if (isPortfolioSwitch) {
         setActivePortfolioId(fetchedPortfolio.id);
-        setActivePageId("home"); // 🚀 Reset them to the homepage of the new site
-        setEditingSection(null); // Close the editor pane if it was open
+        setActivePageId("home");
+        setEditingSection(null);
       }
 
       setIsPublished(prev => prev !== fetchedPortfolio.is_published ? fetchedPortfolio.is_published : prev);
@@ -591,11 +614,9 @@ const PortfolioBuilderPage = () => {
       setActiveDomain(prev => prev !== currentDomain ? currentDomain : prev);
       if (!currentDomain) setDomainStatus(null);
 
-      // 2. Generate a unique key so the builder knows exactly what it's looking at
       const pageToLoad = isPortfolioSwitch ? "home" : activePageId;
       const loadKey = `${fetchedPortfolio.id}-${pageToLoad}`;
 
-      // 3. ONLY set state if the key changed (preserves undo history during autosaves!)
       if (loadKey !== lastLoadedKey) {
         if (pageToLoad === "home") {
           setInitialState(fetchedPortfolio.sections || [], {
@@ -604,7 +625,6 @@ const PortfolioBuilderPage = () => {
             buttonStyle: fetchedPortfolio.theme_config?.buttonStyle ?? "solid",
           });
         } else {
-          // Find the custom page, but still inject the global theme from the portfolio!
           const page = customPagesData?.find((p) => p.id === pageToLoad);
           setInitialState(page?.sections || [], {
             ...fetchedPortfolio.theme_config,
@@ -612,7 +632,7 @@ const PortfolioBuilderPage = () => {
             buttonStyle: fetchedPortfolio.theme_config?.buttonStyle ?? "solid",
           });
         }
-        setLastLoadedKey(loadKey); // Lock it in
+        setLastLoadedKey(loadKey);
       }
 
     } else {
@@ -630,7 +650,6 @@ const PortfolioBuilderPage = () => {
 
   const isLoading = isPortfolioLoading;
 
-  // 🚀 FIXED: SILENT BACKGROUND AUTO-SAVE ENGINE WITH CACHE SYNC
   useEffect(() => {
     if (!hasUnsavedChanges || isLoading || !activePortfolioId) return;
     const autoSaveTimer = setTimeout(async () => {
@@ -645,7 +664,7 @@ const PortfolioBuilderPage = () => {
           })
           .eq("id", activePortfolioId);
           
-        fetchPortfolio(); // 🚀 FIX: Sync the React Query Cache!
+        fetchPortfolio();
       } else {
         await supabase
           .from("pro_pages")
@@ -656,10 +675,9 @@ const PortfolioBuilderPage = () => {
           .update({ theme_config: themeConfig })
           .eq("id", activePortfolioId);
           
-        fetchCustomPages(); // 🚀 FIX: Sync Custom Pages Cache!
-        fetchPortfolio();   // 🚀 FIX: Sync Global Theme Cache!
+        fetchCustomPages();
+        fetchPortfolio();
       }
-      // Because lastLoadedKey protects the canvas, markSaved won't wipe history!
       markSaved();
       setIsSaving(false);
     }, 1500);
@@ -671,10 +689,8 @@ const PortfolioBuilderPage = () => {
     isLoading,
     activePortfolioId,
     activePageId,
-    // Do NOT add fetchPortfolio to dependencies
   ]);
 
-  // KEYBOARD SHORTCUTS
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === "z") {
@@ -691,7 +707,6 @@ const PortfolioBuilderPage = () => {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [undo, redo]);
 
-  // DOMAIN LOGIC
   const { data: polledDomainStatus, refetch: checkDomainStatus } = useQuery({
     queryKey: ["domainStatus", activeDomain],
     queryFn: async () => {
@@ -823,7 +838,7 @@ const PortfolioBuilderPage = () => {
         })
         .eq("id", activePortfolioId);
         
-      fetchPortfolio(); // 🚀 FIX: Sync the React Query Cache!
+      fetchPortfolio();
     } else {
       await supabase
         .from("pro_pages")
@@ -834,8 +849,8 @@ const PortfolioBuilderPage = () => {
         .update({ theme_config: themeConfig })
         .eq("id", activePortfolioId);
         
-      fetchCustomPages(); // 🚀 FIX: Sync Custom Pages Cache!
-      fetchPortfolio();   // 🚀 FIX: Sync Global Theme Cache!
+      fetchCustomPages();
+      fetchPortfolio();
     }
     markSaved();
     setIsSaving(false);
@@ -891,7 +906,6 @@ const PortfolioBuilderPage = () => {
     setIsCreating(true);
     try {
       const template = PORTFOLIO_TEMPLATES.find((t) => t.id === selectedTemplate) || PORTFOLIO_TEMPLATES[0];
-      // 🚀 FIX: Merges multiple dashes, removes trailing dashes, falls back to "site" if empty
       const baseSlug = newSiteName.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "site";
       const uniqueSlug = `${baseSlug}-${Date.now().toString().slice(-4)}`;      const { data, error } = await supabase
         .from("portfolios")
@@ -932,7 +946,6 @@ const PortfolioBuilderPage = () => {
     
     setIsCreatingPage(true);
     
-    // 🚀 FIX 1: Added || "page" fallback in case they only type special characters
     const cleanSlug = newPageName
       .toLowerCase()
       .replace(/[^a-z0-9]+/g, "-")
@@ -963,7 +976,6 @@ const PortfolioBuilderPage = () => {
     setIsPageModalOpen(false);
     setNewPageName("");
     
-    // 🚀 FIX 2: Explicitly clear the Zustand canvas instantly so the user sees a fresh page
     setInitialState([], themeConfig);
     
     await fetchCustomPages();
@@ -1553,146 +1565,152 @@ const PortfolioBuilderPage = () => {
                     </span>
                   </div>
                   <div className="flex-grow overflow-y-auto pb-12 space-y-4 custom-scrollbar">
-                    {VISUAL_THEMES.map((theme) => {
-                      const isOwned = hasThemeAccess(theme.id);
-                      const isPreviewing = themeConfig.templateId === theme.id;
-                      return (
-                        <Card
-                          key={theme.id}
-                          className={cn(
-                            "overflow-hidden border-2 transition-all rounded-2xl",
-                            isPreviewing
-                              ? "border-primary shadow-md"
-                              : "hover:border-primary/30"
-                          )}
-                        >
-                          <div
-                            className="h-32 w-full relative"
-                            style={{ backgroundColor: theme.previewColor }}
-                          >
-                            {isOwned && (
-                              <Badge className="absolute top-3 right-3 bg-green-500 border-none">
-                                Owned
-                              </Badge>
+                    {isLoadingMarketplace ? (
+                      <div className="flex justify-center p-8">
+                        <Loader2 className="animate-spin text-muted-foreground w-6 h-6" />
+                      </div>
+                    ) : (
+                      ALL_THEMES.map((theme) => {
+                        const isOwned = hasThemeAccess(theme.id);
+                        const isPreviewing = themeConfig.templateId === theme.id;
+                        return (
+                          <Card
+                            key={theme.id}
+                            className={cn(
+                              "overflow-hidden border-2 transition-all rounded-2xl",
+                              isPreviewing
+                                ? "border-primary shadow-md"
+                                : "hover:border-primary/30"
                             )}
-                          </div>
-                          <CardContent className="p-5">
-                            <div className="flex justify-between items-start mb-3">
-                              <div>
-                                <h4 className="font-bold text-lg leading-tight">
-                                  {theme.name}
-                                </h4>
-                                <p className="text-xs text-muted-foreground mt-0.5">
-                                  {theme.description}
-                                </p>
+                          >
+                            <div
+                              className="h-32 w-full relative"
+                              style={{ backgroundColor: theme.previewColor }}
+                            >
+                              {isOwned && (
+                                <Badge className="absolute top-3 right-3 bg-green-500 border-none">
+                                  Owned
+                                </Badge>
+                              )}
+                            </div>
+                            <CardContent className="p-5">
+                              <div className="flex justify-between items-start mb-3">
+                                <div>
+                                  <h4 className="font-bold text-lg leading-tight">
+                                    {theme.name}
+                                  </h4>
+                                  <p className="text-xs text-muted-foreground mt-0.5">
+                                    {theme.description}
+                                  </p>
+                                </div>
+                                {!isOwned && (
+                                  <div className="flex flex-col items-end gap-1">
+                                    <div className="flex items-center gap-1 font-black text-amber-600 bg-amber-50 px-2 py-0.5 rounded border border-amber-100 text-[10px] whitespace-nowrap">
+                                      <Coins size={10} /> {theme.sitePrice} / Site
+                                    </div>
+                                    <div className="flex items-center gap-1 font-black text-primary bg-primary/10 px-2 py-0.5 rounded border border-primary/20 text-[10px] whitespace-nowrap">
+                                      <Coins size={10} /> {theme.globalPrice} /
+                                      Global
+                                    </div>
+                                  </div>
+                                )}
                               </div>
-                              {!isOwned && (
-                                <div className="flex flex-col items-end gap-1">
-                                  <div className="flex items-center gap-1 font-black text-amber-600 bg-amber-50 px-2 py-0.5 rounded border border-amber-100 text-[10px] whitespace-nowrap">
-                                    <Coins size={10} /> {theme.sitePrice} / Site
+                              <div className="flex flex-col gap-2 mt-4">
+                                <Button
+                                  variant={
+                                    isPreviewing && isOwned
+                                      ? "default"
+                                      : isOwned
+                                      ? "outline"
+                                      : isPreviewing
+                                      ? "secondary"
+                                      : "outline"
+                                  }
+                                  className={cn(
+                                    "w-full transition-all rounded-xl",
+                                    isPreviewing &&
+                                      isOwned &&
+                                      "bg-green-600 hover:bg-green-700 text-white"
+                                  )}
+                                  onClick={() =>
+                                    updateThemeConfig({ templateId: theme.id })
+                                  }
+                                  disabled={isPreviewing && isOwned}
+                                >
+                                  {isPreviewing && isOwned ? (
+                                    <>
+                                      <CheckCircle2 size={16} className="mr-2" />{" "}
+                                      Active Theme
+                                    </>
+                                  ) : isOwned ? (
+                                    <>
+                                      <LayoutTemplate
+                                        size={16}
+                                        className="mr-2"
+                                      />{" "}
+                                      Activate Theme
+                                    </>
+                                  ) : isPreviewing ? (
+                                    <>
+                                      <Eye size={16} className="mr-2" />{" "}
+                                      Previewing...
+                                    </>
+                                  ) : (
+                                    <>
+                                      <Eye
+                                        size={16}
+                                        className="mr-2 text-muted-foreground"
+                                      />{" "}
+                                      Preview in Canvas
+                                    </>
+                                  )}
+                                </Button>
+                                {!isOwned && (
+                                  <div className="flex gap-2 w-full mt-2 border-t pt-3">
+                                    <Button
+                                      className="bg-amber-500 hover:bg-amber-600 text-white rounded-xl shadow-sm flex-1 text-xs h-10 font-bold"
+                                      onClick={() =>
+                                        handlePurchaseTheme(
+                                          theme.id,
+                                          theme.sitePrice,
+                                          theme.name,
+                                          "site"
+                                        )
+                                      }
+                                      disabled={!!isPurchasingTheme}
+                                    >
+                                      {isPurchasingTheme ===
+                                      `${theme.id}-site` ? (
+                                        <Loader2 className="w-3 h-3 animate-spin mr-1" />
+                                      ) : null}{" "}
+                                      1 Site ({theme.sitePrice})
+                                    </Button>
+                                    <Button
+                                      className="bg-primary hover:bg-primary/90 text-white rounded-xl shadow-sm flex-1 text-xs h-10 font-bold"
+                                      onClick={() =>
+                                        handlePurchaseTheme(
+                                          theme.id,
+                                          theme.globalPrice,
+                                          theme.name,
+                                          "global"
+                                        )
+                                      }
+                                      disabled={!!isPurchasingTheme}
+                                    >
+                                      {isPurchasingTheme ===
+                                      `${theme.id}-global` ? (
+                                        <Loader2 className="w-3 h-3 animate-spin mr-1" />
+                                      ) : null}{" "}
+                                      All Sites ({theme.globalPrice})
+                                    </Button>
                                   </div>
-                                  <div className="flex items-center gap-1 font-black text-primary bg-primary/10 px-2 py-0.5 rounded border border-primary/20 text-[10px] whitespace-nowrap">
-                                    <Coins size={10} /> {theme.globalPrice} /
-                                    Global
-                                  </div>
-                                </div>
-                              )}
-                            </div>
-                            <div className="flex flex-col gap-2 mt-4">
-                              <Button
-                                variant={
-                                  isPreviewing && isOwned
-                                    ? "default"
-                                    : isOwned
-                                    ? "outline"
-                                    : isPreviewing
-                                    ? "secondary"
-                                    : "outline"
-                                }
-                                className={cn(
-                                  "w-full transition-all rounded-xl",
-                                  isPreviewing &&
-                                    isOwned &&
-                                    "bg-green-600 hover:bg-green-700 text-white"
                                 )}
-                                onClick={() =>
-                                  updateThemeConfig({ templateId: theme.id })
-                                }
-                                disabled={isPreviewing && isOwned}
-                              >
-                                {isPreviewing && isOwned ? (
-                                  <>
-                                    <CheckCircle2 size={16} className="mr-2" />{" "}
-                                    Active Theme
-                                  </>
-                                ) : isOwned ? (
-                                  <>
-                                    <LayoutTemplate
-                                      size={16}
-                                      className="mr-2"
-                                    />{" "}
-                                    Activate Theme
-                                  </>
-                                ) : isPreviewing ? (
-                                  <>
-                                    <Eye size={16} className="mr-2" />{" "}
-                                    Previewing...
-                                  </>
-                                ) : (
-                                  <>
-                                    <Eye
-                                      size={16}
-                                      className="mr-2 text-muted-foreground"
-                                    />{" "}
-                                    Preview in Canvas
-                                  </>
-                                )}
-                              </Button>
-                              {!isOwned && (
-                                <div className="flex gap-2 w-full mt-2 border-t pt-3">
-                                  <Button
-                                    className="bg-amber-500 hover:bg-amber-600 text-white rounded-xl shadow-sm flex-1 text-xs h-10 font-bold"
-                                    onClick={() =>
-                                      handlePurchaseTheme(
-                                        theme.id,
-                                        theme.sitePrice,
-                                        theme.name,
-                                        "site"
-                                      )
-                                    }
-                                    disabled={!!isPurchasingTheme}
-                                  >
-                                    {isPurchasingTheme ===
-                                    `${theme.id}-site` ? (
-                                      <Loader2 className="w-3 h-3 animate-spin mr-1" />
-                                    ) : null}{" "}
-                                    1 Site ({theme.sitePrice})
-                                  </Button>
-                                  <Button
-                                    className="bg-primary hover:bg-primary/90 text-white rounded-xl shadow-sm flex-1 text-xs h-10 font-bold"
-                                    onClick={() =>
-                                      handlePurchaseTheme(
-                                        theme.id,
-                                        theme.globalPrice,
-                                        theme.name,
-                                        "global"
-                                      )
-                                    }
-                                    disabled={!!isPurchasingTheme}
-                                  >
-                                    {isPurchasingTheme ===
-                                    `${theme.id}-global` ? (
-                                      <Loader2 className="w-3 h-3 animate-spin mr-1" />
-                                    ) : null}{" "}
-                                    All Sites ({theme.globalPrice})
-                                  </Button>
-                                </div>
-                              )}
-                            </div>
-                          </CardContent>
-                        </Card>
-                      );
-                    })}
+                              </div>
+                            </CardContent>
+                          </Card>
+                        );
+                      })
+                    )}
                   </div>
                 </div>
               ) : (
@@ -1709,7 +1727,7 @@ const PortfolioBuilderPage = () => {
                       </div>
                       <div className="flex-grow">
                         <h4 className="font-bold text-sm">
-                          {VISUAL_THEMES.find(
+                          {ALL_THEMES.find(
                             (t) => t.id === themeConfig.templateId
                           )?.name || "Modern Minimal"}
                         </h4>
@@ -1728,7 +1746,7 @@ const PortfolioBuilderPage = () => {
                     </div>
                     {!hasThemeAccess(themeConfig.templateId) &&
                       (() => {
-                        const activePremiumTheme = VISUAL_THEMES.find(
+                        const activePremiumTheme = ALL_THEMES.find(
                           (t) => t.id === themeConfig.templateId
                         );
                         if (!activePremiumTheme) return null;

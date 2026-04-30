@@ -49,6 +49,14 @@ const INITIAL_FILES: Record<string, string> = {
   "Header.tsx": cupertinoHeaderRaw,
   "Hero.tsx": cupertinoHeroRaw,
   "Gallery.tsx": cupertinoGalleryRaw,
+    "Contact.tsx": cupertinoGalleryRaw,
+        "Team.tsx": cupertinoGalleryRaw,
+    "Map.tsx": cupertinoGalleryRaw,
+    "Pricing.tsx": cupertinoGalleryRaw,
+    "LeadForm.tsx": cupertinoGalleryRaw,
+    "Shop.tsx": cupertinoGalleryRaw,
+
+
 };
 // 🚀 UPGRADED SANDBOX: Now injects Walled Garden SDK (TailwindMerge, Framer Motion, Lucide)
 // 🚀 UPGRADED SANDBOX: Bulletproof UMD Polyfills and Proxies
