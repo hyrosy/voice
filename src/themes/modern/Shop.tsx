@@ -259,10 +259,14 @@ const SpotlightCheckout = ({
         variants: selectedVariants,
         status: "pending",
         notes: Object.entries(formValues)
-          .map(([k, v]) => `${k}: ${v}`)
+          .map(([k, v]) => {
+            // 🚀 FIX: Find the actual human-readable label instead of saving "field_1777"
+            const fieldDef = formTemplate?.fields?.find((f: any) => f.id === k);
+            const label = fieldDef ? fieldDef.label : k;
+            return `${label}: ${v}`;
+          })
           .join("\n"),
       };
-
       const { error } = await supabase.from("pro_orders").insert(dbPayload);
       setIsSubmitting(false);
 
@@ -947,10 +951,14 @@ const Shop: React.FC<any> = ({ data, id, isPreview, actorId, portfolioId }) => {
         variants: selectedVariants,
         status: "pending",
         notes: Object.entries(formValues)
-          .map(([k, v]) => `${k}: ${v}`)
+          .map(([k, v]) => {
+            // 🚀 FIX: Find the actual human-readable label instead of saving "field_1777"
+            const fieldDef = formTemplate?.fields?.find((f: any) => f.id === k);
+            const label = fieldDef ? fieldDef.label : k;
+            return `${label}: ${v}`;
+          })
           .join("\n"),
       };
-
       const { error } = await supabase.from("pro_orders").insert(dbPayload);
       setIsSubmitting(false);
 

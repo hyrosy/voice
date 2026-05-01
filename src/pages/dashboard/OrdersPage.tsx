@@ -28,6 +28,8 @@ import {
   RotateCcw,
   PlayCircle,
   X as CloseIcon,
+  Trash2,
+  Mail,
 } from "lucide-react";
 import {
   Table,
@@ -197,12 +199,10 @@ const OrdersPage = () => {
 
   // --- ACTIONS ---
   const handleRowClick = (order: ProOrder) => {
-    // 🚀 UX FIX: If we are in "Bulk Selection Mode", clicking a row toggles the checkbox!
     if (selectedOrderIds.size > 0) {
       toggleOrderSelection(order.id);
       return;
     }
-    // Otherwise, open the details sheet normally
     setSelectedOrder(order);
     setInternalNotes(order.notes || "");
     setIsSheetOpen(true);
@@ -216,7 +216,6 @@ const OrdersPage = () => {
     if (selectedOrder && selectedOrder.id === orderId) {
       setSelectedOrder({ ...selectedOrder, status: newStatus });
     }
-
     await supabase
       .from("pro_orders")
       .update({ status: newStatus })
@@ -226,7 +225,6 @@ const OrdersPage = () => {
   const handleBulkUpdateStatus = async (newStatus: OrderStatus) => {
     if (selectedOrderIds.size === 0) return;
     setIsBulkUpdating(true);
-
     const idsToUpdate = Array.from(selectedOrderIds);
 
     setAllOrders((prev) =>
@@ -234,14 +232,38 @@ const OrdersPage = () => {
         idsToUpdate.includes(o.id) ? { ...o, status: newStatus } : o
       )
     );
-
     await supabase
       .from("pro_orders")
       .update({ status: newStatus })
       .in("id", idsToUpdate);
-
     setIsBulkUpdating(false);
     setSelectedOrderIds(new Set());
+  };
+
+  // 🚀 BULK DELETE LOGIC
+  const handleBulkDelete = async () => {
+    if (selectedOrderIds.size === 0) return;
+    if (
+      !confirm(
+        `Are you sure you want to delete ${selectedOrderIds.size} orders? This cannot be undone.`
+      )
+    )
+      return;
+
+    setIsBulkUpdating(true);
+    const idsToDelete = Array.from(selectedOrderIds);
+
+    const { error } = await supabase
+      .from("pro_orders")
+      .delete()
+      .in("id", idsToDelete);
+    if (!error) {
+      setAllOrders((prev) => prev.filter((o) => !idsToDelete.includes(o.id)));
+      setSelectedOrderIds(new Set());
+    } else {
+      alert("Failed to delete orders.");
+    }
+    setIsBulkUpdating(false);
   };
 
   const toggleOrderSelection = (id: string) => {
@@ -276,28 +298,115 @@ const OrdersPage = () => {
     setIsSaving(false);
   };
 
-  // 🚀 CSV EXPORT UPGRADE (Includes Variants + All Custom Form Responses!)
+  const getSiteName = (id?: string) => {
+    if (!id) return "Unknown Site";
+    return sites.find((s) => s.id === id)?.site_name || "Portfolio";
+  };
+
+  // --- HELPERS FOR PARSING & EXTRACTION ---
+  const formatOrderId = (id: string) =>
+    `#ORD-${id.substring(0, 6).toUpperCase()}`;
+
+  const parseVariants = (variants: Record<string, any>) => {
+    if (!variants || Object.keys(variants).length === 0) return null;
+    return Object.entries(variants)
+      .map(([key, val]) => `${key}: ${val?.label || val}`)
+      .join(" • ");
+  };
+
+  const parseFormNotes = (notes: string | null) => {
+    if (!notes) return [];
+    return notes
+      .split("\n")
+      .filter((line) => line.includes(":"))
+      .map((line) => {
+        const [key, ...rest] = line.split(":");
+        return { key: key.trim(), value: rest.join(":").trim() };
+      });
+  };
+
+  // 🚀 INTELLIGENT EXTRACTION: Pulls Core info from notes, ignores duplicates
+  const extractOrderDetails = (order: ProOrder) => {
+    const parsedNotes = parseFormNotes(order.notes);
+    const coreExtra: any = {};
+    const customData: { key: string; value: string }[] = [];
+
+    // All known core variations to prevent duplication
+    const redundantKeys = [
+      "checkout_name",
+      "name",
+      "full name",
+      "checkout_email",
+      "email",
+      "email address",
+      "checkout_phone",
+      "phone",
+      "phone number",
+      "checkout_address",
+      "address",
+      "shipping address",
+      "street address",
+      "checkout_city",
+      "city",
+      "checkout_zip",
+      "zip",
+      "zip code",
+      "postal code",
+      "zip / postal code",
+      "checkout_country",
+      "country",
+    ];
+
+    parsedNotes.forEach((item) => {
+      const k = item.key.toLowerCase();
+      if (k === "checkout_email" || k === "email" || k === "email address")
+        coreExtra.email = item.value;
+      else if (k === "checkout_city" || k === "city")
+        coreExtra.city = item.value;
+      else if (
+        k === "checkout_zip" ||
+        k === "zip" ||
+        k === "zip code" ||
+        k === "zip / postal code"
+      )
+        coreExtra.zip = item.value;
+      else if (k === "checkout_country" || k === "country")
+        coreExtra.country = item.value;
+      else if (!redundantKeys.includes(k) && !k.startsWith("field_")) {
+        customData.push(item);
+      }
+    });
+
+    return { coreExtra, customData };
+  };
+
+  // 🚀 CSV EXPORT (Zero Duplicates, Flawless Formatting)
   const exportToCSV = () => {
     if (filteredOrders.length === 0) return;
 
-    // 1. First, find EVERY custom key that exists in ANY order's notes
-    const customKeys = new Set<string>();
-    const parsedNotesArray = filteredOrders.map((o) => {
-      const parsed = parseFormNotes(o.notes);
-      parsed.forEach((item) => customKeys.add(item.key));
-      return parsed;
-    });
+    const allExtracted = filteredOrders.map((o) => ({
+      order: o,
+      ...extractOrderDetails(o),
+    }));
 
+    // Dynamically find all unique custom keys to generate column headers
+    const customKeys = new Set<string>();
+    allExtracted.forEach((item) =>
+      item.customData.forEach((c) => customKeys.add(c.key))
+    );
     const customHeaders = Array.from(customKeys);
 
-    // 2. Create the master header row
     const headers = [
       "Order ID",
       "Date",
       "Status",
       "Customer Name",
+      "Customer Email",
       "Customer Phone",
       "Shipping Address",
+      "City",
+      "Zip",
+      "Country",
       "Product",
       "Variants",
       "Quantity",
@@ -305,18 +414,12 @@ const OrdersPage = () => {
       ...customHeaders,
     ];
 
-    // 3. Map orders to match headers precisely
     const csvContent = [
       headers.join(","),
-      ...filteredOrders.map((o, idx) => {
-        // Map the parsed notes for this specific order so we can query them easily
-        const notesMap = new Map(
-          parsedNotesArray[idx].map((i) => [i.key, i.value])
-        );
-
-        // Grab the custom values in the exact order of the customHeaders
+      ...allExtracted.map(({ order: o, coreExtra, customData }) => {
+        const customMap = new Map(customData.map((c) => [c.key, c.value]));
         const customValues = customHeaders.map(
-          (key) => `"${(notesMap.get(key) || "").replace(/"/g, '""')}"`
+          (key) => `"${(customMap.get(key) || "").replace(/"/g, '""')}"`
         );
 
         return [
@@ -324,8 +427,12 @@ const OrdersPage = () => {
           new Date(o.created_at).toLocaleDateString(),
           o.status,
           `"${(o.customer_name || "").replace(/"/g, '""')}"`,
+          `"${(coreExtra.email || "").replace(/"/g, '""')}"`,
           `"${(o.customer_phone || "").replace(/"/g, '""')}"`,
           `"${(o.customer_address || "").replace(/"/g, '""')}"`,
+          `"${(coreExtra.city || "").replace(/"/g, '""')}"`,
+          `"${(coreExtra.zip || "").replace(/"/g, '""')}"`,
+          `"${(coreExtra.country || "").replace(/"/g, '""')}"`,
           `"${(o.product_name || "").replace(/"/g, '""')}"`,
           `"${(parseVariants(o.variants) || "").replace(/"/g, '""')}"`,
           o.quantity,
@@ -344,31 +451,6 @@ const OrdersPage = () => {
     link.click();
   };
 
-  const getSiteName = (id?: string) => {
-    if (!id) return "Unknown Site";
-    return sites.find((s) => s.id === id)?.site_name || "Portfolio";
-  };
-
-  // --- HELPERS ---
-  const formatOrderId = (id: string) =>
-    `#ORD-${id.substring(0, 6).toUpperCase()}`;
-  const parseVariants = (variants: Record<string, any>) => {
-    if (!variants || Object.keys(variants).length === 0) return null;
-    return Object.entries(variants)
-      .map(([key, val]) => `${key}: ${val?.label || val}`)
-      .join(" • ");
-  };
-  const parseFormNotes = (notes: string | null) => {
-    if (!notes) return [];
-    return notes
-      .split("\n")
-      .filter((line) => line.includes(":"))
-      .map((line) => {
-        const [key, ...rest] = line.split(":");
-        return { key: key.trim(), value: rest.join(":").trim() };
-      });
-  };
-
   if (loading) {
     return (
       <div className="flex h-[80vh] items-center justify-center">
@@ -376,6 +458,11 @@ const OrdersPage = () => {
       </div>
     );
   }
+
+  // Pre-calculate details for Sheet
+  const selectedOrderDetails = selectedOrder
+    ? extractOrderDetails(selectedOrder)
+    : null;
 
   return (
     <div className="p-4 md:p-8 space-y-6 w-full max-w-7xl mx-auto bg-muted/20 min-h-screen rounded-3xl">
@@ -472,7 +559,6 @@ const OrdersPage = () => {
 
       {/* 🚀 UPGRADED SEARCH & FILTER BAR */}
       <div className="flex flex-col lg:flex-row justify-between gap-2 lg:gap-4 items-start lg:items-center bg-background p-2 rounded-2xl border border-border shadow-sm">
-        {/* Search */}
         <div className="relative w-full lg:w-80 shrink-0">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input
@@ -485,7 +571,6 @@ const OrdersPage = () => {
 
         <div className="h-px w-full bg-border lg:hidden" />
 
-        {/* Status Pill Filters */}
         <div className="flex items-center gap-2 overflow-x-auto w-full lg:w-auto px-2 py-1 scrollbar-none snap-x">
           <Button
             variant={statusFilter === "all" ? "default" : "ghost"}
@@ -543,14 +628,14 @@ const OrdersPage = () => {
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3">
             <span className="text-xs opacity-80 hidden sm:inline-block font-medium">
               Update status to:
             </span>
             <Select
               onValueChange={(val: OrderStatus) => handleBulkUpdateStatus(val)}
             >
-              <SelectTrigger className="h-9 w-[150px] bg-background/10 border-background/20 text-background focus:ring-0 font-semibold rounded-lg">
+              <SelectTrigger className="h-9 w-[130px] sm:w-[150px] bg-background/10 border-background/20 text-background focus:ring-0 font-semibold rounded-lg">
                 <SelectValue placeholder="Select Status" />
               </SelectTrigger>
               <SelectContent className="z-[100000] rounded-xl shadow-2xl">
@@ -567,6 +652,15 @@ const OrdersPage = () => {
                 ))}
               </SelectContent>
             </Select>
+            <Button
+              variant="destructive"
+              size="sm"
+              onClick={handleBulkDelete}
+              className="h-9 px-3 rounded-lg flex items-center gap-1.5 ml-1"
+            >
+              <Trash2 className="w-4 h-4" />{" "}
+              <span className="hidden sm:inline-block">Delete</span>
+            </Button>
             {isBulkUpdating && (
               <Loader2 className="w-4 h-4 animate-spin ml-2 text-background/50" />
             )}
@@ -662,14 +756,6 @@ const OrdersPage = () => {
                               }
                             )}
                           </div>
-                          {selectedSiteId === "all" && (
-                            <Badge
-                              variant="secondary"
-                              className="mt-2 text-[10px] bg-muted text-muted-foreground border-none font-semibold"
-                            >
-                              {getSiteName(order.portfolio_id)}
-                            </Badge>
-                          )}
                         </TableCell>
 
                         <TableCell className="py-4 align-top">
@@ -733,7 +819,7 @@ const OrdersPage = () => {
       {/* 🚀 THE AAA+ ORDER SHEET */}
       <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
         <SheetContent className="w-full sm:max-w-md overflow-y-auto p-0 border-l border-border bg-background shadow-2xl">
-          {selectedOrder && (
+          {selectedOrder && selectedOrderDetails && (
             <div className="flex flex-col h-full">
               {/* Sheet Header */}
               <div className="p-6 md:p-8 bg-muted/20 border-b border-border space-y-4 shrink-0">
@@ -801,7 +887,7 @@ const OrdersPage = () => {
                   </div>
                 </div>
 
-                {/* 2. Customer Information */}
+                {/* 2. Customer Information (Now completely handles Email, City, Zip, Country!) */}
                 <div className="bg-background p-5 rounded-2xl border border-border shadow-sm space-y-4">
                   <h4 className="text-xs font-black uppercase tracking-widest text-muted-foreground flex items-center gap-2 mb-3">
                     <User size={14} /> Customer
@@ -819,6 +905,23 @@ const OrdersPage = () => {
                     </div>
 
                     <div className="grid grid-cols-1 gap-4 pt-4 border-t border-border">
+                      {selectedOrderDetails.coreExtra.email && (
+                        <div className="flex items-start gap-3">
+                          <Mail
+                            size={16}
+                            className="text-muted-foreground mt-0.5"
+                          />
+                          <div>
+                            <div className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
+                              Email
+                            </div>
+                            <div className="font-medium text-foreground mt-0.5">
+                              {selectedOrderDetails.coreExtra.email}
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
                       <div className="flex items-start gap-3">
                         <Phone
                           size={16}
@@ -833,6 +936,7 @@ const OrdersPage = () => {
                           </div>
                         </div>
                       </div>
+
                       {selectedOrder.customer_address &&
                         selectedOrder.customer_address !==
                           "No Address Provided" && (
@@ -847,6 +951,19 @@ const OrdersPage = () => {
                               </div>
                               <div className="font-medium text-foreground mt-0.5 leading-relaxed">
                                 {selectedOrder.customer_address}
+                                {(selectedOrderDetails.coreExtra.city ||
+                                  selectedOrderDetails.coreExtra.zip ||
+                                  selectedOrderDetails.coreExtra.country) && (
+                                  <div className="text-muted-foreground text-sm mt-1">
+                                    {[
+                                      selectedOrderDetails.coreExtra.city,
+                                      selectedOrderDetails.coreExtra.zip,
+                                      selectedOrderDetails.coreExtra.country,
+                                    ]
+                                      .filter(Boolean)
+                                      .join(", ")}
+                                  </div>
+                                )}
                               </div>
                             </div>
                           </div>
@@ -855,26 +972,28 @@ const OrdersPage = () => {
                   </div>
                 </div>
 
-                {/* 3. Form Responses (Parsed from Notes) */}
-                {parseFormNotes(selectedOrder.notes).length > 0 && (
+                {/* 3. Form Responses (Stripped of duplicated core fields) */}
+                {selectedOrderDetails.customData.length > 0 && (
                   <div className="bg-background p-5 rounded-2xl border border-border shadow-sm">
                     <h4 className="text-xs font-black uppercase tracking-widest text-muted-foreground flex items-center gap-2 mb-4">
                       <FileText size={14} /> Custom Form Data
                     </h4>
                     <div className="space-y-4">
-                      {parseFormNotes(selectedOrder.notes).map((item, idx) => (
-                        <div
-                          key={idx}
-                          className="bg-muted/50 p-4 rounded-xl border border-border"
-                        >
-                          <div className="text-[10px] font-bold text-primary uppercase tracking-wider mb-1">
-                            {item.key}
+                      {selectedOrderDetails.customData.map(
+                        (item: any, idx: number) => (
+                          <div
+                            key={idx}
+                            className="bg-muted/50 p-4 rounded-xl border border-border"
+                          >
+                            <div className="text-[10px] font-bold text-primary uppercase tracking-wider mb-1">
+                              {item.key}
+                            </div>
+                            <div className="font-medium text-foreground whitespace-pre-wrap">
+                              {item.value || "—"}
+                            </div>
                           </div>
-                          <div className="font-medium text-foreground whitespace-pre-wrap">
-                            {item.value || "—"}
-                          </div>
-                        </div>
-                      ))}
+                        )
+                      )}
                     </div>
                   </div>
                 )}

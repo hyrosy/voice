@@ -15,6 +15,7 @@ import {
   PanelLeftClose,
   PanelLeftOpen,
   LayoutDashboard,
+  Palette,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -40,6 +41,8 @@ const NAV_GROUPS = [
       { to: "/admin/clients", name: "Clients", icon: Briefcase },
       { to: "/admin/payouts", name: "Financial Payouts", icon: DollarSign },
       { to: "/admin/domains", name: "Custom Domains", icon: Globe },
+      { to: "/admin/themes", name: "Themes", icon: Palette },
+
     ],
   },
 ];

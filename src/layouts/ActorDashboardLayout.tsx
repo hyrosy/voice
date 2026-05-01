@@ -35,6 +35,8 @@ import {
   Plus,
   ArrowRightLeft,
   Sparkles,
+  Palette,
+  LayoutDashboard,
 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
@@ -87,7 +89,7 @@ const NAV_GROUPS = [
         description: "Edit your site",
       },
       {
-        to: "/dashboard/analytics",
+        to: "/dashboard",
         name: "Overview",
         icon: BarChart3,
         description: "Traffic & Shop Stats",
@@ -136,13 +138,13 @@ const NAV_GROUPS = [
       {
         to: "/dashboard/creator-hub",
         name: "All Themes",
-        icon: CreditCard,
+        icon: LayoutDashboard,
         description: "Manage Themes",
       },
       {
         to: "/dashboard/studio",
         name: "Theme Editor",
-        icon: CreditCard,
+        icon: Palette,
         description: "Build Themes & Earn",
       },
     ],
@@ -152,7 +154,7 @@ const NAV_GROUPS = [
     marketplaceOnly: true, // 🚀 NEW FLAG FOR GATING
     items: [
       {
-        to: "/dashboard",
+        to: "/dashboard/job-orders",
         name: "Job Orders",
         icon: Briefcase,
         description: "Active jobs",

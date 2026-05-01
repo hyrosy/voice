@@ -82,6 +82,8 @@ import StripeCallbackPage from "./pages/dashboard/StripeCallbackPage.tsx";
 import ThemeStudioPage from "./pages/dashboard/ThemeStudioPage.tsx";
 import DeveloperHubPage from "./pages/dashboard/DeveloperHubPage.tsx";
 import { AdminChatSheet } from "./components/dashboard/AdminChatSheet.tsx";
+import AdminThemesPage from "./pages/dashboard/AdminThemesPage.tsx";
+import StudioPreview from "./pages/dashboard/StudioPreview.tsx";
 
 // Define main domains globally
 const MAIN_DOMAINS = [
@@ -89,7 +91,7 @@ const MAIN_DOMAINS = [
   "www.ucpmaroc.com",
   "localhost",
   "127.0.0.1",
-  "v5svtr-5173.csb.app",
+  "symmetrical-acorn-697wxxq4r74j3jpj-5173.app.github.dev",
 ];
 
 const queryClient = new QueryClient({
@@ -113,8 +115,9 @@ const Layout = ({
     "/admin",
     "/pro",
     "/builder-preview",
+    "/studio-preview",
   ];
-  const hideNavbarPaths = ["/pro", "/builder-preview", "/dashboard", "/admin"]; // 🚀 2. ADDED /admin TO HIDE MAIN NAVBAR
+  const hideNavbarPaths = ["/pro", "/builder-preview","/studio-preview", "/dashboard", "/admin"]; // 🚀 2. ADDED /admin TO HIDE MAIN NAVBAR
 
   const shouldHideFooter =
     isCustomDomain ||
@@ -246,10 +249,11 @@ function App() {
                       path="/builder-preview"
                       element={<BuilderPreview />}
                     />
+                    <Route path="/studio-preview" element={<StudioPreview />} />
 
                     {/* ACTOR DASHBOARD */}
                     <Route path="/dashboard" element={<ActorDashboardLayout />}>
-                      <Route index element={<DashboardOrders />} />
+                      <Route index element={<AnalyticsPage />} />
                       <Route path="profile" element={<DashboardProfile />} />
                       <Route path="messages" element={<MessagesPage />} />
                       <Route
@@ -257,6 +261,7 @@ function App() {
                         element={<MessagesPage />}
                       />
                       <Route path="services" element={<DashboardServices />} />
+
                       <Route path="demos" element={<DashboardDemos />} />
                       <Route path="library" element={<DashboardLibrary />} />
                       <Route path="earnings" element={<ActorEarningsPage />} />
@@ -268,7 +273,8 @@ function App() {
                         path="Portfolio"
                         element={<PortfolioBuilderPage />}
                       />
-                      <Route path="analytics" element={<AnalyticsPage />} />
+                      <Route path="job-orders" element={<DashboardOrders />} />
+
                       <Route path="Orders" element={<OrdersPage />} />
                       <Route path="leads" element={<LeadsPage />} />
                       <Route path="settings" element={<SettingsPage />} />
@@ -305,6 +311,11 @@ function App() {
                           path="domains/order/:id"
                           element={<AdminDomainOrderDetailPage />}
                         />
+                                                <Route
+                          path="themes"
+                          element={<AdminThemesPage />}
+                        />
+
                         <Route path="payouts" element={<AdminPayoutsPage />} />
                       </Route>
                     </Route>

@@ -15,7 +15,7 @@ export default async function handler(req: Request) {
     "ucpmaroc.com",
     "www.ucpmaroc.com",
     "localhost",
-    "v5svtr-5173.csb.app",
+    "symmetrical-acorn-697wxxq4r74j3jpj-5173.app.github.dev",
   ];
   const isCustomDomain = !MAIN_DOMAINS.some((domain) =>
     hostname.includes(domain)
