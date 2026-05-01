@@ -213,9 +213,11 @@ const ActorDashboardLayout = () => {
     location.pathname.includes("/collections");
 
   useEffect(() => {
-    if (location.pathname.includes("/dashboard/portfolio"))
+    if (location.pathname.includes("/dashboard/portfolio") || location.pathname.includes("/dashboard/studio")) {
       setIsCollapsed(true);
-    else setIsCollapsed(false);
+    } else {
+      setIsCollapsed(false);
+    }
   }, [location.pathname]);
 
   const fetchActorData = useCallback(async () => {
@@ -407,13 +409,11 @@ const ActorDashboardLayout = () => {
                   Switch to Client Dashboard
                 </DropdownMenuItem>
                 <DropdownMenuItem
-                  asChild
+                  onClick={() => navigate("/dashboard/profile")}
                   className="cursor-pointer py-2 text-sm font-medium"
                 >
-                  <Link to="/dashboard/profile">
-                    <User size={16} className="mr-2 text-muted-foreground" />{" "}
-                    Account Settings
-                  </Link>
+                  <User size={16} className="mr-2 text-muted-foreground" />{" "}
+                  Account Settings
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem
@@ -567,10 +567,10 @@ const ActorDashboardLayout = () => {
                     </p>
                     <Button
                       size="sm"
-                      asChild
+                      onClick={() => navigate("/dashboard/profile")}
                       className="w-full h-8 text-xs font-bold bg-amber-500 hover:bg-amber-600 text-white shadow-sm"
                     >
-                      <Link to="/dashboard/profile">Apply Now</Link>
+                      Apply Now
                     </Button>
                   </div>
                 </div>
@@ -682,16 +682,16 @@ const ActorDashboardLayout = () => {
                           </h4>
                           <div className="grid gap-1">
                             {group.items.map((item) => (
-                              <SheetClose asChild key={item.name}>
-                                <Link
-                                  to={item.to}
-                                  className="flex items-center gap-4 p-3 rounded-2xl hover:bg-muted/50 active:bg-muted transition-all"
-                                >
-                                  <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center text-primary">
+                              <SheetClose
+                                key={item.name}
+                                onClick={() => navigate(item.to)}
+                                className="flex items-center gap-4 p-3 rounded-2xl hover:bg-muted/50 active:bg-muted transition-all w-full text-left"
+                              >
+                                  <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center text-primary shrink-0">
                                     <item.icon className="h-5 w-5" />
                                   </div>
-                                  <div className="flex-1">
-                                    <div className="font-semibold text-base">
+                                  <div className="flex-1 min-w-0">
+                                    <div className="font-semibold text-base truncate">
                                       {item.name}
                                     </div>
                                     <div className="text-xs text-muted-foreground line-clamp-1">
@@ -700,9 +700,8 @@ const ActorDashboardLayout = () => {
                                   </div>
                                   <ChevronRight
                                     size={16}
-                                    className="text-muted-foreground/50"
+                                    className="text-muted-foreground/50 shrink-0"
                                   />
-                                </Link>
                               </SheetClose>
                             ))}
                           </div>

@@ -24,6 +24,7 @@ import {
   SelectScrollUpButton,
   SelectScrollDownButton,
 } from '@/components/ui/select';
+import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from '@/components/ui/carousel';
 import { Link } from 'react-router-dom';
 import * as LucideReact from 'lucide-react';
 import * as FramerMotion from 'framer-motion';
@@ -97,6 +98,7 @@ export default function StudioPreview() {
             SelectScrollDownButton,
         };
     }
+    if (mod === '@/components/ui/carousel') return { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious };
     if (mod === 'react-router-dom') return { Link };
     
     if (mod === 'lucide-react') {
