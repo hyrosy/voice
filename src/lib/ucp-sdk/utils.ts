@@ -27,5 +27,5 @@ extractIframeSrc: (iframeString: string | undefined): string => {
   getGoogleMapsLink: (address: string, overrideUrl?: string): string => {
     if (overrideUrl) return overrideUrl;
     const safeAddress = encodeURIComponent(address || "");
-    return `https://www.google.com/maps/search/?api=1&query=${safeAddress}`;
+return `https://maps.google.com/?q=${safeAddress}`;
   }};
