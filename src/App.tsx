@@ -83,6 +83,7 @@ import ThemeStudioPage from "./pages/dashboard/ThemeStudioPage.tsx";
 import DeveloperHubPage from "./pages/dashboard/DeveloperHubPage.tsx";
 import { AdminChatSheet } from "./components/dashboard/AdminChatSheet.tsx";
 import AdminThemesPage from "./pages/dashboard/AdminThemesPage.tsx";
+import StudioPreview from "./pages/dashboard/StudioPreview.tsx";
 
 // Define main domains globally
 const MAIN_DOMAINS = [
@@ -114,8 +115,9 @@ const Layout = ({
     "/admin",
     "/pro",
     "/builder-preview",
+    "/studio-preview",
   ];
-  const hideNavbarPaths = ["/pro", "/builder-preview", "/dashboard", "/admin"]; // 🚀 2. ADDED /admin TO HIDE MAIN NAVBAR
+  const hideNavbarPaths = ["/pro", "/builder-preview","/studio-preview", "/dashboard", "/admin"]; // 🚀 2. ADDED /admin TO HIDE MAIN NAVBAR
 
   const shouldHideFooter =
     isCustomDomain ||
@@ -247,6 +249,7 @@ function App() {
                       path="/builder-preview"
                       element={<BuilderPreview />}
                     />
+                    <Route path="/studio-preview" element={<StudioPreview />} />
 
                     {/* ACTOR DASHBOARD */}
                     <Route path="/dashboard" element={<ActorDashboardLayout />}>

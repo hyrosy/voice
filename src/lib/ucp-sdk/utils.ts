@@ -17,20 +17,15 @@ export const utils = {
     if (!num) return "";
     return num.replace(/[^0-9]/g, "");
   },
-  // 🚀 NEW: Extracts the clean URL from a pasted iframe embed code
-  extractIframeSrc: (input?: string | null) => {
-    if (!input) return "";
-    const srcMatch = input.match(/src="([^"]+)"/);
-    return srcMatch ? srcMatch[1] : input;
+extractIframeSrc: (iframeString: string | undefined): string => {
+    if (!iframeString) return "";
+    if (iframeString.startsWith("http")) return iframeString;
+    const match = iframeString.match(/src="([^"]+)"/);
+    return match ? match[1] : iframeString;
   },
 
-  // 🚀 NEW: Generates a bulletproof Google Maps directions link
-  getGoogleMapsLink: (addressOrTitle?: string, explicitUrl?: string) => {
-    if (explicitUrl) return explicitUrl;
-    if (!addressOrTitle) return "#";
-    // Official Google Maps Search API format
-    return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
-      addressOrTitle
-    )}`;
-  },
-};
+  getGoogleMapsLink: (address: string, overrideUrl?: string): string => {
+    if (overrideUrl) return overrideUrl;
+    const safeAddress = encodeURIComponent(address || "");
+    return `https://www.google.com/maps/search/?api=1&query=${safeAddress}`;
+  }};
