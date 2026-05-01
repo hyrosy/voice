@@ -34,10 +34,18 @@ import {
   CheckCircle2,
   Cloud,
   BookOpen,
-  Globe
+  Globe,
+  PanelLeftClose,
+  PanelLeftOpen,
+  Search,
+  X,
+  Plus,
+  Clock
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
+import ThemeToggle from "../../components/ThemeToggle";
+import { useTheme } from "next-themes";
 
 import * as Babel from "@babel/standalone";
 import SdkDocsModal from "@/components/dashboard/SdkDocsModal";
@@ -75,11 +83,16 @@ export default function ThemeStudioPage() {
   const [searchParams] = useSearchParams();
   const themeId = searchParams.get("themeId");
 
+  const { resolvedTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
+  const isDark = mounted && resolvedTheme === "dark";
+
   const [isLoading, setIsLoading] = useState(true);
   const [themeData, setThemeData] = useState<any>(null);
 
   const [files, setFiles] = useState<Record<string, string>>(INITIAL_FILES);
   const [activeFile, setActiveFile] = useState<string>("Hero.tsx");
+  const [openFiles, setOpenFiles] = useState<string[]>(["Hero.tsx"]);
   const [previewMode, setPreviewMode] = useState<"single" | "full">("single");
 
   const [isCompiling, setIsCompiling] = useState(false);
@@ -94,10 +107,21 @@ export default function ThemeStudioPage() {
   const [mockData, setMockData] = useState<Record<string, any>>({});
   const iframeRef = useRef<HTMLIFrameElement>(null);
   
+  const [isExplorerOpen, setIsExplorerOpen] = useState(true);
+  const [fileSearch, setFileSearch] = useState("");
+  const [showFileSearchDropdown, setShowFileSearchDropdown] = useState(false);
+
   // 🚀 TEST SITE SELECTION STATE
   const [selectedTestSiteId, setSelectedTestSiteId] = useState<string | null>(null);
 
   const monaco = useMonaco();
+
+  // 🚀 FORCE MONACO TO UPDATE ITS GLOBAL THEME WHEN DARK MODE TOGGLES
+  useEffect(() => {
+    if (monaco) {
+      monaco.editor.setTheme(isDark ? "ucp-dark" : "ucp-light");
+    }
+  }, [monaco, isDark]);
 
   // 🚀 FETCH THE DEVELOPER'S EXISTING SITES TO USE AS TEST DATA
   const { data: testSites = [] } = useQuery({
@@ -122,8 +146,19 @@ export default function ThemeStudioPage() {
   }, [testSites, selectedTestSiteId]);
 
   useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
     const fetchTheme = async () => {
-      if (!themeId || !actorData?.id) return;
+      if (!actorData?.id) return;
+      
+      if (!themeId) {
+        setIsLoading(false);
+        return;
+      }
+
+      setIsLoading(true);
       const { data, error } = await supabase
         .from("marketplace_themes")
         .select("*")
@@ -162,6 +197,21 @@ export default function ThemeStudioPage() {
     fetchTheme();
   }, [themeId, actorData?.id, navigate]);
 
+  // 🚀 FETCH THE DEVELOPER'S RECENT THEMES FOR THE HOME VIEW
+  const { data: recentThemes = [], isLoading: isLoadingRecent } = useQuery({
+    queryKey: ["recent_themes", actorData?.id],
+    queryFn: async () => {
+      if (!actorData?.id) return [];
+      const { data } = await supabase
+        .from("marketplace_themes")
+        .select("id, name, status, updated_at")
+        .eq("developer_id", actorData.id)
+        .order("updated_at", { ascending: false });
+      return data || [];
+    },
+    enabled: !themeId && !!actorData?.id,
+  });
+
   useEffect(() => {
     if (!hasUnsavedChanges || !themeId || isLoading) return;
 
@@ -187,6 +237,23 @@ export default function ThemeStudioPage() {
     return () => clearTimeout(autoSaveTimer);
   }, [files, hasUnsavedChanges, themeId, isLoading]);
 
+  const handleOpenFile = (filename: string) => {
+    if (!openFiles.includes(filename)) {
+      setOpenFiles((prev) => [...prev, filename]);
+    }
+    setActiveFile(filename);
+    setPreviewMode("single");
+  };
+
+  const handleCloseFile = (e: React.MouseEvent, filename: string) => {
+    e.stopPropagation();
+    const newOpenFiles = openFiles.filter((f) => f !== filename);
+    setOpenFiles(newOpenFiles);
+    if (activeFile === filename) {
+      setActiveFile(newOpenFiles.length > 0 ? newOpenFiles[newOpenFiles.length - 1] : "");
+    }
+  };
+
   const handleCompileAndRun = useCallback(() => {
     if (!iframeRef.current?.contentWindow) return;
     setIsCompiling(true);
@@ -195,6 +262,7 @@ export default function ThemeStudioPage() {
     setTimeout(() => {
       try {
         if (previewMode === "single") {
+          if (!activeFile || !files[activeFile]) return;
           const result = Babel.transform(files[activeFile], {
             presets: ["react", "env", "typescript"],
             filename: activeFile,
@@ -284,6 +352,32 @@ export default function ThemeStudioPage() {
   };
 
   const handleEditorWillMount = (m: any) => {
+    // 🚀 1. DEFINE CUSTOM THEMES MATCHING OUR TAILWIND ZINC PALETTE
+    m.editor.defineTheme('ucp-dark', {
+      base: 'vs-dark',
+      inherit: true,
+      rules: [],
+      colors: {
+        'editor.background': '#09090b', // zinc-950
+        'editor.lineHighlightBackground': '#18181b', // zinc-900
+        'editorLineNumber.foreground': '#52525b', // zinc-500
+        'editorIndentGuide.background1': '#27272a', // zinc-800
+        'editor.selectionBackground': '#3f3f4650', // zinc-700
+      }
+    });
+
+    m.editor.defineTheme('ucp-light', {
+      base: 'vs',
+      inherit: true,
+      rules: [],
+      colors: {
+        'editor.background': '#ffffff', // white
+        'editor.lineHighlightBackground': '#f4f4f5', // zinc-100
+        'editorLineNumber.foreground': '#a1a1aa', // zinc-400
+        'editorIndentGuide.background1': '#e4e4e7', // zinc-200
+      }
+    });
+
     const ts = m.languages.typescript as any;
     ts.typescriptDefaults.setCompilerOptions({
       jsx: ts.JsxEmit.React,
@@ -301,6 +395,13 @@ export default function ThemeStudioPage() {
     ts.typescriptDefaults.addExtraLib(uiTypesRaw, 'file:///node_modules/@types/ucp-ui/index.d.ts');
   };
 
+  const handleEditorDidMount = (editor: any, m: any) => {
+    // 🚀 ADD CMD+S / CTRL+S SHORTCUT TO COMPILE & RUN
+    editor.addCommand(m.KeyMod.CtrlCmd | m.KeyCode.KeyS, () => {
+      handleCompileAndRun();
+    });
+  };
+
   const handlePropChange = (key: string, value: string | boolean) => {
     const newData = { ...mockData, [key]: value };
     setMockData(newData);
@@ -308,6 +409,7 @@ export default function ThemeStudioPage() {
   };
 
   const handleEditorChange = (value: string | undefined) => {
+    if (!activeFile) return;
     setFiles((prev) => ({ ...prev, [activeFile]: value || "" }));
     setHasUnsavedChanges(true);
   };
@@ -320,24 +422,86 @@ export default function ThemeStudioPage() {
 
   if (isLoading) {
     return (
-      <div className="h-screen w-full bg-zinc-950 flex items-center justify-center">
+      <div className="h-screen w-full bg-zinc-50 dark:bg-zinc-950 flex items-center justify-center">
         <Loader2 className="animate-spin text-indigo-500" />
       </div>
     );
   }
 
+  if (!themeId) {
+    return (
+      <div className="flex flex-col h-[calc(100vh-64px)] w-full bg-zinc-50 dark:bg-zinc-950 text-zinc-900 dark:text-zinc-50 p-4 md:p-8 overflow-y-auto custom-scrollbar">
+        <div className="max-w-5xl mx-auto w-full space-y-8 mt-4 md:mt-12">
+          <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
+            <div className="space-y-2">
+              <h1 className="text-3xl md:text-4xl font-black tracking-tight">Theme Studio</h1>
+              <p className="text-zinc-600 dark:text-zinc-400 text-lg">Select an existing theme to continue editing.</p>
+            </div>
+            <UIButton onClick={() => navigate("/dashboard/creator-hub")} className="bg-indigo-600 hover:bg-indigo-500 font-bold h-11 px-6 shadow-lg shadow-indigo-500/20">
+              <Plus className="mr-2 w-5 h-5" /> Create New Theme
+            </UIButton>
+          </div>
+
+          {isLoadingRecent ? (
+            <div className="flex justify-center py-20"><Loader2 className="animate-spin text-indigo-500 w-8 h-8" /></div>
+          ) : recentThemes.length === 0 ? (
+            <div className="text-center py-20 bg-zinc-100/50 dark:bg-zinc-900/30 border border-zinc-200 dark:border-zinc-800/50 rounded-3xl">
+              <Code2 size={48} className="mx-auto text-zinc-400 dark:text-zinc-600 mb-4 opacity-50" />
+              <h3 className="font-bold text-xl mb-2">No themes found</h3>
+              <p className="text-zinc-500 mb-6 max-w-sm mx-auto">You haven't created any themes yet. Head over to the Creator Hub to start building.</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+              {recentThemes.map((theme: any) => (
+                <div 
+                  key={theme.id}
+                  onClick={() => navigate(`/dashboard/studio?themeId=${theme.id}`)}
+                  className="bg-zinc-100 dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 hover:border-indigo-500/50 p-6 rounded-2xl cursor-pointer transition-all duration-200 hover:bg-zinc-200/80 dark:hover:bg-zinc-800/80 hover:shadow-[0_0_30px_rgba(99,102,241,0.1)] group flex flex-col h-40"
+                >
+                  <div className="flex justify-between items-start mb-auto">
+                    <div className="w-12 h-12 rounded-xl bg-indigo-500/10 text-indigo-400 flex items-center justify-center group-hover:scale-110 group-hover:bg-indigo-500/20 transition-all">
+                      <LayoutTemplate size={24} />
+                    </div>
+                    <Badge variant="outline" className="bg-white dark:bg-zinc-950 border-zinc-200 dark:border-zinc-800 text-zinc-500 dark:text-zinc-400 text-[10px] uppercase tracking-wider">
+                      {theme.status}
+                    </Badge>
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-lg mb-1 truncate">{theme.name}</h3>
+                    <p className="text-xs text-zinc-500 font-mono flex items-center gap-1.5">
+                      <Clock size={12} /> {new Date(theme.updated_at).toLocaleDateString()}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="flex flex-col h-[calc(100vh-64px)] w-full bg-zinc-950 text-zinc-50 overflow-hidden">
+    <div className="flex flex-col h-[calc(100vh-64px)] w-full bg-zinc-50 dark:bg-zinc-950 text-zinc-900 dark:text-zinc-50 overflow-hidden">
       {/* --- STUDIO TOPBAR --- */}
-      <div className="h-14 border-b border-zinc-800 bg-zinc-900/80 flex items-center justify-between px-4 shrink-0 shadow-sm z-10 relative">
+      <div className="h-14 border-b border-zinc-200 dark:border-zinc-800 bg-white/80 dark:bg-zinc-900/80 flex items-center justify-between px-4 shrink-0 shadow-sm z-10 relative backdrop-blur-md">
         <div className="flex items-center gap-3">
           <UIButton
             variant="ghost"
             size="icon"
-            className="h-8 w-8 text-zinc-400 hover:text-white"
+            className="h-8 w-8 text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white"
             onClick={() => navigate("/dashboard/creator-hub")}
           >
             <ArrowLeft size={16} />
+          </UIButton>
+          <UIButton
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8 text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white"
+            onClick={() => setIsExplorerOpen(!isExplorerOpen)}
+            title="Toggle Explorer"
+          >
+            {isExplorerOpen ? <PanelLeftClose size={16} /> : <PanelLeftOpen size={16} />}
           </UIButton>
           <div className="h-8 w-8 bg-indigo-500/20 border border-indigo-500/30 rounded-md flex items-center justify-center text-indigo-400 shadow-[0_0_15px_rgba(99,102,241,0.2)]">
             <Code2 size={18} />
@@ -345,22 +509,24 @@ export default function ThemeStudioPage() {
           <div>
             <h1 className="font-bold text-sm leading-tight flex items-center gap-2">
               {themeData?.name || "Theme Studio"}
-              <Badge variant="outline" className="text-[10px] h-5 border-zinc-700 bg-zinc-800 text-zinc-300">
+              <Badge variant="outline" className="text-[10px] h-5 border-zinc-300 dark:border-zinc-700 bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300">
                 {themeData?.status || "Draft"}
               </Badge>
             </h1>
-            <p className="text-[10px] text-zinc-400 font-mono flex items-center gap-1">
+            <p className="text-[10px] text-zinc-500 dark:text-zinc-400 font-mono flex items-center gap-1">
               <FolderTree size={10} /> src/components
             </p>
           </div>
         </div>
 
         <div className="flex items-center gap-4">
+          <ThemeToggle />
+
           {/* 🚀 NEW: TEST SITE SELECTOR */}
-          <div className="flex items-center gap-2 border-r border-zinc-800 pr-4">
+          <div className="flex items-center gap-2 border-r border-zinc-200 dark:border-zinc-800 pr-4">
             <Globe size={14} className="text-zinc-500" />
             <Select value={selectedTestSiteId || ""} onValueChange={setSelectedTestSiteId}>
-              <SelectTrigger className="h-8 w-[180px] bg-zinc-900 border-zinc-800 text-xs font-medium">
+              <SelectTrigger className="h-8 w-[180px] bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 text-xs font-medium">
                 <SelectValue placeholder="Select Test Site" />
               </SelectTrigger>
               <SelectContent>
@@ -383,7 +549,7 @@ export default function ThemeStudioPage() {
             )}
           </div>
           
-          <UIButton variant="ghost" size="sm" className="h-8 text-zinc-400 hover:text-white hover:bg-zinc-800" onClick={() => setIsDocsOpen(true)}>
+          <UIButton variant="ghost" size="sm" className="h-8 text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-zinc-800" onClick={() => setIsDocsOpen(true)}>
             <BookOpen size={14} className="mr-2" /> SDK Docs
           </UIButton>
 
@@ -396,8 +562,13 @@ export default function ThemeStudioPage() {
       {/* --- STUDIO WORKSPACE --- */}
       <div className="flex flex-grow overflow-hidden">
         {/* LEFT: Explorer */}
-        <div className="w-64 h-full bg-zinc-900 border-r border-zinc-800 flex flex-col shrink-0">
-          <div className="h-8 border-b border-zinc-800 flex items-center justify-between px-4 text-[10px] font-bold text-zinc-400 uppercase tracking-widest bg-zinc-900/50">
+        <div 
+          className={cn(
+            "bg-zinc-50 dark:bg-zinc-900 border-r border-zinc-200 dark:border-zinc-800 flex flex-col shrink-0 transition-all duration-300 overflow-hidden",
+            isExplorerOpen ? "w-64" : "w-0 border-r-0"
+          )}
+        >
+          <div className="h-8 border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between px-4 text-[10px] font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-widest bg-zinc-100/50 dark:bg-zinc-900/50 shrink-0 whitespace-nowrap">
             <span>Explorer</span>
           </div>
           <div className="flex-grow overflow-y-auto py-2">
@@ -407,19 +578,16 @@ export default function ThemeStudioPage() {
               return (
               <div
                 key={filename}
-                onClick={() => {
-                  setActiveFile(filename);
-                  setPreviewMode("single");
-                }}
+                onClick={() => handleOpenFile(filename)}
                 className={cn(
-                  "flex items-center justify-between px-6 py-1.5 cursor-pointer text-sm font-mono transition-colors border-l-2",
+                  "flex items-center justify-between px-6 py-1.5 cursor-pointer text-sm font-mono transition-colors border-l-2 whitespace-nowrap",
                   activeFile === filename && previewMode === "single"
-                    ? "bg-indigo-500/10 text-indigo-300 border-indigo-500"
-                    : "text-zinc-400 hover:bg-zinc-800/50 hover:text-zinc-200 border-transparent"
+                    ? "bg-indigo-500/10 text-indigo-600 dark:text-indigo-300 border-indigo-500"
+                    : "text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200/50 dark:hover:bg-zinc-800/50 hover:text-zinc-900 dark:hover:text-zinc-200 border-transparent"
                 )}
               >
                 <div className="flex items-center gap-2">
-                  <FileCode2 size={14} className={activeFile === filename && previewMode === "single" ? "text-indigo-400" : "text-zinc-500"} />
+                  <FileCode2 size={14} className={activeFile === filename && previewMode === "single" ? "text-indigo-500 dark:text-indigo-400" : "text-zinc-400 dark:text-zinc-500"} />
                   {filename}
                 </div>
                 {isUntouched && (
@@ -431,26 +599,106 @@ export default function ThemeStudioPage() {
         </div>
 
         {/* MIDDLE: Monaco */}
-        <div className="flex-grow h-full border-r border-zinc-800 flex flex-col relative min-w-0">
-          <div className="h-8 bg-zinc-900 border-b border-zinc-800 flex items-center px-4 text-[11px] font-mono text-zinc-300 gap-2">
-            <File size={12} className="text-zinc-500" /> {activeFile}
+        <div className="flex-grow h-full border-r border-zinc-200 dark:border-zinc-800 flex flex-col relative min-w-0">
+          {/* TABS BAR */}
+          <div className="flex bg-zinc-100 dark:bg-zinc-900 border-b border-zinc-200 dark:border-zinc-800 overflow-x-auto no-scrollbar shrink-0">
+            {openFiles.map((filename) => (
+              <div
+                key={filename}
+                onClick={() => handleOpenFile(filename)}
+                className={cn(
+                  "flex items-center gap-2 px-4 h-10 min-w-fit cursor-pointer border-r border-zinc-200 dark:border-zinc-800 transition-colors text-sm font-mono group select-none",
+                  activeFile === filename 
+                    ? "bg-white dark:bg-zinc-800 text-indigo-600 dark:text-indigo-300 border-t-2 border-t-indigo-500" 
+                    : "bg-zinc-50 dark:bg-zinc-900 text-zinc-500 hover:bg-zinc-200/50 dark:hover:bg-zinc-800/50 hover:text-zinc-900 dark:hover:text-zinc-300 border-t-2 border-t-transparent"
+                )}
+              >
+                <FileCode2 size={14} className={activeFile === filename ? "text-indigo-500 dark:text-indigo-400" : "text-zinc-400 dark:text-zinc-500"} />
+                {filename}
+                <button
+                  onClick={(e) => handleCloseFile(e, filename)}
+                  className={cn(
+                    "ml-1 rounded-md hover:bg-zinc-200 dark:hover:bg-zinc-700/50 p-0.5 opacity-0 group-hover:opacity-100 transition-opacity",
+                    activeFile === filename && "opacity-100"
+                  )}
+                >
+                  <X size={14} />
+                </button>
+              </div>
+            ))}
+            {openFiles.length === 0 && (
+              <div className="h-10 flex items-center px-4 text-xs font-mono text-zinc-600">No open files</div>
+            )}
+          </div>
+
+          {/* SEARCH BAR */}
+          <div className="h-8 bg-zinc-100/50 dark:bg-zinc-900/50 border-b border-zinc-200 dark:border-zinc-800 flex items-center px-4 relative shrink-0">
+            <Search size={12} className="text-zinc-400 dark:text-zinc-500 mr-2 shrink-0" />
+            <input
+              type="text"
+              placeholder={activeFile ? `Search files (currently editing ${activeFile})...` : "Search files..."}
+              className="bg-transparent text-xs text-zinc-900 dark:text-zinc-200 outline-none w-full placeholder:text-zinc-500 dark:placeholder:text-zinc-600 font-mono"
+              value={fileSearch}
+              onChange={(e) => {
+                setFileSearch(e.target.value);
+                setShowFileSearchDropdown(true);
+              }}
+              onFocus={() => setShowFileSearchDropdown(true)}
+              onBlur={() => setTimeout(() => setShowFileSearchDropdown(false), 200)}
+              onKeyDown={(e) => {
+                if (e.key === "Escape") {
+                  setShowFileSearchDropdown(false);
+                  e.currentTarget.blur();
+                }
+              }}
+            />
+            {showFileSearchDropdown && fileSearch && (
+              <div className="absolute top-10 left-0 w-full bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 shadow-2xl z-50 max-h-64 overflow-y-auto rounded-b-lg">
+                {Object.keys(files)
+                  .filter((f) => f.toLowerCase().includes(fileSearch.toLowerCase()))
+                  .map((f) => (
+                    <div
+                      key={f}
+                      className="px-4 py-2.5 hover:bg-indigo-50 dark:hover:bg-indigo-500/20 hover:text-indigo-600 dark:hover:text-indigo-300 cursor-pointer text-sm font-mono text-zinc-700 dark:text-zinc-300 flex items-center gap-3 transition-colors border-l-2 border-transparent hover:border-indigo-500"
+                      onClick={() => {
+                        handleOpenFile(f);
+                        setFileSearch("");
+                        setShowFileSearchDropdown(false);
+                      }}
+                    >
+                      <FileCode2 size={14} /> {f}
+                    </div>
+                  ))}
+                {Object.keys(files).filter((f) => f.toLowerCase().includes(fileSearch.toLowerCase())).length === 0 && (
+                  <div className="px-4 py-3 text-sm text-zinc-500 font-mono">No files found matching "{fileSearch}".</div>
+                )}
+              </div>
+            )}
           </div>
           <div className="flex-grow relative">
-            <Editor
-              height="100%"
-              path={activeFile}
-              language={activeFile.endsWith(".tsx") || activeFile.endsWith(".ts") ? "typescript" : "javascript"}
-              theme="vs-dark"
-              value={files[activeFile]}
-              onChange={handleEditorChange}
-              beforeMount={handleEditorWillMount}
-              options={{ minimap: { enabled: false }, fontSize: 14, wordWrap: "on", formatOnPaste: true, padding: { top: 16 }, fontFamily: "JetBrains Mono, monospace" }}
-            />
+            {activeFile ? (
+              <Editor
+                height="100%"
+                path={activeFile}
+                language={activeFile.endsWith(".tsx") || activeFile.endsWith(".ts") ? "typescript" : "javascript"}
+                theme={isDark ? "ucp-dark" : "ucp-light"}
+                value={files[activeFile]}
+                onChange={handleEditorChange}
+                beforeMount={handleEditorWillMount}
+                onMount={handleEditorDidMount}
+                options={{ minimap: { enabled: false }, fontSize: 14, wordWrap: "on", formatOnPaste: true, padding: { top: 16 }, fontFamily: "JetBrains Mono, monospace" }}
+              />
+            ) : (
+              <div className="absolute inset-0 flex flex-col items-center justify-center text-zinc-400 dark:text-zinc-600 bg-zinc-50 dark:bg-zinc-950">
+                <Code2 size={64} className="mb-4 opacity-10" />
+                <p className="text-sm font-mono">Select a file from the explorer to start editing</p>
+              </div>
+            )}
             {compileError && (
-              <div className="absolute bottom-4 left-4 right-4 bg-red-950/90 border border-red-500/50 p-3 rounded-lg shadow-xl backdrop-blur-md z-10">
+              <div className="absolute bottom-4 left-4 right-4 bg-red-50/90 dark:bg-red-950/90 border border-red-500/50 p-3 rounded-lg shadow-xl backdrop-blur-md z-10">
                 <div className="flex items-start gap-2">
-                  <AlertTriangle className="text-red-400 shrink-0 mt-0.5" size={16} />
-                  <div className="text-red-200 text-xs font-mono whitespace-pre-wrap break-words leading-relaxed overflow-auto max-h-32">
+                  <AlertTriangle className="text-red-600 dark:text-red-400 shrink-0 mt-0.5" size={16} />
+                  <div className="text-red-800 dark:text-red-200 text-xs font-mono whitespace-pre-wrap break-words leading-relaxed overflow-auto max-h-32">
                     {compileError}
                   </div>
                 </div>
@@ -460,30 +708,30 @@ export default function ThemeStudioPage() {
         </div>
 
         {/* RIGHT SIDE: Preview */}
-        <div className="w-[45%] xl:w-[40%] h-full flex flex-col shrink-0 bg-zinc-950">
-          <div className="h-12 border-b border-zinc-800 flex items-center justify-between px-4 shrink-0 bg-zinc-900">
-            <div className="flex bg-zinc-950 rounded-lg p-1 border border-zinc-800">
-              <UIButton size="sm" variant="ghost" className={cn("h-7 px-3 text-xs", previewMode === "single" ? "bg-zinc-800 text-white" : "text-zinc-400 hover:text-white")} onClick={() => setPreviewMode("single")}>
+        <div className="w-[45%] xl:w-[40%] h-full flex flex-col shrink-0 bg-zinc-100 dark:bg-zinc-950 border-l border-zinc-200 dark:border-zinc-800">
+          <div className="h-12 border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between px-4 shrink-0 bg-zinc-50 dark:bg-zinc-900">
+            <div className="flex bg-zinc-200 dark:bg-zinc-950 rounded-lg p-1 border border-zinc-300 dark:border-zinc-800">
+              <UIButton size="sm" variant="ghost" className={cn("h-7 px-3 text-xs", previewMode === "single" ? "bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white shadow-sm" : "text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white")} onClick={() => setPreviewMode("single")}>
                 <LayoutTemplate size={14} className="mr-1.5" /> Component
               </UIButton>
-              <UIButton size="sm" variant="ghost" className={cn("h-7 px-3 text-xs", previewMode === "full" ? "bg-indigo-600 hover:bg-indigo-500 text-white" : "text-zinc-400 hover:text-white")} onClick={() => setPreviewMode("full")}>
+              <UIButton size="sm" variant="ghost" className={cn("h-7 px-3 text-xs", previewMode === "full" ? "bg-indigo-600 hover:bg-indigo-500 text-white shadow-sm" : "text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white")} onClick={() => setPreviewMode("full")}>
                 <Layers size={14} className="mr-1.5" /> Full Page
               </UIButton>
             </div>
-            <UIButton size="sm" variant="ghost" className="h-8 text-zinc-400 hover:text-white" onClick={handleCompileAndRun}>
+            <UIButton size="sm" variant="ghost" className="h-8 text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white" onClick={handleCompileAndRun}>
               <Play size={14} className="mr-1.5" /> Refresh
             </UIButton>
           </div>
 
-          <div className={cn("flex flex-col min-h-0 relative transition-all duration-300", previewMode === "single" ? "flex-1 border-b border-zinc-800" : "h-full")}>
-            <div className="flex-grow bg-zinc-950/50 relative overflow-hidden flex items-center justify-center p-4">
+          <div className={cn("flex flex-col min-h-0 relative transition-all duration-300", previewMode === "single" ? "flex-1 border-b border-zinc-200 dark:border-zinc-800" : "h-full")}>
+            <div className="flex-grow bg-zinc-100/50 dark:bg-zinc-950/50 relative overflow-hidden flex items-center justify-center p-4">
               
               {/* 🚀 THE REAL ROUTE IFRAME */}
               <iframe
                 ref={iframeRef}
                 src={`/studio-preview?portfolioId=${selectedTestSiteId || ''}`}
                 className={cn(
-                  "bg-white border border-zinc-800 shadow-[0_0_50px_rgba(0,0,0,0.5)] transition-all duration-500",
+                  "bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 shadow-xl dark:shadow-[0_0_50px_rgba(0,0,0,0.5)] transition-all duration-500",
                   previewMode === "full" ? "w-full h-full rounded-md" : "w-full max-w-2xl h-[500px] rounded-xl"
                 )}
                 title="Live Sandbox"
@@ -494,19 +742,19 @@ export default function ThemeStudioPage() {
           </div>
 
           {previewMode === "single" && (
-            <div className="flex-[0.8] flex flex-col bg-zinc-900 shrink-0 min-h-0">
-              <div className="h-8 border-b border-zinc-800 flex items-center px-4 text-[11px] font-mono text-indigo-400 uppercase tracking-widest gap-2 bg-indigo-500/5 shrink-0">
+            <div className="flex-[0.8] flex flex-col bg-white dark:bg-zinc-900 shrink-0 min-h-0">
+              <div className="h-8 border-b border-zinc-200 dark:border-zinc-800 flex items-center px-4 text-[11px] font-mono text-indigo-600 dark:text-indigo-400 uppercase tracking-widest gap-2 bg-indigo-50 dark:bg-indigo-500/5 shrink-0">
                 <Settings2 size={12} /> Section Editor Test
               </div>
               <div className="flex-grow overflow-y-auto p-4 custom-scrollbar space-y-4">
                 {Object.keys(activeSchema).length === 0 ? (
-                  <div className="text-center text-zinc-500 text-sm mt-8 border border-dashed border-zinc-700 rounded-xl p-6">
+                  <div className="text-center text-zinc-500 text-sm mt-8 border border-dashed border-zinc-300 dark:border-zinc-700 rounded-xl p-6">
                     No <code>.schema</code> object found.
                   </div>
                 ) : (
                   Object.entries(activeSchema).map(([key, field]) => (
                     <div key={key} className="space-y-1.5">
-                      <UILabel className="text-xs text-zinc-300 font-bold uppercase tracking-wider">
+                      <UILabel className="text-xs text-zinc-700 dark:text-zinc-300 font-bold uppercase tracking-wider">
                         {field.label}
                       </UILabel>
 
@@ -514,7 +762,7 @@ export default function ThemeStudioPage() {
                         <UIInput
                           value={mockData[key] || ""}
                           onChange={(e) => handlePropChange(key, e.target.value)}
-                          className="bg-zinc-950 border-zinc-800 text-sm h-9 text-zinc-100"
+                          className="bg-white dark:bg-zinc-950 border-zinc-200 dark:border-zinc-800 text-sm h-9 text-zinc-900 dark:text-zinc-100"
                         />
                       )}
 
@@ -528,7 +776,7 @@ export default function ThemeStudioPage() {
                         <select
                           value={mockData[key] || field.default}
                           onChange={(e) => handlePropChange(key, e.target.value)}
-                          className="flex h-9 w-full rounded-md border border-zinc-800 bg-zinc-950 px-3 py-1 text-sm shadow-sm transition-colors text-zinc-100 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-indigo-500"
+                          className="flex h-9 w-full rounded-md border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 px-3 py-1 text-sm shadow-sm transition-colors text-zinc-900 dark:text-zinc-100 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-indigo-500"
                         >
                           {field.options?.map((opt: string) => (
                             <option key={opt} value={opt}>{opt}</option>
@@ -538,8 +786,8 @@ export default function ThemeStudioPage() {
 
                       {field.type === "color" && (
                         <div className="flex items-center gap-3">
-                          <input type="color" value={mockData[key] || "#000000"} onChange={(e) => handlePropChange(key, e.target.value)} className="w-8 h-8 rounded border border-zinc-700 cursor-pointer p-0" />
-                          <UIInput value={mockData[key] || ""} onChange={(e) => handlePropChange(key, e.target.value)} className="bg-zinc-950 border-zinc-800 font-mono text-xs h-9 uppercase text-zinc-100" />
+                          <input type="color" value={mockData[key] || "#000000"} onChange={(e) => handlePropChange(key, e.target.value)} className="w-8 h-8 rounded border border-zinc-300 dark:border-zinc-700 cursor-pointer p-0" />
+                          <UIInput value={mockData[key] || ""} onChange={(e) => handlePropChange(key, e.target.value)} className="bg-white dark:bg-zinc-950 border-zinc-200 dark:border-zinc-800 font-mono text-xs h-9 uppercase text-zinc-900 dark:text-zinc-100" />
                         </div>
                       )}
                     </div>
