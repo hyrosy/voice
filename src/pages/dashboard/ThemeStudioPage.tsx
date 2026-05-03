@@ -391,8 +391,20 @@ export default function ThemeStudioPage() {
       noSemanticValidation: true,
       noSyntaxValidation: false,
     });
+    
+    // Inject custom SDK types
     ts.typescriptDefaults.addExtraLib(ucpSdkTypesRaw, 'file:///node_modules/@types/ucp-sdk/index.d.ts');
     ts.typescriptDefaults.addExtraLib(uiTypesRaw, 'file:///node_modules/@types/ucp-ui/index.d.ts');
+
+    // 🚀 FIX: Placed thirdPartyMocks INSIDE handleEditorWillMount so `ts` is in scope
+    const thirdPartyMocks = `
+      declare module 'framer-motion' { export const motion: any; export const AnimatePresence: any; }
+      declare module 'lucide-react' { export const Menu: any; export const Loader2: any; export const X: any; export const Check: any; export const ArrowRight: any; export const ChevronRight: any; export const ChevronLeft: any; }
+      declare module 'recharts' { export const LineChart: any; export const ResponsiveContainer: any; export const Line: any; export const XAxis: any; export const YAxis: any; export const Tooltip: any; }
+      declare module 'date-fns' { export const format: any; export const parseISO: any; }
+      declare module 'canvas-confetti' { const confetti: any; export default confetti; }
+    `;
+    ts.typescriptDefaults.addExtraLib(thirdPartyMocks, 'file:///node_modules/@types/third-party/index.d.ts');
   };
 
   const handleEditorDidMount = (editor: any, m: any) => {

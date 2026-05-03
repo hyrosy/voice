@@ -130,7 +130,7 @@ export default function StudioPreview() {
           
           const realDbData = portfolioData?.sections?.find((s: any) => s.type === sectionType)?.data;
           const fallbackData = DEFAULT_PORTFOLIO_SECTIONS.find(s => s.type === sectionType)?.data || {};
-          const mergedData = { ...fallbackData, ...realDbData, ...(Comp.testData || {}) };
+          const mergedData = { ...(Comp.testData || {}), ...fallbackData, ...realDbData };
           
           setCurrentProps(mergedData);
           setError(null);
