@@ -1783,11 +1783,15 @@ const SectionEditor: React.FC<SectionEditorProps> = ({
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {field.options?.map((opt: string) => (
-                    <SelectItem key={opt} value={opt}>
-                      {opt.charAt(0).toUpperCase() + opt.slice(1)}
+                {field.options?.map((opt: any) => {
+                  const value = typeof opt === "string" ? opt : opt.value;
+                  const label = typeof opt === "string" ? opt.charAt(0).toUpperCase() + opt.slice(1) : opt.label;
+                  return (
+                    <SelectItem key={value} value={value}>
+                      {label}
                     </SelectItem>
-                  ))}
+                  );
+                })}
                 </SelectContent>
               </Select>
             )}
@@ -2123,49 +2127,6 @@ const SectionEditor: React.FC<SectionEditorProps> = ({
                   </div>
                 </div>
               )}
-            </div>
-
-            <div className="space-y-4 p-4 border rounded-lg bg-muted/20">
-              <Label className="text-base font-semibold">Layout & Style</Label>
-              <div className="space-y-2">
-                <Label>Header Variant</Label>
-                <Select
-                  value={formData.variant || "transparent"}
-                  onValueChange={(val) => updateField("variant", val)}
-                >
-                  <SelectTrigger className="bg-background">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="transparent">
-                      Transparent (Standard)
-                    </SelectItem>
-                    <SelectItem value="centered">
-                      Editorial (Centered Logo)
-                    </SelectItem>
-                    <SelectItem value="floating">
-                      Floating Island (Pill Shape)
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="flex items-center justify-between border p-3 rounded-md bg-background">
-                <div className="space-y-0.5">
-                  <Label htmlFor="isSticky" className="cursor-pointer">
-                    Sticky Header
-                  </Label>
-                  <p className="text-[10px] text-muted-foreground">
-                    Keep header at top while scrolling
-                  </p>
-                </div>
-                <Switch
-                  id="isSticky"
-                  checked={formData.isSticky !== false}
-                  onCheckedChange={(checked) =>
-                    updateField("isSticky", checked)
-                  }
-                />
-              </div>
             </div>
 
             <div className="space-y-4 p-4 border rounded-lg bg-muted/20">
@@ -3463,41 +3424,18 @@ const SectionEditor: React.FC<SectionEditorProps> = ({
               </div>
             </div>
 
-            {/* 2. LAYOUT ARCHITECTURE */}
+            {/* 2. MEDIA MANAGER */}
             <div className="space-y-4 p-4 border rounded-lg bg-muted/10">
               <div className="flex items-center gap-2 mb-2 border-b pb-2">
-                <LayoutTemplate size={16} className="text-primary" />
-                <Label className="text-base font-semibold text-primary">
-                  Layout Architecture
+                <ImageIcon size={16} className="text-primary" />
+                <Label className="text-base font-semibold">
+                  Side Cover Image
                 </Label>
               </div>
-              <div className="space-y-2">
-                <Label>Display Style</Label>
-                <Select
-                  value={formData.variant || "centered"}
-                  onValueChange={(val) => updateField("variant", val)}
-                >
-                  <SelectTrigger className="bg-background h-10">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="centered">
-                      Centered Box (Standard)
-                    </SelectItem>
-                    <SelectItem value="split">
-                      Split Screen (Image + Form)
-                    </SelectItem>
-                    <SelectItem value="minimal">
-                      Minimal (Clean / No Box)
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {formData.variant === "split" && (
-                <div className="space-y-3 pt-3 border-t border-dashed animate-in fade-in slide-in-from-top-2">
-                  <Label>Side Cover Image</Label>
-                  <div className="flex gap-3 items-center p-3 border rounded-md bg-background">
+              <p className="text-[10px] text-muted-foreground -mt-2 mb-2">
+                Note: This image is only visible when using the "Split Screen" layout in the Design tab.
+              </p>
+              <div className="flex gap-3 items-center p-3 border rounded-md bg-background">
                     {formData.image && (
                       <div className="h-16 w-16 rounded overflow-hidden border shrink-0 bg-muted">
                         <img
@@ -3519,8 +3457,6 @@ const SectionEditor: React.FC<SectionEditorProps> = ({
                       {formData.image ? "Change Image" : "Select Image"}
                     </Button>
                   </div>
-                </div>
-              )}
             </div>
 
             {/* 3. FORM FIELDS BUILDER */}
@@ -3654,37 +3590,7 @@ const SectionEditor: React.FC<SectionEditorProps> = ({
               </div>
             </div>
 
-            {/* 1. CONFIGURATION */}
-            <div className="grid grid-cols-1 gap-4 p-4 border rounded-lg bg-muted/10">
-              <div className="flex items-center gap-2 mb-2 border-b pb-2">
-                <LayoutTemplate size={16} className="text-primary" />
-                <Label className="text-base font-semibold text-primary">
-                  Layout Architecture
-                </Label>
-              </div>
-              <div className="space-y-2">
-                <Label>Display Style</Label>
-                <Select
-                  value={formData.variant || "grid"}
-                  onValueChange={(val) => updateField("variant", val)}
-                >
-                  <SelectTrigger className="bg-background h-10">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="grid">Grid (Standard)</SelectItem>
-                    <SelectItem value="carousel">
-                      Carousel (Horizontal)
-                    </SelectItem>
-                    <SelectItem value="spotlight">
-                      Spotlight (Hero Product)
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
-            {/* 2. PRODUCT MANAGER (WITH DND) */}
+            {/* 1. PRODUCT MANAGER (WITH DND) */}
             <div className="space-y-4 p-4 border rounded-lg bg-muted/5">
               <div className="flex justify-between items-center border-b pb-2">
                 <div className="flex items-center gap-2">
@@ -3770,55 +3676,6 @@ const SectionEditor: React.FC<SectionEditorProps> = ({
       case "hero":
         return (
           <div className="space-y-6">
-            {/* --- LAYOUT & STYLE --- */}
-            <div className="space-y-4 p-4 border rounded-lg bg-muted/20">
-              <div className="flex items-center gap-2 mb-2 border-b pb-2">
-                <LayoutTemplate size={16} className="text-primary" />
-                <Label className="text-base font-semibold text-primary">
-                  Layout Architecture
-                </Label>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>Hero Structure</Label>
-                  <Select
-                    value={formData.layout || "center"}
-                    onValueChange={(val) => updateField("layout", val)}
-                  >
-                    <SelectTrigger className="bg-background">
-                      <SelectValue placeholder="Select Layout" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="center">Immersive Center</SelectItem>
-                      <SelectItem value="split-left">
-                        Split (Text Left)
-                      </SelectItem>
-                      <SelectItem value="split-right">
-                        Split (Text Right)
-                      </SelectItem>
-                      <SelectItem value="bottom">Bottom Aligned</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label>Text Alignment</Label>
-                  <Select
-                    value={formData.alignment || "center"}
-                    onValueChange={(val) => updateField("alignment", val)}
-                  >
-                    <SelectTrigger className="bg-background">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="left">Left Aligned</SelectItem>
-                      <SelectItem value="center">Center Aligned</SelectItem>
-                      <SelectItem value="right">Right Aligned</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-            </div>
-
             {/* --- CONTENT & TYPOGRAPHY --- */}
             <div className="space-y-4 p-4 border rounded-lg bg-muted/5">
               <Label className="text-base font-semibold">
@@ -4433,45 +4290,7 @@ const SectionEditor: React.FC<SectionEditorProps> = ({
               </div>
             </div>
 
-            {/* 2. LAYOUT ARCHITECTURE */}
-            <div className="space-y-4 p-4 border rounded-lg bg-muted/10">
-              <div className="flex items-center gap-2 mb-2 border-b pb-2">
-                <LayoutTemplate size={16} className="text-primary" />
-                <Label className="text-base font-semibold text-primary">
-                  Layout Architecture
-                </Label>
-              </div>
-              <div className="space-y-2">
-                <Label>Team Display Style</Label>
-                <Select
-                  value={formData.variant || "grid"}
-                  onValueChange={(val) => updateField("variant", val)}
-                >
-                  <SelectTrigger className="bg-background h-10">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="grid">Classic Grid (Equal)</SelectItem>
-                    <SelectItem value="spotlight">
-                      Founder Spotlight (First Large)
-                    </SelectItem>
-                    <SelectItem value="carousel">
-                      Horizontal Scroll (Compact)
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
-                <p className="text-[10px] text-muted-foreground pt-1">
-                  {formData.variant === "grid" &&
-                    "A clean, balanced grid for standard team layouts."}
-                  {formData.variant === "spotlight" &&
-                    "Highlights the first member with a larger card. Great for founders/CEOs."}
-                  {formData.variant === "carousel" &&
-                    "A horizontal slider. Perfect for large teams to save vertical space."}
-                </p>
-              </div>
-            </div>
-
-            {/* 3. MEMBER MANAGER */}
+            {/* 2. MEMBER MANAGER */}
             <div className="space-y-4 p-4 border rounded-lg bg-muted/5">
               <div className="flex justify-between items-center border-b pb-2">
                 <div className="flex items-center gap-2">
@@ -4593,66 +4412,7 @@ const SectionEditor: React.FC<SectionEditorProps> = ({
               </div>
             </div>
 
-            {/* 2. LAYOUT ARCHITECTURE */}
-            <div className="space-y-4 p-4 border rounded-lg bg-muted/10">
-              <div className="flex items-center gap-2 mb-2 border-b pb-2">
-                <LayoutTemplate size={16} className="text-primary" />
-                <Label className="text-base font-semibold text-primary">
-                  Map Architecture
-                </Label>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>Map Style</Label>
-                  <Select
-                    value={formData.variant || "standard"}
-                    onValueChange={(val) => updateField("variant", val)}
-                  >
-                    <SelectTrigger className="bg-background h-10">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="standard">
-                        Standard (Full Width)
-                      </SelectItem>
-                      <SelectItem value="dark">
-                        Cinematic (Dark Mode)
-                      </SelectItem>
-                      <SelectItem value="card">Overlay Card (Boxed)</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-2">
-                  <Label>Container Height</Label>
-                  <Select
-                    value={formData.height || "medium"}
-                    onValueChange={(val) => updateField("height", val)}
-                  >
-                    <SelectTrigger className="bg-background h-10">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="small">Small (300px)</SelectItem>
-                      <SelectItem value="medium">Medium (50vh)</SelectItem>
-                      <SelectItem value="large">
-                        Large (70vh - Immersive)
-                      </SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-
-              <p className="text-[10px] text-muted-foreground">
-                {formData.variant === "dark" &&
-                  "Cinematic applies a CSS filter to the Google Map to make it look dark and modern."}
-                {formData.variant === "card" &&
-                  "Places the map inside a neat, floating card rather than stretching full-width."}
-              </p>
-            </div>
-
-            {/* 3. EMBED CONFIGURATION */}
+            {/* 2. EMBED CONFIGURATION */}
             <div className="space-y-4 p-4 border rounded-lg bg-muted/5 border-l-4 border-l-primary">
               <div className="flex items-center justify-between mb-2 border-b pb-2">
                 <div className="flex items-center gap-2">
@@ -4745,49 +4505,8 @@ const SectionEditor: React.FC<SectionEditorProps> = ({
               </div>
             </div>
 
-            {/* 2. LAYOUT ARCHITECTURE */}
-            <div className="space-y-4 p-4 border rounded-lg bg-muted/10">
-              <div className="flex items-center gap-2 mb-2 border-b pb-2">
-                <LayoutTemplate size={16} className="text-primary" />
-                <Label className="text-base font-semibold text-primary">
-                  Layout Architecture
-                </Label>
-              </div>
-              <div className="space-y-2">
-                <Label>Display Style</Label>
-                <Select
-                  value={formData.variant || "cards"}
-                  onValueChange={(val) => updateField("variant", val)}
-                >
-                  <SelectTrigger className="bg-background h-10">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="cards">
-                      Grid Cards (Standard SaaS)
-                    </SelectItem>
-                    <SelectItem value="slider">
-                      Carousel (Horizontal Scroll)
-                    </SelectItem>
-                    <SelectItem value="list">
-                      Rate Card (Minimal List)
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
-                <p className="text-[10px] text-muted-foreground pt-1">
-                  {formData.variant === "cards" &&
-                    "The standard tiered pricing format. Best for 3 options."}
-                  {formData.variant === "slider" &&
-                    "A swipeable row of pricing cards. Best if you have 4+ options."}
-                  {formData.variant === "list" &&
-                    "A clean, text-based menu. Great for freelancers and service menus."}
-                </p>
-              </div>
-            </div>
-
-            {/* 🚀 NEW: RATE CARD FOOTER CTA (Only shows if variant is 'list') */}
-            {formData.variant === "list" && (
-              <div className="space-y-4 p-4 border rounded-lg bg-primary/5 animate-in fade-in slide-in-from-top-2 border-primary/20">
+            {/* 2. RATE CARD FOOTER CTA */}
+            <div className="space-y-4 p-4 border rounded-lg bg-primary/5 animate-in fade-in slide-in-from-top-2 border-primary/20">
                 <div className="flex items-center gap-2 mb-2 border-b border-primary/20 pb-2">
                   <ExternalLink size={16} className="text-primary" />
                   <Label className="text-base font-semibold text-primary">
@@ -4819,11 +4538,9 @@ const SectionEditor: React.FC<SectionEditorProps> = ({
                   </div>
                 </div>
                 <p className="text-[10px] text-muted-foreground">
-                  This button sits at the bottom of the Rate Card to catch users
-                  who don't see a plan that fits their needs.
+                Note: This button is only visible when using the "Rate Card" layout in the Design tab. It sits at the bottom to catch users who don't see a plan that fits their needs.
                 </p>
               </div>
-            )}
 
             {/* 3. PLANS MANAGER */}
             <div className="space-y-4 p-4 border rounded-lg bg-muted/5">
@@ -4906,87 +4623,6 @@ const SectionEditor: React.FC<SectionEditorProps> = ({
       case "about":
         return (
           <div className="space-y-6">
-            {/* 1. LAYOUT ARCHITECTURE */}
-            <div className="space-y-4 p-4 border rounded-lg bg-muted/10">
-              <div className="flex items-center gap-2 mb-2 border-b pb-2">
-                <LayoutTemplate size={16} className="text-primary" />
-                <Label className="text-base font-semibold text-primary">
-                  Layout Architecture
-                </Label>
-              </div>
-
-              <div className="space-y-2">
-                <Label>About Section Style</Label>
-                <Select
-                  value={formData.variant || "split"}
-                  onValueChange={(val) => updateField("variant", val)}
-                >
-                  <SelectTrigger className="bg-background">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="split">
-                      Standard Split (Bio + Media)
-                    </SelectItem>
-                    <SelectItem value="profile">
-                      Actor Profile (Bio + Media + Stats Grid)
-                    </SelectItem>
-                    <SelectItem value="simple">
-                      Minimal (Centered Text Only)
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
-                <p className="text-[10px] text-muted-foreground">
-                  Choose how your biography is structured on the page.
-                </p>
-              </div>
-
-              {/* Media Alignment (Hidden for Simple mode) */}
-              {formData.variant !== "simple" && (
-                <div className="flex items-center justify-between pt-2 border-t border-dashed mt-2">
-                  <div className="space-y-0.5">
-                    <Label className="text-xs text-foreground">
-                      Media Position
-                    </Label>
-                    <p className="text-[10px] text-muted-foreground">
-                      Desktop layout order
-                    </p>
-                  </div>
-                  <div className="flex bg-background rounded-md border p-0.5">
-                    <Button
-                      size="sm"
-                      variant={
-                        formData.layout === "left" ? "secondary" : "ghost"
-                      }
-                      onClick={() => updateField("layout", "left")}
-                      className={cn(
-                        "h-7 text-xs px-3",
-                        formData.layout === "left" && "shadow-sm"
-                      )}
-                    >
-                      Left
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant={
-                        formData.layout === "right" || !formData.layout
-                          ? "secondary"
-                          : "ghost"
-                      }
-                      onClick={() => updateField("layout", "right")}
-                      className={cn(
-                        "h-7 text-xs px-3",
-                        (formData.layout === "right" || !formData.layout) &&
-                          "shadow-sm"
-                      )}
-                    >
-                      Right
-                    </Button>
-                  </div>
-                </div>
-              )}
-            </div>
-
             {/* 2. TEXT CONTENT */}
             <div className="space-y-4 p-4 border rounded-lg bg-background shadow-sm">
               <div className="flex items-center gap-2 mb-2 border-b pb-2">
@@ -5031,15 +4667,17 @@ const SectionEditor: React.FC<SectionEditorProps> = ({
               </div>
             </div>
 
-            {/* 3. MEDIA PICKER (Hidden in Simple Mode) */}
-            {formData.variant !== "simple" && (
-              <div className="space-y-4 p-4 border rounded-lg bg-muted/10">
-                <div className="flex items-center gap-2 mb-2 border-b pb-2">
-                  <ImageIcon size={16} className="text-primary" />
-                  <Label className="text-base font-semibold">
-                    Featured Media
-                  </Label>
-                </div>
+            {/* 3. MEDIA PICKER */}
+            <div className="space-y-4 p-4 border rounded-lg bg-muted/10">
+              <div className="flex items-center gap-2 mb-2 border-b pb-2">
+                <ImageIcon size={16} className="text-primary" />
+                <Label className="text-base font-semibold">
+                  Featured Media
+                </Label>
+              </div>
+              <p className="text-[10px] text-muted-foreground -mt-2 mb-2">
+                Note: This media is automatically hidden if you select the "Minimal" layout in the Design tab.
+              </p>
 
                 <div className="flex gap-4 items-center p-3 bg-background border rounded-md">
                   {/* Smart Preview (Video or Image) */}
@@ -5105,7 +4743,6 @@ const SectionEditor: React.FC<SectionEditorProps> = ({
                   </div>
                 </div>
               </div>
-            )}
 
             {/* 4. KEY FEATURES LIST */}
             <div className="space-y-4 p-4 border rounded-lg bg-background shadow-sm">
@@ -5172,16 +4809,15 @@ const SectionEditor: React.FC<SectionEditorProps> = ({
               </div>
             </div>
 
-            {/* 5. PROFILE STATS (Only shows for 'Profile' variant) */}
-            {formData.variant === "profile" && (
-              <div className="space-y-4 p-4 border rounded-lg bg-primary/5 animate-in fade-in slide-in-from-top-2">
-                <div className="flex justify-between items-center border-b border-primary/10 pb-2">
-                  <div className="flex items-center gap-2">
-                    <BarChart size={16} className="text-primary" />
-                    <Label className="text-base font-semibold text-primary">
-                      Actor Stats Grid
-                    </Label>
-                  </div>
+            {/* 5. PROFILE STATS */}
+            <div className="space-y-4 p-4 border rounded-lg bg-primary/5 animate-in fade-in slide-in-from-top-2">
+              <div className="flex justify-between items-center border-b border-primary/10 pb-2">
+                <div className="flex items-center gap-2">
+                  <BarChart size={16} className="text-primary" />
+                  <Label className="text-base font-semibold text-primary">
+                    Actor Stats Grid
+                  </Label>
+                </div>
                   <Button
                     size="sm"
                     variant="outline"
@@ -5249,8 +4885,10 @@ const SectionEditor: React.FC<SectionEditorProps> = ({
                     </div>
                   ))}
                 </div>
+                <p className="text-[10px] text-muted-foreground mt-2">
+                  Note: The stats grid is only visible when using the "Actor Profile" layout in the Design tab.
+                </p>
               </div>
-            )}
 
             {/* 6. CALL TO ACTION */}
             <div className="space-y-4 p-4 border rounded-lg bg-muted/10">
@@ -6051,45 +5689,7 @@ const SectionEditor: React.FC<SectionEditorProps> = ({
       case "contact":
         return (
           <div className="space-y-6">
-            {/* 1. LAYOUT ARCHITECTURE */}
-            <div className="space-y-4 p-4 border rounded-lg bg-muted/10">
-              <div className="flex items-center gap-2 mb-2 border-b pb-2">
-                <LayoutTemplate size={16} className="text-primary" />
-                <Label className="text-base font-semibold text-primary">
-                  Layout Architecture
-                </Label>
-              </div>
-              <div className="space-y-2">
-                <Label>Contact Style</Label>
-                <Select
-                  value={formData.variant || "minimal"}
-                  onValueChange={(val) => updateField("variant", val)}
-                >
-                  <SelectTrigger className="bg-background h-10">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="minimal">
-                      Minimal (Center Text)
-                    </SelectItem>
-                    <SelectItem value="split">Split (Image + Info)</SelectItem>
-                    <SelectItem value="card">
-                      Floating Card (Premium)
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
-                <p className="text-[10px] text-muted-foreground pt-1">
-                  {formData.variant === "minimal" &&
-                    "A clean, distraction-free layout focused entirely on the CTA."}
-                  {formData.variant === "split" &&
-                    "A modern side-by-side layout. Great for showcasing a studio or portrait."}
-                  {formData.variant === "card" &&
-                    "An elevated, high-converting floating card over the background."}
-                </p>
-              </div>
-            </div>
-
-            {/* 2. MESSAGING & TYPOGRAPHY */}
+            {/* 1. MESSAGING & TYPOGRAPHY */}
             <div className="space-y-4 p-4 border rounded-lg bg-background shadow-sm">
               <div className="flex items-center gap-2 mb-2 border-b pb-2">
                 <Type size={16} className="text-primary" />
@@ -6122,7 +5722,7 @@ const SectionEditor: React.FC<SectionEditorProps> = ({
               </div>
             </div>
 
-            {/* 3. DIRECT CONTACT INFO */}
+            {/* 2. DIRECT CONTACT INFO */}
             <div className="space-y-4 p-4 border rounded-lg bg-muted/5">
               <div className="flex items-center gap-2 mb-2 border-b pb-2">
                 <Mail size={16} className="text-primary" />
@@ -6182,27 +5782,29 @@ const SectionEditor: React.FC<SectionEditorProps> = ({
               </div>
             </div>
 
-            {/* 4. MEDIA MANAGER (Hidden if Minimal) */}
-            {formData.variant !== "minimal" && (
-              <div className="space-y-4 p-4 border rounded-lg bg-muted/5 animate-in fade-in slide-in-from-bottom-2">
-                <div className="flex items-center justify-between mb-2 border-b pb-2">
-                  <div className="flex items-center gap-2">
-                    <ImageIcon size={16} className="text-primary" />
-                    <Label className="text-base font-semibold">
-                      Featured Image
-                    </Label>
-                  </div>
-                  {formData.image && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-7 text-xs text-destructive hover:text-destructive hover:bg-destructive/10"
-                      onClick={() => updateField("image", "")}
-                    >
-                      <Trash2 className="w-3 h-3 mr-1" /> Remove
-                    </Button>
-                  )}
+            {/* 3. MEDIA MANAGER */}
+            <div className="space-y-4 p-4 border rounded-lg bg-muted/5 animate-in fade-in slide-in-from-bottom-2">
+              <div className="flex items-center justify-between mb-2 border-b pb-2">
+                <div className="flex items-center gap-2">
+                  <ImageIcon size={16} className="text-primary" />
+                  <Label className="text-base font-semibold">
+                    Featured Image
+                  </Label>
                 </div>
+                {formData.image && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 text-xs text-destructive hover:text-destructive hover:bg-destructive/10"
+                    onClick={() => updateField("image", "")}
+                  >
+                    <Trash2 className="w-3 h-3 mr-1" /> Remove
+                  </Button>
+                )}
+              </div>
+              <p className="text-[10px] text-muted-foreground -mt-2 mb-3">
+                Note: This image is automatically hidden if you select the "Minimal" layout in the Design tab.
+              </p>
 
                 {!formData.image ? (
                   <div
@@ -6243,9 +5845,8 @@ const SectionEditor: React.FC<SectionEditorProps> = ({
                   </div>
                 )}
               </div>
-            )}
 
-            {/* 5. SOCIAL PROFILES */}
+            {/* 4. SOCIAL PROFILES */}
             <div className="space-y-4 p-4 border rounded-lg bg-muted/5">
               <div className="flex items-center gap-2 mb-2 border-b pb-2">
                 <Share2 size={16} className="text-primary" />

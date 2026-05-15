@@ -810,9 +810,9 @@ const SpotlightCheckout = ({
 };
 
 // --- MAIN SHOP COMPONENT ---
-const Shop: React.FC<any> = ({ data, id, isPreview, actorId, portfolioId }) => {
+const Shop: React.FC<any> = ({ data, settings = {}, id, isPreview, actorId, portfolioId }) => {
   const products = data.products || [];
-  const variant = data.variant || "grid";
+  const variant = settings.variant || data.variant || "grid";
   const carouselRef = useRef<HTMLDivElement>(null);
 
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);

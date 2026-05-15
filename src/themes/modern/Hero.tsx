@@ -5,7 +5,7 @@ import { cn } from "@/lib/utils";
 import { ArrowRight, ChevronDown, Play, Star } from "lucide-react";
 import { InlineEdit } from "../../components/dashboard/InlineEdit";
 
-const Hero: React.FC<any> = ({ data, id, isPreview }) => {
+const Hero: React.FC<any> = ({ data, settings = {}, id, isPreview }) => {
   const heroRef = useRef<HTMLElement>(null);
   const [isMobileView, setIsMobileView] = useState(false);
 
@@ -41,8 +41,8 @@ const Hero: React.FC<any> = ({ data, id, isPreview }) => {
   };
 
   // 🚀 1. LAYOUT & ALIGNMENT ENGINE
-  const layout = data.layout || "center";
-  const align = data.alignment || "center";
+  const layout = settings.layout || data.layout || "center"; // fallback to data.layout for older saves
+  const align = settings.alignment || data.alignment || "center";
 
   let layoutClass = "";
   let widthClass = "max-w-3xl";

@@ -36,6 +36,7 @@ const getFieldIcon = (type: string) => {
 
 const LeadForm: React.FC<any> = ({
   data,
+  settings = {},
   actorId,
   portfolioId,
   id,
@@ -63,7 +64,7 @@ const LeadForm: React.FC<any> = ({
     },
   ];
 
-  const variant = data.variant || "centered"; // 'centered' | 'split' | 'minimal'
+  const variant = settings.variant || data.variant || "centered"; // 'centered' | 'split' | 'minimal'
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

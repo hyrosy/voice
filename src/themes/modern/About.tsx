@@ -4,15 +4,18 @@ import { cn } from "@/lib/utils";
 import { ArrowRight, CheckCircle2 } from "lucide-react";
 import { InlineEdit } from "../../components/dashboard/InlineEdit";
 
-const About: React.FC<any> = ({ data, id, isPreview }) => {
+const About: React.FC<any> = ({ data, settings = {}, id, isPreview }) => {
   // 1. CONFIGURATION
-  const variant = data.variant || "split"; // 'simple', 'split', 'profile'
+  const variant = settings.variant || data.variant || "split"; // 'simple', 'split', 'profile'
   const isSimple = variant === "simple";
   const isProfile = variant === "profile";
 
   // Layout Alignment
-  const mediaPosition = data.layout || "right"; // Default to right like standard modern
+  const mediaPosition = settings.layout || data.layout || "right"; // Default to right like standard modern
   const isMediaLeft = mediaPosition === "left";
+
+  // Image Style Filter
+  const imageFilter = settings.imageFilter || "grayscale";
 
   // Helper to detect video files
   const isVideo = (url?: string) => {
@@ -53,7 +56,10 @@ const About: React.FC<any> = ({ data, id, isPreview }) => {
             <img
               src={data.image}
               alt={data.title || "About Me"}
-              className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105 filter grayscale-[20%] group-hover:grayscale-0"
+            className={cn(
+              "w-full h-full object-cover transition-transform duration-700 group-hover:scale-105",
+              imageFilter === "grayscale" ? "filter grayscale-[20%] group-hover:grayscale-0" : ""
+            )}
               loading="lazy"
             />
           )}

@@ -4,13 +4,14 @@ import { MapPin, Navigation, ExternalLink, Map } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { InlineEdit } from "../../components/dashboard/InlineEdit";
 
-const LocationMap: React.FC<any> = ({ data, id, isPreview }) => {
-  const variant = data.variant || "standard"; // standard, dark, card
+const LocationMap: React.FC<any> = ({ data, settings = {}, id, isPreview }) => {
+  const variant = settings.variant || data.variant || "standard"; // standard, dark, card
   const isBoxed = variant === "card";
 
+  const height = settings.height || data.height || "medium";
   const heightClass =
-    data.height === "small" ? "h-[350px]"
-      : data.height === "large" ? "h-[80vh] min-h-[600px]"
+    height === "small" ? "h-[350px]"
+      : height === "large" ? "h-[80vh] min-h-[600px]"
       : "h-[50vh] min-h-[450px]";
 
   // Helper to extract SRC securely
