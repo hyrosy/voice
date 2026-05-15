@@ -130,13 +130,13 @@ const ListItem = React.forwardRef<
         <a
           ref={ref}
           className={cn(
-            "block select-none space-y-1 rounded-md p-3 leading-none no-underline outline-none transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground",
+            "block select-none space-y-1 rounded-xl p-4 leading-none no-underline outline-none transition-all duration-200 hover:bg-muted/50 hover:text-accent-foreground focus:bg-muted/50 focus:text-accent-foreground group",
             className
           )}
           {...props}
         >
-          <div className="text-sm font-medium leading-none">{title}</div>
-          <p className="line-clamp-2 text-sm leading-snug text-muted-foreground">
+          <div className="text-sm font-semibold leading-none group-hover:text-primary transition-colors">{title}</div>
+          <p className="line-clamp-2 text-sm leading-relaxed text-muted-foreground mt-2">
             {children}
           </p>
         </a>
@@ -183,20 +183,20 @@ const Navbar: React.FC = () => {
     <nav
       aria-label="Main Navigation"
       className={cn(
-        "fixed top-0 left-0 right-0 z-50 transition-all duration-300 ease-in-out",
+        "fixed top-0 inset-x-0 z-50 transition-all duration-500 ease-in-out border-b",
         isScrolled
-          ? "bg-background/80 backdrop-blur-xl shadow-sm border-b py-3"
-          : "bg-transparent py-4"
+          ? "bg-background/80 backdrop-blur-2xl border-border/50 shadow-sm py-2.5"
+          : "bg-transparent border-transparent py-5"
       )}
     >
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="max-w-[1400px] mx-auto px-6 md:px-8">
         <div className="flex justify-between items-center">
           {/* Logo */}
           <Link to="/" className="flex-shrink-0" aria-label="Go to homepage">
             <img
               src="https://ucpmarocgo.s3.us-east-1.amazonaws.com/logo-ucp-maroc.png"
               alt="UCP Maroc Logo"
-              className="w-32 md:w-48 transition-transform duration-300 hover:scale-105"
+              className="w-32 md:w-40 lg:w-48 transition-transform duration-500 hover:scale-105"
             />
           </Link>
 
@@ -205,21 +205,28 @@ const Navbar: React.FC = () => {
             <NavigationMenu>
               <NavigationMenuList>
                 <NavigationMenuItem>
-                  <Link to="/" className={navigationMenuTriggerStyle()}>
+                  <Link 
+                    to="/" 
+                    className={cn(navigationMenuTriggerStyle(), "bg-transparent hover:bg-muted/50 text-muted-foreground hover:text-foreground font-medium transition-colors")}
+                  >
                     Home
                   </Link>
                 </NavigationMenuItem>
 
                 <NavigationMenuItem>
-                  <NavigationMenuTrigger>Services</NavigationMenuTrigger>
-                  <NavigationMenuContent>
-                    <ul className="grid w-56 p-2">
+                  <NavigationMenuTrigger className="bg-transparent hover:bg-muted/50 text-muted-foreground hover:text-foreground font-medium transition-colors">
+                    Services
+                  </NavigationMenuTrigger>
+                  <NavigationMenuContent className="border-border/50 shadow-2xl rounded-2xl">
+                    <ul className="grid w-[300px] p-3 gap-1">
                       {serviceDropdownItems.map((item) => (
                         <ListItem
                           key={item.label}
                           href={item.to}
                           title={item.label}
-                        />
+                        >
+                          Explore our professional {item.label.toLowerCase()} solutions.
+                        </ListItem>
                       ))}
                     </ul>
                   </NavigationMenuContent>
@@ -231,7 +238,7 @@ const Navbar: React.FC = () => {
                     <NavigationMenuItem key={item.label}>
                       <LinkComponent
                         to={item.to}
-                        className={navigationMenuTriggerStyle()}
+                        className={cn(navigationMenuTriggerStyle(), "bg-transparent hover:bg-muted/50 text-muted-foreground hover:text-foreground font-medium transition-colors")}
                       >
                         {item.label}
                       </LinkComponent>
@@ -243,7 +250,7 @@ const Navbar: React.FC = () => {
           </div>
 
           {/* Right Side Actions */}
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-4">
             <ThemeToggle />
 
             {/* Desktop Auth & Actions */}
@@ -258,7 +265,7 @@ const Navbar: React.FC = () => {
                   <DropdownMenuTrigger asChild>
                     <Button
                       variant="ghost"
-                      className="relative h-10 w-10 rounded-full border border-border/50 hover:bg-accent focus:ring-2 focus:ring-primary focus:ring-offset-2"
+                      className="relative h-10 w-10 rounded-full border border-border/50 shadow-sm hover:shadow-md transition-all duration-300 focus:ring-2 focus:ring-primary focus:ring-offset-2"
                     >
                       <Avatar className="h-9 w-9">
                         <AvatarImage
@@ -273,7 +280,7 @@ const Navbar: React.FC = () => {
                       </Avatar>
                     </Button>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent className="w-56" align="end" forceMount>
+                  <DropdownMenuContent className="w-56 rounded-2xl border-border/50 shadow-2xl" align="end" forceMount>
                     <DropdownMenuLabel className="font-normal">
                       <div className="flex flex-col space-y-1">
                         <p className="text-sm font-medium leading-none">
@@ -318,31 +325,31 @@ const Navbar: React.FC = () => {
                 // --- LOGGED OUT STATE (DESKTOP) ---
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button className="rounded-full shadow-sm hover:shadow-md transition-all">
+                    <Button className="rounded-full shadow-md hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300 font-semibold px-6">
                       <LogIn size={16} className="mr-2" />
                       My Account
                     </Button>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent className="w-48" align="end">
+                  <DropdownMenuContent className="w-48 rounded-2xl border-border/50 shadow-2xl p-2" align="end">
                     <DropdownMenuItem asChild>
                       <Link
                         to="/client-dashboard"
-                        className="flex items-center gap-3 w-full cursor-pointer"
+                        className="flex items-center gap-3 w-full cursor-pointer rounded-xl p-2.5 hover:bg-muted/50 transition-colors"
                       >
                         <UserCircle size={16} className="text-primary" />
-                        Client Portal
+                        <span className="font-medium">Client Portal</span>
                       </Link>
                     </DropdownMenuItem>
                     <DropdownMenuItem asChild>
                       <Link
                         to="/dashboard"
-                        className="flex items-center gap-3 w-full cursor-pointer"
+                        className="flex items-center gap-3 w-full cursor-pointer rounded-xl p-2.5 hover:bg-muted/50 transition-colors mt-1"
                       >
                         <UserCheck
                           size={16}
                           className="text-muted-foreground"
                         />
-                        Talent Portal
+                        <span className="font-medium">Talent Portal</span>
                       </Link>
                     </DropdownMenuItem>
                   </DropdownMenuContent>
@@ -360,14 +367,14 @@ const Navbar: React.FC = () => {
                     variant="outline"
                     size="icon"
                     aria-label="Open mobile menu"
-                    className="rounded-full"
+                    className="rounded-full border-border/50 shadow-sm"
                   >
                     <Menu size={20} />
                   </Button>
                 </SheetTrigger>
                 <SheetContent
                   side="right"
-                  className="w-80 max-w-[85vw] flex flex-col p-0"
+                  className="w-[85vw] sm:w-[400px] border-l border-border/50 p-0 flex flex-col bg-background/95 backdrop-blur-3xl shadow-2xl"
                 >
                   <SheetHeader className="px-6 pt-5 pb-4 border-b text-left">
                     <SheetTitle className="text-xl font-bold tracking-tight">
@@ -387,7 +394,7 @@ const Navbar: React.FC = () => {
                               <Button
                                 asChild
                                 variant="ghost"
-                                className="w-full justify-start gap-4 p-3 h-auto rounded-lg hover:bg-accent"
+                                className="w-full justify-start gap-4 p-3.5 h-auto rounded-xl hover:bg-muted/50 transition-colors"
                               >
                                 <LinkComponent
                                   to={item.to}
@@ -421,7 +428,7 @@ const Navbar: React.FC = () => {
                         <div className="flex items-center gap-3 mb-2">
                           <Avatar className="h-10 w-10 border border-border">
                             <AvatarImage src={(user as any)?.avatar_url} />
-                            <AvatarFallback className="bg-primary/10 text-primary">
+                            <AvatarFallback className="bg-primary/10 text-primary font-medium">
                               {(user as any)?.name?.charAt(0)}
                             </AvatarFallback>
                           </Avatar>
@@ -454,7 +461,7 @@ const Navbar: React.FC = () => {
                         </Button>
                         <Button
                           variant="outline"
-                          className="w-full rounded-full text-red-500 hover:text-red-600 hover:bg-red-50"
+                          className="w-full rounded-full text-red-500 hover:text-red-600 hover:bg-red-50 border-red-200"
                           size="lg"
                           onClick={handleSignOut}
                         >

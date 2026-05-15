@@ -68,6 +68,7 @@ import {
   MessageSquare,
   Briefcase,
   Store,
+  Gift,
 } from "lucide-react";
 import {
   PortfolioSection,
@@ -103,6 +104,16 @@ import { Slider } from "@/components/ui/slider";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { PORTFOLIO_TEMPLATES } from "../../lib/templates";
 import { Badge } from "@/components/ui/badge";
+
+const EXTENDED_TEMPLATES = [
+  {
+    id: "blank",
+    name: "Blank Canvas",
+    description: "Start from scratch and build your own custom layout.",
+    sections: [],
+  },
+  ...PORTFOLIO_TEMPLATES,
+];
 
 // --- AVAILABLE BLOCKS LIST ---
 const AVAILABLE_BLOCKS: {
@@ -446,7 +457,7 @@ const PortfolioBuilderPage = () => {
   const [isCreating, setIsCreating] = useState(false);
   const [newSiteName, setNewSiteName] = useState("");
   const [selectedTemplate, setSelectedTemplate] = useState<string>(
-    PORTFOLIO_TEMPLATES[0].id
+    EXTENDED_TEMPLATES[0].id
   );
 
   // Settings State
@@ -474,7 +485,18 @@ const PortfolioBuilderPage = () => {
 
   // Guide / Welcome Tour State
   const [showWelcomePrompt, setShowWelcomePrompt] = useState(false);
-  const [tourStep, setTourStep] = useState(0); // 0 = off, 1 = blocks limit, 2 = settings/redeem, 3 = upgrade
+  const [tourStep, setTourStep] = useState(0); // 0 = off, 1 = blocks limit, 2 = topbar, 3 = tab, 4 = input, 5 = success
+
+  useEffect(() => {
+    const handleTour = (e: any) => setTourStep(e.detail);
+    window.addEventListener("TOUR_STEP_CHANGED", handleTour);
+    return () => window.removeEventListener("TOUR_STEP_CHANGED", handleTour);
+  }, []);
+
+  const updateTourStep = (step: number) => {
+    setTourStep(step);
+    window.dispatchEvent(new CustomEvent("TOUR_STEP_CHANGED", { detail: step }));
+  };
 
   // 🚀 NEW: FETCH APPROVED MARKETPLACE THEMES
   const { data: marketplaceThemesData = [], isLoading: isLoadingMarketplace } = useQuery({
@@ -661,6 +683,19 @@ const PortfolioBuilderPage = () => {
 
   const hasActiveSub = activeSub && activeSub.status === "active" && new Date(activeSub.current_period_end) > new Date();
   const isTrialEnded = !hasActiveSub && fetchedPortfolio && new Date().getTime() > new Date(fetchedPortfolio.created_at).getTime() + 14 * 24 * 60 * 60 * 1000;
+  const trialDaysLeft = !hasActiveSub && !isTrialEnded && fetchedPortfolio ? Math.max(0, Math.ceil((new Date(fetchedPortfolio.created_at).getTime() + 14 * 24 * 60 * 60 * 1000 - new Date().getTime()) / (1000 * 60 * 60 * 24))) : 0;
+  const subDaysLeft = hasActiveSub && activeSub ? Math.max(0, Math.ceil((new Date(activeSub.current_period_end).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))) : 0;
+
+  // 🚀 NEW: SHOW WELCOME PROMPT TO ANY EXISTING USER WITH 0 BALANCE WHO HASN'T SEEN IT YET
+  useEffect(() => {
+    if (walletBalance === 0 && fetchedPortfolio && !isLoading) {
+      const hasSeenGuide = localStorage.getItem(`hasSeenWelcomeGuide_${actorData?.id}`);
+      if (!hasSeenGuide) {
+        setShowWelcomePrompt(true);
+        localStorage.setItem(`hasSeenWelcomeGuide_${actorData?.id}`, "true");
+      }
+    }
+  }, [walletBalance, fetchedPortfolio, isLoading, actorData?.id]);
 
   const handleTogglePublish = async (checked: boolean) => {
     if (!activePortfolioId) return;
@@ -935,9 +970,10 @@ const PortfolioBuilderPage = () => {
 
     setIsCreating(true);
     try {
-      const template = PORTFOLIO_TEMPLATES.find((t) => t.id === selectedTemplate) || PORTFOLIO_TEMPLATES[0];
+      const template = EXTENDED_TEMPLATES.find((t) => t.id === selectedTemplate) || EXTENDED_TEMPLATES[0];
       const baseSlug = newSiteName.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "site";
-      const uniqueSlug = `${baseSlug}-${Date.now().toString().slice(-4)}`;      const { data, error } = await supabase
+      const uniqueSlug = `${baseSlug}-${Date.now().toString().slice(-4)}`;
+      const { data, error } = await supabase
         .from("portfolios")
         .insert({
           actor_id: actorData.id,
@@ -968,6 +1004,7 @@ const PortfolioBuilderPage = () => {
 
       if (isFirstSite && walletBalance === 0) {
         setShowWelcomePrompt(true);
+        localStorage.setItem(`hasSeenWelcomeGuide_${actorData?.id}`, "true");
       }
     } catch (error: any) {
       alert("Failed to create site: " + error.message);
@@ -1215,9 +1252,8 @@ const PortfolioBuilderPage = () => {
             size="sm"
             onClick={() => {
               setIsSettingsOpen(true);
-              if (tourStep === 2) setTourStep(3);
             }}
-            className={cn("gap-2 transition-all", tourStep === 2 && "relative z-[9999] ring-4 ring-primary shadow-2xl animate-pulse bg-background")}
+            className="gap-2 transition-all"
           >
             <Settings className="w-4 h-4" />{" "}
             <span className="hidden sm:inline">Site Settings</span>
@@ -1228,7 +1264,11 @@ const PortfolioBuilderPage = () => {
               Plan
             </span>
             <Badge variant="secondary" className="uppercase text-[10px]">
-              {plan === "starter" ? "Starter" : plan === "ecommerce" ? "eCommerce" : plan === "pro" ? "Pro" : plan || "Starter"}
+            {hasActiveSub
+              ? `${(plan === "ecommerce" ? "eCommerce" : plan === "pro" ? "Pro" : plan || "Starter")} (${subDaysLeft}d left)`
+              : isTrialEnded
+              ? "Expired"
+              : `Trial (${trialDaysLeft}d left)`}
             </Badge>
             {plan !== "pro" && (
               <Button
@@ -2369,7 +2409,7 @@ const PortfolioBuilderPage = () => {
             <div className="space-y-3">
               <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Select Template</Label>
               <div className="grid grid-cols-2 gap-3">
-                {PORTFOLIO_TEMPLATES.map((template) => (
+                {EXTENDED_TEMPLATES.map((template) => (
                   <div
                     key={template.id}
                     onClick={() => setSelectedTemplate(template.id)}
@@ -2477,7 +2517,7 @@ const PortfolioBuilderPage = () => {
                     Select Template
                   </Label>
                   <div className="grid grid-cols-1 gap-3 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
-                    {PORTFOLIO_TEMPLATES.map((template) => (
+                    {EXTENDED_TEMPLATES.map((template) => (
                       <div
                         key={template.id}
                         onClick={() => setSelectedTemplate(template.id)}
@@ -2529,31 +2569,46 @@ const PortfolioBuilderPage = () => {
               <Sparkles className="w-6 h-6" /> Congratulations!
             </DialogTitle>
             <DialogDescription className="text-base text-foreground mt-2">
-              You've just launched your first website.
+            Welcome to your new portfolio website!
             </DialogDescription>
           </DialogHeader>
           <div className="py-2 text-muted-foreground">
             <p className="mb-2">
-                Your new website is currently on a <strong>14-Day Pro Plan Trial</strong>! To help you keep your premium features once the trial ends, we've set aside some <strong>Welcome Coins</strong> for you.
+                Your new website is currently on a <strong>14-Day Pro Plan Trial</strong>! To help you keep your premium features once the trial ends, we're gifting you <strong>2700 Welcome Coins</strong> using the code <strong>BISSMILAH</strong>.
             </p>
             <p>
-                Would you like a quick interactive guide to learn about your site, claim your free coins, and see how to upgrade?
+                Would you like a quick interactive guide to learn about your site and claim your free coins?
             </p>
           </div>
           <DialogFooter className="gap-2 sm:gap-0 mt-4">
             <Button variant="ghost" onClick={() => setShowWelcomePrompt(false)}>Skip for now</Button>
-            <Button onClick={() => { setShowWelcomePrompt(false); setTourStep(1); }}>
+              <Button onClick={() => { setShowWelcomePrompt(false); updateTourStep(1); }}>
               Start Quick Tour
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
+      {/* --- CLAIM COINS FLOATING WIDGET --- */}
+      {walletBalance === 0 && tourStep === 0 && !showWelcomePrompt && (
+        <div className="fixed bottom-6 right-6 lg:right-10 z-[90] animate-in fade-in slide-in-from-bottom-8 duration-500">
+          <Button
+            size="lg"
+            className="rounded-full shadow-2xl bg-amber-500 hover:bg-amber-600 text-white font-bold gap-2 h-12 sm:h-14 px-5 sm:px-6 border-2 border-amber-400/50 hover:scale-105 transition-all"
+            onClick={() => updateTourStep(1)}
+          >
+            <Gift className="w-5 h-5 animate-pulse" />
+            <span className="hidden sm:inline-block">Claim 2,700 Free Coins</span>
+            <span className="sm:hidden">Claim Gift</span>
+          </Button>
+        </div>
+      )}
+
       {/* --- GUIDED TOUR OVERLAY --- */}
-      {tourStep > 0 && (
-        <div className="fixed inset-0 z-[9998] bg-slate-950/80 backdrop-blur-sm pointer-events-auto transition-all animate-in fade-in flex items-center justify-center">
+      {(tourStep === 1 || tourStep === 2) && (
+        <div className="fixed inset-0 z-[9998] bg-slate-950/80 backdrop-blur-sm pointer-events-none transition-all animate-in fade-in flex items-center justify-center">
           {tourStep === 1 && (
-            <div className="bg-card border-2 border-primary rounded-2xl p-6 max-w-sm shadow-2xl z-[9999] animate-in zoom-in-95">
+            <div className="bg-card border-2 border-primary rounded-2xl p-6 max-w-sm shadow-2xl z-[9999] animate-in zoom-in-95 pointer-events-auto">
               <div className="flex items-center gap-2 mb-3 text-primary">
                 <Layers className="w-6 h-6" />
                 <h3 className="text-xl font-bold">Pro Trial Activated</h3>
@@ -2562,44 +2617,27 @@ const PortfolioBuilderPage = () => {
                 Your site is currently on a <strong>14-Day Pro Trial</strong>, giving you access to premium blocks, custom domains, and more. After your trial ends, you can use your Welcome Coins to upgrade!
               </p>
               <div className="flex justify-between items-center">
-                <span className="text-xs text-muted-foreground font-bold">Step 1 of 3</span>
+                <span className="text-xs text-muted-foreground font-bold">Step 1 of 4</span>
                 <div className="flex gap-2">
-                  <Button variant="ghost" size="sm" onClick={() => setTourStep(0)}>Skip Tour</Button>
-                  <Button size="sm" onClick={() => setTourStep(2)}>Next</Button>
+                  <Button variant="ghost" size="sm" onClick={() => updateTourStep(0)}>Skip Tour</Button>
+                  <Button size="sm" onClick={() => updateTourStep(2)}>Next</Button>
                 </div>
               </div>
             </div>
           )}
           {tourStep === 2 && (
-            <div className="bg-card border-2 border-primary rounded-2xl p-6 max-w-sm shadow-2xl z-[9999] animate-in slide-in-from-right-8">
+            <div className="absolute top-20 right-4 sm:right-8 bg-card border-2 border-primary rounded-2xl p-6 max-w-sm shadow-2xl z-[9999] animate-in slide-in-from-right-8 pointer-events-auto">
               <div className="flex items-center gap-2 mb-3 text-amber-500">
                 <Coins className="w-6 h-6" />
-                <h3 className="text-xl font-bold">Claim Free Coins</h3>
+                <h3 className="text-xl font-bold">Open the Coin Shop</h3>
               </div>
               <p className="text-sm text-muted-foreground mb-6">
-                Let's get you some free coins! Click the glowing <strong>Site Settings</strong> button at the top to proceed to the next step.
+                Let's claim your 2700 free coins! Click the pulsing <strong>+</strong> button on your wallet balance at the top right of your screen.
               </p>
               <div className="flex justify-between items-center">
-                <span className="text-xs text-muted-foreground font-bold">Step 2 of 3</span>
+                <span className="text-xs text-muted-foreground font-bold">Step 2 of 4</span>
                 <div className="flex gap-2">
-                  <Button variant="ghost" size="sm" onClick={() => setTourStep(0)}>End Tour</Button>
-                </div>
-              </div>
-            </div>
-          )}
-          {tourStep === 3 && (
-            <div className="bg-card border-2 border-primary rounded-2xl p-6 max-w-sm shadow-2xl z-[100000] animate-in slide-in-from-bottom-8 mt-48">
-              <div className="flex items-center gap-2 mb-3 text-primary">
-                <Zap className="w-6 h-6" />
-                <h3 className="text-xl font-bold">Redeem & Upgrade</h3>
-              </div>
-              <p className="text-sm text-muted-foreground mb-6">
-                Awesome! You can now navigate to your billing or account settings to redeem your special welcome code. Use these coins to upgrade and keep your Pro features active!
-              </p>
-              <div className="flex justify-between items-center">
-                <span className="text-xs text-muted-foreground font-bold">Step 3 of 3</span>
-                <div className="flex gap-2">
-                  <Button size="sm" onClick={() => setTourStep(0)}>Finish Tour</Button>
+                  <Button variant="ghost" size="sm" onClick={() => updateTourStep(0)}>End Tour</Button>
                 </div>
               </div>
             </div>
