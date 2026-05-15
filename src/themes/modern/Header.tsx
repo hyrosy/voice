@@ -26,6 +26,7 @@ interface CustomPage {
 
 const Header: React.FC<any> = ({
   data,
+  settings = {},
   allSections,
   isPreview,
   id,
@@ -38,8 +39,8 @@ const Header: React.FC<any> = ({
   const [expandedFolders, setExpandedFolders] = useState<string[]>([]); // 🚀 NEW: Mobile Accordion State
 
   const sections = allSections || [];
-  const variant = data.variant || "transparent";
-  const isSticky = data.isSticky !== false;
+  const variant = settings.variant || data.variant || "transparent";
+  const isSticky = settings.isSticky !== undefined ? settings.isSticky : data.isSticky !== false;
 
   const { openCart, getCartCount } = useCartStore();
   const cartCount = getCartCount();

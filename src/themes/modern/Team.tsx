@@ -9,12 +9,12 @@ import {
 } from "lucide-react";
 import { InlineEdit } from "../../components/dashboard/InlineEdit";
 
-const Team: React.FC<any> = ({ data, id, isPreview }) => {
+const Team: React.FC<any> = ({ data, settings = {}, id, isPreview }) => {
   const carouselRef = useRef<HTMLDivElement>(null);
 
   const members = data.members || [];
   const hasMembers = members.length > 0;
-  const variant = data.variant || "grid";
+  const variant = settings.variant || data.variant || "grid";
 
   // Hide on live site if empty
   if (!hasMembers && !isPreview) return null;

@@ -12,8 +12,8 @@ import {
 } from "lucide-react";
 import { InlineEdit } from "../../components/dashboard/InlineEdit";
 
-const Contact: React.FC<any> = ({ data, id, isPreview }) => {
-  const variant = data.variant || "minimal";
+const Contact: React.FC<any> = ({ data, settings = {}, id, isPreview }) => {
+  const variant = settings.variant || data.variant || "minimal";
 
   const cleanNumber = (num: string) => num.replace(/[^0-9]/g, "");
 

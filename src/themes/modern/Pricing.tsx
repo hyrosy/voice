@@ -52,6 +52,7 @@ const parseOptions = (optString?: string) => {
 
 const Pricing: React.FC<any> = ({
   data,
+  settings = {},
   id,
   isPreview,
   actorId,
@@ -61,7 +62,7 @@ const Pricing: React.FC<any> = ({
 
   const plans = data.plans || [];
   const hasPlans = plans.length > 0;
-  const variant = data.variant || "cards";
+  const variant = settings.variant || data.variant || "cards";
 
   // --- RAW FORM MODAL STATE ---
   const [activePlan, setActivePlan] = useState<any | null>(null);
