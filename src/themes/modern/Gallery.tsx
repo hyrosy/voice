@@ -11,30 +11,32 @@ import {
 import { Button } from "@/components/ui/button";
 import { InlineEdit } from "../../components/dashboard/InlineEdit";
 
-const Gallery: React.FC<any> = ({ data, id, isPreview }) => {
+const Gallery: React.FC<any> = ({ data, settings = {}, id, isPreview }) => {
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [currentIndex, setCurrentIndex] = useState(0);
   const carouselRef = useRef<HTMLDivElement>(null);
 
   const images = data.images || [];
   const hasImages = images.length > 0;
-  const variant = data.variant || "masonry";
+  const variant = settings.variant || data.variant || "masonry";
 
   // HIDE ON LIVE SITE IF EMPTY
   if (!hasImages && !isPreview) return null;
 
   // 🚀 AAA+ Aspect Ratios & Grids
+  const aspectRatio = settings.aspectRatio || data.aspectRatio || "square";
   const aspectClass =
-    data.aspectRatio === "portrait"
+    aspectRatio === "portrait"
       ? "aspect-[4/5]"
-      : data.aspectRatio === "landscape"
+      : aspectRatio === "landscape"
       ? "aspect-video"
       : "aspect-square";
 
+  const gridColumns = Number(settings.gridColumns) || data.gridColumns || 3;
   const gridColsClass =
-    data.gridColumns === 2
+    gridColumns === 2
       ? "grid-cols-1 sm:grid-cols-2"
-      : data.gridColumns === 4
+      : gridColumns === 4
       ? "grid-cols-2 sm:grid-cols-3 md:grid-cols-4"
       : "grid-cols-1 sm:grid-cols-2 md:grid-cols-3"; // Default 3
 

@@ -102,6 +102,7 @@ import {
   ListPlus,
   ShoppingCart,
   Settings,
+  Loader2,
 } from "lucide-react";
 
 import PortfolioMediaManager, {
@@ -117,6 +118,90 @@ import { cn } from "@/lib/utils";
 import { ToggleGroup, ToggleGroupItem } from "../ui/toggle-group";
 import { DragDropContext, Draggable, Droppable } from "@hello-pangea/dnd";
 import FormManager from "../builder/FormManager";
+
+const SiteReviewsManager = ({ portfolioId }: { portfolioId: string }) => {
+  const [reviews, setReviews] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [tab, setTab] = useState<"pending" | "approved">("pending");
+
+  const fetchReviews = async () => {
+    if (!portfolioId) return;
+    const { data } = await supabase
+      .from("pro_site_reviews")
+      .select("*")
+      .eq("portfolio_id", portfolioId)
+      .order("created_at", { ascending: false });
+    if (data) setReviews(data);
+    setLoading(false);
+  };
+
+  useEffect(() => {
+    fetchReviews();
+  }, [portfolioId]);
+
+  const togglePublish = async (id: string, current: boolean) => {
+    await supabase.from("pro_site_reviews").update({ is_published: !current }).eq("id", id);
+    setReviews(reviews.map((r) => (r.id === id ? { ...r, is_published: !current } : r)));
+  };
+
+  const deleteReview = async (id: string) => {
+    if (!confirm("Delete this review permanently?")) return;
+    await supabase.from("pro_site_reviews").delete().eq("id", id);
+    setReviews(reviews.filter((r) => r.id !== id));
+  };
+
+  const pending = reviews.filter((r) => !r.is_published);
+  const approved = reviews.filter((r) => r.is_published);
+  const display = tab === "pending" ? pending : approved;
+
+  return (
+    <div className="space-y-4 pt-6 mt-6 border-t border-border">
+      <div className="flex items-center gap-2">
+        <Settings className="w-5 h-5 text-primary" />
+        <Label className="text-base font-semibold">Manage Site Reviews</Label>
+      </div>
+      <div className="flex gap-2 bg-muted/50 p-1 rounded-lg border">
+        <button className={cn("flex-1 text-xs font-semibold py-2 rounded-md transition-all", tab === "pending" ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground")} onClick={() => setTab("pending")}>
+          Pending ({pending.length})
+        </button>
+        <button className={cn("flex-1 text-xs font-semibold py-2 rounded-md transition-all", tab === "approved" ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground")} onClick={() => setTab("approved")}>
+          Approved ({approved.length})
+        </button>
+      </div>
+      <div className="space-y-3 max-h-[350px] overflow-y-auto custom-scrollbar pr-1">
+        {loading ? (
+          <div className="py-8 flex justify-center"><Loader2 className="w-5 h-5 animate-spin text-muted-foreground" /></div>
+        ) : display.length === 0 ? (
+          <div className="py-8 text-center text-xs text-muted-foreground border border-dashed rounded-lg">No reviews in this tab.</div>
+        ) : (
+          display.map((r) => (
+            <div key={r.id} className="bg-background border rounded-xl p-3 shadow-sm flex flex-col gap-2">
+              {r.image_url && <img src={r.image_url} alt="Review" className="w-full h-24 object-cover rounded-md border" />}
+              <div>
+                <div className="flex justify-between items-center mb-1">
+                  <span className="font-bold text-sm">{r.reviewer_name}</span>
+                  <div className="flex gap-0.5 text-amber-500">
+                    {[...Array(5)].map((_, i) => <Star key={i} size={10} className={cn("fill-current", i < r.rating ? "text-amber-500" : "text-muted")} />)}
+                  </div>
+                </div>
+                <span className="text-xs font-semibold block">{r.title}</span>
+                <p className="text-xs text-muted-foreground italic line-clamp-3">"{r.content}"</p>
+              </div>
+              <div className="flex gap-2 pt-2 border-t border-border/50 mt-1">
+                <Button size="sm" variant={r.is_published ? "outline" : "default"} className={cn("flex-1 h-8 text-[10px] font-bold", !r.is_published && "bg-green-500 hover:bg-green-600 text-white")} onClick={() => togglePublish(r.id, r.is_published)}>
+                  {r.is_published ? "Hide Review" : "Approve Review"}
+                </Button>
+                <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive hover:bg-destructive/10 shrink-0" onClick={() => deleteReview(r.id)}>
+                  <Trash2 className="w-4 h-4" />
+                </Button>
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+    </div>
+  );
+};
 
 interface SectionEditorProps {
   section: PortfolioSection | null;
@@ -1751,11 +1836,14 @@ const SectionEditor: React.FC<SectionEditorProps> = ({
 
     return (
       <div className="space-y-6 animate-in fade-in">
-        {schema.map((field: any) => (
-          <div
-            key={field.id}
-            className="space-y-3 p-4 border rounded-lg bg-muted/20"
-          >
+        {schema.map((field: any) => {
+          if (field.showIf && !field.showIf(settingsData)) return null;
+
+          return (
+            <div
+              key={field.id}
+              className="space-y-3 p-4 border rounded-lg bg-muted/20"
+            >
             <div className="flex items-center justify-between">
               <Label htmlFor={field.id} className="text-base font-medium">
                 {field.label}
@@ -1834,8 +1922,9 @@ const SectionEditor: React.FC<SectionEditorProps> = ({
                 />
               </div>
             )}
-          </div>
-        ))}
+            </div>
+          );
+        })}
       </div>
     );
   };
@@ -5055,24 +5144,39 @@ const SectionEditor: React.FC<SectionEditorProps> = ({
 
       case "reviews":
         return (
-          <div className="space-y-4">
+          <div className="space-y-6">
+            <div className="space-y-4 p-4 border rounded-lg bg-background shadow-sm">
+              <div className="flex items-center gap-2 mb-2 border-b pb-2">
+                <Type size={16} className="text-primary" />
+                <Label className="text-base font-semibold">Section Header</Label>
+              </div>
             <div className="space-y-2">
-              <Label>Section Title</Label>
+              <Label className="text-xs text-muted-foreground uppercase tracking-wider">Reviews Title</Label>
               <Input
                 value={formData.title || "Client Love"}
                 onChange={(e) => updateField("title", e.target.value)}
+                className="font-bold"
               />
             </div>
-            <div className="flex items-center justify-between border p-3 rounded-md">
-              <Label htmlFor="autoScroll">Auto-scroll Reviews</Label>
-              <Switch
-                id="autoScroll"
-                checked={formData.autoScroll !== false}
-                onCheckedChange={(checked) =>
-                  updateField("autoScroll", checked)
-                }
+            <div className="space-y-2">
+              <Label className="text-xs text-muted-foreground uppercase tracking-wider">Subtitle / Note</Label>
+              <Textarea
+                value={formData.subheadline || ""}
+                onChange={(e) => updateField("subheadline", e.target.value)}
+                className="resize-none"
+                rows={2}
               />
             </div>
+            </div>
+            
+            <div className="p-4 bg-primary/10 rounded-xl border border-primary/20 text-sm animate-in fade-in flex items-start gap-3">
+              <MessageSquare className="w-5 h-5 text-primary shrink-0 mt-0.5" />
+              <p className="text-primary/90 leading-relaxed">
+                <strong>Site Reviews are collected from visitors.</strong> Visitors can leave reviews directly on your site. Submitted reviews are saved to your database and must be <strong>approved</strong> in your dashboard before they appear publicly.
+              </p>
+            </div>
+
+            <SiteReviewsManager portfolioId={portfolioId} />
           </div>
         );
 
@@ -5088,71 +5192,7 @@ const SectionEditor: React.FC<SectionEditorProps> = ({
               />
             </div>
 
-            {/* 1. CONFIGURATION GRID */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 border rounded-lg bg-muted/20">
-              {/* Variant Selector */}
-              <div className="space-y-2">
-                <Label>Slider Style</Label>
-                <Select
-                  value={formData.variant || "standard"}
-                  onValueChange={(val) => updateField("variant", val)}
-                >
-                  <SelectTrigger className="bg-background">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="standard">Standard Swipe</SelectItem>
-                    <SelectItem value="cinematic">
-                      Cinematic Fade (Ken Burns)
-                    </SelectItem>
-                    <SelectItem value="cards">
-                      Focus Cards (Center Mode)
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {/* Height Selector */}
-              <div className="space-y-2">
-                <Label>Slider Height</Label>
-                <Select
-                  value={formData.height || "large"}
-                  onValueChange={(val) => updateField("height", val)}
-                >
-                  <SelectTrigger className="bg-background">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="medium">Medium (400px)</SelectItem>
-                    <SelectItem value="large">Large (600px)</SelectItem>
-                    <SelectItem value="full">Full Screen</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {/* Autoplay Selector */}
-              <div className="space-y-2">
-                <Label>Autoplay Speed</Label>
-                <Select
-                  value={String(formData.interval || "5")}
-                  onValueChange={(val) =>
-                    updateField("interval", parseInt(val))
-                  }
-                >
-                  <SelectTrigger className="bg-background">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="0">Disabled</SelectItem>
-                    <SelectItem value="3">Fast (3s)</SelectItem>
-                    <SelectItem value="5">Normal (5s)</SelectItem>
-                    <SelectItem value="8">Slow (8s)</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
-            {/* 2. SLIDES MANAGER */}
+            {/* 1. SLIDES MANAGER */}
             <div className="space-y-3 pt-2">
               <div className="flex justify-between items-center">
                 <Label>Slides</Label>
@@ -5245,75 +5285,7 @@ const SectionEditor: React.FC<SectionEditorProps> = ({
               />
             </div>
 
-            {/* 1. CONFIGURATION */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 border rounded-lg bg-muted/20">
-              <div className="space-y-2">
-                <Label>Layout Style</Label>
-                <Select
-                  value={formData.variant || "cinema"}
-                  onValueChange={(val) => updateField("variant", val)}
-                >
-                  <SelectTrigger className="bg-background">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="cinema">
-                      Cinema Spotlight (One at a time)
-                    </SelectItem>
-                    <SelectItem value="carousel">
-                      Netflix Strip (Horizontal Scroll)
-                    </SelectItem>
-                    <SelectItem value="grid">
-                      Video Grid (Thumbnail Wall)
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {/* Height (Cinema Only) */}
-              {formData.variant === "cinema" && (
-                <div className="space-y-2">
-                  <Label>Player Height</Label>
-                  <Select
-                    value={formData.height || "large"}
-                    onValueChange={(val) => updateField("height", val)}
-                  >
-                    <SelectTrigger className="bg-background">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="medium">Medium (400px)</SelectItem>
-                      <SelectItem value="large">Large (600px)</SelectItem>
-                      <SelectItem value="full">Full Screen</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              )}
-
-              {/* Grid Columns (Grid Only) */}
-              {formData.variant === "grid" && (
-                <div className="space-y-2">
-                  <Label>Grid Columns</Label>
-                  <Select
-                    value={String(formData.gridColumns || "3")}
-                    onValueChange={(val) =>
-                      updateField("gridColumns", parseInt(val))
-                    }
-                  >
-                    <SelectTrigger className="bg-background">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="2">2 Columns</SelectItem>
-                      <SelectItem value="3">3 Columns</SelectItem>
-                      <SelectItem value="4">4 Columns</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              )}
-            </div>
-
-            {/* 2. VIDEO MANAGER */}
+            {/* 1. VIDEO MANAGER */}
             <div className="space-y-3 pt-2">
               <div className="flex justify-between items-center">
                 <Label>Video Clips</Label>
@@ -5454,119 +5426,7 @@ const SectionEditor: React.FC<SectionEditorProps> = ({
               </div>
             </div>
 
-            {/* 2. LAYOUT ARCHITECTURE */}
-            <div className="space-y-4 p-4 border rounded-lg bg-muted/10">
-              <div className="flex items-center gap-2 mb-2 border-b pb-2">
-                <LayoutTemplate size={16} className="text-primary" />
-                <Label className="text-base font-semibold text-primary">
-                  Layout Architecture
-                </Label>
-              </div>
-
-              <div className="space-y-2">
-                <Label>Gallery Style</Label>
-                <Select
-                  value={formData.variant || "masonry"}
-                  onValueChange={(val) => updateField("variant", val)}
-                >
-                  <SelectTrigger className="bg-background h-10">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="masonry">
-                      Masonry (Pinterest Style - Auto Heights)
-                    </SelectItem>
-                    <SelectItem value="carousel">
-                      Film Strip (Horizontal Scroll)
-                    </SelectItem>
-                    <SelectItem value="grid">
-                      Uniform Grid (Instagram Style)
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
-                <p className="text-[10px] text-muted-foreground">
-                  {formData.variant === "masonry" &&
-                    "Best for mixed portrait and landscape images."}
-                  {formData.variant === "carousel" &&
-                    "Best for showing many images in a compact space."}
-                  {formData.variant === "grid" &&
-                    "Best for clean, organized, perfectly aligned thumbnails."}
-                </p>
-              </div>
-
-              {/* Advanced Grid Settings */}
-              {formData.variant === "grid" && (
-                <div className="grid gap-5 pt-3 border-t border-dashed animate-in fade-in slide-in-from-top-2">
-                  <div className="space-y-2">
-                    <Label className="text-xs text-muted-foreground uppercase tracking-wider">
-                      Crop / Aspect Ratio
-                    </Label>
-                    <ToggleGroup
-                      type="single"
-                      value={formData.aspectRatio || "square"}
-                      onValueChange={(val) =>
-                        val && updateField("aspectRatio", val)
-                      }
-                      className="justify-start"
-                    >
-                      <ToggleGroupItem
-                        value="square"
-                        className="border bg-background data-[state=on]:bg-primary data-[state=on]:text-white text-xs h-8 px-3"
-                      >
-                        Square (1:1)
-                      </ToggleGroupItem>
-                      <ToggleGroupItem
-                        value="portrait"
-                        className="border bg-background data-[state=on]:bg-primary data-[state=on]:text-white text-xs h-8 px-3"
-                      >
-                        Portrait (4:5)
-                      </ToggleGroupItem>
-                      <ToggleGroupItem
-                        value="landscape"
-                        className="border bg-background data-[state=on]:bg-primary data-[state=on]:text-white text-xs h-8 px-3"
-                      >
-                        Landscape (16:9)
-                      </ToggleGroupItem>
-                    </ToggleGroup>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label className="text-xs text-muted-foreground uppercase tracking-wider">
-                      Columns (Desktop)
-                    </Label>
-                    <ToggleGroup
-                      type="single"
-                      value={String(formData.gridColumns || "3")}
-                      onValueChange={(val) =>
-                        val && updateField("gridColumns", parseInt(val))
-                      }
-                      className="justify-start"
-                    >
-                      <ToggleGroupItem
-                        value="2"
-                        className="border bg-background data-[state=on]:bg-primary data-[state=on]:text-white text-xs h-8 w-10"
-                      >
-                        2
-                      </ToggleGroupItem>
-                      <ToggleGroupItem
-                        value="3"
-                        className="border bg-background data-[state=on]:bg-primary data-[state=on]:text-white text-xs h-8 w-10"
-                      >
-                        3
-                      </ToggleGroupItem>
-                      <ToggleGroupItem
-                        value="4"
-                        className="border bg-background data-[state=on]:bg-primary data-[state=on]:text-white text-xs h-8 w-10"
-                      >
-                        4
-                      </ToggleGroupItem>
-                    </ToggleGroup>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* 3. MEDIA MANAGER */}
+            {/* 2. MEDIA MANAGER */}
             <div className="space-y-4 p-4 border rounded-lg bg-muted/5">
               <div className="flex justify-between items-center border-b pb-2">
                 <div className="flex items-center gap-2">

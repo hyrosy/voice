@@ -10,6 +10,7 @@ const Hero = lazy(() => import("./Hero"));
 const About = lazy(() => import("./About"));
 const Gallery = lazy(() => import("./Gallery"));
 const Contact = lazy(() => import("./Contact"));
+const Reviews = lazy(() => import("./Reviews"));
 const ImageSlider = lazy(() => import("./ImageSlider"));
 const VideoSlider = lazy(() => import("./VideoSlider"));
 const ServicesShowcase = lazy(() => import("./ServicesShowcase"));
@@ -30,11 +31,6 @@ const Stats = () => (
 );
 const Demos = () => (
   <div className="py-20 text-center">Demos Section (Coming Soon)</div>
-);
-const Reviews = () => (
-  <div className="py-20 text-center bg-muted">
-    Reviews Section (Coming Soon)
-  </div>
 );
 
 export const ModernTheme: PortfolioThemeDefinition = {
@@ -132,6 +128,43 @@ export const ModernTheme: PortfolioThemeDefinition = {
         defaultValue: "grayscale",
       },
     ],
+    Gallery: [
+      {
+        id: "variant",
+        type: "select",
+        label: "Gallery Style",
+        options: [
+          { value: "masonry", label: "Masonry (Pinterest Style)" },
+          { value: "carousel", label: "Film Strip (Horizontal Scroll)" },
+          { value: "grid", label: "Uniform Grid (Instagram Style)" },
+        ],
+        defaultValue: "masonry",
+      },
+      {
+        id: "aspectRatio",
+        type: "select",
+        label: "Crop / Aspect Ratio (Grid Only)",
+        options: [
+          { value: "square", label: "Square (1:1)" },
+          { value: "portrait", label: "Portrait (4:5)" },
+          { value: "landscape", label: "Landscape (16:9)" },
+        ],
+        defaultValue: "square",
+        showIf: (settings: any) => (settings.variant || "masonry") === "grid",
+      },
+      {
+        id: "gridColumns",
+        type: "select",
+        label: "Columns (Desktop Grid)",
+        options: [
+          { value: "2", label: "2 Columns" },
+          { value: "3", label: "3 Columns" },
+          { value: "4", label: "4 Columns" },
+        ],
+        defaultValue: "3",
+        showIf: (settings: any) => (settings.variant || "masonry") === "grid",
+      },
+    ],
     Contact: [
       {
         id: "variant",
@@ -219,6 +252,113 @@ export const ModernTheme: PortfolioThemeDefinition = {
           { value: "minimal", label: "Minimal (Clean / No Box)" },
         ],
         defaultValue: "centered",
+      },
+    ],
+    ImageSlider: [
+      {
+        id: "variant",
+        type: "select",
+        label: "Slider Style",
+        options: [
+          { value: "standard", label: "Standard Swipe" },
+          { value: "cinematic", label: "Cinematic Fade (Ken Burns)" },
+          { value: "cards", label: "Focus Cards (Center Mode)" },
+          { value: "split", label: "Editorial Split Screen" },
+          { value: "carousel", label: "Film Strip (Horizontal Scroll)" },
+        ],
+        defaultValue: "standard",
+      },
+      {
+        id: "height",
+        type: "select",
+        label: "Slider Height",
+        options: [
+          { value: "small", label: "Small (350px)" },
+          { value: "medium", label: "Medium (500px)" },
+          { value: "large", label: "Large (700px)" },
+          { value: "full", label: "Full Screen" },
+        ],
+        defaultValue: "large",
+      },
+      {
+        id: "imageFit",
+        type: "select",
+        label: "Image Fit",
+        options: [
+          { value: "cover", label: "Cover (Fill Area)" },
+          { value: "contain", label: "Contain (Show Whole Image)" },
+        ],
+        defaultValue: "cover",
+      },
+      {
+        id: "interval",
+        type: "slider",
+        label: "Autoplay Speed (Seconds, 0 to disable)",
+        min: 0,
+        max: 10,
+        step: 1,
+        defaultValue: 5,
+      },
+    ],
+    VideoSlider: [
+      {
+        id: "variant",
+        type: "select",
+        label: "Slider Style",
+        options: [
+          { value: "cinema", label: "Cinema Spotlight (One at a time)" },
+          { value: "carousel", label: "Netflix Strip (Horizontal Scroll)" },
+          { value: "grid", label: "Video Grid (Thumbnail Wall)" },
+        ],
+        defaultValue: "cinema",
+      },
+      {
+        id: "height",
+        type: "select",
+        label: "Player Height (Cinema Only)",
+        options: [
+          { value: "small", label: "Small (350px)" },
+          { value: "medium", label: "Medium (500px)" },
+          { value: "large", label: "Large (700px)" },
+          { value: "full", label: "Full Screen" },
+        ],
+        defaultValue: "large",
+        showIf: (settings: any) => (settings.variant || "cinema") === "cinema",
+      },
+      {
+        id: "gridColumns",
+        type: "select",
+        label: "Grid Columns (Desktop)",
+        options: [
+          { value: "2", label: "2 Columns" },
+          { value: "3", label: "3 Columns" },
+          { value: "4", label: "4 Columns" },
+        ],
+        defaultValue: "3",
+        showIf: (settings: any) => (settings.variant || "cinema") === "grid",
+      },
+      {
+        id: "videoFit",
+        type: "select",
+        label: "Video Fit",
+        options: [
+          { value: "cover", label: "Cover (Fill Area)" },
+          { value: "contain", label: "Contain (Show Whole Video)" },
+        ],
+        defaultValue: "cover",
+      },
+    ],
+    Reviews: [
+      {
+        id: "variant",
+        type: "select",
+        label: "Layout Style",
+        options: [
+          { value: "grid", label: "Grid (Standard)" },
+          { value: "carousel", label: "Carousel (Horizontal Scroll)" },
+          { value: "masonry", label: "Masonry (Staggered)" },
+        ],
+        defaultValue: "grid",
       },
     ],
   },
