@@ -406,7 +406,7 @@ const IframePreview = ({
 
 const PortfolioBuilderPage = () => {
   const { actorData } = useOutletContext<ActorDashboardContextType>();
-  const { limits, siteSlots, isLoading: isSubLoading } = useSubscription();
+  const { plan, limits, siteSlots, isLoading: isSubLoading } = useSubscription();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const activePortfolioIdParam = searchParams.get("id");
@@ -472,6 +472,10 @@ const PortfolioBuilderPage = () => {
     null
   );
 
+  // Guide / Welcome Tour State
+  const [showWelcomePrompt, setShowWelcomePrompt] = useState(false);
+  const [tourStep, setTourStep] = useState(0); // 0 = off, 1 = blocks limit, 2 = settings/redeem, 3 = upgrade
+
   // 🚀 NEW: FETCH APPROVED MARKETPLACE THEMES
   const { data: marketplaceThemesData = [], isLoading: isLoadingMarketplace } = useQuery({
     queryKey: ["approvedMarketplaceThemes"],
@@ -497,16 +501,6 @@ const PortfolioBuilderPage = () => {
 
   // 🚀 MERGE THEMES
   const ALL_THEMES = [...VISUAL_THEMES, ...marketplaceThemesData];
-
-  const handleTogglePublish = async (checked: boolean) => {
-    if (!activePortfolioId) return;
-    setIsPublished(checked);
-    const { error } = await supabase
-      .from("portfolios")
-      .update({ is_published: checked, updated_at: new Date().toISOString() })
-      .eq("id", activePortfolioId);
-    if (error) setIsPublished(!checked);
-  };
 
   const { data: actorWalletData, refetch: fetchActorWallet } = useQuery({
     queryKey: ["actorWallet", actorData?.id],
@@ -649,6 +643,42 @@ const PortfolioBuilderPage = () => {
   }, [fetchedPortfolio, isPortfolioLoading, isSubLoading, activePageId, lastLoadedKey, customPagesData, fetchedSiteList, activePortfolioId]);
 
   const isLoading = isPortfolioLoading;
+
+  // 🚀 FETCH ACTIVE SUBSCRIPTION TO CHECK TRIAL EXPIRY
+  const { data: activeSub } = useQuery({
+    queryKey: ["activeSubscription", activePortfolioId],
+    queryFn: async () => {
+      if (!activePortfolioId) return null;
+      const { data } = await supabase
+        .from("subscriptions")
+        .select("*")
+        .eq("portfolio_id", activePortfolioId)
+        .maybeSingle();
+      return data;
+    },
+    enabled: !!activePortfolioId,
+  });
+
+  const hasActiveSub = activeSub && activeSub.status === "active" && new Date(activeSub.current_period_end) > new Date();
+  const isTrialEnded = !hasActiveSub && fetchedPortfolio && new Date().getTime() > new Date(fetchedPortfolio.created_at).getTime() + 14 * 24 * 60 * 60 * 1000;
+
+  const handleTogglePublish = async (checked: boolean) => {
+    if (!activePortfolioId) return;
+    if (checked && isTrialEnded) return alert("Your 14-Day Pro Trial has expired. Please upgrade to publish your site again.");
+    setIsPublished(checked);
+    const { error } = await supabase
+      .from("portfolios")
+      .update({ is_published: checked, updated_at: new Date().toISOString() })
+      .eq("id", activePortfolioId);
+    if (error) setIsPublished(!checked);
+  };
+
+  useEffect(() => {
+    if (isTrialEnded && isPublished) {
+      supabase.from("portfolios").update({ is_published: false }).eq("id", activePortfolioId).then();
+      setIsPublished(false);
+    }
+  }, [isTrialEnded, isPublished, activePortfolioId]);
 
   useEffect(() => {
     if (!hasUnsavedChanges || isLoading || !activePortfolioId) return;
@@ -928,11 +958,17 @@ const PortfolioBuilderPage = () => {
 
       if (error) throw error;
 
+      const isFirstSite = siteList.length === 0;
+
       setIsCreateOpen(false);
       setShowOnboarding(false);
       setNewSiteName("");
       await fetchSiteList();
       navigate(`/dashboard/portfolio?id=${data.id}`);
+
+      if (isFirstSite && walletBalance === 0) {
+        setShowWelcomePrompt(true);
+      }
     } catch (error: any) {
       alert("Failed to create site: " + error.message);
     } finally {
@@ -1049,7 +1085,7 @@ const PortfolioBuilderPage = () => {
   }
 
   return (
-    <div className="p-4 md:p-8 space-y-6 w-full max-w-8xl mx-auto h-[calc(100vh-4rem)] flex flex-col">
+    <div className="p-4 md:p-8 space-y-6 w-full max-w-8xl mx-auto h-[calc(100dvh-4rem)] flex flex-col">
       {/* Header / Toolbar */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 shrink-0 bg-card p-3 md:px-5 rounded-2xl border border-border shadow-sm mb-2">
         <div className="flex items-end gap-4">
@@ -1177,21 +1213,47 @@ const PortfolioBuilderPage = () => {
           <Button
             variant="outline"
             size="sm"
-            onClick={() => setIsSettingsOpen(true)}
-            className="gap-2"
+            onClick={() => {
+              setIsSettingsOpen(true);
+              if (tourStep === 2) setTourStep(3);
+            }}
+            className={cn("gap-2 transition-all", tourStep === 2 && "relative z-[9999] ring-4 ring-primary shadow-2xl animate-pulse bg-background")}
           >
             <Settings className="w-4 h-4" />{" "}
             <span className="hidden sm:inline">Site Settings</span>
           </Button>
 
-          <div className="flex items-center gap-2 px-3 py-2 bg-muted/50 rounded-lg border">
-            <span className="text-xs font-medium uppercase text-muted-foreground">
+          <div className="flex items-center gap-2 px-3 py-1.5 bg-muted/50 rounded-lg border">
+            <span className="text-xs font-medium uppercase text-muted-foreground hidden lg:inline-block">
+              Plan
+            </span>
+            <Badge variant="secondary" className="uppercase text-[10px]">
+              {plan === "starter" ? "Starter" : plan === "ecommerce" ? "eCommerce" : plan === "pro" ? "Pro" : plan || "Starter"}
+            </Badge>
+            {plan !== "pro" && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-6 px-2 text-xs text-primary hover:text-primary hover:bg-primary/10"
+                onClick={() => navigate(`/dashboard/settings?upgrade=true&portfolioId=${activePortfolioId}`)}
+              >
+                <Zap className="w-3 h-3 mr-1" /> <span className="hidden sm:inline-block">Upgrade</span>
+              </Button>
+            )}
+          </div>
+
+          <div className="flex items-center gap-2 px-3 py-1.5 bg-muted/50 rounded-lg border">
+            <span className="text-xs font-medium uppercase text-muted-foreground hidden sm:inline-block">
               Published
             </span>
             <Switch
               checked={isPublished}
               onCheckedChange={handleTogglePublish}
+              disabled={isTrialEnded}
             />
+            {isTrialEnded && (
+              <span className="text-[10px] text-red-500 font-bold ml-1">Trial Expired</span>
+            )}
           </div>
 
           <div className="flex items-center gap-2 ml-auto sm:ml-0">
@@ -1300,7 +1362,7 @@ const PortfolioBuilderPage = () => {
                 </div>
               ) : (
                   <div className="flex-grow overflow-y-auto min-h-[400px] lg:min-h-0 custom-scrollbar animate-in slide-in-from-left-4 duration-200 p-4 pt-2">
-                    <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-center bg-card/95 sticky top-0 z-20 rounded-3xl border border-border/50 p-4 shadow-sm">
+                    <div className={cn("mb-4 flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-center bg-card/95 sticky top-0 z-20 rounded-3xl border border-border/50 p-4 shadow-sm transition-all", tourStep === 1 && "relative z-[9999] ring-4 ring-primary shadow-2xl bg-card")}>
                       <div className="space-y-2">
                         <div className="flex flex-wrap items-center gap-2 text-sm font-semibold text-foreground">
                           <span>Page sections</span>
@@ -1952,7 +2014,7 @@ const PortfolioBuilderPage = () => {
             {/* PREVIEW TAB (MOBILE DEVICES ONLY) */}
             <TabsContent
               value="preview"
-              className="lg:hidden flex-grow flex flex-col mt-0 h-[70vh] data-[state=inactive]:hidden"
+              className="lg:hidden flex-grow flex flex-col mt-0 h-full min-h-0 data-[state=inactive]:hidden"
             >
               <IframePreview
                 sections={sections}
@@ -2458,6 +2520,92 @@ const PortfolioBuilderPage = () => {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* --- WELCOME PROMPT MODAL --- */}
+      <Dialog open={showWelcomePrompt} onOpenChange={setShowWelcomePrompt}>
+        <DialogContent className="sm:max-w-[450px]">
+          <DialogHeader>
+            <DialogTitle className="text-2xl font-black text-primary flex items-center gap-2">
+              <Sparkles className="w-6 h-6" /> Congratulations!
+            </DialogTitle>
+            <DialogDescription className="text-base text-foreground mt-2">
+              You've just launched your first website.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-2 text-muted-foreground">
+            <p className="mb-2">
+                Your new website is currently on a <strong>14-Day Pro Plan Trial</strong>! To help you keep your premium features once the trial ends, we've set aside some <strong>Welcome Coins</strong> for you.
+            </p>
+            <p>
+                Would you like a quick interactive guide to learn about your site, claim your free coins, and see how to upgrade?
+            </p>
+          </div>
+          <DialogFooter className="gap-2 sm:gap-0 mt-4">
+            <Button variant="ghost" onClick={() => setShowWelcomePrompt(false)}>Skip for now</Button>
+            <Button onClick={() => { setShowWelcomePrompt(false); setTourStep(1); }}>
+              Start Quick Tour
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* --- GUIDED TOUR OVERLAY --- */}
+      {tourStep > 0 && (
+        <div className="fixed inset-0 z-[9998] bg-slate-950/80 backdrop-blur-sm pointer-events-auto transition-all animate-in fade-in flex items-center justify-center">
+          {tourStep === 1 && (
+            <div className="bg-card border-2 border-primary rounded-2xl p-6 max-w-sm shadow-2xl z-[9999] animate-in zoom-in-95">
+              <div className="flex items-center gap-2 mb-3 text-primary">
+                <Layers className="w-6 h-6" />
+                <h3 className="text-xl font-bold">Pro Trial Activated</h3>
+              </div>
+              <p className="text-sm text-muted-foreground mb-6">
+                Your site is currently on a <strong>14-Day Pro Trial</strong>, giving you access to premium blocks, custom domains, and more. After your trial ends, you can use your Welcome Coins to upgrade!
+              </p>
+              <div className="flex justify-between items-center">
+                <span className="text-xs text-muted-foreground font-bold">Step 1 of 3</span>
+                <div className="flex gap-2">
+                  <Button variant="ghost" size="sm" onClick={() => setTourStep(0)}>Skip Tour</Button>
+                  <Button size="sm" onClick={() => setTourStep(2)}>Next</Button>
+                </div>
+              </div>
+            </div>
+          )}
+          {tourStep === 2 && (
+            <div className="bg-card border-2 border-primary rounded-2xl p-6 max-w-sm shadow-2xl z-[9999] animate-in slide-in-from-right-8">
+              <div className="flex items-center gap-2 mb-3 text-amber-500">
+                <Coins className="w-6 h-6" />
+                <h3 className="text-xl font-bold">Claim Free Coins</h3>
+              </div>
+              <p className="text-sm text-muted-foreground mb-6">
+                Let's get you some free coins! Click the glowing <strong>Site Settings</strong> button at the top to proceed to the next step.
+              </p>
+              <div className="flex justify-between items-center">
+                <span className="text-xs text-muted-foreground font-bold">Step 2 of 3</span>
+                <div className="flex gap-2">
+                  <Button variant="ghost" size="sm" onClick={() => setTourStep(0)}>End Tour</Button>
+                </div>
+              </div>
+            </div>
+          )}
+          {tourStep === 3 && (
+            <div className="bg-card border-2 border-primary rounded-2xl p-6 max-w-sm shadow-2xl z-[100000] animate-in slide-in-from-bottom-8 mt-48">
+              <div className="flex items-center gap-2 mb-3 text-primary">
+                <Zap className="w-6 h-6" />
+                <h3 className="text-xl font-bold">Redeem & Upgrade</h3>
+              </div>
+              <p className="text-sm text-muted-foreground mb-6">
+                Awesome! You can now navigate to your billing or account settings to redeem your special welcome code. Use these coins to upgrade and keep your Pro features active!
+              </p>
+              <div className="flex justify-between items-center">
+                <span className="text-xs text-muted-foreground font-bold">Step 3 of 3</span>
+                <div className="flex gap-2">
+                  <Button size="sm" onClick={() => setTourStep(0)}>Finish Tour</Button>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 };

@@ -33,6 +33,7 @@ import {
   Trash2,
   Box,
   X,
+  Clock,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -212,6 +213,7 @@ const SettingsPage = () => {
   const [processingPlan, setProcessingPlan] = useState<string | null>(null);
   const [isRedirecting, setIsRedirecting] = useState(false);
 
+  const [hasShownExpiredPrompt, setHasShownExpiredPrompt] = useState(false);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [confirmDialog, setConfirmDialog] = useState<{
     isOpen: boolean;
@@ -280,6 +282,35 @@ const SettingsPage = () => {
       setSubscriptions(subMap);
     }
 
+    // 🚀 NEW: Auto-unpublish expired trials AND expired plans
+    if (sites && subs) {
+      let needsRefetch = false;
+      let promptSiteId = null;
+
+      const updatedSites = sites.map((site) => {
+        const sub = subs.find((s: any) => s.portfolio_id === site.id);
+        const isPro = sub && sub.status === "active" && new Date(sub.current_period_end) > new Date();
+        const isTrialEnded = !isPro && new Date().getTime() > new Date(site.created_at).getTime() + 14 * 24 * 60 * 60 * 1000;
+        
+        if (isTrialEnded) {
+          if (!promptSiteId) promptSiteId = site.id;
+          if (site.is_published) {
+            supabase.from("portfolios").update({ is_published: false }).eq("id", site.id).then();
+            needsRefetch = true;
+            return { ...site, is_published: false };
+          }
+        }
+        return site;
+      });
+      if (needsRefetch) setPortfolios(updatedSites);
+
+      if (promptSiteId && !hasShownExpiredPrompt) {
+        setSelectedPortfolioId(promptSiteId);
+        setIsUpgradeOpen(true);
+        setHasShownExpiredPrompt(true);
+      }
+    }
+
     const { data: txs } = await supabase
       .from("wallet_transactions")
       .select("*")
@@ -313,6 +344,21 @@ const SettingsPage = () => {
   useEffect(() => {
     fetchData();
   }, [actorData.id]);
+
+  useEffect(() => {
+    if (searchParams.get("upgrade") === "true") {
+      const pid = searchParams.get("portfolioId");
+      if (pid) {
+        setSelectedPortfolioId(pid);
+      }
+      setIsUpgradeOpen(true);
+      
+      const newSearchParams = new URLSearchParams(searchParams);
+      newSearchParams.delete("upgrade");
+      newSearchParams.delete("portfolioId");
+      setSearchParams(newSearchParams, { replace: true });
+    }
+  }, [searchParams, setSearchParams]);
 
   const calculateProration = (targetPlanId: string) => {
     if (!selectedPortfolioId || !subscriptions[selectedPortfolioId])
@@ -760,6 +806,14 @@ const SettingsPage = () => {
     setIsDeleteOpen(true);
   };
 
+  const isSelectedExpired = selectedPortfolioId ? (() => {
+    const site = portfolios.find((p) => p.id === selectedPortfolioId);
+    if (!site) return false;
+    const sub = subscriptions[site.id];
+    const isPro = sub && sub.status === "active" && new Date(sub.current_period_end) > new Date();
+    return !isPro && new Date().getTime() > new Date(site.created_at).getTime() + 14 * 24 * 60 * 60 * 1000;
+  })() : false;
+
   if (loading)
     return (
       <div className="flex h-96 items-center justify-center">
@@ -926,6 +980,8 @@ const SettingsPage = () => {
                 const isDowngradingSoon =
                   sub?.cancel_at_period_end === true &&
                   sub?.metadata?.next_plan_id;
+                
+                const isTrialEnded = !isPro && new Date().getTime() > new Date(site.created_at).getTime() + 14 * 24 * 60 * 60 * 1000;
 
                 let badgeColor = "bg-primary";
                 if (sub?.plan_id === "starter") badgeColor = "bg-blue-500";
@@ -968,6 +1024,13 @@ const SettingsPage = () => {
                                 </Badge>
                               )}
                             </div>
+                          ) : isTrialEnded ? (
+                            <Badge
+                              variant="outline"
+                              className="border-red-500 text-red-600 bg-red-50 rounded-md h-5 text-[10px] uppercase tracking-wide"
+                            >
+                              Expired
+                            </Badge>
                           ) : (
                             <Badge
                               variant="outline"
@@ -1011,9 +1074,17 @@ const SettingsPage = () => {
                             {sub.payment_method}
                           </span>
                         </div>
+                      ) : isTrialEnded ? (
+                        <div className="text-xs text-red-800 bg-red-50 p-3 rounded-lg border border-red-100 flex flex-col gap-1">
+                          <div className="flex items-center gap-2">
+                            <AlertTriangle size={14} className="shrink-0" />
+                            <span className="font-semibold">{sub ? "Plan Expired" : "Trial Expired"}</span>
+                          </div>
+                          <p className="opacity-80">Please select a plan to publish this site again.</p>
+                        </div>
                       ) : (
                         <div className="text-xs text-amber-800 bg-amber-50 p-3 rounded-lg border border-amber-100 flex items-center gap-2">
-                          <AlertTriangle size={14} className="shrink-0" />
+                          <Clock size={14} className="shrink-0" />
                           <span className="font-semibold">Trial Active</span>
                         </div>
                       )}
@@ -1048,7 +1119,7 @@ const SettingsPage = () => {
                             setIsUpgradeOpen(true);
                           }}
                         >
-                          {isPro ? "Manage Plan" : "Upgrade"}
+                          {isPro ? "Manage Plan" : isTrialEnded ? "Select Plan to Continue" : "Upgrade"}
                         </Button>
                       )}
                       <Button
@@ -1266,10 +1337,10 @@ const SettingsPage = () => {
           <div className="p-4 border-b shrink-0 flex items-center justify-between">
             <div>
               <DialogTitle className="text-xl font-bold">
-                Manage Plan
+                {isSelectedExpired ? "Select a Plan to Continue" : "Manage Plan"}
               </DialogTitle>
               <DialogDescription className="text-xs">
-                Upgrade your website.
+                {isSelectedExpired ? "Your plan or trial has expired. Select a plan to keep your site active." : "Upgrade your website."}
               </DialogDescription>
             </div>
             <Button
