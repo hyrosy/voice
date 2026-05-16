@@ -33,6 +33,7 @@ import {
   Trash2,
   Box,
   X,
+  Clock,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -169,6 +170,17 @@ const PLANS = [
   },
 ];
 
+const EXTENDED_TEMPLATES = [
+  {
+    id: "blank",
+    name: "Blank Canvas",
+    description: "Start from scratch and build your own custom layout.",
+    sections: [],
+  },
+  ...PORTFOLIO_TEMPLATES,
+];
+
+
 const SettingsPage = () => {
   const { actorData } = useOutletContext<ActorDashboardContextType>();
   const walletBalance = actorData.wallet_balance || 0;
@@ -205,13 +217,14 @@ const SettingsPage = () => {
 
   const [billingDuration, setBillingDuration] = useState<PlanDuration>(1);
   const [selectedTemplate, setSelectedTemplate] = useState<string>(
-    PORTFOLIO_TEMPLATES[0].id
+    EXTENDED_TEMPLATES[0].id
   );
   const [newSiteName, setNewSiteName] = useState("");
   const [isCreating, setIsCreating] = useState(false);
   const [processingPlan, setProcessingPlan] = useState<string | null>(null);
   const [isRedirecting, setIsRedirecting] = useState(false);
 
+  const [hasShownExpiredPrompt, setHasShownExpiredPrompt] = useState(false);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [confirmDialog, setConfirmDialog] = useState<{
     isOpen: boolean;
@@ -280,6 +293,35 @@ const SettingsPage = () => {
       setSubscriptions(subMap);
     }
 
+    // 🚀 NEW: Auto-unpublish expired trials AND expired plans
+    if (sites && subs) {
+      let needsRefetch = false;
+      let promptSiteId = null;
+
+      const updatedSites = sites.map((site) => {
+        const sub = subs.find((s: any) => s.portfolio_id === site.id);
+        const isPro = sub && sub.status === "active" && new Date(sub.current_period_end) > new Date();
+        const isTrialEnded = !isPro && new Date().getTime() > new Date(site.created_at).getTime() + 14 * 24 * 60 * 60 * 1000;
+        
+        if (isTrialEnded) {
+          if (!promptSiteId) promptSiteId = site.id;
+          if (site.is_published) {
+            supabase.from("portfolios").update({ is_published: false }).eq("id", site.id).then();
+            needsRefetch = true;
+            return { ...site, is_published: false };
+          }
+        }
+        return site;
+      });
+      if (needsRefetch) setPortfolios(updatedSites);
+
+      if (promptSiteId && !hasShownExpiredPrompt) {
+        setSelectedPortfolioId(promptSiteId);
+        setIsUpgradeOpen(true);
+        setHasShownExpiredPrompt(true);
+      }
+    }
+
     const { data: txs } = await supabase
       .from("wallet_transactions")
       .select("*")
@@ -313,6 +355,21 @@ const SettingsPage = () => {
   useEffect(() => {
     fetchData();
   }, [actorData.id]);
+
+  useEffect(() => {
+    if (searchParams.get("upgrade") === "true") {
+      const pid = searchParams.get("portfolioId");
+      if (pid) {
+        setSelectedPortfolioId(pid);
+      }
+      setIsUpgradeOpen(true);
+      
+      const newSearchParams = new URLSearchParams(searchParams);
+      newSearchParams.delete("upgrade");
+      newSearchParams.delete("portfolioId");
+      setSearchParams(newSearchParams, { replace: true });
+    }
+  }, [searchParams, setSearchParams]);
 
   const calculateProration = (targetPlanId: string) => {
     if (!selectedPortfolioId || !subscriptions[selectedPortfolioId])
@@ -613,8 +670,8 @@ const SettingsPage = () => {
 
     setIsCreating(true);
     const template =
-      PORTFOLIO_TEMPLATES.find((t) => t.id === selectedTemplate) ||
-      PORTFOLIO_TEMPLATES[0];
+      EXTENDED_TEMPLATES.find((t) => t.id === selectedTemplate) ||
+      EXTENDED_TEMPLATES[0];
     const baseSlug = newSiteName.toLowerCase().replace(/[^a-z0-9]/g, "-");
     const uniqueSlug = `${baseSlug}-${Date.now().toString().slice(-4)}`;
 
@@ -681,23 +738,6 @@ const SettingsPage = () => {
     setIsDeleting(false);
   };
 
-  const handleUpdateProfile = async () => {
-    if (!actorData?.id) return;
-    setIsSaving(true);
-    const { error } = await supabase
-      .from("actors")
-      .update({ ActorName: profile.ActorName, bio: profile.bio })
-      .eq("id", actorData.id);
-    if (error)
-      notify("error", "Update Failed", "Could not save profile changes.");
-    else
-      notify(
-        "success",
-        "Profile Updated",
-        "Your changes have been saved successfully."
-      );
-    setIsSaving(false);
-  };
 
   const handleDirectStripe = async (plan: (typeof PLANS)[0]) => {
     if (!actorData?.id || !selectedPortfolioId) return;
@@ -760,6 +800,14 @@ const SettingsPage = () => {
     setIsDeleteOpen(true);
   };
 
+  const isSelectedExpired = selectedPortfolioId ? (() => {
+    const site = portfolios.find((p) => p.id === selectedPortfolioId);
+    if (!site) return false;
+    const sub = subscriptions[site.id];
+    const isPro = sub && sub.status === "active" && new Date(sub.current_period_end) > new Date();
+    return !isPro && new Date().getTime() > new Date(site.created_at).getTime() + 14 * 24 * 60 * 60 * 1000;
+  })() : false;
+
   if (loading)
     return (
       <div className="flex h-96 items-center justify-center">
@@ -797,19 +845,19 @@ const SettingsPage = () => {
 
         {/* --- STATS WIDGETS --- */}
         <div className="grid grid-cols-2 md:flex md:flex-wrap items-stretch gap-3">
-          <div className="col-span-1 md:w-auto flex flex-col justify-between bg-card p-3 md:p-2 md:pl-4 rounded-xl border shadow-sm min-h-[80px] md:min-h-[60px] md:flex-row md:items-center md:gap-3">
+          <div className="col-span-1 md:w-auto flex flex-col justify-between bg-card p-4 md:p-3 md:px-5 rounded-2xl border shadow-sm min-h-[80px] md:min-h-[60px] md:flex-row md:items-center md:gap-4">
             <div className="flex flex-col items-start">
               <span className="text-[10px] text-muted-foreground uppercase font-bold tracking-widest leading-none mb-1.5">
                 Slots
               </span>
-              <span className="text-xl md:text-lg font-black leading-none">
+              <span className="text-2xl md:text-xl font-black leading-none">
                 {isSubLoading ? "..." : `${siteSlots.used}/${siteSlots.total}`}
               </span>
             </div>
             <Button
               size="sm"
               variant="ghost"
-              className="mt-2 md:mt-0 h-8 md:h-9 w-full md:w-auto px-0 md:px-3 border-t md:border-t-0 md:border-l border-dashed hover:bg-primary/5 hover:text-primary justify-center md:justify-start text-xs md:text-sm text-muted-foreground"
+              className="mt-2 md:mt-0 h-8 md:h-10 w-full md:w-auto px-0 md:px-4 border-t md:border-t-0 md:border-l border-dashed hover:bg-primary/10 hover:text-primary justify-center md:justify-start text-xs md:text-sm text-muted-foreground rounded-xl transition-all"
               onClick={handleBuySlot}
             >
               <Plus size={14} className="mr-1 md:mr-0" />{" "}
@@ -817,19 +865,19 @@ const SettingsPage = () => {
             </Button>
           </div>
 
-          <div className="col-span-1 md:w-auto flex flex-col justify-between bg-gradient-to-br from-amber-50 to-orange-50/50 p-3 md:p-2 md:pl-4 rounded-xl border border-amber-200/50 shadow-sm min-h-[80px] md:min-h-[60px] md:flex-row md:items-center md:gap-3">
+          <div className="col-span-1 md:w-auto flex flex-col justify-between bg-gradient-to-br from-amber-50 to-orange-50/50 dark:from-amber-950/20 dark:to-orange-950/10 p-4 md:p-3 md:px-5 rounded-2xl border border-amber-200/50 dark:border-amber-900/50 shadow-sm min-h-[80px] md:min-h-[60px] md:flex-row md:items-center md:gap-4">
             <div className="flex flex-col items-start">
               <span className="text-[10px] text-amber-600/80 uppercase font-bold tracking-widest leading-none mb-1.5">
                 Balance
               </span>
-              <span className="text-xl md:text-xl font-black text-amber-600 leading-none break-all">
+              <span className="text-2xl md:text-2xl font-black text-amber-600 leading-none break-all">
                 {walletBalance.toLocaleString()}
               </span>
             </div>
             <Button
               size="sm"
               onClick={() => setIsTopUpOpen(true)}
-              className="mt-2 md:mt-0 h-8 md:h-10 w-full md:w-auto text-xs md:text-sm rounded-lg bg-amber-500 hover:bg-amber-600 text-white shadow-sm font-bold active:scale-95 transition-transform"
+              className="mt-2 md:mt-0 h-8 md:h-10 w-full md:w-auto text-xs md:text-sm rounded-xl bg-amber-500 hover:bg-amber-600 text-white shadow-sm font-bold active:scale-95 transition-transform"
             >
               <Plus size={14} className="mr-1" /> Top Up
             </Button>
@@ -843,25 +891,19 @@ const SettingsPage = () => {
         className="w-full"
       >
         {/* --- STICKY SUB NAVIGATION --- */}
-        <div className="sticky top-14 z-40 bg-zinc-50/90 dark:bg-zinc-950/90 backdrop-blur-md border-b border-border/40 px-4 md:px-8 py-2 mb-6">
-          <TabsList className="w-full flex h-auto p-1 bg-muted/50 rounded-xl overflow-x-auto no-scrollbar justify-start sm:justify-between gap-1">
+        <div className="sticky top-[60px] md:top-14 z-40 bg-background/80 backdrop-blur-xl border-b border-border/40 px-4 md:px-8 py-3 mb-6 transition-all">
+          <TabsList className="w-full flex md:grid md:grid-cols-2 h-12 p-1.5 bg-muted/40 rounded-2xl overflow-x-auto no-scrollbar justify-start gap-2">
             <TabsTrigger
               value="websites"
-              className="flex-1 py-2 rounded-lg text-xs md:text-sm font-medium data-[state=active]:bg-background data-[state=active]:shadow-sm transition-all whitespace-nowrap min-w-[100px]"
+              className="flex-1 h-full rounded-xl text-xs md:text-sm font-semibold data-[state=active]:bg-background data-[state=active]:text-primary data-[state=active]:border-border/50 border border-transparent data-[state=active]:shadow-sm transition-all whitespace-nowrap min-w-[120px]"
             >
               <Globe size={16} className="mr-2 hidden sm:block" /> Sites
             </TabsTrigger>
             <TabsTrigger
               value="billing"
-              className="flex-1 py-2 rounded-lg text-xs md:text-sm font-medium data-[state=active]:bg-background data-[state=active]:shadow-sm transition-all whitespace-nowrap min-w-[100px]"
+              className="flex-1 h-full rounded-xl text-xs md:text-sm font-semibold data-[state=active]:bg-background data-[state=active]:text-primary data-[state=active]:border-border/50 border border-transparent data-[state=active]:shadow-sm transition-all whitespace-nowrap min-w-[120px]"
             >
               <Coins size={16} className="mr-2 hidden sm:block" /> Billing
-            </TabsTrigger>
-            <TabsTrigger
-              value="account"
-              className="flex-1 py-2 rounded-lg text-xs md:text-sm font-medium data-[state=active]:bg-background data-[state=active]:shadow-sm transition-all whitespace-nowrap min-w-[100px]"
-            >
-              <User size={16} className="mr-2 hidden sm:block" /> Profile
             </TabsTrigger>
           </TabsList>
         </div>
@@ -877,9 +919,9 @@ const SettingsPage = () => {
                 role="button"
                 tabIndex={0}
                 className={cn(
-                  "relative flex flex-col items-center justify-center gap-4 min-h-[220px] md:min-h-[280px] rounded-2xl border-2 border-dashed p-6 transition-all duration-200 outline-none active:scale-[0.98] md:hover:scale-[1.01]",
+                  "relative flex flex-col items-center justify-center gap-4 min-h-[220px] md:min-h-[280px] rounded-3xl border-2 border-dashed p-6 transition-all duration-200 outline-none active:scale-[0.98] md:hover:scale-[1.02]",
                   siteSlots.remaining > 0
-                    ? "border-muted-foreground/20 bg-card hover:border-primary/50 hover:bg-primary/5 cursor-pointer"
+                    ? "border-muted-foreground/30 bg-muted/10 hover:border-primary/50 hover:bg-primary/5 cursor-pointer"
                     : "border-muted/50 opacity-75 bg-muted/20"
                 )}
                 onClick={() => {
@@ -889,9 +931,9 @@ const SettingsPage = () => {
               >
                 <div
                   className={cn(
-                    "w-14 h-14 md:w-16 md:h-16 rounded-full flex items-center justify-center shadow-sm transition-all",
+                    "w-16 h-16 md:w-20 md:h-20 rounded-full flex items-center justify-center shadow-sm transition-all",
                     siteSlots.remaining > 0
-                      ? "bg-muted text-muted-foreground group-hover:text-primary"
+                      ? "bg-background text-muted-foreground group-hover:text-primary group-hover:bg-primary/10 border"
                       : "bg-muted text-muted-foreground"
                   )}
                 >
@@ -902,7 +944,7 @@ const SettingsPage = () => {
                   )}
                 </div>
                 <div className="text-center z-10">
-                  <span className="block font-bold text-lg text-foreground mb-1">
+                  <span className="block font-bold text-xl text-foreground mb-1">
                     {siteSlots.remaining > 0 ? "New Website" : "No Slots"}
                   </span>
                   <span className="text-xs md:text-sm text-muted-foreground block">
@@ -926,6 +968,10 @@ const SettingsPage = () => {
                 const isDowngradingSoon =
                   sub?.cancel_at_period_end === true &&
                   sub?.metadata?.next_plan_id;
+                
+                const isTrialEnded = !isPro && new Date().getTime() > new Date(site.created_at).getTime() + 14 * 24 * 60 * 60 * 1000;
+                const trialDaysLeft = !isPro && !isTrialEnded ? Math.max(0, Math.ceil((new Date(site.created_at).getTime() + 14 * 24 * 60 * 60 * 1000 - new Date().getTime()) / (1000 * 60 * 60 * 24))) : 0;
+                const subDaysLeft = isPro && sub ? Math.max(0, Math.ceil((new Date(sub.current_period_end).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))) : 0;
 
                 let badgeColor = "bg-primary";
                 if (sub?.plan_id === "starter") badgeColor = "bg-blue-500";
@@ -935,7 +981,7 @@ const SettingsPage = () => {
                 return (
                   <Card
                     key={site.id}
-                    className="group flex flex-col overflow-hidden rounded-2xl border-border/60 shadow-sm hover:shadow-md transition-all active:scale-[0.99] md:hover:scale-[1.01]"
+                    className="group flex flex-col overflow-hidden rounded-3xl border-border/60 shadow-sm hover:shadow-md hover:border-primary/30 bg-card/50 transition-all active:scale-[0.99] md:hover:scale-[1.02]"
                   >
                     <CardHeader className="pb-3 p-5">
                       <div className="flex justify-between items-start mb-2">
@@ -944,7 +990,7 @@ const SettingsPage = () => {
                             variant={
                               site.is_published ? "default" : "secondary"
                             }
-                            className="rounded-md px-2 h-5 text-[10px] uppercase tracking-wide"
+                            className="rounded-full px-2.5 h-5 text-[9px] font-bold uppercase tracking-wider"
                           >
                             {site.is_published ? "Live" : "Draft"}
                           </Badge>
@@ -952,28 +998,35 @@ const SettingsPage = () => {
                             <div className="flex gap-1">
                               <Badge
                                 className={cn(
-                                  "border-0 text-white rounded-md h-5 text-[10px] uppercase tracking-wide",
+                                  "border-0 text-white rounded-full px-2.5 h-5 text-[9px] font-bold uppercase tracking-wider shadow-sm",
                                   badgeColor
                                 )}
                               >
-                                {currentPlanObj.name}
+                                {currentPlanObj.name} ({subDaysLeft}d left)
                               </Badge>
                               {/* 🚀 DOWNGRADING SOON BADGE ADDED HERE */}
                               {isDowngradingSoon && (
                                 <Badge
                                   variant="outline"
-                                  className="rounded-md h-5 text-[10px] uppercase tracking-wide text-amber-600 bg-amber-50 border-amber-500"
+                                  className="rounded-full px-2.5 h-5 text-[9px] font-bold uppercase tracking-wider text-amber-600 bg-amber-50 border-amber-500"
                                 >
                                   Downgrading Soon
                                 </Badge>
                               )}
                             </div>
+                          ) : isTrialEnded ? (
+                            <Badge
+                              variant="outline"
+                              className="border-red-500 text-red-600 bg-red-50 rounded-full px-2.5 h-5 text-[9px] font-bold uppercase tracking-wider"
+                            >
+                              Expired
+                            </Badge>
                           ) : (
                             <Badge
                               variant="outline"
-                              className="border-amber-500 text-amber-600 bg-amber-50 rounded-md h-5 text-[10px] uppercase tracking-wide"
+                              className="border-amber-500 text-amber-600 bg-amber-50 rounded-full px-2.5 h-5 text-[9px] font-bold uppercase tracking-wider"
                             >
-                              Trial
+                            Trial ({trialDaysLeft}d)
                             </Badge>
                           )}
                         </div>
@@ -999,22 +1052,27 @@ const SettingsPage = () => {
                       {isPro ? (
                         <div className="text-[11px] font-medium text-foreground/70 bg-muted/50 p-3 rounded-lg flex justify-between items-center border border-border/50">
                           <span>
-                            Renews{" "}
-                            {new Date(
-                              sub.current_period_end
-                            ).toLocaleDateString(undefined, {
-                              month: "short",
-                              day: "numeric",
-                            })}
+                            Renews {new Date(sub.current_period_end).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })} ({subDaysLeft}d left)
                           </span>
                           <span className="uppercase text-[9px] bg-background px-1.5 py-0.5 rounded border">
                             {sub.payment_method}
                           </span>
                         </div>
+                      ) : isTrialEnded ? (
+                        <div className="text-xs text-red-800 bg-red-50 p-3 rounded-xl border border-red-100 flex flex-col gap-1">
+                          <div className="flex items-center gap-2">
+                            <AlertTriangle size={14} className="shrink-0" />
+                            <span className="font-semibold">{sub ? "Plan Expired" : "Trial Expired"}</span>
+                          </div>
+                          <p className="opacity-80">Please select a plan to publish this site again.</p>
+                        </div>
                       ) : (
-                        <div className="text-xs text-amber-800 bg-amber-50 p-3 rounded-lg border border-amber-100 flex items-center gap-2">
-                          <AlertTriangle size={14} className="shrink-0" />
-                          <span className="font-semibold">Trial Active</span>
+                        <div className="text-xs text-amber-800 bg-amber-50 p-3 rounded-xl border border-amber-100 flex items-start gap-2">
+                          <Clock size={14} className="shrink-0 mt-0.5" />
+                          <div className="flex flex-col">
+                            <span className="font-semibold">Trial Active ({trialDaysLeft} days left)</span>
+                            <span className="text-[10px] opacity-80">Ends {new Date(new Date(site.created_at).getTime() + 14 * 24 * 60 * 60 * 1000).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })}</span>
+                          </div>
                         </div>
                       )}
                     </CardContent>
@@ -1024,7 +1082,7 @@ const SettingsPage = () => {
                         <Button
                           variant="secondary"
                           size="sm"
-                          className="w-full font-semibold h-9"
+                          className="w-full font-bold h-10 rounded-xl shadow-sm"
                           onClick={handleManageStripeSub}
                           disabled={isRedirecting}
                         >
@@ -1038,7 +1096,7 @@ const SettingsPage = () => {
                         <Button
                           size="sm"
                           className={cn(
-                            "w-full font-bold h-9 shadow-sm",
+                            "w-full font-bold h-10 rounded-xl shadow-sm transition-all",
                             isPro
                               ? "bg-amber-500 hover:bg-amber-600 text-white"
                               : "bg-primary text-primary-foreground"
@@ -1048,13 +1106,13 @@ const SettingsPage = () => {
                             setIsUpgradeOpen(true);
                           }}
                         >
-                          {isPro ? "Manage Plan" : "Upgrade"}
+                          {isPro ? "Manage Plan" : isTrialEnded ? "Select Plan to Continue" : "Upgrade"}
                         </Button>
                       )}
                       <Button
                         size="icon"
                         variant="outline"
-                        className="h-9 w-9 border-muted-foreground/20"
+                        className="h-10 w-10 rounded-xl border-muted-foreground/20 hover:bg-primary/5 hover:text-primary transition-colors"
                         asChild
                       >
                         <a href={`/dashboard/portfolio?id=${site.id}`}>
@@ -1064,7 +1122,7 @@ const SettingsPage = () => {
                       <Button
                         size="icon"
                         variant="ghost"
-                        className="h-9 w-9 text-red-400 hover:bg-red-50"
+                        className="h-10 w-10 rounded-xl text-red-400 hover:text-red-500 hover:bg-red-50 transition-colors"
                         onClick={() => openDeleteDialog(site.id)}
                       >
                         <Trash2 size={16} />
@@ -1081,7 +1139,7 @@ const SettingsPage = () => {
             value="billing"
             className="mt-0 animate-in fade-in slide-in-from-bottom-4 duration-500"
           >
-            <Card className="rounded-2xl shadow-sm border-border/60">
+            <Card className="rounded-3xl shadow-sm border-border/60 overflow-hidden">
               <CardHeader className="pb-2">
                 <CardTitle className="text-lg">Coin Transactions</CardTitle>
               </CardHeader>
@@ -1134,48 +1192,6 @@ const SettingsPage = () => {
                     ))}
                   </div>
                 )}
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          {/* --- TAB 3: PROFILE --- */}
-          <TabsContent
-            value="account"
-            className="mt-0 animate-in fade-in slide-in-from-bottom-4 duration-500"
-          >
-            <Card className="rounded-2xl shadow-sm border-border/60 max-w-2xl">
-              <CardHeader>
-                <CardTitle className="text-lg">Profile Details</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-2">
-                  <Label>Full Name</Label>
-                  <Input
-                    value={profile.ActorName || ""}
-                    onChange={(e) =>
-                      setProfile({ ...profile, ActorName: e.target.value })
-                    }
-                    className="h-10 text-base"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Email</Label>
-                  <Input
-                    disabled
-                    value={profile.email || ""}
-                    className="bg-muted h-10 text-base"
-                  />
-                </div>
-                <Button
-                  onClick={handleUpdateProfile}
-                  disabled={isSaving}
-                  className="w-full h-11 font-bold md:w-auto"
-                >
-                  {isSaving && (
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  )}{" "}
-                  Save Changes
-                </Button>
               </CardContent>
             </Card>
           </TabsContent>
@@ -1266,10 +1282,10 @@ const SettingsPage = () => {
           <div className="p-4 border-b shrink-0 flex items-center justify-between">
             <div>
               <DialogTitle className="text-xl font-bold">
-                Manage Plan
+                {isSelectedExpired ? "Select a Plan to Continue" : "Manage Plan"}
               </DialogTitle>
               <DialogDescription className="text-xs">
-                Upgrade your website.
+                {isSelectedExpired ? "Your plan or trial has expired. Select a plan to keep your site active." : "Upgrade your website."}
               </DialogDescription>
             </div>
             <Button
@@ -1283,7 +1299,7 @@ const SettingsPage = () => {
           </div>
           <div className="flex-grow overflow-y-auto p-4 custom-scrollbar">
             <div className="flex justify-start sm:justify-center mb-6 overflow-x-auto no-scrollbar pb-2">
-              <div className="bg-muted p-1 rounded-xl flex gap-1 border shrink-0">
+              <div className="bg-muted/50 p-1.5 rounded-2xl flex gap-1 border shrink-0">
                 {[1, 3, 6, 12].map((duration) => {
                   const isActive = billingDuration === duration;
                   return (
@@ -1293,10 +1309,10 @@ const SettingsPage = () => {
                         setBillingDuration(duration as PlanDuration)
                       }
                       className={cn(
-                        "px-4 py-2.5 rounded-lg text-sm font-bold transition-all flex items-center gap-2 whitespace-nowrap",
+                        "px-4 py-2.5 rounded-xl text-sm font-bold transition-all flex items-center gap-2 whitespace-nowrap border border-transparent",
                         isActive
-                          ? "bg-white dark:bg-zinc-800 shadow-sm text-foreground"
-                          : "text-muted-foreground"
+                          ? "bg-background shadow-sm text-foreground border-border/50"
+                          : "text-muted-foreground hover:text-foreground"
                       )}
                     >
                       {duration === 1 ? "Monthly" : `${duration} Months`}
@@ -1469,7 +1485,7 @@ const SettingsPage = () => {
             />
             <Label>Template</Label>
             <div className="grid grid-cols-1 gap-3 mt-2 pb-4">
-              {PORTFOLIO_TEMPLATES.map((template) => (
+              {EXTENDED_TEMPLATES.map((template) => (
                 <div
                   key={template.id}
                   onClick={() => setSelectedTemplate(template.id)}

@@ -212,6 +212,13 @@ const ActorDashboardLayout = () => {
     location.pathname.includes("/products") ||
     location.pathname.includes("/collections");
 
+  const [tourStep, setTourStep] = useState(0);
+  useEffect(() => {
+    const handleTour = (e: any) => setTourStep(e.detail);
+    window.addEventListener("TOUR_STEP_CHANGED", handleTour);
+    return () => window.removeEventListener("TOUR_STEP_CHANGED", handleTour);
+  }, []);
+
   useEffect(() => {
     if (location.pathname.includes("/dashboard/portfolio") || location.pathname.includes("/dashboard/studio")) {
       setIsCollapsed(true);
@@ -313,20 +320,19 @@ const ActorDashboardLayout = () => {
           notify={(type, title, msg) => console.log(type, title, msg)} // Ideally pass your real notify function here if available globally
         />
 
-        {/* ========================================== */}
-        {/* 1. THE TOPBAR                              */}
-        {/* ========================================== */}
-        <header className="hidden md:flex h-14 border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 fixed top-0 w-full z-50 items-center justify-between px-4">
-          <div className="flex items-center gap-4">
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => setIsCollapsed(!isCollapsed)}
-              className="text-muted-foreground hover:text-foreground"
-            >
-              {isCollapsed ? (
-                <PanelLeftOpen size={18} />
-              ) : (
+              {/* --- TOPBAR --- */}
+      <header className="flex h-14 border-b border-border/40 bg-background/95 backdrop-blur fixed top-0 w-full z-50 items-center justify-between px-4">
+        <div className="flex items-center gap-4">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setIsCollapsed(!isCollapsed)}
+            className="hidden md:flex text-muted-foreground hover:text-foreground"
+          >
+            {isCollapsed ? (
+              <PanelLeftOpen size={18} />
+            ) : (
+
                 <PanelLeftClose size={18} />
               )}
             </Button>
@@ -340,90 +346,97 @@ const ActorDashboardLayout = () => {
 
           <div className="flex items-center gap-2">
             {/* 🚀 THE WALLET WIDGET */}
-            <div className="flex items-center bg-amber-500/10 border border-amber-500/20 rounded-full pr-1 pl-3 h-9 mr-2">
+            <div className={cn("flex items-center bg-amber-500/10 border border-amber-500/20 rounded-full pr-1 pl-3 h-9 mr-2 transition-all", tourStep === 2 && "relative z-[10001] ring-4 ring-amber-500/50 bg-background shadow-2xl scale-105 pointer-events-auto")}>
               <Coins size={14} className="text-amber-500 mr-2" />
               <span className="font-black text-sm text-amber-600 dark:text-amber-400 mr-3">
                 {actorData.wallet_balance?.toLocaleString() || 0}
               </span>
               <Button
                 size="icon"
-                className="h-7 w-7 rounded-full bg-amber-500 hover:bg-amber-600 text-white shadow-sm"
-                onClick={() => setIsTopUpOpen(true)}
+                className={cn("h-7 w-7 rounded-full bg-amber-500 hover:bg-amber-600 text-white shadow-sm transition-all", tourStep === 2 && "animate-pulse")}
+                onClick={() => {
+                  setIsTopUpOpen(true);
+                  if (tourStep === 2) {
+                    window.dispatchEvent(new CustomEvent("TOUR_STEP_CHANGED", { detail: 3 }));
+                  }
+                }}
               >
                 <Plus size={14} />
               </Button>
             </div>
 
-            <Button
-              variant="ghost"
-              size="icon"
-              className="text-muted-foreground hover:text-foreground"
-            >
-              <Search size={18} />
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="text-muted-foreground hover:text-foreground"
-            >
-              <Bell size={18} />
-            </Button>
-            <ThemeToggle />
+            <div className={cn("flex items-center gap-2 transition-opacity duration-300", tourStep === 2 && "opacity-20 pointer-events-none")}>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="hidden sm:inline-flex text-muted-foreground hover:text-foreground"
+              >
+                <Search size={18} />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="hidden sm:inline-flex text-muted-foreground hover:text-foreground"
+              >
+                <Bell size={18} />
+              </Button>
+              <ThemeToggle />
 
-            <div className="h-6 w-px bg-border mx-2" />
+              <div className="h-6 w-px bg-border mx-2" />
 
-            {/* 🚀 THE PROFILE SWITCHER DROPDOWN */}
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <div className="flex items-center gap-3 ml-2 cursor-pointer group outline-none">
-                  <span className="text-sm font-semibold text-foreground hidden lg:block group-hover:text-primary transition-colors">
-                    {actorData.ActorName}
-                  </span>
-                  <Avatar className="h-8 w-8 border border-border group-hover:opacity-80 transition-opacity ring-2 ring-transparent group-hover:ring-primary/20">
-                    <AvatarImage
-                      src={actorData.HeadshotURL}
-                      className="object-cover"
+              {/* 🚀 THE PROFILE SWITCHER DROPDOWN */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <div className="flex items-center gap-3 ml-2 cursor-pointer group outline-none">
+                    <span className="text-sm font-semibold text-foreground hidden lg:block group-hover:text-primary transition-colors">
+                      {actorData.ActorName}
+                    </span>
+                    <Avatar className="h-8 w-8 border border-border group-hover:opacity-80 transition-opacity ring-2 ring-transparent group-hover:ring-primary/20">
+                      <AvatarImage
+                        src={actorData.HeadshotURL}
+                        className="object-cover"
+                      />
+                      <AvatarFallback className="text-xs bg-primary/10 text-primary">
+                        {actorData.ActorName?.slice(0, 2).toUpperCase()}
+                      </AvatarFallback>
+                    </Avatar>
+                  </div>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-56 rounded-xl p-2">
+                  <DropdownMenuLabel className="flex flex-col">
+                    <span>{actorData.ActorName}</span>
+                    <span className="text-xs text-muted-foreground font-normal">
+                      {actorData.email}
+                    </span>
+                  </DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    onClick={handleSwitchToClient}
+                    className="cursor-pointer py-2 text-sm font-medium"
+                  >
+                    <ArrowRightLeft
+                      size={16}
+                      className="mr-2 text-muted-foreground"
                     />
-                    <AvatarFallback className="text-xs bg-primary/10 text-primary">
-                      {actorData.ActorName?.slice(0, 2).toUpperCase()}
-                    </AvatarFallback>
-                  </Avatar>
-                </div>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-56 rounded-xl p-2">
-                <DropdownMenuLabel className="flex flex-col">
-                  <span>{actorData.ActorName}</span>
-                  <span className="text-xs text-muted-foreground font-normal">
-                    {actorData.email}
-                  </span>
-                </DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem
-                  onClick={handleSwitchToClient}
-                  className="cursor-pointer py-2 text-sm font-medium"
-                >
-                  <ArrowRightLeft
-                    size={16}
-                    className="mr-2 text-muted-foreground"
-                  />
-                  Switch to Client Dashboard
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  onClick={() => navigate("/dashboard/profile")}
-                  className="cursor-pointer py-2 text-sm font-medium"
-                >
-                  <User size={16} className="mr-2 text-muted-foreground" />{" "}
-                  Account Settings
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem
-                  onClick={handleLogout}
-                  className="cursor-pointer text-red-500 focus:bg-red-50 focus:text-red-600 py-2 font-bold"
-                >
-                  <LogOut size={16} className="mr-2" /> Log out
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+                    Switch to Client Dashboard
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => navigate("/dashboard/profile")}
+                    className="cursor-pointer py-2 text-sm font-medium"
+                  >
+                    <User size={16} className="mr-2 text-muted-foreground" />{" "}
+                    Account Settings
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    onClick={handleLogout}
+                    className="cursor-pointer text-red-500 focus:bg-red-50 focus:text-red-600 py-2 font-bold"
+                  >
+                    <LogOut size={16} className="mr-2" /> Log out
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
           </div>
         </header>
 

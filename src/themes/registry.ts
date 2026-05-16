@@ -33,6 +33,7 @@ export const SECTION_COMPONENT_MAP: Record<string, string> = {
   pricing: "Pricing",
   lead_form: "LeadForm",
   map: "Map",
+  Reviews: "Reviews",
 };
 
 // 3. NEW: Safe Resolver Helper

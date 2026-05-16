@@ -23,6 +23,7 @@ import {
   Landmark,
   Bitcoin,
   QrCode,
+  Gift,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -181,6 +182,15 @@ export default function TopUpModal({
   const [isRedeeming, setIsRedeeming] = useState(false);
   const [isDark, setIsDark] = useState(false);
 
+  const [tourStep, setTourStep] = useState(0);
+  const [activeTab, setActiveTab] = useState("packs");
+
+  useEffect(() => {
+    const handleTour = (e: any) => setTourStep(e.detail);
+    window.addEventListener("TOUR_STEP_CHANGED", handleTour);
+    return () => window.removeEventListener("TOUR_STEP_CHANGED", handleTour);
+  }, []);
+
   // Custom Coin State
   const [customCoins, setCustomCoins] = useState<string>("");
 
@@ -337,6 +347,9 @@ export default function TopUpModal({
       notify("success", "Coins Added!", "Gift code redeemed.");
       setRedeemCode("");
       onSuccess();
+      if (tourStep === 4) {
+        window.dispatchEvent(new CustomEvent("TOUR_STEP_CHANGED", { detail: 5 }));
+      }
     }
     setIsRedeeming(false);
   };
@@ -345,6 +358,10 @@ export default function TopUpModal({
     if (!open) {
       setSelectedPack(null);
       setClientSecret(null);
+      setActiveTab("packs");
+      if (tourStep === 3 || tourStep === 4) {
+        window.dispatchEvent(new CustomEvent("TOUR_STEP_CHANGED", { detail: 0 }));
+      }
     }
     onOpenChange(open);
   };
@@ -386,7 +403,31 @@ export default function TopUpModal({
   return (
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
       <DialogContent className="w-full h-[100dvh] sm:h-[85vh] sm:max-w-[1000px] p-0 gap-0 bg-zinc-50 dark:bg-zinc-950 border-none shadow-2xl sm:rounded-2xl flex flex-col overflow-hidden">
-        {selectedPack ? (
+        {(tourStep === 3 || tourStep === 4) && (
+          <div className="absolute inset-0 z-[50] bg-slate-950/80 backdrop-blur-sm pointer-events-none transition-all animate-in fade-in" />
+        )}
+
+        {tourStep === 5 ? (
+          <div className="w-full h-full flex flex-col items-center justify-center text-center p-8 bg-gradient-to-br from-indigo-900 to-purple-900 text-white animate-in zoom-in-95 duration-500">
+            <div className="w-24 h-24 bg-amber-500 rounded-full flex items-center justify-center mx-auto mb-6 shadow-[0_0_60px_rgba(245,158,11,0.6)]">
+              <Coins size={48} className="text-white" />
+            </div>
+            <h2 className="text-4xl font-black mb-4 text-white">2,700 Coins Claimed!</h2>
+            <p className="text-xl text-white/80 mb-8 max-w-md">
+              Mashallah! You've successfully redeemed your welcome gift. You can use these coins to unlock Pro features once your trial ends, or buy new themes from the marketplace.
+            </p>
+            <Button 
+              size="lg" 
+              className="w-full max-w-xs bg-amber-500 hover:bg-amber-600 text-white font-bold text-xl h-14"
+              onClick={() => {
+                 window.dispatchEvent(new CustomEvent('TOUR_STEP_CHANGED', { detail: 0 }));
+                 handleOpenChange(false);
+              }}
+            >
+              Awesome, Thanks!
+            </Button>
+          </div>
+        ) : selectedPack ? (
           /* ========================================== */
           /* TWO-COLUMN CHECKOUT VIEW                     */
           /* ========================================== */
@@ -663,12 +704,18 @@ export default function TopUpModal({
           /* DEFAULT PACK SELECTION VIEW                  */
           /* ========================================== */
           <Tabs
-            defaultValue="packs"
+            value={activeTab}
+            onValueChange={(v) => {
+              setActiveTab(v);
+              if (tourStep === 3 && v === "redeem") {
+                window.dispatchEvent(new CustomEvent("TOUR_STEP_CHANGED", { detail: 4 }));
+              }
+            }}
             className="w-full h-full flex flex-col bg-zinc-50 dark:bg-zinc-950"
           >
-            <div className="p-4 md:p-8 shrink-0 bg-background border-b border-border/50 z-20 shadow-sm">
+            <div className={cn("p-4 md:p-8 shrink-0 bg-background border-b border-border/50 shadow-sm transition-all", tourStep === 3 ? "relative z-[60]" : "z-20")}>
               <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <div className="space-y-1">
+                <div className={cn("space-y-1 transition-opacity duration-300", tourStep === 3 && "opacity-20 pointer-events-none")}>
                   <DialogTitle className="text-2xl md:text-3xl font-black tracking-tight flex items-center gap-2">
                     <Coins className="text-amber-500 fill-amber-500 w-8 h-8" />{" "}
                     Coin Shop
@@ -677,11 +724,11 @@ export default function TopUpModal({
                     Top up your balance to purchase Pro upgrades and slots.
                   </DialogDescription>
                 </div>
-                <TabsList className="bg-muted/50 p-1 w-full md:w-fit grid grid-cols-2 md:flex rounded-xl border border-border/50">
+                <TabsList className={cn("bg-muted/50 p-1 w-full md:w-fit grid grid-cols-2 md:flex rounded-xl border border-border/50 transition-all", tourStep === 3 && "ring-4 ring-primary bg-background shadow-2xl scale-105 pointer-events-auto")}>
                   <TabsTrigger value="packs" className="rounded-lg font-bold">
                     Packs
                   </TabsTrigger>
-                  <TabsTrigger value="redeem" className="rounded-lg font-bold">
+                  <TabsTrigger value="redeem" className={cn("rounded-lg font-bold transition-all", tourStep === 3 && "ring-4 ring-primary animate-pulse z-10")}>
                     Redeem Code
                   </TabsTrigger>
                 </TabsList>
@@ -797,7 +844,7 @@ export default function TopUpModal({
               value="redeem"
               className="mt-0 flex-grow overflow-y-auto px-4 pb-8"
             >
-              <div className="bg-card dark:bg-zinc-900 border border-border/50 p-8 rounded-3xl shadow-sm flex flex-col gap-6 mt-8 max-w-lg mx-auto text-center">
+              <div className={cn("bg-card dark:bg-zinc-900 border border-border/50 p-8 rounded-3xl shadow-sm flex flex-col gap-6 mt-8 max-w-lg mx-auto text-center transition-all duration-300", (tourStep === 4 && activeTab === "redeem") && "relative z-[60] bg-background shadow-2xl ring-4 ring-primary/50 pointer-events-auto")}>
                 <div className="h-16 w-16 bg-primary/10 text-primary rounded-full flex items-center justify-center mx-auto mb-2">
                   <Star size={32} className="fill-primary/20" />
                 </div>
@@ -811,7 +858,7 @@ export default function TopUpModal({
                   </p>
                 </div>
                 <Input
-                  className="text-center font-mono uppercase text-2xl h-14 font-bold tracking-widest bg-background border-2"
+                  className={cn("text-center font-mono uppercase text-2xl h-14 font-bold tracking-widest bg-background border-2 transition-all", tourStep === 4 && "ring-4 ring-primary")}
                   placeholder="XXXX-XXXX"
                   value={redeemCode}
                   onChange={(e) => setRedeemCode(e.target.value)}
@@ -819,7 +866,7 @@ export default function TopUpModal({
                 <Button
                   onClick={handleRedeemCode}
                   disabled={isRedeeming}
-                  className="w-full h-14 font-bold text-lg shadow-lg"
+                  className={cn("w-full h-14 font-bold text-lg shadow-lg transition-all", tourStep === 4 && redeemCode.toUpperCase() === "BISSMILAH" && "ring-4 ring-primary animate-pulse")}
                 >
                   {isRedeeming ? (
                     <Loader2 className="w-6 h-6 animate-spin" />
@@ -830,6 +877,30 @@ export default function TopUpModal({
               </div>
             </TabsContent>
           </Tabs>
+        )}
+
+        {!selectedPack && tourStep === 3 && (
+          <div className="absolute top-20 right-4 sm:right-8 bg-card border-2 border-primary rounded-2xl p-4 max-w-[280px] shadow-2xl z-[100] animate-in slide-in-from-right pointer-events-auto">
+            <div className="flex items-center gap-2 mb-2 text-primary">
+              <Gift size={20} />
+              <h3 className="text-lg font-bold">Redeem Tab</h3>
+            </div>
+            <p className="text-sm text-muted-foreground mb-4">
+              Click on the <strong>Redeem Code</strong> tab to enter your special welcome code.
+            </p>
+          </div>
+        )}
+
+        {!selectedPack && tourStep === 4 && activeTab === "redeem" && (
+          <div className="absolute bottom-32 left-1/2 -translate-x-1/2 bg-card border-2 border-primary rounded-2xl p-4 w-[90%] max-w-[320px] shadow-2xl z-[100] animate-in slide-in-from-bottom pointer-events-auto">
+            <div className="flex items-center gap-2 mb-2 text-primary">
+              <Star size={20} />
+              <h3 className="text-lg font-bold">Enter Code</h3>
+            </div>
+            <p className="text-sm text-muted-foreground mb-4">
+              Type <strong>BISSMILAH</strong> in the box and hit Apply to get 2,700 coins instantly!
+            </p>
+          </div>
         )}
 
         {!selectedPack && (

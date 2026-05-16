@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { BlockProps } from "../types";
 import { cn } from "@/lib/utils";
 import { ChevronLeft, ChevronRight, Image as ImageIcon } from "lucide-react";
@@ -7,12 +7,22 @@ import { Button } from "@/components/ui/button";
 import { InlineEdit } from "../../components/dashboard/InlineEdit";
 
 // 🚀 2. GRAB id AND isPreview FROM PROPS
-const ImageSlider: React.FC<any> = ({ data, id, isPreview }) => {
+const ImageSlider: React.FC<any> = ({ data, settings = {}, id, isPreview }) => {
   const [current, setCurrent] = useState(0);
   const images = data.images || [];
   const hasImages = images.length > 0;
-  const variant = data.variant || "standard"; // standard, cinematic, cards
-  const intervalTime = (data.interval || 5) * 1000;
+  const carouselRef = useRef<HTMLDivElement>(null);
+  
+  const variant = settings.variant || data.variant || "standard"; // standard, cinematic, cards, split, carousel
+  const intervalValue = settings.interval !== undefined ? settings.interval : data.interval || 5;
+  const intervalTime = intervalValue * 1000;
+  const sliderHeight = settings.height || data.height || "large";
+  
+  const imageFit = settings.imageFit || data.imageFit || "cover";
+  const fitClass = imageFit === "contain" ? "object-contain" : "object-cover";
+
+  const titleText = data.title !== undefined ? data.title : "IMAGE SLIDER";
+  const showTitle = isPreview || titleText.trim().length > 0;
 
   // 🚀 Disable autoplay in preview mode so it doesn't distract the user while editing
   const autoPlayEnabled = intervalTime > 0 && !isPreview;
@@ -22,21 +32,38 @@ const ImageSlider: React.FC<any> = ({ data, id, isPreview }) => {
 
   // Height Classes
   const heightClass =
-    data.height === "full"
+    sliderHeight === "full"
       ? "h-[100dvh]"
-      : data.height === "medium"
-      ? "h-[400px] md:h-[500px]"
-      : "h-[600px] md:h-[700px]";
+      : sliderHeight === "small"
+      ? "h-[40vh] min-h-[250px] md:h-[350px]"
+      : sliderHeight === "medium"
+      ? "h-[50vh] min-h-[350px] md:h-[500px]"
+      : "h-[65vh] min-h-[450px] md:h-[700px]";
 
   // --- NAVIGATION LOGIC ---
   const nextSlide = useCallback(() => {
     if (!hasImages) return;
-    setCurrent((prev) => (prev + 1) % images.length);
-  }, [images.length, hasImages]);
+    if (variant === "carousel" && carouselRef.current) {
+      const { scrollLeft, scrollWidth, clientWidth } = carouselRef.current;
+      if (scrollLeft + clientWidth >= scrollWidth - 10) {
+        carouselRef.current.scrollTo({ left: 0, behavior: "smooth" });
+      } else {
+        const amount = window.innerWidth < 768 ? window.innerWidth * 0.8 : 400;
+        carouselRef.current.scrollBy({ left: amount, behavior: "smooth" });
+      }
+    } else {
+      setCurrent((prev) => (prev + 1) % images.length);
+    }
+  }, [images.length, hasImages, variant]);
 
   const prevSlide = () => {
     if (!hasImages) return;
-    setCurrent((prev) => (prev - 1 + images.length) % images.length);
+    if (variant === "carousel" && carouselRef.current) {
+      const amount = window.innerWidth < 768 ? window.innerWidth * 0.8 : 400;
+      carouselRef.current.scrollBy({ left: -amount, behavior: "smooth" });
+    } else {
+      setCurrent((prev) => (prev - 1 + images.length) % images.length);
+    }
   };
 
   // --- AUTOPLAY ---
@@ -48,18 +75,20 @@ const ImageSlider: React.FC<any> = ({ data, id, isPreview }) => {
 
   return (
     <section className="bg-neutral-950 relative overflow-hidden group">
-      {/* 🚀 4. INLINE EDITABLE TITLE (ALWAYS RENDERED) */}
-      <div className="absolute top-8 left-0 right-0 z-40 text-center pointer-events-none">
-        <span className="inline-block py-1 px-4 rounded-full bg-black/30 backdrop-blur-md border border-white/10 text-white text-sm font-medium tracking-widest uppercase pointer-events-auto">
-          <InlineEdit
-            tagName="span"
-            text={data.title || "IMAGE SLIDER"}
-            sectionId={id}
-            fieldKey="title"
-            isPreview={isPreview}
-          />
-        </span>
-      </div>
+      {/* 🚀 4. INLINE EDITABLE TITLE (Hidden when empty on live site) */}
+      {showTitle && (
+        <div className="absolute top-8 left-0 right-0 z-40 text-center pointer-events-none">
+          <span className="inline-block py-1 px-4 rounded-full bg-black/30 backdrop-blur-md border border-white/10 text-white text-sm font-medium tracking-widest uppercase pointer-events-auto">
+            <InlineEdit
+              tagName="span"
+              text={titleText}
+              sectionId={id}
+              fieldKey="title"
+              isPreview={isPreview}
+            />
+          </span>
+        </div>
+      )}
 
       {/* 🚀 5. EMPTY STATE UX FOR BUILDER */}
       {!hasImages && isPreview && (
@@ -95,7 +124,7 @@ const ImageSlider: React.FC<any> = ({ data, id, isPreview }) => {
                   <img
                     src={slide.url}
                     alt={slide.caption || `Slide ${idx + 1}`}
-                    className="w-full h-full object-cover"
+                    className={cn("w-full h-full", fitClass)}
                   />
                   {/* Caption */}
                   {slide.caption && (
@@ -127,7 +156,8 @@ const ImageSlider: React.FC<any> = ({ data, id, isPreview }) => {
                     src={slide.url}
                     alt={slide.caption || `Slide ${idx + 1}`}
                     className={cn(
-                      "w-full h-full object-cover transition-transform duration-[10000ms] ease-linear",
+                      "w-full h-full transition-transform duration-[10000ms] ease-linear",
+                      fitClass,
                       idx === current ? "scale-110" : "scale-100"
                     )}
                   />
@@ -151,7 +181,7 @@ const ImageSlider: React.FC<any> = ({ data, id, isPreview }) => {
           {variant === "cards" && (
             <div
               className={cn(
-                "relative w-full flex items-center justify-center bg-neutral-900",
+                "relative w-full flex items-center justify-center",
                 heightClass
               )}
             >
@@ -171,7 +201,7 @@ const ImageSlider: React.FC<any> = ({ data, id, isPreview }) => {
                     <div
                       key={idx}
                       className={cn(
-                        "absolute top-0 bottom-0 w-[70%] md:w-[60%] left-0 right-0 mx-auto transition-all duration-500 ease-out shadow-2xl rounded-xl overflow-hidden border border-white/10",
+                        "absolute top-0 bottom-0 w-[70%] md:w-[60%] left-0 right-0 mx-auto transition-all duration-500 ease-out shadow-2xl rounded-xl overflow-hidden",
                         position === "center" &&
                           "z-20 opacity-100 scale-100 translate-x-0",
                         position === "left" &&
@@ -184,7 +214,7 @@ const ImageSlider: React.FC<any> = ({ data, id, isPreview }) => {
                       <img
                         src={slide.url}
                         alt={slide.caption || `Slide ${idx + 1}`}
-                        className="w-full h-full object-cover"
+                        className={cn("w-full h-full", fitClass)}
                       />
                       {position === "center" && slide.caption && (
                         <div className="absolute bottom-4 left-4 right-4 bg-black/60 backdrop-blur-md p-3 rounded-lg text-white text-center pointer-events-none">
@@ -198,8 +228,94 @@ const ImageSlider: React.FC<any> = ({ data, id, isPreview }) => {
             </div>
           )}
 
+          {/* === VARIANT 4: EDITORIAL SPLIT === */}
+          {variant === "split" && (
+            <div className={cn("relative w-full flex flex-col md:flex-row", heightClass)}>
+              <div className="w-full md:w-1/2 h-1/2 md:h-full relative overflow-hidden shadow-2xl z-10">
+                {images.map((slide: any, idx: number) => (
+                  <div
+                    key={idx}
+                    className={cn(
+                      "absolute inset-0 transition-all duration-[1500ms] ease-in-out",
+                      idx === current
+                        ? "opacity-100 z-10 scale-100"
+                        : "opacity-0 z-0 scale-105"
+                    )}
+                  >
+                    <img
+                      src={slide.url}
+                      alt={slide.caption || `Slide ${idx + 1}`}
+                      className={cn("w-full h-full", fitClass)}
+                    />
+                  </div>
+                ))}
+              </div>
+              <div className="w-full md:w-1/2 h-1/2 md:h-full flex items-center justify-center p-8 md:p-16 relative bg-neutral-950">
+                <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-10 pointer-events-none" />
+                {images.map((slide: any, idx: number) => (
+                  <div
+                    key={idx}
+                    className={cn(
+                      "absolute max-w-md w-full px-8 transition-all duration-1000",
+                      idx === current
+                        ? "opacity-100 translate-y-0 z-10"
+                        : "opacity-0 translate-y-8 z-0 pointer-events-none"
+                    )}
+                  >
+                    {slide.caption ? (
+                      <>
+                        <div className="h-1 w-12 bg-primary mb-6" />
+                        <p className="text-white text-3xl md:text-5xl font-light tracking-tight leading-tight drop-shadow-sm">
+                          {slide.caption}
+                        </p>
+                      </>
+                    ) : (
+                      <div className="text-neutral-600 text-sm tracking-widest uppercase font-bold">
+                        Image {idx + 1}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* === VARIANT 5: FILM STRIP (Carousel) === */}
+          {variant === "carousel" && (
+            <div className={cn("relative w-full flex items-center", heightClass)}>
+              <div
+                ref={carouselRef}
+                className="flex overflow-x-auto gap-4 md:gap-6 px-4 md:px-12 w-full h-full sm:h-[85%] py-4 snap-x snap-mandatory hide-scrollbar [&::-webkit-scrollbar]:hidden [-ms-overflow-style:'none'] [scrollbar-width:'none'] items-center"
+              >
+                {images.map((slide: any, idx: number) => (
+                  <div
+                    key={idx}
+                    className="snap-center shrink-0 w-[80vw] sm:w-[450px] h-full"
+                  >
+                    <div className="w-full h-full rounded-2xl overflow-hidden relative shadow-lg group/film">
+                      <img
+                        src={slide.url}
+                        alt={slide.caption || `Slide ${idx + 1}`}
+                        className={cn("w-full h-full transition-transform duration-700 group-hover/film:scale-105", fitClass)}
+                      />
+                      {slide.caption && (
+                        <div className="absolute bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-black/80 via-black/40 to-transparent pointer-events-none">
+                          <p className="text-white text-lg font-medium drop-shadow-sm">
+                            {slide.caption}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <div className="absolute top-0 right-0 h-full w-24 bg-gradient-to-l from-neutral-950 to-transparent pointer-events-none z-10 hidden md:block" />
+              <div className="absolute top-0 left-0 h-full w-24 bg-gradient-to-r from-neutral-950 to-transparent pointer-events-none z-10 hidden md:block" />
+            </div>
+          )}
+
           {/* --- CONTROLS (Arrows & Dots) --- */}
-          <div className="absolute inset-0 pointer-events-none flex items-center justify-between px-4 z-30">
+          <div className="absolute inset-0 pointer-events-none flex items-center justify-between px-2 md:px-4 z-30">
             <Button
               variant="ghost"
               size="icon"
@@ -207,9 +323,9 @@ const ImageSlider: React.FC<any> = ({ data, id, isPreview }) => {
                 e.preventDefault();
                 prevSlide();
               }}
-              className="pointer-events-auto h-12 w-12 rounded-full bg-black/20 hover:bg-black/50 text-white backdrop-blur-sm transition-all hover:scale-110"
+              className="pointer-events-auto h-8 w-8 md:h-12 md:w-12 rounded-full bg-black/10 hover:bg-black/40 text-white backdrop-blur-md border border-white/10 transition-all hover:scale-110 opacity-70 md:opacity-0 md:group-hover:opacity-100 flex items-center justify-center shadow-md"
             >
-              <ChevronLeft className="w-8 h-8" />
+              <ChevronLeft className="w-5 h-5 md:w-6 md:h-6" />
             </Button>
             <Button
               variant="ghost"
@@ -218,30 +334,32 @@ const ImageSlider: React.FC<any> = ({ data, id, isPreview }) => {
                 e.preventDefault();
                 nextSlide();
               }}
-              className="pointer-events-auto h-12 w-12 rounded-full bg-black/20 hover:bg-black/50 text-white backdrop-blur-sm transition-all hover:scale-110"
+              className="pointer-events-auto h-8 w-8 md:h-12 md:w-12 rounded-full bg-black/10 hover:bg-black/40 text-white backdrop-blur-md border border-white/10 transition-all hover:scale-110 opacity-70 md:opacity-0 md:group-hover:opacity-100 flex items-center justify-center shadow-md"
             >
-              <ChevronRight className="w-8 h-8" />
+              <ChevronRight className="w-5 h-5 md:w-6 md:h-6" />
             </Button>
           </div>
 
           {/* Dots */}
-          <div className="absolute bottom-4 left-0 right-0 flex justify-center gap-2 z-30 pointer-events-none">
-            {images.map((_: any, idx: number) => (
-              <button
-                key={idx}
-                onClick={(e) => {
-                  e.preventDefault();
-                  setCurrent(idx);
-                }}
-                className={cn(
-                  "w-2 h-2 rounded-full transition-all duration-300 pointer-events-auto",
-                  idx === current
-                    ? "bg-white w-6"
-                    : "bg-white/40 hover:bg-white/80"
-                )}
-              />
-            ))}
-          </div>
+          {variant !== "carousel" && (
+            <div className="absolute bottom-4 left-0 right-0 flex justify-center gap-2 z-30 pointer-events-none">
+              {images.map((_: any, idx: number) => (
+                <button
+                  key={idx}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    setCurrent(idx);
+                  }}
+                  className={cn(
+                    "w-2 h-2 rounded-full transition-all duration-300 pointer-events-auto",
+                    idx === current
+                      ? "bg-white w-6"
+                      : "bg-white/40 hover:bg-white/80"
+                  )}
+                />
+              ))}
+            </div>
+          )}
         </>
       )}
     </section>

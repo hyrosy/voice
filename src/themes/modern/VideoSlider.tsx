@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { InlineEdit } from "../../components/dashboard/InlineEdit";
 
 // 🚀 2. GRAB id AND isPreview FROM PROPS
-const VideoSlider: React.FC<any> = ({ data, id, isPreview }) => {
+const VideoSlider: React.FC<any> = ({ data, settings = {}, id, isPreview }) => {
   const [current, setCurrent] = useState(0);
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [lightboxIndex, setLightboxIndex] = useState(0);
@@ -17,7 +17,18 @@ const VideoSlider: React.FC<any> = ({ data, id, isPreview }) => {
   const carouselRef = useRef<HTMLDivElement>(null);
 
   const videos = data.videos || [];
-  const variant = data.variant || "cinema"; // cinema, carousel, grid
+  const variant = settings.variant || data.variant || "cinema"; // cinema, carousel, grid
+
+  const sliderHeight = settings.height || data.height || "large";
+  const gridColumns = Number(settings.gridColumns) || data.gridColumns || 3;
+  const videoFit = settings.videoFit || data.videoFit || "cover";
+  const fitClass = videoFit === "contain" ? "object-contain" : "object-cover";
+
+  const heightClass =
+    sliderHeight === "full" ? "h-[100dvh]"
+    : sliderHeight === "small" ? "h-[40vh] min-h-[250px] md:h-[350px]"
+    : sliderHeight === "medium" ? "h-[50vh] min-h-[350px] md:h-[500px]"
+    : "h-[65vh] min-h-[450px] md:h-[700px]";
 
   useEffect(() => {
     setMounted(true);
@@ -99,13 +110,13 @@ const VideoSlider: React.FC<any> = ({ data, id, isPreview }) => {
           {isYoutube ? (
             <img
               src={thumb || ""}
-              className="w-full h-full object-cover opacity-70 group-hover:opacity-100 transition-opacity"
+              className={cn("w-full h-full opacity-70 group-hover:opacity-100 transition-opacity", fitClass)}
               alt={video.title}
             />
           ) : (
             <video
               src={video.url}
-              className="w-full h-full object-cover opacity-70 group-hover:opacity-100 transition-opacity"
+              className={cn("w-full h-full opacity-70 group-hover:opacity-100 transition-opacity", fitClass)}
               muted
               playsInline
               onContextMenu={(e) => e.preventDefault()}
@@ -134,32 +145,41 @@ const VideoSlider: React.FC<any> = ({ data, id, isPreview }) => {
   // Keep rendering the shell even if no videos exist so the user can edit the headers
   const hasVideos = videos.length > 0;
 
+  const labelText = data.label !== undefined ? data.label : "WATCH";
+  const titleText = data.title !== undefined ? data.title : "My Reels";
+  const showHeader = isPreview || labelText.trim().length > 0 || titleText.trim().length > 0;
+
   return (
     <section className="py-20 bg-neutral-950 text-white relative overflow-hidden">
       <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-10 mix-blend-overlay pointer-events-none"></div>
 
       <div className="container px-4 mx-auto relative z-10">
-        <div className="mb-10 text-center space-y-2">
-          <span className="inline-block text-xs font-bold tracking-[0.2em] text-primary uppercase">
-            {/* 🚀 3. INLINE EDIT LABEL */}
-            <InlineEdit
-              tagName="span"
-              text={data.label || "WATCH"}
-              sectionId={id}
-              fieldKey="label"
-              isPreview={isPreview}
-            />
-          </span>
-          {/* 🚀 4. INLINE EDIT TITLE */}
-          <InlineEdit
-            tagName="h2"
-            className="text-3xl md:text-5xl font-bold block"
-            text={data.title || "My Reels"}
-            sectionId={id}
-            fieldKey="title"
-            isPreview={isPreview}
-          />
-        </div>
+        {showHeader && (
+          <div className="mb-10 text-center space-y-2">
+            {(isPreview || labelText.trim().length > 0) && (
+              <span className="inline-block text-xs font-bold tracking-[0.2em] text-primary uppercase">
+                {/* 🚀 3. INLINE EDIT LABEL */}
+                <InlineEdit
+                  tagName="span"
+                  text={labelText}
+                  sectionId={id}
+                  fieldKey="label"
+                  isPreview={isPreview}
+                />
+              </span>
+            )}
+            {(isPreview || titleText.trim().length > 0) && (
+              <InlineEdit
+                tagName="h2"
+                className="text-3xl md:text-5xl font-bold block"
+                text={titleText}
+                sectionId={id}
+                fieldKey="title"
+                isPreview={isPreview}
+              />
+            )}
+          </div>
+        )}
 
         {!hasVideos && isPreview && (
           <div className="w-full py-20 border-2 border-dashed border-white/20 rounded-2xl flex flex-col items-center justify-center text-white/50">
@@ -173,21 +193,21 @@ const VideoSlider: React.FC<any> = ({ data, id, isPreview }) => {
             {/* === VARIANT 1: CINEMA SPOTLIGHT === */}
             {variant === "cinema" && (
               <div className="max-w-5xl mx-auto">
-                <div className="relative aspect-video bg-black rounded-2xl overflow-hidden shadow-2xl border border-white/10 pointer-events-none">
+                <div className={cn("relative bg-black rounded-2xl overflow-hidden shadow-2xl border border-white/10 pointer-events-none w-full", heightClass)}>
                   {(() => {
                     const vid = videos[current];
                     const ytId = getYoutubeId(vid.url);
                     return ytId ? (
                       <iframe
                         src={`https://www.youtube.com/embed/${ytId}?rel=0`}
-                        className="w-full h-full pointer-events-auto"
+                        className={cn("w-full h-full pointer-events-auto", fitClass)}
                         allowFullScreen
                         title={vid.title}
                       />
                     ) : (
                       <video
                         src={vid.url}
-                        className="w-full h-full pointer-events-auto"
+                        className={cn("w-full h-full pointer-events-auto bg-black", fitClass)}
                         controls
                         controlsList="nodownload"
                         onContextMenu={(e) => e.preventDefault()}
@@ -232,18 +252,18 @@ const VideoSlider: React.FC<any> = ({ data, id, isPreview }) => {
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="absolute left-0 top-1/2 -translate-y-1/2 z-20 bg-black/60 text-white h-12 w-12 hidden md:flex hover:bg-black/80 rounded-r-xl rounded-l-none border-y border-r border-white/10"
+                  className="absolute left-0 top-1/2 -translate-y-1/2 z-20 bg-black/50 hover:bg-black/80 text-white h-14 w-14 opacity-0 group-hover/carousel:opacity-100 transition-all duration-300 backdrop-blur-md hidden md:flex rounded-r-xl rounded-l-none border-y border-r border-white/10 shadow-2xl"
                   onClick={() => scrollCarousel("left")}
                 >
-                  <ChevronLeft />
+                  <ChevronLeft className="w-8 h-8" />
                 </Button>
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="absolute right-0 top-1/2 -translate-y-1/2 z-20 bg-black/60 text-white h-12 w-12 hidden md:flex hover:bg-black/80 rounded-l-xl rounded-r-none border-y border-l border-white/10"
+                  className="absolute right-0 top-1/2 -translate-y-1/2 z-20 bg-black/50 hover:bg-black/80 text-white h-14 w-14 opacity-0 group-hover/carousel:opacity-100 transition-all duration-300 backdrop-blur-md hidden md:flex rounded-l-xl rounded-r-none border-y border-l border-white/10 shadow-2xl"
                   onClick={() => scrollCarousel("right")}
                 >
-                  <ChevronRight />
+                  <ChevronRight className="w-8 h-8" />
                 </Button>
 
                 <div
@@ -271,9 +291,9 @@ const VideoSlider: React.FC<any> = ({ data, id, isPreview }) => {
               <div
                 className={cn(
                   "grid gap-6",
-                  data.gridColumns === 2
+                  gridColumns === 2
                     ? "sm:grid-cols-2"
-                    : data.gridColumns === 4
+                    : gridColumns === 4
                     ? "sm:grid-cols-2 lg:grid-cols-4"
                     : "sm:grid-cols-2 lg:grid-cols-3"
                 )}
