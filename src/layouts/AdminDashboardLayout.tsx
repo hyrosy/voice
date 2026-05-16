@@ -81,13 +81,13 @@ const AdminDashboardLayout = () => {
   return (
     <div className="min-h-screen bg-zinc-50/50 dark:bg-zinc-950 text-foreground flex flex-col antialiased">
       {/* --- TOPBAR --- */}
-      <header className="hidden md:flex h-14 border-b border-border/40 bg-background/95 backdrop-blur fixed top-0 w-full z-50 items-center justify-between px-4">
+      <header className="flex h-14 border-b border-border/40 bg-background/95 backdrop-blur fixed top-0 w-full z-50 items-center justify-between px-4">
         <div className="flex items-center gap-4">
           <Button
             variant="ghost"
             size="icon"
             onClick={() => setIsCollapsed(!isCollapsed)}
-            className="text-muted-foreground hover:text-foreground"
+            className="hidden md:flex text-muted-foreground hover:text-foreground"
           >
             {isCollapsed ? (
               <PanelLeftOpen size={18} />

@@ -320,20 +320,19 @@ const ActorDashboardLayout = () => {
           notify={(type, title, msg) => console.log(type, title, msg)} // Ideally pass your real notify function here if available globally
         />
 
-        {/* ========================================== */}
-        {/* 1. THE TOPBAR                              */}
-        {/* ========================================== */}
-        <header className={cn("hidden md:flex h-14 fixed top-0 w-full items-center justify-between px-4 transition-all", tourStep === 2 ? "z-[10000] bg-transparent border-transparent" : "border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 z-50")}>
-          <div className={cn("flex items-center gap-4 transition-opacity duration-300", tourStep === 2 && "opacity-20 pointer-events-none")}>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => setIsCollapsed(!isCollapsed)}
-              className="text-muted-foreground hover:text-foreground"
-            >
-              {isCollapsed ? (
-                <PanelLeftOpen size={18} />
-              ) : (
+              {/* --- TOPBAR --- */}
+      <header className="flex h-14 border-b border-border/40 bg-background/95 backdrop-blur fixed top-0 w-full z-50 items-center justify-between px-4">
+        <div className="flex items-center gap-4">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setIsCollapsed(!isCollapsed)}
+            className="hidden md:flex text-muted-foreground hover:text-foreground"
+          >
+            {isCollapsed ? (
+              <PanelLeftOpen size={18} />
+            ) : (
+
                 <PanelLeftClose size={18} />
               )}
             </Button>
@@ -370,14 +369,14 @@ const ActorDashboardLayout = () => {
               <Button
                 variant="ghost"
                 size="icon"
-                className="text-muted-foreground hover:text-foreground"
+                className="hidden sm:inline-flex text-muted-foreground hover:text-foreground"
               >
                 <Search size={18} />
               </Button>
               <Button
                 variant="ghost"
                 size="icon"
-                className="text-muted-foreground hover:text-foreground"
+                className="hidden sm:inline-flex text-muted-foreground hover:text-foreground"
               >
                 <Bell size={18} />
               </Button>
