@@ -34,6 +34,7 @@ import {
   Box,
   X,
   Clock,
+  Sparkles,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -372,23 +373,43 @@ const SettingsPage = () => {
   }, [searchParams, setSearchParams]);
 
   const calculateProration = (targetPlanId: string) => {
-    if (!selectedPortfolioId || !subscriptions[selectedPortfolioId])
-      return { cost: 0, isUpgrade: true, unusedValue: 0, activeDuration: 0 };
+    const targetPlan = PLANS.find((p) => p.id === targetPlanId);
+    if (!targetPlan)
+      return { cost: 0, originalPrice: 0, isUpgrade: true, isDowngrade: false, unusedValue: 0, activeDuration: 0 };
+
+    if (!selectedPortfolioId || !subscriptions[selectedPortfolioId]) {
+      return {
+        cost: targetPlan.pricing[billingDuration].coinCost,
+        originalPrice: targetPlan.pricing[billingDuration].coinCost,
+        isUpgrade: true,
+        isDowngrade: false,
+        unusedValue: 0,
+        activeDuration: 0,
+      };
+    }
 
     const currentSub = subscriptions[selectedPortfolioId];
     if (currentSub.payment_method === "stripe")
       return {
         cost: 0,
+        originalPrice: 0,
         isUpgrade: true,
+        isDowngrade: false,
         unusedValue: 0,
         isStripe: true,
         activeDuration: 0,
       };
 
     const currentPlan = PLANS.find((p) => p.id === currentSub.plan_id);
-    const targetPlan = PLANS.find((p) => p.id === targetPlanId);
-    if (!currentPlan || !targetPlan)
-      return { cost: 0, isUpgrade: true, unusedValue: 0, activeDuration: 0 };
+    if (!currentPlan)
+      return {
+        cost: targetPlan.pricing[billingDuration].coinCost,
+        originalPrice: targetPlan.pricing[billingDuration].coinCost,
+        isUpgrade: true,
+        isDowngrade: false,
+        unusedValue: 0,
+        activeDuration: 0,
+      };
 
     const start = new Date(currentSub.current_period_start).getTime();
     const end = new Date(currentSub.current_period_end).getTime();
@@ -592,13 +613,15 @@ const SettingsPage = () => {
       return;
     }
 
+    const isFirstTime = !subscriptions[selectedPortfolioId];
+
     let message = (
       <p className="text-sm text-muted-foreground">
         Spend <strong>{costToPay} Coins</strong> for{" "}
         <strong>{billingDuration} month(s)</strong> access?
       </p>
     );
-    if (calc.unusedValue > 0)
+    if (calc.unusedValue > 0) {
       message = (
         <div className="text-sm space-y-2 bg-muted/50 p-3 rounded-md">
           <div className="flex justify-between">
@@ -615,6 +638,22 @@ const SettingsPage = () => {
           </div>
         </div>
       );
+    } else if (isFirstTime) {
+      message = (
+        <div className="text-sm space-y-3 bg-primary/5 p-4 rounded-xl border border-primary/20">
+          <p className="text-foreground font-medium flex items-center gap-2">
+            <Sparkles className="text-primary h-5 w-5" /> You're about to supercharge your portfolio!
+          </p>
+          <p className="text-muted-foreground">
+            Activate the <strong>{plan.name}</strong> plan for <strong>{billingDuration} month(s)</strong> to unlock premium features and grow your digital presence.
+          </p>
+          <div className="border-t border-primary/10 pt-3 flex justify-between font-black text-lg text-primary">
+            <span>Total Cost:</span>
+            <span className="flex items-center gap-1.5"><Coins size={18} className="fill-primary" /> {costToPay} Coins</span>
+          </div>
+        </div>
+      );
+    }
 
     openConfirmation(
       `Confirm ${calc.isUpgrade ? "Upgrade" : "Purchase"}`,

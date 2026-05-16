@@ -65,6 +65,11 @@ export default function BuilderPreview() {
       if (event.data?.type === "UPDATE_PREVIEW") {
         setSections(event.data.payload.sections);
         setThemeConfig(event.data.payload.themeConfig);
+      } else if (event.data?.type === "SCROLL_TO_SECTION") {
+        const el = document.getElementById(event.data.payload);
+        if (el) {
+          el.scrollIntoView({ behavior: "smooth", block: "start" });
+        }
       }
     };
 

@@ -189,6 +189,7 @@ const IframePreview = ({
   globalSections,
   customPages,
   publicSlug,
+  editingSectionId,
 }: {
   sections: PortfolioSection[];
   theme: any;
@@ -199,6 +200,7 @@ const IframePreview = ({
   globalSections: PortfolioSection[];
   customPages: any[];
   publicSlug: string;
+  editingSectionId?: string | null;
 }) => {
   const iframeRef = React.useRef<HTMLIFrameElement>(null);
   const containerRef = React.useRef<HTMLDivElement>(null);
@@ -283,6 +285,16 @@ const IframePreview = ({
     window.addEventListener("message", handleMessage);
     return () => window.removeEventListener("message", handleMessage);
   }, [sendDataToIframe, sections, onEditSection, updateSection]);
+
+  // 🚀 SCROLL TO ACTIVE SECTION WHEN EDITING
+  useEffect(() => {
+    if (editingSectionId && iframeRef.current?.contentWindow) {
+      iframeRef.current.contentWindow.postMessage(
+        { type: "SCROLL_TO_SECTION", payload: editingSectionId },
+        "*"
+      );
+    }
+  }, [editingSectionId]);
 
   // 🚀 CALCULATE PERFECT SCALING AND HEIGHT
   const DESKTOP_W = 1280;
@@ -2066,6 +2078,7 @@ const PortfolioBuilderPage = () => {
                 globalSections={fetchedPortfolio?.sections || []}
                 customPages={customPages}
                 publicSlug={siteIdentity.slug}
+                editingSectionId={editingSection?.id}
               />
             </TabsContent>
           </Tabs>
@@ -2083,6 +2096,7 @@ const PortfolioBuilderPage = () => {
             globalSections={fetchedPortfolio?.sections || []}
             customPages={customPages}
             publicSlug={siteIdentity.slug}
+            editingSectionId={editingSection?.id}
           />
         </div>
       </div>

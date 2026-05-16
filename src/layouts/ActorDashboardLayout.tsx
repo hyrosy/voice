@@ -194,7 +194,7 @@ const NAV_GROUPS = [
 ];
 
 const mobilePrimaryItems = [
-  { to: "/dashboard/analytics", name: "Stats", icon: BarChart3 },
+  { to: "/dashboard", name: "Stats", icon: BarChart3 },
   { to: "/dashboard/portfolio", name: "Editor", icon: LayoutTemplate },
   { to: "/dashboard/messages", name: "Inbox", icon: MessageSquare },
 ];
