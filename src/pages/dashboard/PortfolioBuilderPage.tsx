@@ -41,6 +41,7 @@ import {
   Square,
   Type,
   Component as ComponentIcon,
+  Code,
   Undo2,
   Redo2,
   Cloud,
@@ -138,6 +139,7 @@ const AVAILABLE_BLOCKS: {
   { type: "stats", label: "Statistics", icon: BarChart },
   { type: "reviews", label: "Reviews", icon: MessageSquare },
   { type: "services_showcase", label: "Services", icon: Briefcase },
+  { type: "html", label: "Custom HTML", icon: Code },
 ];
 
 const LOCAL_FONT_OPTIONS = [

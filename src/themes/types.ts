@@ -30,5 +30,6 @@ export interface PortfolioThemeDefinition {
   Shop: React.FC<BlockProps>;
   LeadForm: React.FC<BlockProps>;
   DynamicStore: React.FC<BlockProps>;
+  Html: React.FC<BlockProps>;
   schemas?: Record<string, any[]>;
 }

@@ -265,3 +265,9 @@ export interface DynamicStoreCoreData {
 export type DynamicStoreSectionProps = BaseSectionProps & {
   data: DynamicStoreCoreData;
 };
+
+// --- CUSTOM HTML SECTION ---
+export interface HtmlCoreData {
+  code?: string;
+}
+export type HtmlSectionProps = BaseSectionProps & { data: HtmlCoreData };
