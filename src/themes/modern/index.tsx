@@ -19,6 +19,7 @@ const Map = lazy(() => import("./Map"));
 const Pricing = lazy(() => import("./Pricing"));
 const Shop = lazy(() => import("./Shop"));
 const LeadForm = lazy(() => import("./LeadForm"));
+const Html = lazy(() => import("./Html"));
 
 // Handle named exports dynamically
 const DynamicStore = lazy(() =>
@@ -50,6 +51,7 @@ export const ModernTheme: PortfolioThemeDefinition = {
   Shop,
   LeadForm,
   DynamicStore,
+  Html,
   schemas: {
     Header: [
       {

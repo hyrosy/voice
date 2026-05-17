@@ -16,7 +16,8 @@ export type SectionType =
   | "shop" // <--- CONFIRMING THIS IS HERE
   | "pricing"
   | "lead_form"
-  | "dynamic_store"; // <-- ADD THIS
+  | "dynamic_store" // <-- ADD THIS
+  | "html";
 
 export interface PortfolioSection {
   id: string;

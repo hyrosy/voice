@@ -33,6 +33,8 @@ import {
   DialogContent,
   DialogTitle,
   DialogDescription,
+  DialogFooter,
+  DialogHeader,
 } from "@/components/ui/dialog";
 import {
   DndContext,
@@ -78,6 +80,7 @@ import {
   BarChart,
   CheckCircle2,
   Type,
+  Code,
   List,
   Play,
   Camera,
@@ -103,6 +106,8 @@ import {
   ShoppingCart,
   Settings,
   Loader2,
+  BookOpen,
+  AlertTriangle,
 } from "lucide-react";
 
 import PortfolioMediaManager, {
@@ -118,6 +123,8 @@ import { cn } from "@/lib/utils";
 import { ToggleGroup, ToggleGroupItem } from "../ui/toggle-group";
 import { DragDropContext, Draggable, Droppable } from "@hello-pangea/dnd";
 import FormManager from "../builder/FormManager";
+import Editor from "@monaco-editor/react";
+import { useTheme } from "next-themes";
 
 const SiteReviewsManager = ({ portfolioId }: { portfolioId: string }) => {
   const [reviews, setReviews] = useState<any[]>([]);
@@ -1458,6 +1465,10 @@ const SectionEditor: React.FC<SectionEditorProps> = ({
   const [isProductManagerOpen, setIsProductManagerOpen] = useState(false);
   const [availableProducts, setAvailableProducts] = useState<any[]>([]);
   const [formData, setFormData] = useState(section?.data || {});
+  const [isHtmlDocsOpen, setIsHtmlDocsOpen] = useState(false);
+
+  const { resolvedTheme } = useTheme();
+  const isDark = resolvedTheme === "dark";
 
   const { limits } = useSubscription();
   const sensors = useSensors(
@@ -5769,6 +5780,60 @@ const SectionEditor: React.FC<SectionEditorProps> = ({
           </div>
         );
 
+      case "html":
+        return (
+          <div className="space-y-6">
+            <div className="space-y-4 p-4 border rounded-lg bg-background shadow-sm">
+              <div className="flex items-center gap-2 mb-2 border-b pb-2">
+                <Code size={16} className="text-primary" />
+                <Label className="text-base font-semibold">Custom HTML/CSS</Label>
+              </div>
+              <div className="space-y-2">
+                <Label className="text-xs text-muted-foreground uppercase tracking-wider">
+                  Code
+                </Label>
+                <div className="border border-border/50 rounded-xl overflow-hidden shadow-inner relative z-0">
+                  <Editor
+                    height="400px"
+                    language="html"
+                    theme={isDark ? "vs-dark" : "light"}
+                    value={formData.code || ""}
+                    onChange={(value) => updateField("code", value || "")}
+                    options={{
+                      minimap: { enabled: false },
+                      wordWrap: "on",
+                      formatOnPaste: true,
+                      fontSize: 13,
+                      padding: { top: 16 },
+                      fontFamily: "JetBrains Mono, monospace",
+                      scrollBeyondLastLine: false,
+                    }}
+                  />
+                </div>
+              <div className="mt-4 p-4 bg-amber-500/10 border border-amber-500/20 rounded-xl space-y-3">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-[10px] font-bold text-amber-600 dark:text-amber-500 uppercase tracking-wider flex items-center gap-1.5">
+                    <AlertTriangle size={14}/> Important Rules
+                  </h4>
+                  <Button variant="outline" size="sm" className="h-6 text-[10px] bg-background border-amber-500/30 text-amber-700 hover:bg-amber-500/10" onClick={() => setIsHtmlDocsOpen(true)}>
+                    <BookOpen size={12} className="mr-1" /> Full Guide
+                  </Button>
+                </div>
+                <ul className="text-[11px] text-muted-foreground space-y-1.5 list-disc pl-4 leading-relaxed">
+                  <li><strong className="text-foreground">No Document Tags:</strong> Do not include <code>&lt;html&gt;</code>, <code>&lt;head&gt;</code>, or <code>&lt;body&gt;</code> tags. Paste only the inner content.</li>
+                  <li><strong className="text-foreground">Full Width & Size:</strong> If your block looks boxed in, ensure your outer wrapper doesn't have a fixed <code>max-width</code> or hardcoded <code>margin</code>.</li>
+                  <li><strong className="text-foreground">Close all tags:</strong> An unclosed <code>&lt;div&gt;</code> can break the layout of your entire site.</li>
+                  <li><strong className="text-foreground">Scope your CSS:</strong> Use unique class names (e.g., <code>.my-custom-btn</code>) inside your <code>&lt;style&gt;</code> tags. Global selectors (like <code>h1</code>) will accidentally restyle the rest of the website!</li>
+                  <li><strong className="text-foreground">No JavaScript:</strong> For security reasons, <code>&lt;script&gt;</code> tags are automatically stripped and will not execute.</li>
+                  <li><strong className="text-foreground">Interactivity (No JS):</strong> JavaScript is stripped and will not execute. Build interactive elements (tabs, sliders) using Pure CSS techniques like <code>:checked</code> radio inputs or <code>scroll-snap</code>.</li>
+                  <li><strong className="text-foreground">Third-party widgets:</strong> Use standard <code>&lt;iframe&gt;</code> tags to embed external tools like Calendly, Spotify, or Maps.</li>
+                </ul>
+              </div>
+              </div>
+            </div>
+          </div>
+        );
+
       default:
         return (
           <p className="text-muted-foreground">
@@ -5847,6 +5912,98 @@ const SectionEditor: React.FC<SectionEditorProps> = ({
         portfolioId={portfolioId} // 🚀 Pass this down!
         onFormsChange={fetchForms}
       />
+
+      {/* 🚀 FULL HTML DOCUMENTATION MODAL */}
+      <Dialog open={isHtmlDocsOpen} onOpenChange={setIsHtmlDocsOpen}>
+        <DialogContent className="max-w-3xl max-h-[85vh] flex flex-col p-0 overflow-hidden bg-background border-border">
+          <DialogHeader className="px-6 py-4 border-b bg-muted/30 shrink-0">
+            <DialogTitle className="flex items-center gap-2 text-xl">
+              <Code className="text-primary" /> Custom HTML Guide
+            </DialogTitle>
+            <DialogDescription>
+              Everything you need to safely build stunning custom blocks using pure HTML & CSS.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex-grow overflow-y-auto p-6 space-y-8 custom-scrollbar text-sm text-muted-foreground leading-relaxed">
+            
+            <section className="space-y-3">
+              <h3 className="text-lg font-bold text-foreground flex items-center gap-2 border-b pb-2">
+                <span className="text-primary">1.</span> Structure & Layout
+              </h3>
+              <p>Because this block is injected directly into an existing React webpage, <strong>you must not include structural document tags</strong>.</p>
+              <ul className="list-disc pl-5 space-y-2">
+                <li><strong>Remove</strong> <code>&lt;!DOCTYPE html&gt;</code>, <code>&lt;html&gt;</code>, <code>&lt;head&gt;</code>, and <code>&lt;body&gt;</code> tags.</li>
+                <li>Paste <strong>only the inner content</strong> (e.g., <code>&lt;style&gt;</code> and <code>&lt;div&gt;</code> tags).</li>
+                <li><strong>Full Width:</strong> The block naturally fills the section width. If your design feels boxed in, ensure your outer wrapper doesn't have a fixed <code>max-width</code> or hardcoded <code>margin</code>. Set <code>width: 100%</code>.</li>
+              </ul>
+            </section>
+
+            <section className="space-y-3">
+              <h3 className="text-lg font-bold text-foreground flex items-center gap-2 border-b pb-2">
+                <span className="text-primary">2.</span> Strictly Scoped CSS
+              </h3>
+              <p>Any CSS you write inside a <code>&lt;style&gt;</code> tag will apply globally to the entire website. To prevent breaking the platform's core styling, <strong>always prefix your class names</strong> with a unique identifier (e.g., <code>ch-</code>).</p>
+              <div className="bg-zinc-950 text-zinc-300 p-4 rounded-xl border border-zinc-800 font-mono text-xs space-y-2 overflow-x-auto">
+                <div className="text-emerald-400">/* GOOD: Safely scoped */</div>
+                <div>.ch-my-button {"{"} color: red; {"}"}</div>
+                <div className="text-rose-400 mt-3">/* BAD: Turns every button on the site red! */</div>
+                <div>button {"{"} color: red; {"}"}</div>
+              </div>
+            </section>
+
+            <section className="space-y-3">
+              <h3 className="text-lg font-bold text-foreground flex items-center gap-2 border-b pb-2">
+                <span className="text-primary">3.</span> Interactivity (No JavaScript)
+              </h3>
+              <p>For security reasons, <strong>all <code>&lt;script&gt;</code> tags are automatically stripped and will not execute</strong>. To build interactive elements like Tabs or Sliders, you must use Pure CSS techniques.</p>
+              
+              <div className="space-y-2 mt-4">
+                <h4 className="font-bold text-foreground">The Radio Button Hack (For Tabs/Modals)</h4>
+                <p>Use hidden HTML radio buttons combined with the CSS <code>:checked</code> pseudo-class to toggle visibility.</p>
+                <div className="bg-zinc-950 text-zinc-300 p-4 rounded-xl border border-zinc-800 font-mono text-xs overflow-x-auto">
+<pre>{`<!-- HTML -->
+<input type="radio" id="tab1" name="tabs" class="hidden" checked>
+<label for="tab1">Click Me</label>
+<div id="content1" class="tab-content">Hello!</div>
+
+/* CSS */
+.hidden { display: none; }
+.tab-content { display: none; }
+#tab1:checked ~ #content1 { display: block; }`}</pre>
+                </div>
+              </div>
+
+              <div className="space-y-2 mt-4">
+                <h4 className="font-bold text-foreground">CSS Scroll Snap (For Sliders)</h4>
+                <p>Use native CSS <code>scroll-snap-type: x mandatory;</code> to create perfectly locked horizontal sliding physics without external slider libraries.</p>
+              </div>
+            </section>
+
+            <section className="space-y-3">
+              <h3 className="text-lg font-bold text-foreground flex items-center gap-2 border-b pb-2">
+                <span className="text-primary">4.</span> Third-Party Widgets (Iframes)
+              </h3>
+              <p>If you need complex functionality (like a Calendly booking widget, a Spotify player, or a Google Map), use standard <code>&lt;iframe&gt;</code> tags. The platform safely allows iframe embeds.</p>
+              <p><strong>Pro Tip for Responsive Iframes:</strong> Wrap your iframe in a container with a percentage-based <code>padding-bottom</code> (e.g., 56.25% for 16:9 aspect ratio) and use absolute positioning to make it scale perfectly on mobile.</p>
+            </section>
+
+            <section className="space-y-3 bg-red-500/10 p-4 rounded-xl border border-red-500/20">
+              <h3 className="text-sm font-bold text-red-600 dark:text-red-400 flex items-center gap-2">
+                <AlertTriangle size={16} /> Danger: Unclosed Tags
+              </h3>
+              <p className="text-red-800 dark:text-red-200 text-xs">
+                Meticulously check that every <code>&lt;div&gt;</code> you open is properly closed with a <code>&lt;/div&gt;</code>. Because your HTML is injected into the middle of the React component tree, an unclosed tag will swallow the rest of the website below it and completely break the layout!
+              </p>
+            </section>
+
+          </div>
+          <DialogFooter className="px-6 py-4 border-t bg-muted/30 shrink-0">
+            <Button onClick={() => setIsHtmlDocsOpen(false)} className="w-full sm:w-auto font-bold">
+              Got it! Let's build.
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 };
