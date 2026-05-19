@@ -5,6 +5,8 @@ import { useBuilderStore } from "../../store/useBuilderStore"; // <-- ZUSTAND IM
 import { supabase } from "@/supabaseClient";
 import { useSubscription } from "../../context/SubscriptionContext";
 import { verticalListSortingStrategy } from "@dnd-kit/sortable"; // 🚀 Add this next to rectSortingStrategy
+import Editor from "@monaco-editor/react";
+import { useTheme } from "next-themes";
 // --- shadcn/ui Imports ---
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -123,8 +125,7 @@ import { cn } from "@/lib/utils";
 import { ToggleGroup, ToggleGroupItem } from "../ui/toggle-group";
 import { DragDropContext, Draggable, Droppable } from "@hello-pangea/dnd";
 import FormManager from "../builder/FormManager";
-import Editor from "@monaco-editor/react";
-import { useTheme } from "next-themes";
+import { HTML_TEMPLATES } from "../../lib/html-templates"; // 🚀 Import Templates
 
 const SiteReviewsManager = ({ portfolioId }: { portfolioId: string }) => {
   const [reviews, setReviews] = useState<any[]>([]);
@@ -1466,6 +1467,7 @@ const SectionEditor: React.FC<SectionEditorProps> = ({
   const [availableProducts, setAvailableProducts] = useState<any[]>([]);
   const [formData, setFormData] = useState(section?.data || {});
   const [isHtmlDocsOpen, setIsHtmlDocsOpen] = useState(false);
+  const [isTemplateLibraryOpen, setIsTemplateLibraryOpen] = useState(false); // 🚀 Template Modal State
 
   const { resolvedTheme } = useTheme();
   const isDark = resolvedTheme === "dark";
@@ -1606,6 +1608,24 @@ const SectionEditor: React.FC<SectionEditorProps> = ({
     updateSectionInStore(section.id, {
       settings: newSettingsData,
     });
+  };
+
+  // 🚀 Apply Template Helper
+  const handleApplyTemplate = (template: any) => {
+    if (formData.code?.trim() && !window.confirm("Loading this template will overwrite your current code. Are you sure you want to continue?")) {
+      return;
+    }
+    
+    const newFormData = {
+      ...formData,
+      code: template.code,
+      allowJavascript: template.allowJavascript,
+      useTailwind: template.useTailwind,
+    };
+    
+    setFormData(newFormData);
+    updateSectionInStore(section.id, { data: newFormData });
+    setIsTemplateLibraryOpen(false);
   };
 
   // =========================================================
@@ -5788,10 +5808,61 @@ const SectionEditor: React.FC<SectionEditorProps> = ({
                 <Code size={16} className="text-primary" />
                 <Label className="text-base font-semibold">Custom HTML/CSS</Label>
               </div>
-              <div className="space-y-2">
-                <Label className="text-xs text-muted-foreground uppercase tracking-wider">
-                  Code
-                </Label>
+
+              {/* 🚀 NEW: JS SANDBOX TOGGLE */}
+              <div className="flex items-center justify-between bg-amber-500/10 border border-amber-500/20 p-3 rounded-xl mb-3">
+                <div className="space-y-0.5">
+                  <Label className="text-amber-700 dark:text-amber-500 font-bold">Sandboxed JavaScript</Label>
+                  <p className="text-[10px] text-amber-700/70 dark:text-amber-500/70">
+                    Run code in an isolated iframe. Enables JS & UCP SDK.
+                  </p>
+                </div>
+                <Switch
+                  checked={formData.allowJavascript === true}
+                  onCheckedChange={(c) => updateField("allowJavascript", c)}
+                />
+              </div>
+
+              {formData.allowJavascript && (
+                <div className="space-y-4 mb-4 animate-in fade-in slide-in-from-top-2">
+                  <div className="flex items-center justify-between bg-indigo-500/10 border border-indigo-500/20 p-3 rounded-xl">
+                    <div className="space-y-0.5">
+                      <Label className="text-indigo-700 dark:text-indigo-400 font-bold">Inject Tailwind CSS</Label>
+                      <p className="text-[10px] text-indigo-700/70 dark:text-indigo-400/70">
+                        Allows you to use Tailwind utility classes in your code.
+                      </p>
+                    </div>
+                    <Switch
+                      checked={formData.useTailwind === true}
+                      onCheckedChange={(c) => updateField("useTailwind", c)}
+                    />
+                  </div>
+                  <div className="space-y-3 p-4 bg-muted/20 border rounded-xl">
+                    <div className="flex justify-between items-center">
+                      <Label className="text-xs font-bold">Sandbox Height</Label>
+                      <span className="text-xs text-muted-foreground bg-background px-2 py-1 rounded border shadow-sm">{formData.iframeHeight || 600}px</span>
+                    </div>
+                    <Slider 
+                      value={[formData.iframeHeight || 600]} 
+                      min={200} 
+                      max={2000} 
+                      step={50} 
+                      onValueChange={([val]) => updateField("iframeHeight", val)} 
+                    />
+                    <p className="text-[10px] text-muted-foreground leading-relaxed">Because sandboxed code often uses responsive full-screen heights (like <code className="bg-background px-1 border rounded">100vh</code>), auto-resizing is disabled to prevent infinite zooming. Adjust this slider to fit your design, and the frame will remain scrollable.</p>
+                  </div>
+                </div>
+              )}
+              
+              <div className="space-y-3">
+                <div className="flex justify-between items-center">
+                  <Label className="text-xs text-muted-foreground uppercase tracking-wider">
+                    Source Code
+                  </Label>
+                  <Button variant="outline" size="sm" className="h-7 text-xs bg-background shadow-sm text-primary hover:text-primary" onClick={() => setIsTemplateLibraryOpen(true)}>
+                    <LayoutTemplate className="w-3 h-3 mr-1.5" /> Template Library
+                  </Button>
+                </div>
                 <div className="border border-border/50 rounded-xl overflow-hidden shadow-inner relative z-0">
                   <Editor
                     height="400px"
@@ -5820,13 +5891,13 @@ const SectionEditor: React.FC<SectionEditorProps> = ({
                   </Button>
                 </div>
                 <ul className="text-[11px] text-muted-foreground space-y-1.5 list-disc pl-4 leading-relaxed">
-                  <li><strong className="text-foreground">No Document Tags:</strong> Do not include <code>&lt;html&gt;</code>, <code>&lt;head&gt;</code>, or <code>&lt;body&gt;</code> tags. Paste only the inner content.</li>
-                  <li><strong className="text-foreground">Full Width & Size:</strong> If your block looks boxed in, ensure your outer wrapper doesn't have a fixed <code>max-width</code> or hardcoded <code>margin</code>.</li>
-                  <li><strong className="text-foreground">Close all tags:</strong> An unclosed <code>&lt;div&gt;</code> can break the layout of your entire site.</li>
-                  <li><strong className="text-foreground">Scope your CSS:</strong> Use unique class names (e.g., <code>.my-custom-btn</code>) inside your <code>&lt;style&gt;</code> tags. Global selectors (like <code>h1</code>) will accidentally restyle the rest of the website!</li>
-                  <li><strong className="text-foreground">No JavaScript:</strong> For security reasons, <code>&lt;script&gt;</code> tags are automatically stripped and will not execute.</li>
-                  <li><strong className="text-foreground">Interactivity (No JS):</strong> JavaScript is stripped and will not execute. Build interactive elements (tabs, sliders) using Pure CSS techniques like <code>:checked</code> radio inputs or <code>scroll-snap</code>.</li>
-                  <li><strong className="text-foreground">Third-party widgets:</strong> Use standard <code>&lt;iframe&gt;</code> tags to embed external tools like Calendly, Spotify, or Maps.</li>
+                  <li><strong className="text-foreground">No Document Tags:</strong> Omit <code>&lt;html&gt;</code>, <code>&lt;head&gt;</code>, and <code>&lt;body&gt;</code>.</li>
+                  <li><strong className="text-foreground">Scope your CSS:</strong> Prefix all classes to prevent overwriting the main site.</li>
+                  {!formData.allowJavascript ? (
+                    <li><strong className="text-foreground">No JavaScript:</strong> JS is stripped. Use CSS for interactivity (e.g. <code>:checked</code> for tabs).</li>
+                  ) : (
+                    <li><strong className="text-foreground">UCP SDK Active:</strong> You can now use <code>window.UCP.addToCart()</code> in your custom scripts!</li>
+                  )}
                 </ul>
               </div>
               </div>
@@ -5996,12 +6067,65 @@ const SectionEditor: React.FC<SectionEditorProps> = ({
               </p>
             </section>
 
+            <section className="space-y-3">
+              <h3 className="text-lg font-bold text-foreground flex items-center gap-2 border-b pb-2">
+                <span className="text-primary">5.</span> Sandboxed JavaScript & SDK 🚀
+              </h3>
+              <p>When you enable <strong>Sandboxed JavaScript</strong>, your code is executed safely in an isolated <code>&lt;iframe&gt;</code>. This allows you to write custom <code>&lt;script&gt;</code> tags without compromising platform security!</p>
+              <h4 className="font-bold text-foreground mt-4">The UCP SDK</h4>
+              <p>Your sandboxed code automatically receives access to the global <code>window.UCP</code> object. Use it to trigger native platform actions from your custom HTML buttons!</p>
+              <div className="bg-zinc-950 text-zinc-300 p-4 rounded-xl border border-zinc-800 font-mono text-xs overflow-x-auto space-y-2">
+                <div className="text-emerald-400">/* 1. Add a product to the native cart */</div>
+                <div>window.UCP.addToCart('prod_123', 1);</div>
+                <br />
+                <div className="text-emerald-400">/* 2. Open the checkout for a Pricing Plan */</div>
+                <div>window.UCP.checkout('plan_456');</div>
+              </div>
+              
+              <h4 className="font-bold text-foreground mt-4">Tailwind Support</h4>
+              <p>When the Tailwind toggle is active, you can use standard utility classes (e.g. <code>&lt;div class="bg-blue-500 p-4 rounded-xl"&gt;</code>). This makes it incredibly easy to copy and paste code directly from AI tools like ChatGPT or Claude!</p>
+
+              <h4 className="font-bold text-foreground mt-4">External Libraries (CDNs)</h4>
+              <p>Because your code runs in an isolated environment, you can safely import external libraries like <strong>GSAP, Three.js, or jQuery</strong> using standard script tags inside your code block: <br/><code className="text-primary mt-2 inline-block bg-muted/50 p-1.5 rounded">&lt;script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"&gt;&lt;/script&gt;</code></p>
+            </section>
+
           </div>
           <DialogFooter className="px-6 py-4 border-t bg-muted/30 shrink-0">
             <Button onClick={() => setIsHtmlDocsOpen(false)} className="w-full sm:w-auto font-bold">
               Got it! Let's build.
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* 🚀 HTML TEMPLATE LIBRARY MODAL */}
+      <Dialog open={isTemplateLibraryOpen} onOpenChange={setIsTemplateLibraryOpen}>
+        <DialogContent className="max-w-2xl p-0 overflow-hidden bg-background border-border">
+          <DialogHeader className="px-6 py-4 border-b bg-muted/30 shrink-0">
+            <DialogTitle className="flex items-center gap-2 text-xl">
+              <LayoutTemplate className="text-primary" /> Template Library
+            </DialogTitle>
+            <DialogDescription>
+              Choose a starting point. Loading a template will configure your Sandbox settings automatically.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="p-6 grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {HTML_TEMPLATES.map((template) => (
+              <div 
+                key={template.id} 
+                className="border rounded-xl p-4 bg-muted/20 hover:bg-muted/50 hover:border-primary/50 cursor-pointer transition-all flex flex-col h-full"
+                onClick={() => handleApplyTemplate(template)}
+              >
+                <h4 className="font-bold text-foreground mb-2">{template.name}</h4>
+                <p className="text-xs text-muted-foreground mb-4 flex-grow">{template.description}</p>
+                <div className="flex gap-2">
+                  {template.allowJavascript && <Badge variant="secondary" className="text-[9px]">JS Enabled</Badge>}
+                  {template.useTailwind && <Badge variant="secondary" className="text-[9px]">Tailwind Inject</Badge>}
+                  {!template.allowJavascript && <Badge variant="outline" className="text-[9px]">Pure CSS</Badge>}
+                </div>
+              </div>
+            ))}
+          </div>
         </DialogContent>
       </Dialog>
     </>

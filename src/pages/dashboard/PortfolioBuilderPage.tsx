@@ -282,6 +282,12 @@ const IframePreview = ({
       } else if (event.data?.type === "INLINE_EDIT") {
         const { sectionId, fieldKey, value } = event.data.payload;
         updateSection(sectionId, { data: { [fieldKey]: value } });
+      } else if (event.data?.type === "UCP_ADD_TO_CART") {
+        const { productId, quantity } = event.data.payload;
+        alert(`🛒 SDK Action: Adding ${quantity}x of Product ID "${productId}" to cart! (Preview Mode)`);
+      } else if (event.data?.type === "UCP_CHECKOUT") {
+        const { planId } = event.data.payload;
+        alert(`💳 SDK Action: Initiating checkout for Plan ID "${planId}"! (Preview Mode)`);
       }
     };
     window.addEventListener("message", handleMessage);
