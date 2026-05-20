@@ -6,6 +6,7 @@ const Html: React.FC<BlockProps> = ({ data, isPreview }) => {
   const code = data.code || "";
   const allowJs = data.allowJavascript || false;
   const useTailwind = data.useTailwind || false;
+  const useFullPage = data.useFullPage || false;
 
   if (!code && isPreview) {
     return (
@@ -22,6 +23,7 @@ const Html: React.FC<BlockProps> = ({ data, isPreview }) => {
   if (allowJs) {
     // Inject the UCP SDK automatically into the user's sandboxed environment
     const sdkScript = `
+      <style>body { margin: 0; overflow-x: hidden; }</style>
       ${useTailwind ? '<script src="https://cdn.tailwindcss.com"></script>' : ''}
       ${useTailwind ? '<script>tailwind.config = { corePlugins: { preflight: false } }</script>' : ''}
       <script>
@@ -47,7 +49,7 @@ const Html: React.FC<BlockProps> = ({ data, isPreview }) => {
         sandbox="allow-scripts allow-popups allow-forms" 
         srcDoc={injectedCode} 
         className="w-full border-0 bg-transparent transition-all duration-300" 
-        style={{ width: '100%', height: `${data.iframeHeight || 600}px` }} 
+        style={{ width: '100%', height: useFullPage ? '100vh' : `${data.iframeHeight || 600}px` }} 
         title="Custom Sandboxed Block" 
       />
     );

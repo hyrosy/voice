@@ -5824,8 +5824,8 @@ const SectionEditor: React.FC<SectionEditorProps> = ({
               </div>
 
               {formData.allowJavascript && (
-                <div className="space-y-4 mb-4 animate-in fade-in slide-in-from-top-2">
-                  <div className="flex items-center justify-between bg-indigo-500/10 border border-indigo-500/20 p-3 rounded-xl">
+                <div className="space-y-3 mb-4 animate-in fade-in slide-in-from-top-2">
+                  <div className="flex items-center justify-between bg-indigo-500/10 border border-indigo-500/20 p-3 rounded-xl shadow-sm">
                     <div className="space-y-0.5">
                       <Label className="text-indigo-700 dark:text-indigo-400 font-bold">Inject Tailwind CSS</Label>
                       <p className="text-[10px] text-indigo-700/70 dark:text-indigo-400/70">
@@ -5837,20 +5837,28 @@ const SectionEditor: React.FC<SectionEditorProps> = ({
                       onCheckedChange={(c) => updateField("useTailwind", c)}
                     />
                   </div>
-                  <div className="space-y-3 p-4 bg-muted/20 border rounded-xl">
-                    <div className="flex justify-between items-center">
-                      <Label className="text-xs font-bold">Sandbox Height</Label>
-                      <span className="text-xs text-muted-foreground bg-background px-2 py-1 rounded border shadow-sm">{formData.iframeHeight || 600}px</span>
+                  <div className="flex items-center justify-between bg-sky-500/10 border border-sky-500/20 p-3 rounded-xl shadow-sm">
+                    <div className="space-y-0.5">
+                      <Label className="text-sky-700 dark:text-sky-400 font-bold">Full Page Mode</Label>
+                      <p className="text-[10px] text-sky-700/70 dark:text-sky-400/70">
+                        Sets sandbox height to 100% of the viewport.
+                      </p>
                     </div>
-                    <Slider 
-                      value={[formData.iframeHeight || 600]} 
-                      min={200} 
-                      max={2000} 
-                      step={50} 
-                      onValueChange={([val]) => updateField("iframeHeight", val)} 
+                    <Switch
+                      checked={formData.useFullPage === true}
+                      onCheckedChange={(c) => updateField("useFullPage", c)}
                     />
-                    <p className="text-[10px] text-muted-foreground leading-relaxed">Because sandboxed code often uses responsive full-screen heights (like <code className="bg-background px-1 border rounded">100vh</code>), auto-resizing is disabled to prevent infinite zooming. Adjust this slider to fit your design, and the frame will remain scrollable.</p>
                   </div>
+                  {!formData.useFullPage && (
+                    <div className="space-y-3 p-4 bg-muted/20 border rounded-xl animate-in fade-in">
+                      <div className="flex justify-between items-center">
+                        <Label className="text-xs font-bold">Section Height</Label>
+                        <span className="text-xs text-muted-foreground bg-background px-2 py-1 rounded border shadow-sm">{formData.iframeHeight || 600}px</span>
+                      </div>
+                      <Slider value={[formData.iframeHeight || 600]} min={200} max={2000} step={50} onValueChange={([val]) => updateField("iframeHeight", val)} />
+                      <p className="text-[10px] text-muted-foreground leading-relaxed">Adjust the height of the sandbox container when not in Full Page Mode. The content inside will scroll if it overflows.</p>
+                    </div>
+                  )}
                 </div>
               )}
               
