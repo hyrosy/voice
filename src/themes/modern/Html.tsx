@@ -8,6 +8,19 @@ const Html: React.FC<BlockProps> = ({ data, isPreview }) => {
   const useTailwind = data.useTailwind || false;
   const useFullPage = data.useFullPage || false;
 
+  // 🚀 AAA+ Full-Width Breakout Logic
+  // When in Full Page mode, we use a CSS trick to make the iframe break out
+  // of any parent containers to truly fill the viewport width.
+  const iframeStyle: React.CSSProperties = useFullPage
+    ? {
+        width: "100vw",
+        height: "100vh",
+        position: "relative",
+        left: "50%",
+        transform: "translateX(-50%)",
+      }
+    : { width: "100%", height: `${data.iframeHeight || 600}px` };
+
   if (!code && isPreview) {
     return (
       <div className="w-full py-12 flex flex-col items-center justify-center border-2 border-dashed border-border rounded-xl bg-muted/20 text-muted-foreground text-sm">
@@ -27,6 +40,27 @@ const Html: React.FC<BlockProps> = ({ data, isPreview }) => {
       ${useTailwind ? '<script src="https://cdn.tailwindcss.com"></script>' : ''}
       ${useTailwind ? '<script>tailwind.config = { corePlugins: { preflight: false } }</script>' : ''}
       <script>
+        // --- BFCACHE RELOAD FIX ---
+        // Some browsers (like Safari on iOS) use a back-forward cache that can
+        // cause the iframe content to disappear on back navigation. This forces a reload.
+        window.addEventListener('pageshow', function(event) {
+          if (event.persisted) { window.location.reload(); }
+        });
+        
+        // --- EXTERNAL LINK FIX ---
+        // Prevents "api.whatsapp.com is blocked" by forcing external links to open in a new tab 
+        // if they don't explicitly have a target and aren't simple anchor links.
+        document.addEventListener('click', function(e) {
+          const a = e.target.closest('a');
+          if (a && a.getAttribute('href')) {
+            const href = a.getAttribute('href');
+            if (!href.startsWith('#') && !a.target) {
+              a.target = '_blank';
+              a.rel = 'noopener noreferrer';
+            }
+          }
+        });
+
         window.UCP = {
           addToCart: function(productId, quantity = 1) {
             window.parent.postMessage({
@@ -46,27 +80,54 @@ const Html: React.FC<BlockProps> = ({ data, isPreview }) => {
     const injectedCode = `${sdkScript}\n${code}`;
     return (
       <iframe 
-        sandbox="allow-scripts allow-popups allow-forms" 
+        sandbox="allow-scripts allow-popups allow-forms allow-top-navigation-by-user-activation allow-popups-to-escape-sandbox" 
         srcDoc={injectedCode} 
-        className="w-full border-0 bg-transparent transition-all duration-300" 
-        style={{ width: '100%', height: useFullPage ? '100vh' : `${data.iframeHeight || 600}px` }} 
+        className="border-0 bg-transparent" 
+        style={iframeStyle} 
         title="Custom Sandboxed Block" 
       />
     );
   }
 
-  // Safely sanitize the HTML to strip malicious scripts, 
-  // but explicitly allow styles and iframes (for embeds like Calendly/YouTube)
-  const cleanHtml = DOMPurify.sanitize(code, {
+  // --- AAA+ UNIFIED RENDERER ---
+  // For the non-JS version, we now ALSO use an iframe. This provides perfect
+  // style isolation and fixes a bug where navigating away and back to a page
+  // would cause the browser to not re-apply styles, making content disappear.
+  // We first sanitize the code to strip all scripts, then inject it.
+  const sanitizedCode = DOMPurify.sanitize(code, {
     ADD_TAGS: ["style", "iframe"],
-    ADD_ATTR: ["allow", "allowfullscreen", "frameborder", "scrolling"],
-    FORCE_BODY: true,
+    ADD_ATTR: ["allow", "allowfullscreen", "frameborder", "scrolling", "style"],
+    USE_PROFILES: { html: true, svg: true, mathMl: true },
   });
 
+  // We safely inject the BFCache reload fix here as well. Because DOMPurify
+  // already stripped all user-authored scripts, the only scripts that will run
+  // are this cache-buster and the internal scripts of nested iframes (like YouTube).
+  const cssOnlyInjectedCode = `
+    <style>body { margin: 0; overflow-x: hidden; }</style>
+    <script>
+      window.addEventListener('pageshow', function(event) { if (event.persisted) window.location.reload(); });
+      document.addEventListener('click', function(e) {
+        const a = e.target.closest('a');
+        if (a && a.getAttribute('href')) {
+          const href = a.getAttribute('href');
+          if (!href.startsWith('#') && !a.target) {
+            a.target = '_blank';
+            a.rel = 'noopener noreferrer';
+          }
+        }
+      });
+    </script>
+    ${sanitizedCode}
+  `;
+
   return (
-    <div
-      className="w-full html-embed-container"
-      dangerouslySetInnerHTML={{ __html: cleanHtml }}
+    <iframe
+      sandbox="allow-scripts allow-popups allow-forms allow-top-navigation-by-user-activation allow-popups-to-escape-sandbox"
+      srcDoc={cssOnlyInjectedCode}
+      className="border-0 bg-transparent"
+      style={iframeStyle}
+      title="Custom Sandboxed Block (CSS Only)"
     />
   );
 };
