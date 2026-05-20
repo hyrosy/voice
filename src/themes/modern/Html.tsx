@@ -4,6 +4,8 @@ import DOMPurify from "dompurify";
 
 const Html: React.FC<BlockProps> = ({ data, isPreview }) => {
   const code = data.code || "";
+  const allowJs = data.allowJavascript || false;
+  const useTailwind = data.useTailwind || false;
 
   if (!code && isPreview) {
     return (
@@ -15,6 +17,41 @@ const Html: React.FC<BlockProps> = ({ data, isPreview }) => {
   }
 
   if (!code) return null;
+
+  // 🚀 IF JAVASCRIPT IS ENABLED: Render inside a strictly isolated sandbox!
+  if (allowJs) {
+    // Inject the UCP SDK automatically into the user's sandboxed environment
+    const sdkScript = `
+      ${useTailwind ? '<script src="https://cdn.tailwindcss.com"></script>' : ''}
+      ${useTailwind ? '<script>tailwind.config = { corePlugins: { preflight: false } }</script>' : ''}
+      <script>
+        window.UCP = {
+          addToCart: function(productId, quantity = 1) {
+            window.parent.postMessage({
+              type: 'UCP_ADD_TO_CART',
+              payload: { productId, quantity }
+            }, '*');
+          },
+          checkout: function(planId) {
+            window.parent.postMessage({
+              type: 'UCP_CHECKOUT',
+              payload: { planId }
+            }, '*');
+          }
+        };
+      </script>
+    `;
+    const injectedCode = `${sdkScript}\n${code}`;
+    return (
+      <iframe 
+        sandbox="allow-scripts allow-popups allow-forms" 
+        srcDoc={injectedCode} 
+        className="w-full border-0 bg-transparent transition-all duration-300" 
+        style={{ width: '100%', height: `${data.iframeHeight || 600}px` }} 
+        title="Custom Sandboxed Block" 
+      />
+    );
+  }
 
   // Safely sanitize the HTML to strip malicious scripts, 
   // but explicitly allow styles and iframes (for embeds like Calendly/YouTube)
