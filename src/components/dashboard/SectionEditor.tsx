@@ -5837,6 +5837,10 @@ const SectionEditor: React.FC<SectionEditorProps> = ({
                       onCheckedChange={(c) => updateField("useTailwind", c)}
                     />
                   </div>
+                </div>
+              )}
+
+              <div className="space-y-3 mb-4 animate-in fade-in slide-in-from-top-2">
                   <div className="flex items-center justify-between bg-sky-500/10 border border-sky-500/20 p-3 rounded-xl shadow-sm">
                     <div className="space-y-0.5">
                       <Label className="text-sky-700 dark:text-sky-400 font-bold">Full Page Mode</Label>
@@ -5860,7 +5864,6 @@ const SectionEditor: React.FC<SectionEditorProps> = ({
                     </div>
                   )}
                 </div>
-              )}
               
               <div className="space-y-3">
                 <div className="flex justify-between items-center">
