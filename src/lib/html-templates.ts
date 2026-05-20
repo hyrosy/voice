@@ -1211,5 +1211,142 @@ export const HTML_TEMPLATES = [
     });
   });
 </script>`
+  },
+  {
+    id: "minimalist-resume",
+    name: "Minimalist Resume",
+    description: "A clean, professional, and responsive resume template using pure HTML and CSS. Perfect for the Simple HTML mode.",
+    allowJavascript: false,
+    useTailwind: false,
+    code: `<style>
+  /* Scoped CSS using the .cr- (Clean Resume) prefix */
+  .cr-wrapper {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    color: #333;
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 40px 20px;
+    line-height: 1.6;
+    background-color: #ffffff;
+    border-radius: 12px;
+  }
+  .cr-header { 
+    text-align: center; 
+    border-bottom: 2px solid #f0f0f0; 
+    padding-bottom: 24px; 
+    margin-bottom: 32px; 
+  }
+  .cr-name { 
+    font-size: 2.8em; 
+    margin: 0; 
+    color: #111; 
+    font-weight: 800; 
+    letter-spacing: -1px; 
+  }
+  .cr-title { 
+    font-size: 1.1em; 
+    color: #666; 
+    margin: 8px 0 20px 0; 
+    text-transform: uppercase; 
+    letter-spacing: 2px; 
+  }
+  .cr-contact { 
+    list-style: none; 
+    padding: 0; 
+    margin: 0; 
+    display: flex; 
+    justify-content: center; 
+    gap: 12px; 
+    font-size: 0.9em; 
+    flex-wrap: wrap; 
+  }
+  .cr-contact li { 
+    background: #f8f9fa; 
+    padding: 6px 14px; 
+    border-radius: 20px; 
+    color: #444; 
+    font-weight: 500;
+  }
+  .cr-section { margin-bottom: 32px; }
+  .cr-section-title { 
+    font-size: 1.4em; 
+    color: #111; 
+    border-bottom: 1px solid #f0f0f0; 
+    padding-bottom: 8px; 
+    margin-bottom: 20px; 
+    font-weight: 700;
+  }
+  .cr-item { margin-bottom: 24px; }
+  .cr-item-header { 
+    display: flex; 
+    justify-content: space-between; 
+    align-items: baseline; 
+    margin-bottom: 6px; 
+    flex-wrap: wrap; 
+  }
+  .cr-item-title { font-weight: 700; font-size: 1.15em; margin: 0; color: #222; }
+  .cr-item-meta { color: #777; font-size: 0.9em; font-weight: 500; }
+  .cr-item-desc { margin: 0; color: #555; }
+  .cr-skills { display: flex; gap: 10px; flex-wrap: wrap; }
+  .cr-skill-tag { 
+    background: #111; 
+    color: #fff; 
+    padding: 6px 14px; 
+    border-radius: 6px; 
+    font-size: 0.85em; 
+    font-weight: 600; 
+  }
+</style>
+
+<div class="cr-wrapper">
+  <header class="cr-header">
+    <h1 class="cr-name">Hamza Kadiri-Elmaana</h1>
+    <p class="cr-title">Entrepreneur • Digital Marketer • CTO</p>
+    <ul class="cr-contact">
+      <li>📍 Marrakesh, Morocco</li>
+      <li>✉️ Hamzakadirielmaana@gmail.com</li>
+      <li>📞 +212 695 121 176</li>
+    </ul>
+  </header>
+
+  <section class="cr-section">
+    <h2 class="cr-section-title">Experience</h2>
+    <div class="cr-item">
+      <div class="cr-item-header">
+        <h3 class="cr-item-title">Co-Founder, CEO & CTO @ UCPMAROC</h3>
+        <span class="cr-item-meta">Jul 2021 - Present</span>
+      </div>
+      <p class="cr-item-desc">Co-founded and lead the development of UCPMAROC, a prominent Talents Marketplace and Portfolio Builder platform. Overseeing executive business strategy alongside technological infrastructure.</p>
+    </div>
+    <div class="cr-item">
+      <div class="cr-item-header">
+        <h3 class="cr-item-title">Digital Marketing Manager @ medinal</h3>
+        <span class="cr-item-meta">Jan 2025 - Nov 2025</span>
+      </div>
+      <p class="cr-item-desc">Led overall marketing initiatives and developed comprehensive strategies to penetrate the market. Utilized advanced marketing tactics to drive sustained brand growth.</p>
+    </div>
+  </section>
+
+  <section class="cr-section">
+    <h2 class="cr-section-title">Education</h2>
+    <div class="cr-item">
+      <div class="cr-item-header">
+        <h3 class="cr-item-title">Bachelor's Degree, English Studies</h3>
+        <span class="cr-item-meta">Université Cadi Ayyad</span>
+      </div>
+    </div>
+  </section>
+
+  <section class="cr-section">
+    <h2 class="cr-section-title">Core Competencies</h2>
+    <div class="cr-skills">
+      <span class="cr-skill-tag">Business Development</span>
+      <span class="cr-skill-tag">Media Buying</span>
+      <span class="cr-skill-tag">React / TypeScript</span>
+      <span class="cr-skill-tag">Management</span>
+      <span class="cr-skill-tag">Copywriting</span>
+    </div>
+  </section>
+</div>`
   }
 ];
